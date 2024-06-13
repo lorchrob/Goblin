@@ -1,0 +1,8 @@
+(library
+ (name sbf)
+ (libraries unix))
+
+(menhir
+ (modules parser))
+
+(ocamllex lexer)

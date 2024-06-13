@@ -1,0 +1,150 @@
+(
+(define-fun ttl () Int 1)
+)
+(
+(define-fun ttl () Int 2)
+)
+(
+(define-fun ttl () Int 3)
+)
+(
+(define-fun ttl () Int 4)
+)
+(
+(define-fun ttl () Int 5)
+)
+(
+(define-fun ttl () Int 6)
+)
+(
+(define-fun ttl () Int 7)
+)
+(
+(define-fun ttl () Int 8)
+)
+(
+(define-fun ttl () Int 9)
+)
+(
+(define-fun ttl () Int 10)
+)
+(
+(define-fun ttl () Int 11)
+)
+(
+(define-fun ttl () Int 12)
+)
+(
+(define-fun ttl () Int 13)
+)
+(
+(define-fun ttl () Int 14)
+)
+(
+(define-fun ttl () Int 15)
+)
+(
+(define-fun ttl () Int 16)
+)
+(
+(define-fun ttl () Int 17)
+)
+(
+(define-fun ttl () Int 18)
+)
+(
+(define-fun ttl () Int 19)
+)
+(
+(define-fun ttl () Int 20)
+)
+(
+(define-fun ttl () Int 21)
+)
+(
+(define-fun ttl () Int 22)
+)
+(
+(define-fun ttl () Int 23)
+)
+(
+(define-fun ttl () Int 24)
+)
+(
+(define-fun ttl () Int 25)
+)
+(
+(define-fun ttl () Int 26)
+)
+(
+(define-fun ttl () Int 27)
+)
+(
+(define-fun ttl () Int 28)
+)
+(
+(define-fun ttl () Int 29)
+)
+(
+(define-fun ttl () Int 30)
+)
+(
+(define-fun ttl () Int 31)
+)
+(
+(define-fun ttl () Int 32)
+)
+(
+(define-fun ttl () Int 33)
+)
+(
+(define-fun ttl () Int 34)
+)
+(
+(define-fun ttl () Int 35)
+)
+(
+(define-fun ttl () Int 36)
+)
+(
+(define-fun ttl () Int 37)
+)
+(
+(define-fun ttl () Int 38)
+)
+(
+(define-fun ttl () Int 39)
+)
+(
+(define-fun ttl () Int 40)
+)
+(
+(define-fun ttl () Int 41)
+)
+(
+(define-fun ttl () Int 42)
+)
+(
+(define-fun ttl () Int 43)
+)
+(
+(define-fun ttl () Int 44)
+)
+(
+(define-fun ttl () Int 45)
+)
+(
+(define-fun ttl () Int 46)
+)
+(
+(define-fun ttl () Int 47)
+)
+(
+(define-fun ttl () Int 48)
+)
+(
+(define-fun ttl () Int 49)
+)
+(
+(define-fun ttl () Int 50)
+)
