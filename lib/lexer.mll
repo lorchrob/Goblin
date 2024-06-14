@@ -31,7 +31,7 @@
 }
 
 let white = [' ' '\t']+
-let newline = '\r'* '\n'
+let newline = '\r' * '\n'
 let digit = ['0'-'9']
 let bit = ['0' '1']
 let int = digit+
@@ -59,8 +59,8 @@ rule read =
   | "-" { MINUS }
   | "*" { TIMES }
   | "/" { DIV }
-  | "(" { RPAREN }
-  | ")" { LPAREN }
+  | "(" { LPAREN }
+  | ")" { RPAREN }
   | "," { COMMA }
   | ";" { SEMICOLON }
   | "." { DOT }

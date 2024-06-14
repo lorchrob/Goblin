@@ -69,12 +69,12 @@ open Ast
 
 %%
 
-s: d = separated_list(SEMICOLON, element); EOF { d } ;
+s: d = list(element); EOF { d } ;
 	
 element:
 (* Type annotaion *)
 | nt = nonterminal; TYPEANNOT; t = il_type; 
-  scs = option(semantic_constraints);
+  scs = option(semantic_constraints); SEMICOLON;
   { 
     match scs with 
     | None -> TypeAnnotation (nt, t, []) 
@@ -82,7 +82,7 @@ element:
   }
 (* Production rule *)
 | nt = nonterminal; PRODUCTION; ges = nonempty_list(grammar_element); 
-  scs = option(semantic_constraints);
+  scs = option(semantic_constraints); SEMICOLON;
   { 
     match scs with 
     | None -> ProdRule (nt, ges, [])
@@ -148,7 +148,7 @@ expr:
 (* Case expressions *)
 | CASE; e = nt_expr; OF; cs = case_list { CaseExpr (e, cs) }
 (* Variables *)
-| e = nt_expr; index = option(index); RPAREN; { NTExpr (e, index) }
+| e = nt_expr; index = option(index); { NTExpr (e, index) }
 (* Arbitrary parens *)
 | LPAREN; e = expr; RPAREN; { e }
 
