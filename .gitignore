@@ -8,9 +8,6 @@
 # Generated opam switch.
 _opam
 
-# Generated bin directory.
-bin
-
 # Generated build stuff.
 _build
 

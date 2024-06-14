@@ -1,6 +1,6 @@
 (library
  (name sbf)
- (libraries unix))
+ (libraries unix menhirLib))
 
 (menhir
  (modules parser))

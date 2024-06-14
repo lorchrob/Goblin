@@ -45,8 +45,8 @@ rule read =
   | "::=" { PRODUCTION }
   | "::" {TYPEANNOT}
   | "|" { OPTION }
-  | "<" { LANGLE }
-  | ">" { RANGLE }
+  | "<" { LT }
+  | ">" { GT }
   | "<=" { LTE }
   | ">=" { GTE }
   | "=" { EQ }
@@ -65,8 +65,6 @@ rule read =
   | ";" { SEMICOLON }
   | "." { DOT }
   | "_" { UNDERSCORE }
-  | "[" { LSQUARE }
-  | "]" { RSQUARE }
   | "0b" { read_bits lexbuf }
   | int as p { INTEGER (int_of_string p) }
   | id as p {
