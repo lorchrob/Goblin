@@ -5,9 +5,11 @@ let () =
   print_endline "Hello, world!";
   let input_string = 
   "
-  <S> ::= <List> <Length> { <Length> <- length(<List>.<B>); length(<List>) < 100 };
+  <S> ::= <List> <Length> { <Length> <- length(<List>); length(<List>) < 100 };
   <List> :: BitList;
   <Length> :: Int;
+
+  <SAE_PACKET> ::= <AUTH_ALGO> <STATUS_CODE>;
   " in 
   let _ = Utils.parse input_string in 
   ()
