@@ -1,8 +1,4 @@
-type nonterminal = string
-
-type identifier = string
-
-type nt_expr = nonterminal list
+type nt_expr = string list
 
 type unary_operator = 
 | UPlus 
@@ -33,21 +29,20 @@ type bin_operator =
 type case = nt_expr * expr 
 and
 expr = 
-| Binop of expr * bin_operator * expr 
-| Unop of unary_operator * expr
+| BinOp of expr * bin_operator * expr 
+| UnOp of unary_operator * expr
 | CompOp of expr * comp_operator * expr 
 | Length of expr
 | BVCast of int * int
 | CaseExpr of nt_expr * case list
 | NTExpr of nt_expr * int option 
-| Identifier of string 
 | BVConst of int * bool list
 | BLConst of bool list
 | BConst of bool
 | IntConst of int 
 
 type semantic_constraint = 
-| Dependency of nonterminal * expr 
+| Dependency of string * expr 
 | SyGuSExpr of expr
 
 type il_type = 
@@ -58,11 +53,134 @@ type il_type =
 | MachineInt of int
 
 type grammar_element = 
-| Nonterminal of nonterminal 
-| NamedNonterminal of identifier * nonterminal
+| Nonterminal of string 
+| NamedNonterminal of string * string
 
 type element = 
-| ProdRule of nonterminal * grammar_element list * semantic_constraint list
-| TypeAnnotation of nonterminal * il_type * semantic_constraint list
+| ProdRule of string * grammar_element list * semantic_constraint list
+| TypeAnnotation of string * il_type * semantic_constraint list
 
 type ast = element list
+
+let pp_print_nonterminal: Format.formatter -> string -> unit 
+= fun ppf nt -> 
+  Format.fprintf ppf "<%s>" nt
+
+let pp_print_nt_expr = assert false 
+
+let pp_print_case = assert false
+
+let pp_print_bin_op: Format.formatter -> bin_operator -> unit
+= fun ppf op -> match op with 
+| BVAnd -> Format.fprintf ppf "bvand"
+| BVOr -> Format.fprintf ppf "bvor"
+| BVXor -> Format.fprintf ppf "bvxor"
+| LAnd -> Format.fprintf ppf "land"
+| LOr -> Format.fprintf ppf "lor"
+| LXor -> Format.fprintf ppf "lxor"
+| LImplies -> Format.fprintf ppf "=>"
+| Plus -> Format.fprintf ppf "+"
+| Minus -> Format.fprintf ppf "-"
+| Times -> Format.fprintf ppf "*"
+| Div -> Format.fprintf ppf "/"
+
+let pp_print_unary_op: Format.formatter -> unary_operator -> unit 
+= fun ppf op -> match op with 
+| UPlus -> Format.fprintf ppf  "+"
+| UMinus -> Format.fprintf ppf  "-"
+| LNot -> Format.fprintf ppf  "lnot"
+| BVNot -> Format.fprintf ppf  "bvnot"
+
+let pp_print_comp_op: Format.formatter -> comp_operator -> unit 
+= fun ppf op -> match op with 
+| Lt -> Format.fprintf ppf "<"
+| Lte -> Format.fprintf ppf "<="
+| Gt  -> Format.fprintf ppf ">"
+| Gte -> Format.fprintf ppf ">="
+| Eq -> Format.fprintf ppf "="
+
+let rec pp_print_expr: Format.formatter -> expr -> unit 
+= fun ppf expr -> match expr with
+| BinOp (expr1, op, expr2) -> 
+  Format.fprintf ppf "%a %a %a" 
+  pp_print_expr expr1 
+  pp_print_bin_op op 
+  pp_print_expr expr2
+| UnOp (op, expr) -> 
+  Format.fprintf ppf "%a %a" 
+  pp_print_unary_op op 
+  pp_print_expr expr
+| CompOp (expr1, op, expr2) -> 
+  Format.fprintf ppf "%a %a %a" 
+  pp_print_expr expr1 
+  pp_print_comp_op op 
+  pp_print_expr expr2
+| Length expr -> 
+  Format.fprintf ppf "length(%a)"
+  pp_print_expr expr 
+| BVCast (width, value) -> 
+  Format.fprintf ppf "int_to_bitvector(%d, %d)" width value 
+| CaseExpr (nt, cases) -> 
+  Format.fprintf ppf "case %a of %a"
+  pp_print_nt_expr nt 
+  (Lib.pp_print_list pp_print_case " ") cases 
+| NTExpr _ 
+| BVConst _ 
+| BLConst _ 
+| BConst _ 
+| IntConst _ -> assert false
+
+let pp_print_semantic_constraint: Format.formatter -> semantic_constraint -> unit 
+= fun ppf sc -> match sc with 
+| Dependency (nt, expr) -> 
+  Format.fprintf ppf "%a <- %a"
+  pp_print_nonterminal nt 
+  pp_print_expr expr
+| SyGuSExpr expr -> 
+  Format.fprintf ppf "%a"
+  pp_print_expr expr
+
+let pp_print_ty: Format.formatter -> il_type -> unit 
+= fun ppf ty -> match ty with 
+| Bool -> Format.fprintf ppf "Bool"
+| Int -> Format.fprintf ppf "Int"
+| BitList -> Format.fprintf ppf "BitList" 
+| BitVector width -> Format.fprintf ppf "BitVector(%d)" width
+| MachineInt width -> Format.fprintf ppf "MachineInt(%d)" width
+
+let pp_print_grammar_element: Format.formatter -> grammar_element ->  unit 
+= fun ppf g_el -> match g_el with 
+| Nonterminal nt -> pp_print_nonterminal ppf nt
+| NamedNonterminal (id, nt) -> 
+  Format.fprintf ppf "%s = %a" 
+  id 
+  pp_print_nonterminal nt
+
+let pp_print_element: Format.formatter -> element ->  unit 
+= fun ppf el -> match el with 
+| ProdRule (nt, g_els, []) -> 
+  Format.fprintf ppf "%a :: %a;"
+  pp_print_nonterminal nt
+  (Lib.pp_print_list pp_print_grammar_element " ") g_els
+  
+| ProdRule (nt, g_els, scs) -> 
+  Format.fprintf ppf "%a :: %a { %a };"
+  pp_print_nonterminal nt
+  (Lib.pp_print_list pp_print_grammar_element " ") g_els
+  (Lib.pp_print_list pp_print_semantic_constraint "; ") scs
+
+| TypeAnnotation (nt, ty, []) -> 
+  Format.fprintf ppf "%a :: %a"
+  pp_print_nonterminal nt 
+  pp_print_ty ty
+
+| TypeAnnotation (nt, ty, scs) -> 
+  Format.fprintf ppf "%a :: %a { %a };"
+  pp_print_nonterminal nt 
+  pp_print_ty ty
+  (Lib.pp_print_list pp_print_semantic_constraint " ") scs
+
+let pp_print_spec: Format.formatter -> ast ->  unit 
+= fun ppf ast -> 
+  Format.fprintf ppf "%a"
+  (Lib.pp_print_list pp_print_element "; ") ast

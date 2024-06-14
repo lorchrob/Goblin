@@ -1,6 +1,6 @@
 open Ast
 
-let capture_output: ('a -> unit) -> 'a -> identifier = 
+let capture_output: ('a -> unit) -> 'a -> string = 
 fun f arg ->
   let buf = Buffer.create 80 in
   let ppf = Format.formatter_of_buffer buf in
