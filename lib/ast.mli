@@ -38,4 +38,4 @@ type element =
   | TypeAnnotation of string * il_type * semantic_constraint list
 type ast = element list
 
-val pp_print_spec : Format.formatter -> ast -> unit
+val pp_print_ast : Format.formatter -> ast -> unit

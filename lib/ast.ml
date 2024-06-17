@@ -198,6 +198,6 @@ let pp_print_element: Format.formatter -> element ->  unit
   pp_print_ty ty
   (Lib.pp_print_list pp_print_semantic_constraint " ") scs
 
-let pp_print_spec: Format.formatter -> ast ->  unit 
+let pp_print_ast: Format.formatter -> ast ->  unit 
 = fun ppf ast -> 
   Lib.pp_print_list pp_print_element " " ppf ast
