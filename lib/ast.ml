@@ -200,4 +200,5 @@ let pp_print_element: Format.formatter -> element ->  unit
 
 let pp_print_ast: Format.formatter -> ast ->  unit 
 = fun ppf ast -> 
-  Lib.pp_print_list pp_print_element " " ppf ast
+  Format.fprintf ppf "%a\n"
+  (Lib.pp_print_list pp_print_element " ") ast

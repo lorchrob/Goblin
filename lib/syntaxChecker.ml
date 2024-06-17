@@ -46,7 +46,30 @@ let build_nt_set: ast -> StringSet.t
   | TypeAnnotation (nt, _, _) -> StringSet.add nt acc
   ) StringSet.empty ast
 
-let check_dangling_identifiers _ expr = expr
+
+let rec check_dangling_identifiers: StringSet.t -> expr -> expr 
+= fun nt_set expr -> 
+  let call = check_dangling_identifiers nt_set in 
+  let check_nt_expr nt_expr = 
+    List.map (fun nt -> match StringSet.find_opt nt nt_set with 
+    | None -> failwith ("Dangling identifier " ^ nt)
+    | Some _ -> nt
+    ) nt_expr
+  in
+  match expr with 
+  | NTExpr (nt_expr, index) -> 
+    let nt_expr = check_nt_expr nt_expr in 
+    NTExpr (nt_expr, index) 
+  | BinOp (expr1, op, expr2) -> BinOp (call expr1, op, call expr2) 
+  | UnOp (op, expr) -> UnOp (op, call expr) 
+  | CompOp (expr1, op, expr2) -> CompOp (call expr1, op, call expr2) 
+  | Length expr -> Length (call expr) 
+  | CaseExpr (nt_expr, cases) -> CaseExpr (check_nt_expr nt_expr, cases) 
+  | BVConst _ 
+  | BLConst _ 
+  | BConst _ 
+  | BVCast _  
+  | IntConst _ -> expr
 
 let check_nt_exprs _ expr = expr
 
