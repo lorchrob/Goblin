@@ -100,7 +100,7 @@ semantic_constraints:
 | LCURLY; scs = semantic_constraint_list; RCURLY; { scs }
 
 semantic_constraint_list:
-| sc = semantic_constraint { [sc] }
+| sc = semantic_constraint SEMICOLON; { [sc] }
 | sc = semantic_constraint; SEMICOLON; scs = semantic_constraint_list; { sc :: scs }
 
 grammar_element:
