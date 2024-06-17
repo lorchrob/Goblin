@@ -33,7 +33,11 @@ let build_prm: ast -> prod_rule_map
     | None -> 
       StringMap.add nt grammar_elements acc 
     )
-  | TypeAnnotation _ -> acc
+  | TypeAnnotation (nt, _, _) -> 
+    match StringMap.find_opt nt acc with 
+    | Some _ -> acc
+    | None -> 
+      StringMap.add nt StringSet.empty acc 
   ) StringMap.empty ast in 
   prm
 
@@ -46,11 +50,10 @@ let build_nt_set: ast -> StringSet.t
   | TypeAnnotation (nt, _, _) -> StringSet.add nt acc
   ) StringSet.empty ast
 
-
 let rec check_dangling_identifiers: StringSet.t -> expr -> expr 
 = fun nt_set expr -> 
   let call = check_dangling_identifiers nt_set in 
-  let check_nt_expr nt_expr = 
+  let check_d_ids_nt_expr nt_expr = 
     List.map (fun nt -> match StringSet.find_opt nt nt_set with 
     | None -> failwith ("Dangling identifier " ^ nt)
     | Some _ -> nt
@@ -58,20 +61,50 @@ let rec check_dangling_identifiers: StringSet.t -> expr -> expr
   in
   match expr with 
   | NTExpr (nt_expr, index) -> 
-    let nt_expr = check_nt_expr nt_expr in 
+    let nt_expr = check_d_ids_nt_expr nt_expr in 
     NTExpr (nt_expr, index) 
   | BinOp (expr1, op, expr2) -> BinOp (call expr1, op, call expr2) 
   | UnOp (op, expr) -> UnOp (op, call expr) 
   | CompOp (expr1, op, expr2) -> CompOp (call expr1, op, call expr2) 
   | Length expr -> Length (call expr) 
-  | CaseExpr (nt_expr, cases) -> CaseExpr (check_nt_expr nt_expr, cases) 
+  | CaseExpr (nt_expr, cases) -> CaseExpr (check_d_ids_nt_expr nt_expr, cases) 
   | BVConst _ 
   | BLConst _ 
   | BConst _ 
   | BVCast _  
   | IntConst _ -> expr
 
-let check_nt_exprs _ expr = expr
+let rec check_nt_expr: prod_rule_map -> nt_expr -> nt_expr 
+= fun prm nt_expr -> match nt_expr with 
+| nt1 :: nt2 :: tl ->
+  if (not (StringSet.mem nt2 (StringMap.find nt1 prm))) 
+  then 
+    let sub_expr_str = Utils.capture_output Ast.pp_print_nt_expr [nt1; nt2] in
+    failwith ("Dot notation " ^ sub_expr_str ^ " is an invalid reference" )
+  else nt1 :: check_nt_expr prm (nt2 :: tl)
+| _ -> nt_expr
+
+(* Check each nonterminal expression 
+    (i) begins with a valid nonterminal,
+    (ii) contains valid dot notation references, and
+    (iii) ends on a valid nonterminal *)
+let rec check_nt_exprs: prod_rule_map -> expr -> expr 
+= fun prm expr -> 
+  let call = check_nt_exprs prm in
+  match expr with 
+  | NTExpr (nt_expr, index) -> 
+    let nt_expr = check_nt_expr prm nt_expr in 
+    NTExpr (nt_expr, index) 
+  | BinOp (expr1, op, expr2) -> BinOp (call expr1, op, call expr2) 
+  | UnOp (op, expr) -> UnOp (op, call expr) 
+  | CompOp (expr1, op, expr2) -> CompOp (call expr1, op, call expr2) 
+  | Length expr -> Length (call expr) 
+  | CaseExpr (nt_expr, cases) -> CaseExpr (check_nt_expr prm nt_expr, cases) 
+  | BVConst _ 
+  | BLConst _ 
+  | BConst _ 
+  | BVCast _  
+  | IntConst _ -> expr
 
 let check_syntax: prod_rule_map -> StringSet.t -> ast -> ast 
 = fun prm nt_set ast -> 

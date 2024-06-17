@@ -39,3 +39,4 @@ type element =
 type ast = element list
 
 val pp_print_ast : Format.formatter -> ast -> unit
+val pp_print_nt_expr : Format.formatter -> nt_expr -> unit
