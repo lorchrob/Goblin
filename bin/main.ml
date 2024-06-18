@@ -35,4 +35,4 @@ let () =
   let asts = DivideAndConquer.split_ast ast in 
 
   (* Step 4: Print to SyGuS language *)
-  List.iter Sygus.pp_print_ast asts
+  List.iter (Sygus.pp_print_ast Format.std_formatter) asts
