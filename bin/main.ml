@@ -9,7 +9,7 @@ let () =
   <Length> :: Int;
 
   <Test> :: Int { <Test> <- 5; };
-  <Test2> :: Int { <Test2> <- <S>.<List>; };
+  <Test2> :: Int { <Test2> <- 5; };
 
   <SAE_PACKET> ::= <AUTH_ALGO> <STATUS_CODE>;
   " in 
