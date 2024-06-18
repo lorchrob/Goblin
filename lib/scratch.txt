@@ -1,0 +1,67 @@
+
+
+let rec check_type_expr: context -> SyntaxChecker.prod_rule_map -> string -> grammar_element list -> il_type -> expr -> expr 
+= fun ctx prm nt ges exp_ty expr -> 
+  let call = check_type_expr ctx prm nt ges in 
+  match expr with 
+  | NTExpr (nt_expr, _) -> 
+    let act_ty = StringMap.find (last nt_expr) ctx in
+    if (not (exp_ty = act_ty)) then 
+      let expr_str = Utils.capture_output Ast.pp_print_expr expr in
+      let act_ty_str = Utils.capture_output Ast.pp_print_ty act_ty in 
+      let exp_ty_str = Utils.capture_output Ast.pp_print_ty exp_ty in 
+      let error_message = "Type checking error: expression " ^ expr_str ^ " has type " ^ act_ty_str ^ " but has expected type " ^ exp_ty_str in
+      failwith error_message
+    else expr
+    
+  | UnOp (UPlus, expr)
+  | UnOp (UMinus, expr) -> 
+    let act_ty = infer_ty ctx expr in 
+    if (not (exp_ty = Int)) then 
+      let expr_str = Utils.capture_output Ast.pp_print_expr expr in
+      let act_ty_str = Utils.capture_output Ast.pp_print_ty act_ty in 
+      let exp_ty_str = Utils.capture_output Ast.pp_print_ty exp_ty in 
+      let error_message = "Type checking error: expression " ^ expr_str ^ " has type " ^ act_ty_str ^ " but has expected type " ^ exp_ty_str in
+      failwith error_message
+    else expr
+  | UnOp (LNot, expr) -> 
+    let act_ty = infer_ty ctx expr in 
+    if (not (exp_ty = Bool)) then 
+      let expr_str = Utils.capture_output Ast.pp_print_expr expr in
+      let act_ty_str = Utils.capture_output Ast.pp_print_ty act_ty in 
+      let exp_ty_str = Utils.capture_output Ast.pp_print_ty exp_ty in 
+      let error_message = "Type checking error: expression " ^ expr_str ^ " has type " ^ act_ty_str ^ " but has expected type " ^ exp_ty_str in
+      failwith error_message
+    else expr
+
+  | UnOp (BVNot, expr) -> expr (*!!*)
+
+  | BinOp (expr1, BVAnd, expr2) -> expr
+  | BinOp (expr1, BVOr, expr2) -> expr
+  | BinOp (expr1, BVXor, expr2) -> expr
+  | BinOp (expr1, LAnd, expr2) 
+  | BinOp (expr1, LOr, expr2) 
+  | BinOp (expr1, LXor, expr2)  
+  | BinOp (expr1, LImplies, expr2) -> 
+    let _ = call Bool expr1 in 
+    let _ = call Bool expr2 in 
+    if (not (exp_ty = Bool)) then 
+      let expr_str = Utils.capture_output Ast.pp_print_expr expr in
+      let act_ty_str = Utils.capture_output Ast.pp_print_ty Bool in
+      let exp_ty_str = Utils.capture_output Ast.pp_print_ty exp_ty in 
+      let error_message = "Type checking error: expression " ^ expr_str ^ " has type " ^ act_ty_str ^ " but has expected type " ^ exp_ty_str in
+      failwith error_message
+    else expr
+  | BinOp (expr1, Plus, expr2) 
+  | BinOp (expr1, Minus, expr2) 
+  | BinOp (expr1, Times, expr2) 
+  | BinOp (expr1, Div, expr2) -> 
+    let _ = call Int expr1 in 
+    let _ = call Int expr2 in 
+    if (not (exp_ty = Int)) then 
+      let expr_str = Utils.capture_output Ast.pp_print_expr expr in
+      let act_ty_str = Utils.capture_output Ast.pp_print_ty Int in
+      let exp_ty_str = Utils.capture_output Ast.pp_print_ty exp_ty in 
+      let error_message = "Type checking error: expression " ^ expr_str ^ " has type " ^ act_ty_str ^ " but has expected type " ^ exp_ty_str in
+      failwith error_message
+    else expr

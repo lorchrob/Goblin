@@ -1,6 +1,12 @@
 open Sbf
 
-(* Main method *)
+(*!! TODO: 
+   1. Fix indexing 
+   2. Syntax checks on case expressions (make sure they're valid cases and exhaustive)
+   3. Syntax check on dot notation, make sure it's unambiguous 
+   4. Infer types for nonterminals with production rules *)
+
+(* Main function *)
 let () = 
   let input_string = 
   "
@@ -23,7 +29,7 @@ let () =
 
   (* Step 2: Type checking *)
   let ast, ctx = TypeChecker.build_context ast in
-  let _ = TypeChecker.check_types ctx prm ast in
+  let _ = TypeChecker.check_types ctx ast in
 
   (* Step 3: Divide and conquer *)
   ()

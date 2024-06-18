@@ -3,3 +3,5 @@ val pp_print_list : (Format.formatter -> 'a -> unit) ->
     Format.formatter ->
     'a list ->
     unit
+
+val all_equal : 'a list -> bool
