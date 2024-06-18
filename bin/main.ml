@@ -29,8 +29,10 @@ let () =
 
   (* Step 2: Type checking *)
   let ast, ctx = TypeChecker.build_context ast in
-  let _ = TypeChecker.check_types ctx ast in
+  let ast = TypeChecker.check_types ctx ast in
 
   (* Step 3: Divide and conquer *)
-  ()
+  let asts = DivideAndConquer.split_ast ast in 
+
   (* Step 4: Print to SyGuS language *)
+  List.iter Sygus.pp_print_ast asts

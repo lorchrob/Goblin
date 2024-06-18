@@ -1,9 +1,3 @@
-(*
-  1. SyGuS exprs are type boolean 
-  2. For dependency x <- y, y has same type as x   
-  3. Other expression type checking stuff 
-*)
-
 open Ast
 
 module StringMap = Map.Make(String)
