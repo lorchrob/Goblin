@@ -9,14 +9,6 @@ let build_context: ast -> ast * context
   | ProdRule _ -> acc 
   | TypeAnnotation (nt, ty, _) -> StringMap.add nt ty acc
   ) StringMap.empty ast in 
-  (* Filter out type annotations with no semantic constraints. They are 
-     no longer needed because their information is fully captured by 
-     the type checking context. *)
-  let ast = List.filter (fun element -> match element with 
-  | TypeAnnotation (_, _, []) -> false
-  | TypeAnnotation _ -> true
-  | ProdRule _ -> true 
-  ) ast in 
   ast, ctx
 
 let last lst = lst |> List.rev |> List.hd

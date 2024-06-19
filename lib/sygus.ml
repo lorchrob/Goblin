@@ -3,6 +3,8 @@ open Ast
 (* Module state for creating fresh identifiers *)
 let i = ref 0
 
+module TC = TypeChecker
+
 let fresh_ident: unit -> string 
 = fun () ->
   let id = "id" ^ string_of_int !i in 
@@ -17,24 +19,30 @@ let pp_print_ty: Format.formatter -> il_type -> unit
 | BitList -> Format.fprintf ppf "(Seq Bool)"
 | MachineInt width -> Format.fprintf ppf "(_ BitVec %d)" (Lib.pow 2 width)
 
-let pp_print_datatypes: Format.formatter -> ast -> unit 
-= fun ppf ast -> 
+let pp_print_constructor: TC.context -> Format.formatter -> grammar_element -> unit 
+= fun ctx ppf ge -> match ge with 
+| Nonterminal nt 
+| NamedNonterminal (_, nt) -> 
+  let d_str, ty_str = match TC.StringMap.find_opt nt ctx with 
+  | None -> fresh_ident (), String.uppercase_ascii nt
+  | Some ty -> String.lowercase_ascii nt, Utils.capture_output pp_print_ty ty
+  in
+  Format.fprintf ppf "(%s %s)"
+  d_str
+  (String.uppercase_ascii ty_str)
+
+let pp_print_datatypes: Format.formatter -> TC.context -> ast -> unit 
+= fun ppf ctx ast -> 
   List.iter (fun element -> match element with 
-  | TypeAnnotation (nt, ty, _) -> 
-    Format.fprintf ppf 
-    "(declare-datatype %s (\n\t(%s (%s %a))\n))"
-    (String.uppercase_ascii nt)  
+  | TypeAnnotation _ -> ()
+  | ProdRule (nt, ges, _) -> 
+    Format.fprintf ppf "(declare-datatype %s (\n\t(%s %a)\n))"
+    (String.uppercase_ascii nt)
     (fresh_ident ())
-    (fresh_ident ())
-    pp_print_ty ty;
+    (Lib.pp_print_list (pp_print_constructor ctx) " ") ges;
     Lib.print_newline ppf;
-  | ProdRule _ -> ()
   ) ast 
 
-  (* (sae_packet SAE_PACKET) 
-  (auth_algo AUTH_ALGO) 
-  (status_code STATUS_CODE)
-  (bitvec_16 (_ BitVec 16))  *)
 let pp_print_nt_decs: Format.formatter -> ast -> unit 
 = fun ppf ast -> List.iter (fun element -> match element with 
 | ProdRule (nt, _, _) -> 
@@ -65,14 +73,14 @@ let pp_print_grammar: Format.formatter -> ast -> unit
    pp_print_rules ast
 
 
-let pp_print_ast: Format.formatter -> ast -> unit 
-= fun ppf ast -> 
+let pp_print_ast: Format.formatter -> TC.context -> ast -> unit 
+= fun ppf ctx ast -> 
   Format.fprintf ppf "(set-logic ALL)";
 
   Lib.print_newline ppf;
   Lib.print_newline ppf;
 
-  pp_print_datatypes ppf ast;
+  pp_print_datatypes ppf ctx ast;
 
   Lib.print_newline ppf;
 

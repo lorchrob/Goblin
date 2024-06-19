@@ -11,14 +11,14 @@ open Sbf
 (* Main function *)
 let () = 
   let input_string = 
-  "<SAE_PACKET> ::= <AUTH_ALGO> <STATUS_CODE> 
-   { 
-   <AUTH_ALGO> <- int_to_bitvector(16, 0); 
-   };
+   "<SAE_PACKET> ::= <AUTH_ALGO> <STATUS_CODE> 
+    { <AUTH_ALGO> <- int_to_bitvector(16, 0); };
 
-   <STATUS_CODE> :: BitVector(16);
-   <AUTH_ALGO> :: BitVector(16);
-  " in 
+    <STATUS_CODE> :: BitVector(16);
+    <AUTH_ALGO> :: BitVector(16);
+   "
+  in 
+
   let ppf = Format.std_formatter in
   Lib.print_newline ppf;
   let ast = Utils.parse input_string in 
@@ -33,7 +33,7 @@ let () =
   let ast, ctx = TypeChecker.build_context ast in
   let ast = TypeChecker.check_types ctx ast in
 
-  (* Step 3: Compute dependencies *)
+  (* Step 3: For now, remove dependent terms from the grammar *)
   let ast = AbstractDeps.abstract_dependencies ast in 
 
   (* Step 4: Divide and conquer *)
@@ -41,4 +41,4 @@ let () =
 
   (* Step 5: Print to SyGuS language *)
   Format.fprintf ppf "\n";
-  List.iter (Sygus.pp_print_ast ppf) asts
+  List.iter (Sygus.pp_print_ast ppf ctx) asts

@@ -1,1 +1,1 @@
-val pp_print_ast : Format.formatter -> Ast.ast -> unit
+val pp_print_ast : Format.formatter -> TypeChecker.context -> Ast.ast -> unit
