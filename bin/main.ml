@@ -31,8 +31,12 @@ let () =
   let ast, ctx = TypeChecker.build_context ast in
   let ast = TypeChecker.check_types ctx ast in
 
-  (* Step 3: Divide and conquer *)
+  (* Step 3: Compute dependencies *)
+  let ast = CalculateDeps.calculate_dependencies ast in 
+
+  (* Step 4: Divide and conquer *)
   let asts = DivideAndConquer.split_ast ast in 
 
-  (* Step 4: Print to SyGuS language *)
+  (* Step 5: Print to SyGuS language *)
+  Format.fprintf Format.std_formatter "\n";
   List.iter (Sygus.pp_print_ast Format.std_formatter) asts
