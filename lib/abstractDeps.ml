@@ -47,5 +47,5 @@ let simp_ast: ast -> ast
   ) ast in 
   ast
 
-let calculate_dependencies: ast -> ast 
+let abstract_dependencies: ast -> ast 
 = fun ast -> simp_ast ast

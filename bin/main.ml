@@ -32,7 +32,7 @@ let () =
   let ast = TypeChecker.check_types ctx ast in
 
   (* Step 3: Compute dependencies *)
-  let ast = CalculateDeps.calculate_dependencies ast in 
+  let ast = AbstractDeps.abstract_dependencies ast in 
 
   (* Step 4: Divide and conquer *)
   let asts = DivideAndConquer.split_ast ast in 
