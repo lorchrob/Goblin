@@ -54,15 +54,26 @@ let pp_print_nt_decs: Format.formatter -> ast -> unit
   (String.lowercase_ascii nt) 
   pp_print_ty ty
 ) ast
-  
-
 
   (* (sae_packet SAE_PACKET ((R3 auth_algo status_code)))
       (auth_algo AUTH_ALGO ((R2 bitvec_16)))
       (status_code STATUS_CODE ((R1 bitvec_16)))
       (bitvec_16 (_ BitVec 16) ((Constant (_ BitVec 16)))) *)
 let pp_print_rules: Format.formatter -> ast -> unit 
-= fun _ _ -> ()
+= fun ppf ast -> List.iter (fun element -> match element with 
+| ProdRule (nt, ges, _) -> 
+  let ges = List.map Utils.grammar_element_to_string ges in 
+  let ges = List.map String.lowercase_ascii ges in
+  Format.fprintf ppf "\t(%s %s ((idx %a)))\n"
+  (String.lowercase_ascii nt) 
+  (String.uppercase_ascii nt) 
+  (Lib.pp_print_list Format.pp_print_string " ") ges
+| TypeAnnotation (nt, ty, _) -> 
+  Format.fprintf ppf "\t(%s %a ((Constant %a)))\n"
+  (String.lowercase_ascii nt) 
+  pp_print_ty ty
+  pp_print_ty ty
+) ast
 
 
 let pp_print_grammar: Format.formatter -> ast -> unit 

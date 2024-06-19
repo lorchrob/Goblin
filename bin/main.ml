@@ -28,10 +28,16 @@ let () =
   let prm = SyntaxChecker.build_prm ast in
   let nt_set = SyntaxChecker.build_nt_set ast in
   let ast = SyntaxChecker.check_syntax prm nt_set ast in 
+  Lib.print_newline ppf;
+  Format.fprintf ppf "Syntactic checks complete";
+  Lib.print_newline ppf;
 
   (* Step 2: Type checking *)
   let ast, ctx = TypeChecker.build_context ast in
   let ast = TypeChecker.check_types ctx ast in
+  Lib.print_newline ppf;
+  Format.fprintf ppf "Type checking complete";
+  Lib.print_newline ppf;
 
   (* Step 3: For now, remove dependent terms from the grammar *)
   let ast = AbstractDeps.abstract_dependencies ast in 
@@ -40,5 +46,5 @@ let () =
   let asts = DivideAndConquer.split_ast ast in 
 
   (* Step 5: Print to SyGuS language *)
-  Format.fprintf ppf "\n";
+  Lib.print_newline ppf;
   List.iter (Sygus.pp_print_ast ppf ctx) asts

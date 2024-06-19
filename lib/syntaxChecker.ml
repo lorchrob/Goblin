@@ -13,18 +13,13 @@ module StringMap = Map.Make(String)
 module StringSet = Set.Make(String)
 type prod_rule_map = (StringSet.t) StringMap.t
 
-let grammar_element_to_string: grammar_element -> string 
-= fun grammar_element -> match grammar_element with 
-  | Nonterminal nt2 
-  | NamedNonterminal (_, nt2) -> nt2
-
 (* Build production rule map, which is a map from each grammar nonterminal 
    to the list of valid nonterminal references *)
 let build_prm: ast -> prod_rule_map
 = fun ast -> 
   let prm = List.fold_left (fun acc element -> match element with 
   | ProdRule (nt, grammar_elements, _) -> 
-    let grammar_elements = List.map grammar_element_to_string grammar_elements in
+    let grammar_elements = List.map Utils.grammar_element_to_string grammar_elements in
     let grammar_elements = StringSet.of_list grammar_elements in (
     match StringMap.find_opt nt acc with 
     | Some mem -> 
@@ -113,7 +108,7 @@ let check_syntax: prod_rule_map -> StringSet.t -> ast -> ast
 = fun prm nt_set ast -> 
   let ast = List.map (fun element -> match element with 
   | ProdRule (nt, ges, scs) -> 
-    let ges' = List.map grammar_element_to_string ges in
+    let ges' = List.map Utils.grammar_element_to_string ges in
     let scs = List.map (fun sc -> match sc with 
     | Dependency (nt2, expr) -> 
       if (not (StringSet.mem nt2 nt_set)) then failwith ("Dangling identifier " ^ nt2) else
