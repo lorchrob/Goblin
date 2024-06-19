@@ -10,12 +10,11 @@
     "Bool", BOOL ;
     "Int", INT ;
     "BitVector", BITVECTOR ;
-    "bitvector", BITVECTOR;
+    "int_to_bitvector", INTTOBITVECTOR ;
     "BitList", BITLIST ; 
     "MachineInt", MACHINEINT ;
     "case", CASE ;
     "of", OF ;
-    "to", TO ;
     "length", LENGTH ;
     "land", LAND ;
     "lor", LOR ;
@@ -64,14 +63,13 @@ rule read =
   | "," { COMMA }
   | ";" { SEMICOLON }
   | "." { DOT }
-  | "_" { UNDERSCORE }
   | "0b" { read_bits lexbuf }
   | int as p { INTEGER (int_of_string p) }
   | id as p {
-    try Hashtbl.find keyword_table p with Not_found -> ID (p)
+    try (print_endline p; Hashtbl.find keyword_table p) with Not_found -> ID (p)
   }
   | eof { EOF }
-  | _ as c { failwith (Printf.sprintf "unexpected character: %c" c) }
+  | _ as c { failwith (Printf.sprintf "Unexpected character: %c" c) }
 
 and read_bits = parse
   | bit+ as b { BITS (List.of_seq (String.to_seq b |> Seq.map (fun c -> c = '1'))) }

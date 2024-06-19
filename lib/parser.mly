@@ -5,11 +5,11 @@ open Ast
 %token BOOL
 %token INT
 %token BITVECTOR
+%token INTTOBITVECTOR
 %token BITLIST
 %token MACHINEINT
 %token CASE
 %token OF
-%token TO
 %token LENGTH
 %token LAND
 %token LOR
@@ -43,7 +43,6 @@ open Ast
 %token TRUE 
 %token FALSE
 %token DOT
-%token UNDERSCORE
 
 %token<int> INTEGER
 %token<bool list> BITS
@@ -139,11 +138,11 @@ expr:
 | i = INTEGER; { IntConst (i) }
 | TRUE; { BConst (true) }
 | FALSE; { BConst (false) }
-| bl = BITS { BLConst (bl) }
-| LPAREN; BITLIST; bv = BITS; RPAREN; { BVConst (List.length bv, bv) }
+| bv = BITS { BVConst (List.length bv, bv) }
+| LPAREN; BITLIST; bl = BITS; RPAREN; { BLConst (bl) }
 (* Built-in functions *)
-| INT; UNDERSCORE; TO; UNDERSCORE; BITVECTOR; 
-  LPAREN; width = INTEGER; COMMA; e = INTEGER; RPAREN; { BVCast (width, e) }
+| INTTOBITVECTOR; 
+  LPAREN; width = INTEGER; COMMA; n = INTEGER; RPAREN; { BVCast (width, n) }
 | LENGTH; LPAREN; e = expr; RPAREN; { Length (e) }
 (* Case expressions *)
 | CASE; e = nt_expr; OF; cs = case_list { CaseExpr (e, cs) }

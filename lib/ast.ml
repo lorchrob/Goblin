@@ -139,11 +139,11 @@ and pp_print_expr: Format.formatter -> expr -> unit
   index
 | BLConst bits -> 
   let bits = List.map Bool.to_int bits in
-  Format.fprintf ppf "0b%a"
+  Format.fprintf ppf "(BitList 0b%a)"
   (Lib.pp_print_list Format.pp_print_int "") bits
 | BVConst (_, bits) -> 
   let bits = List.map Bool.to_int bits in
-  Format.fprintf ppf "(BitList 0b%a)"
+  Format.fprintf ppf "0b%a"
   (Lib.pp_print_list Format.pp_print_int "") bits
 | BConst b -> Format.fprintf ppf "%b" b
 | IntConst i -> Format.fprintf ppf "%d" i
@@ -182,7 +182,7 @@ let pp_print_element: Format.formatter -> element ->  unit
   (Lib.pp_print_list pp_print_grammar_element " ") g_els
   
 | ProdRule (nt, g_els, scs) -> 
-  Format.fprintf ppf "%a :: %a { %a };"
+  Format.fprintf ppf "%a :: %a \n{ %a };"
   pp_print_nonterminal nt
   (Lib.pp_print_list pp_print_grammar_element " ") g_els
   (Lib.pp_print_list pp_print_semantic_constraint " ") scs
@@ -201,4 +201,4 @@ let pp_print_element: Format.formatter -> element ->  unit
 let pp_print_ast: Format.formatter -> ast ->  unit 
 = fun ppf ast -> 
   Format.fprintf ppf "%a\n"
-  (Lib.pp_print_list pp_print_element " ") ast
+  (Lib.pp_print_list pp_print_element "\n") ast

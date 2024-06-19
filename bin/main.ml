@@ -4,23 +4,25 @@ open Sbf
    1. Fix indexing 
    2. Syntax checks on case expressions (make sure they're valid cases and exhaustive)
    3. Syntax check on dot notation, make sure it's unambiguous 
-   4. Infer types for nonterminals with production rules *)
+   4. Infer types for nonterminals with production rules 
+   5. Make sure each nonterminal has a path to termination
+*)
 
 (* Main function *)
 let () = 
   let input_string = 
-  "
-  <S> ::= <List> <Length> { <Length> <- length(<List>); length(<List>) < 100; };
-  <List> :: BitList;
-  <Length> :: Int;
+  "<SAE_PACKET> ::= <AUTH_ALGO> <STATUS_CODE> 
+   { 
+   <AUTH_ALGO> <- int_to_bitvector(16, 0); 
+   };
 
-  <Test> :: Int { <Test> <- 5; };
-  <Test2> :: Int { <Test2> <- 5; };
-
-  <SAE_PACKET> ::= <AUTH_ALGO> <STATUS_CODE>;
+   <STATUS_CODE> :: BitVector(16);
+   <AUTH_ALGO> :: BitVector(16);
   " in 
+  let ppf = Format.std_formatter in
+  Lib.print_newline ppf;
   let ast = Utils.parse input_string in 
-  Ast.pp_print_ast Format.std_formatter ast;
+  Ast.pp_print_ast ppf ast;
 
   (* Step 1: Syntactic checks *)
   let prm = SyntaxChecker.build_prm ast in
@@ -38,5 +40,5 @@ let () =
   let asts = DivideAndConquer.split_ast ast in 
 
   (* Step 5: Print to SyGuS language *)
-  Format.fprintf Format.std_formatter "\n";
-  List.iter (Sygus.pp_print_ast Format.std_formatter) asts
+  Format.fprintf ppf "\n";
+  List.iter (Sygus.pp_print_ast ppf) asts
