@@ -56,6 +56,8 @@ type grammar_element =
 | Nonterminal of string 
 | NamedNonterminal of string * string
 
+(*!! TODO: Update ProdRule to (grammar_element list * semantic_constraint list) StringMap
+           to support multiple production rules for a grammar element *)
 type element = 
 | ProdRule of string * grammar_element list * semantic_constraint list
 | TypeAnnotation of string * il_type * semantic_constraint list
