@@ -33,6 +33,7 @@ type il_type = Bool | Int | BitVector of int | BitList | MachineInt of int
 type grammar_element =
     Nonterminal of string
   | NamedNonterminal of string * string
+  | StubbedNonterminal of string * string
 type element =
     ProdRule of string * grammar_element list * semantic_constraint list
   | TypeAnnotation of string * il_type * semantic_constraint list

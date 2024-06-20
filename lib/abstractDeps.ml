@@ -1,5 +1,8 @@
 open Ast
 
+(* Module state for fresh identifiers *)
+let k = ref 0
+
 let il_int_to_bitvector: int -> int -> expr 
 = fun length n ->
   if n >= (1 lsl length) then
@@ -29,10 +32,28 @@ let rec calculate_casts: expr -> expr
 | BConst _ 
 | IntConst _ -> expr
 
+let stub_grammar_element: semantic_constraint list -> grammar_element -> grammar_element 
+= fun scs ge -> match ge with 
+| StubbedNonterminal _ -> ge 
+| Nonterminal nt -> (
+  match List.find_opt (fun sc -> match sc with
+  | SyGuSExpr _ -> false 
+  | Dependency (nt2, _) -> nt = nt2
+  ) scs with 
+  | Some _ -> 
+    let stub_id = "_stub" ^ (string_of_int !k) ^ "_" ^ nt in
+    k := !k + 1;
+    StubbedNonterminal (nt, stub_id) 
+  | None -> ge
+  )
+| NamedNonterminal _ -> failwith "Named nonterminals not yet supported"
+
+
 let simp_ast: ast -> ast 
 = fun ast -> 
   let ast = List.map (fun element -> match element with 
   | ProdRule (nt, ges, scs) -> 
+    let ges = List.map (stub_grammar_element scs) ges in
     let scs = List.map (fun sc -> match sc with 
     | Dependency (nt, expr) -> Dependency (nt, calculate_casts expr)
     | SyGuSExpr expr -> SyGuSExpr (calculate_casts expr)

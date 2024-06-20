@@ -12,6 +12,7 @@ let grammar_element_to_string: grammar_element -> string
 = fun grammar_element -> match grammar_element with 
   | Nonterminal nt2 
   | NamedNonterminal (_, nt2) -> nt2
+  | StubbedNonterminal (_, stub_id) -> stub_id
 
 let parse: string -> ast 
 = fun s ->

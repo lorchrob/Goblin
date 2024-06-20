@@ -55,6 +55,7 @@ type il_type =
 type grammar_element = 
 | Nonterminal of string 
 | NamedNonterminal of string * string
+| StubbedNonterminal of string * string
 
 (*!! TODO: Update ProdRule to (grammar_element list * semantic_constraint list) StringMap
            to support multiple production rules for a grammar element *)
@@ -175,6 +176,7 @@ let pp_print_grammar_element: Format.formatter -> grammar_element ->  unit
   Format.fprintf ppf "%s = %a" 
   id 
   pp_print_nonterminal nt
+| StubbedNonterminal (_, stub_id) -> Format.pp_print_string ppf stub_id
 
 let pp_print_element: Format.formatter -> element ->  unit 
 = fun ppf el -> match el with 

@@ -1,6 +1,7 @@
 open Sbf
 
 (*!! TODO: 
+   1. Collect stubs in some data structure and add them to sygus printing stuff
    1. Fix indexing 
    2. Syntax checks on case expressions (make sure they're valid cases and exhaustive)
    3. Syntax check on dot notation, make sure it's unambiguous 
@@ -10,13 +11,21 @@ open Sbf
 
 (* Main function *)
 let () = 
-  let input_string = 
-   "<SAE_PACKET> ::= <AUTH_ALGO> <STATUS_CODE> 
-    { <AUTH_ALGO> = int_to_bitvector(16, 12); };
+  let _ = 
+      "<SAE_PACKET> ::= <AUTH_ALGO> <STATUS_CODE> 
+         { <AUTH_ALGO> = int_to_bitvector(16, 12); };
 
-    <STATUS_CODE> :: BitVector(16);
-    <AUTH_ALGO> :: BitVector(16);
-   "
+         <STATUS_CODE> :: BitVector(16);
+         <AUTH_ALGO> :: BitVector(16);
+      "
+  in
+  let input_string = 
+      "<SAE_PACKET> ::= <AUTH_ALGO> <STATUS_CODE> 
+         { <AUTH_ALGO> <- int_to_bitvector(16, 12); };
+
+         <STATUS_CODE> :: BitVector(16);
+         <AUTH_ALGO> :: BitVector(16);
+      "
   in 
 
   (* Step 0: Parse user input *)
@@ -41,7 +50,7 @@ let () =
   Lib.print_newline ppf;
 
   (* Step 3: Abstract away dependent terms in the grammar *)
-  (* TODO *)
+  (* IN PROGRESS *)
   let ast = AbstractDeps.abstract_dependencies ast in 
 
   (* Step 4: Divide and conquer *)

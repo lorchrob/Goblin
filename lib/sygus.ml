@@ -37,6 +37,11 @@ let pp_print_constructor: TC.context -> Format.formatter -> grammar_element -> u
   Format.fprintf ppf "(%s %s)"
   d_str
   ty_str
+| StubbedNonterminal (_, stub_id) -> 
+  Format.fprintf ppf "(%s %s)"
+  (fresh_destructor ())
+  (String.uppercase_ascii stub_id)
+  
 
 let pp_print_datatypes: Format.formatter -> TC.context -> ast -> unit 
 = fun ppf ctx ast -> 
