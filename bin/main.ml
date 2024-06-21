@@ -2,11 +2,11 @@ open Sbf
 
 (*!! TODO: 
    1. Collect stubs in some data structure and add them to sygus printing stuff
-   1. Fix indexing 
-   2. Syntax checks on case expressions (make sure they're valid cases and exhaustive)
-   3. Syntax check on dot notation, make sure it's unambiguous 
-   4. Infer types for nonterminals with production rules 
-   5. Make sure each nonterminal has a path to termination
+   2. Fix indexing 
+   3. Syntax checks on case expressions (make sure they're valid cases and exhaustive)
+   4. Syntax check on dot notation, make sure it's unambiguous 
+   5. Infer types for nonterminals with production rules 
+   6. Make sure each nonterminal has a path to termination
 *)
 
 (* Main function *)
@@ -51,7 +51,7 @@ let () =
 
   (* Step 3: Abstract away dependent terms in the grammar *)
   (* IN PROGRESS *)
-  let ast = AbstractDeps.abstract_dependencies ast in 
+  let dep_map, ast = AbstractDeps.abstract_dependencies ast in 
 
   (* Step 4: Divide and conquer *)
   (* TODO *)
@@ -59,7 +59,7 @@ let () =
 
   (* Step 5: Print to SyGuS language and call SyGuS engine *)
   Lib.print_newline ppf;
-  List.iter (Sygus.pp_print_ast ppf ctx) asts
+  List.iter (Sygus.pp_print_ast ppf ctx dep_map) asts
 
   (* Step 6: Parse SyGuS output *)
   (* Fancy option: Create a parser programmatically based on the input grammar *)

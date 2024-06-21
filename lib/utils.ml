@@ -1,5 +1,8 @@
 open Ast
 
+module StringMap = Map.Make(String)
+module StringSet = Set.Make(String)
+
 let capture_output: (Format.formatter -> 'a -> unit) -> 'a -> string = 
 fun f arg ->
   let buf = Buffer.create 80 in

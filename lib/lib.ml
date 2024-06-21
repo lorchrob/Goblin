@@ -27,3 +27,9 @@ let pow base exponent =
     | e when is_even e -> aux accumulator (base * base) (e / 2)
     | e -> aux (base * accumulator) (base * base) ((e - 1) / 2) in
   aux 1 base exponent
+
+let union_keys _ id1 id2 = match id1, id2 with 
+| Some id1, None -> Some id1 
+| None, Some id2 -> Some id2 
+| None, None -> None 
+| Some _, Some _ -> failwith "Failure unioning two maps"

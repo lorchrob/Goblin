@@ -1,14 +1,13 @@
 open Ast
 
-module StringMap = Map.Make(String)
-type context = il_type StringMap.t
+type context = il_type Utils.StringMap.t
 
 let build_context: ast -> ast * context
 = fun ast -> 
   let ctx = List.fold_left (fun acc element -> match element with 
   | ProdRule _ -> acc 
-  | TypeAnnotation (nt, ty, _) -> StringMap.add nt ty acc
-  ) StringMap.empty ast in 
+  | TypeAnnotation (nt, ty, _) -> Utils.StringMap.add nt ty acc
+  ) Utils.StringMap.empty ast in 
   ast, ctx
 
 let last lst = lst |> List.rev |> List.hd
@@ -16,7 +15,7 @@ let last lst = lst |> List.rev |> List.hd
 let rec infer_type_expr: context -> expr -> il_type
 = fun ctx expr -> match expr with 
 | NTExpr (nt_expr, _) -> 
-  StringMap.find (last nt_expr) ctx 
+  Utils.StringMap.find (last nt_expr) ctx 
 | UnOp (UPlus, expr) 
 | UnOp (UMinus, expr) -> 
   let _ = check_type_expr ctx Int expr in
@@ -101,7 +100,7 @@ let rec infer_type_expr: context -> expr -> il_type
     failwith error_message
   else Bool
 | CaseExpr (nt_expr, cases) -> 
-  let inf_ty = StringMap.find (last nt_expr) ctx in  
+  let inf_ty = Utils.StringMap.find (last nt_expr) ctx in  
   if not (inf_ty = Bool) 
     then
       let expr_str = Utils.capture_output Ast.pp_print_expr expr in
@@ -144,7 +143,7 @@ let check_types: context -> ast -> ast
     let scs = List.map (fun sc -> match sc with 
     | Dependency (nt2, expr) -> 
       let exp_ty = 
-        match StringMap.find_opt nt2 ctx with 
+        match Utils.StringMap.find_opt nt2 ctx with 
         | None -> 
           failwith "Dependency LHS must be a nonterminal with a primitive (non-inductive) type"
         | Some exp_ty -> exp_ty 
@@ -161,7 +160,7 @@ let check_types: context -> ast -> ast
     let scs = List.map (fun sc -> match sc with 
     | Dependency (nt2, expr) ->
       let exp_ty = 
-        match StringMap.find_opt nt2 ctx with 
+        match Utils.StringMap.find_opt nt2 ctx with 
         | None -> 
           failwith "Dependency LHS must be a nonterminal with a primitive (non-inductive) type"
         | Some exp_ty -> exp_ty 
