@@ -67,12 +67,16 @@ let () =
   let sygus_asts = List.map Utils.parse_sygus sygus_outputs in
   Lib.print_newline ppf;
   List.iter (SygusAst.pp_print_sygus_ast ppf) sygus_asts;
+  Lib.print_newline ppf;
 
   (* Step 7: Recombine to single AST *)
   (* TODO *)
+  let sygus_ast = Recombine.recombine sygus_asts in 
 
   (* Step 8: Compute dependencies *)
   (* TODO *)
+  let sygus_ast = ComputeDeps.compute_deps sygus_ast in 
 
   (* Step 9: Serialize! *)
-  (* TODO *)
+  let output = Utils.capture_output SygusAst.serialize sygus_ast in 
+  Format.pp_print_string ppf output;
