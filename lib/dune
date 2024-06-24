@@ -3,6 +3,6 @@
  (libraries unix menhirLib))
 
 (menhir
- (modules parser))
+ (modules parser sygusParser))
 
-(ocamllex lexer)
+(ocamllex lexer sygusLexer)

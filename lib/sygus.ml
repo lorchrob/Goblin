@@ -232,23 +232,21 @@ let pp_print_ast: Format.formatter -> TC.context -> Ast.semantic_constraint Util
 
   Lib.print_newline ppf
 
-let call_sygus: TC.context -> Ast.semantic_constraint Utils.StringMap.t -> ast -> unit
+let call_sygus: TC.context -> Ast.semantic_constraint Utils.StringMap.t -> ast -> string
 = fun ctx dep_map ast ->
   (* let filename = Filename.temp_file "ast" ".smt2" in *)
-  let filename = "./tmp.smt2" in
+  let filename = "./sygus.smt2" in
+  let output_filename = "./sygus_out.smt2" in
   let oc = open_out filename in
   let ppf = Format.formatter_of_out_channel oc in
-  let _ = try
-    pp_print_ast ppf ctx dep_map ast;
-    Format.pp_print_flush ppf ();
-    close_out oc; 
-  with e -> 
-    Format.pp_print_flush ppf ();
-    close_out_noerr oc;
-    raise e;
-  in
+  pp_print_ast ppf ctx dep_map ast;
+  Format.pp_print_flush ppf ();
+  close_out oc; 
   (* Call terminal command here *)
   let cvc5 = "/Users/lorchrob/Documents/CodeProjects/grammar-based_fuzzing/SyGuS-fuzzing/CVC4/build/bin/cvc5" in 
-  let command = cvc5 ^ " --lang=sygus2 " ^ filename in
-  let _ = Unix.system command in 
-  ()
+  let command = cvc5 ^ " --lang=sygus2 " ^ filename ^ " > " ^ output_filename in
+  let _ = Unix.open_process_in command in 
+  let ic = open_in output_filename in
+  let output = really_input_string ic (in_channel_length ic) in
+  close_in ic;
+  output

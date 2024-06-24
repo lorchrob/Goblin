@@ -50,7 +50,6 @@ let () =
   Lib.print_newline ppf;
 
   (* Step 3: Abstract away dependent terms in the grammar *)
-  (* IN PROGRESS *)
   let dep_map, ast = AbstractDeps.abstract_dependencies ast in 
 
   (* Step 4: Divide and conquer *)
@@ -60,14 +59,14 @@ let () =
   (* Step 5: Print to SyGuS language and call SyGuS engine *)
   Lib.print_newline ppf;
   List.iter (Sygus.pp_print_ast ppf ctx dep_map) asts;
+  Lib.print_newline ppf;
   Format.pp_print_flush ppf ();
-  Sygus.call_sygus ctx dep_map ast;
+  let sygus_outputs = List.map (Sygus.call_sygus ctx dep_map) asts in
 
   (* Step 6: Parse SyGuS output *)
-  (* Fancy option: Create a parser programmatically based on the input grammar *)
-  (* Easier solution: Parse into Lisp-like AST where each node has a name and a list of children. 
-                      Should be enough to compute dependent terms and serialize. *)
-  (* TODO *)
+  let sygus_asts = List.map Utils.parse_sygus sygus_outputs in
+  Lib.print_newline ppf;
+  List.iter (SygusAst.pp_print_sygus_ast ppf) sygus_asts;
 
   (* Step 7: Recombine to single AST *)
   (* TODO *)

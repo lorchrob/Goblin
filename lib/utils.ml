@@ -21,3 +21,8 @@ let parse: string -> ast
 = fun s ->
   let lexbuf = Lexing.from_string s in 
   Parser.s Lexer.read lexbuf
+
+let parse_sygus: string -> SygusAst.sygus_ast 
+= fun s ->
+  let lexbuf = Lexing.from_string s in 
+  SygusParser.s SygusLexer.read lexbuf
