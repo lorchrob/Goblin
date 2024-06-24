@@ -62,8 +62,8 @@ let pp_print_datatypes: Format.formatter -> TC.context -> Ast.semantic_constrain
     Lib.print_newline ppf;
   ) ast 
 
-let pp_print_nt_decs: Format.formatter -> ast -> unit 
-= fun ppf ast -> List.iter (fun element -> match element with 
+let pp_print_nt_decs: Ast.semantic_constraint Utils.StringMap.t -> Format.formatter ->  ast -> unit 
+= fun dep_map ppf ast -> List.iter (fun element -> match element with 
 | ProdRule (nt, _, _) -> 
   Format.fprintf ppf "\t(%s %s)\n"
   (String.lowercase_ascii nt)
@@ -72,7 +72,14 @@ let pp_print_nt_decs: Format.formatter -> ast -> unit
   Format.fprintf ppf "\t(%s %a)\n"
   (String.lowercase_ascii nt) 
   pp_print_ty ty
-) ast
+) ast;
+Utils.StringMap.iter (fun stub_id dep -> match dep with 
+| Dependency _ -> 
+  Format.fprintf ppf "\t(%s %s)"
+  (String.lowercase_ascii stub_id) 
+  (String.uppercase_ascii stub_id) 
+| SyGuSExpr _ -> failwith "Internal error: dependency map contains a SyGuSExpr"
+) dep_map
 
 let pp_print_binop: Format.formatter -> bin_operator -> unit 
 = fun ppf op -> match op with 
@@ -184,7 +191,7 @@ let pp_print_rules: Ast.semantic_constraint Utils.StringMap.t -> Format.formatte
     Format.fprintf ppf "\t(%s %s (%s))"
     (String.lowercase_ascii stub_id) 
     (String.uppercase_ascii stub_id) 
-    (String.uppercase_ascii stub_id) 
+    (String.lowercase_ascii stub_id) 
   | SyGuSExpr _ -> failwith "Internal error: dependency map contains a SyGuSExpr"
   ) dep_map
 
@@ -195,9 +202,9 @@ let pp_print_grammar: Format.formatter -> Ast.semantic_constraint Utils.StringMa
   | TypeAnnotation (nt, _, _) -> String.uppercase_ascii nt
   in
   Format.fprintf ppf 
-  "(synth-fun top () %s\n; declare nonterminals\n(\n%a)\n; grammar rules\n(\n%a)\n)"
+  "(synth-fun top () %s\n; declare nonterminals\n(\n%a\n)\n; grammar rules\n(\n%a\n)\n)"
    top_datatype_str
-   pp_print_nt_decs ast 
+   (pp_print_nt_decs dep_map) ast 
    (pp_print_rules dep_map) ast
 
 let pp_print_ast: Format.formatter -> TC.context -> Ast.semantic_constraint Utils.StringMap.t -> ast -> unit 
@@ -223,4 +230,25 @@ let pp_print_ast: Format.formatter -> TC.context -> Ast.semantic_constraint Util
 
   Format.fprintf ppf "(check-synth)";
 
-  Lib.print_newline ppf;
+  Lib.print_newline ppf
+
+let call_sygus: TC.context -> Ast.semantic_constraint Utils.StringMap.t -> ast -> unit
+= fun ctx dep_map ast ->
+  (* let filename = Filename.temp_file "ast" ".smt2" in *)
+  let filename = "./tmp.smt2" in
+  let oc = open_out filename in
+  let ppf = Format.formatter_of_out_channel oc in
+  let _ = try
+    pp_print_ast ppf ctx dep_map ast;
+    Format.pp_print_flush ppf ();
+    close_out oc; 
+  with e -> 
+    Format.pp_print_flush ppf ();
+    close_out_noerr oc;
+    raise e;
+  in
+  (* Call terminal command here *)
+  let cvc5 = "/Users/lorchrob/Documents/CodeProjects/grammar-based_fuzzing/SyGuS-fuzzing/CVC4/build/bin/cvc5" in 
+  let command = cvc5 ^ " --lang=sygus2 " ^ filename in
+  let _ = Unix.system command in 
+  ()

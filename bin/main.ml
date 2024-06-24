@@ -11,7 +11,7 @@ open Sbf
 
 (* Main function *)
 let () = 
-  let _ = 
+  let input_string = 
       "<SAE_PACKET> ::= <AUTH_ALGO> <STATUS_CODE> 
          { <AUTH_ALGO> = int_to_bitvector(16, 12); };
 
@@ -19,7 +19,7 @@ let () =
          <AUTH_ALGO> :: BitVector(16);
       "
   in
-  let input_string = 
+  let _ = 
       "<SAE_PACKET> ::= <AUTH_ALGO> <STATUS_CODE> 
          { <AUTH_ALGO> <- int_to_bitvector(16, 12); };
 
@@ -59,7 +59,9 @@ let () =
 
   (* Step 5: Print to SyGuS language and call SyGuS engine *)
   Lib.print_newline ppf;
-  List.iter (Sygus.pp_print_ast ppf ctx dep_map) asts
+  List.iter (Sygus.pp_print_ast ppf ctx dep_map) asts;
+  Format.pp_print_flush ppf ();
+  Sygus.call_sygus ctx dep_map ast;
 
   (* Step 6: Parse SyGuS output *)
   (* Fancy option: Create a parser programmatically based on the input grammar *)
