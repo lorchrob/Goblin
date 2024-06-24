@@ -75,7 +75,7 @@ let () =
 
   (* Step 8: Compute dependencies *)
   (* TODO *)
-  let sygus_ast = ComputeDeps.compute_deps sygus_ast in 
+  let sygus_ast = ComputeDeps.compute_deps dep_map sygus_ast in 
 
   (* Step 9: Serialize! *)
   let output = Utils.capture_output SygusAst.serialize sygus_ast in 

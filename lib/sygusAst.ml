@@ -3,6 +3,7 @@ type sygus_ast =
 | BVLeaf of int * bool list 
 | IntLeaf of int
 | BLLeaf of bool list
+| VarLeaf of string
 
 let pp_print_sygus_ast: Format.formatter -> sygus_ast -> unit 
 = fun ppf sygus_ast -> 
@@ -15,6 +16,7 @@ let pp_print_sygus_ast: Format.formatter -> sygus_ast -> unit
     let bits = List.map Bool.to_int bits in
     Format.fprintf ppf "0b%a"
     (Lib.pp_print_list Format.pp_print_int "") bits
+  | VarLeaf id -> Format.pp_print_string ppf id;
   | IntLeaf _ 
   | BLLeaf _ -> assert false
   in 
@@ -31,6 +33,7 @@ let serialize: Format.formatter -> sygus_ast -> unit
     let bits = List.map Bool.to_int bits in
     Format.fprintf ppf "%a"
     (Lib.pp_print_list Format.pp_print_int "") bits
+  | VarLeaf _ -> failwith "Internal error: serializing final packet, but encountered leaf variable (possibly uncomputed dependent term)"
   | IntLeaf _ 
   | BLLeaf _ -> assert false
   in 
