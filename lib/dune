@@ -1,6 +1,6 @@
 (library
  (name sbf)
- (libraries unix menhirLib))
+ (libraries unix menhirLib str))
 
 (menhir
  (modules parser sygusParser))

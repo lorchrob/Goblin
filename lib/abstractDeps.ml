@@ -53,21 +53,21 @@ let simp_ast: ast -> (semantic_constraint Utils.StringMap.t * ast)
 = fun ast -> 
   let dep_maps, ast = List.map (fun element -> match element with 
   | ProdRule (nt, ges, scs) -> 
-    (* Abstract away dependent terms. Whenever we abstract away a term, we store 
-       a mapping from the abstracted stub ID to the original dependency *)
-    let dep_map, ges = List.fold_left (fun acc ge -> 
-      match stub_grammar_element scs ge with 
-      | Some dep, StubbedNonterminal (nt, stub_id) -> 
-        Utils.StringMap.add stub_id dep (fst acc), snd acc @ [StubbedNonterminal (nt, stub_id)]
-      | None, ge -> (fst acc), snd acc @ [ge] 
-      | Some _, _ -> assert false 
-    ) (Utils.StringMap.empty, []) ges in
     (* Compute BV -> int casts *)
     let scs = List.map (fun sc -> match sc with 
     | Dependency (nt, expr) -> Dependency (nt, calculate_casts expr)
     | SyGuSExpr expr -> SyGuSExpr (calculate_casts expr)
     ) scs in 
-    dep_map, ProdRule (nt, ges, scs)
+    (* Abstract away dependent terms. Whenever we abstract away a term, we store 
+       a mapping from the abstracted stub ID to the original dependency *)
+    let dep_map, ges = List.fold_left (fun acc ge -> 
+      match stub_grammar_element scs ge with 
+      | Some dep, StubbedNonterminal (nt, stub_id) -> 
+        Utils.StringMap.add (String.uppercase_ascii stub_id) dep (fst acc), snd acc @ [StubbedNonterminal (nt, stub_id)]
+      | None, ge -> (fst acc), snd acc @ [ge] 
+      | Some _, _ -> assert false 
+    ) (Utils.StringMap.empty, []) ges in 
+    dep_map, ProdRule (nt, ges, scs) 
   | TypeAnnotation (nt, ty, scs) -> 
     let scs = List.map (fun sc -> match sc with 
     | Dependency (nt, expr) -> Dependency (nt, calculate_casts expr)

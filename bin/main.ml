@@ -11,7 +11,7 @@ open Sbf
 
 (* Main function *)
 let () = 
-  let input_string = 
+  let _ = 
       "<SAE_PACKET> ::= <AUTH_ALGO> <STATUS_CODE> 
          { <AUTH_ALGO> = int_to_bitvector(16, 12); };
 
@@ -19,7 +19,7 @@ let () =
          <AUTH_ALGO> :: BitVector(16);
       "
   in
-  let _ = 
+  let input_string = 
       "<SAE_PACKET> ::= <AUTH_ALGO> <STATUS_CODE> 
          { <AUTH_ALGO> <- int_to_bitvector(16, 12); };
 
@@ -30,7 +30,7 @@ let () =
 
   (* Step 0: Parse user input *)
   let ppf = Format.std_formatter in
-  Lib.print_newline ppf;
+  Lib.pp_print_newline ppf;
   let ast = Utils.parse input_string in 
   Ast.pp_print_ast ppf ast;
 
@@ -38,45 +38,81 @@ let () =
   let prm = SyntaxChecker.build_prm ast in
   let nt_set = SyntaxChecker.build_nt_set ast in
   let ast = SyntaxChecker.check_syntax prm nt_set ast in 
-  Lib.print_newline ppf;
+  Lib.pp_print_newline ppf;
   Format.fprintf ppf "Syntactic checks complete";
-  Lib.print_newline ppf;
+  Lib.pp_print_newline ppf;
+  Format.pp_print_flush ppf ();
 
   (* Step 2: Type checking *)
   let ast, ctx = TypeChecker.build_context ast in
   let ast = TypeChecker.check_types ctx ast in
-  Lib.print_newline ppf;
+  Lib.pp_print_newline ppf;
   Format.fprintf ppf "Type checking complete";
-  Lib.print_newline ppf;
+  Lib.pp_print_newline ppf;
+  Format.pp_print_flush ppf ();
 
   (* Step 3: Abstract away dependent terms in the grammar *)
   let dep_map, ast = AbstractDeps.abstract_dependencies ast in 
+  Lib.pp_print_newline ppf;
+  Ast.pp_print_ast ppf ast;
+  Lib.pp_print_newline ppf;
+  Format.fprintf ppf "Dependent term abstraction complete";
+  Lib.pp_print_newline ppf;
+  Format.pp_print_flush ppf ();
 
   (* Step 4: Divide and conquer *)
   (* TODO *)
   let asts = DivideAndConquer.split_ast ast in 
+  Lib.pp_print_newline ppf;
+  Format.fprintf ppf "Divide and conquer complete";
+  Lib.pp_print_newline ppf;
+  Format.pp_print_flush ppf ();
 
   (* Step 5: Print to SyGuS language and call SyGuS engine *)
-  Lib.print_newline ppf;
+  Lib.pp_print_newline ppf;
   List.iter (Sygus.pp_print_ast ppf ctx dep_map) asts;
-  Lib.print_newline ppf;
-  Format.pp_print_flush ppf ();
+  Lib.pp_print_newline ppf;
   let sygus_outputs = List.map (Sygus.call_sygus ctx dep_map) asts in
+  Lib.pp_print_newline ppf;
+  Format.fprintf ppf "SyGuS translation and execution complete";
+  Lib.pp_print_newline ppf;
+  Lib.pp_print_newline ppf;
+  Format.pp_print_flush ppf ();
 
   (* Step 6: Parse SyGuS output *)
   let sygus_asts = List.map Utils.parse_sygus sygus_outputs in
-  Lib.print_newline ppf;
+  Lib.pp_print_newline ppf;
   List.iter (SygusAst.pp_print_sygus_ast ppf) sygus_asts;
-  Lib.print_newline ppf;
+  Lib.pp_print_newline ppf;
+  Format.fprintf ppf "SyGuS output parsing complete";
+  Lib.pp_print_newline ppf;
+  Format.pp_print_flush ppf ();
 
   (* Step 7: Recombine to single AST *)
   (* TODO *)
   let sygus_ast = Recombine.recombine sygus_asts in 
+  Lib.pp_print_newline ppf;
+  SygusAst.pp_print_sygus_ast ppf sygus_ast;
+  Lib.pp_print_newline ppf;
+  Format.fprintf ppf "Recombining complete";
+  Lib.pp_print_newline ppf;
+  Format.pp_print_flush ppf ();
 
   (* Step 8: Compute dependencies *)
   (* TODO *)
   let sygus_ast = ComputeDeps.compute_deps dep_map sygus_ast in 
+  Lib.pp_print_newline ppf;
+  SygusAst.pp_print_sygus_ast ppf sygus_ast;
+  Lib.pp_print_newline ppf;
+  Format.fprintf ppf "Dependency computation complete";
+  Lib.pp_print_newline ppf;
+  Format.pp_print_flush ppf ();
 
   (* Step 9: Serialize! *)
   let output = Utils.capture_output SygusAst.serialize sygus_ast in 
+  Lib.pp_print_newline ppf;
   Format.pp_print_string ppf output;
+  Lib.pp_print_newline ppf;
+  Format.fprintf ppf "Serialization complete";
+  Lib.pp_print_newline ppf;
+  Format.pp_print_flush ppf ();

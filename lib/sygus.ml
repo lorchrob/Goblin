@@ -49,7 +49,7 @@ let pp_print_datatypes: Format.formatter -> TC.context -> Ast.semantic_constrain
     Format.fprintf ppf "(declare-datatype %s (\n\t(%s)\n))"
     (String.uppercase_ascii stub_id)
     ((String.lowercase_ascii stub_id) ^ "_con");
-    Lib.print_newline ppf;
+    Lib.pp_print_newline ppf;
   | SyGuSExpr _ -> failwith "Internal error: dependency map contains a SyGuSExpr"
   ) dep_map;
   List.iter (fun element -> match element with 
@@ -59,7 +59,7 @@ let pp_print_datatypes: Format.formatter -> TC.context -> Ast.semantic_constrain
     (String.uppercase_ascii nt)
     ((String.lowercase_ascii nt) ^ "_con")
     (Lib.pp_print_list (pp_print_constructor ctx) " ") ges;
-    Lib.print_newline ppf;
+    Lib.pp_print_newline ppf;
   ) ast 
 
 let pp_print_nt_decs: Ast.semantic_constraint Utils.StringMap.t -> Format.formatter ->  ast -> unit 
@@ -157,7 +157,7 @@ let pp_print_semantic_constraint: Format.formatter -> string -> grammar_element 
   ((String.lowercase_ascii nt) ^ "_con") 
   (Lib.pp_print_list Format.pp_print_string " ") ges
   pp_print_expr expr; 
-  Lib.print_newline ppf;
+  Lib.pp_print_newline ppf;
   Format.fprintf ppf "(constraint (%s top))"
   constraint_id
 
@@ -191,7 +191,7 @@ let pp_print_rules: Ast.semantic_constraint Utils.StringMap.t -> Format.formatte
     Format.fprintf ppf "\t(%s %s (%s))"
     (String.lowercase_ascii stub_id) 
     (String.uppercase_ascii stub_id) 
-    (String.lowercase_ascii stub_id) 
+    ((String.lowercase_ascii stub_id) ^ "_con")
   | SyGuSExpr _ -> failwith "Internal error: dependency map contains a SyGuSExpr"
   ) dep_map
 
@@ -211,26 +211,26 @@ let pp_print_ast: Format.formatter -> TC.context -> Ast.semantic_constraint Util
 = fun ppf ctx dep_map ast -> 
   Format.fprintf ppf "(set-logic ALL)";
 
-  Lib.print_newline ppf;
-  Lib.print_newline ppf;
+  Lib.pp_print_newline ppf;
+  Lib.pp_print_newline ppf;
 
   pp_print_datatypes ppf ctx dep_map ast;
 
-  Lib.print_newline ppf;
+  Lib.pp_print_newline ppf;
 
   pp_print_grammar ppf dep_map ast;
   
-  Lib.print_newline ppf;
-  Lib.print_newline ppf;
+  Lib.pp_print_newline ppf;
+  Lib.pp_print_newline ppf;
 
   pp_print_constraints ppf ast;
 
-  Lib.print_newline ppf;
-  Lib.print_newline ppf;
+  Lib.pp_print_newline ppf;
+  Lib.pp_print_newline ppf;
 
   Format.fprintf ppf "(check-synth)";
 
-  Lib.print_newline ppf
+  Lib.pp_print_newline ppf
 
 let call_sygus: TC.context -> Ast.semantic_constraint Utils.StringMap.t -> ast -> string
 = fun ctx dep_map ast ->

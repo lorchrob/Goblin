@@ -14,7 +14,7 @@ let pp_print_sygus_ast: Format.formatter -> sygus_ast -> unit
     (Lib.pp_print_list pp_print_sygus_ast' " ") subterms 
   | BVLeaf (_, bits) -> 
     let bits = List.map Bool.to_int bits in
-    Format.fprintf ppf "0b%a"
+    Format.fprintf ppf "#b%a"
     (Lib.pp_print_list Format.pp_print_int "") bits
   | VarLeaf id -> Format.pp_print_string ppf id;
   | IntLeaf _ 

@@ -30,3 +30,5 @@ lisp_term:
 { Node (id, ts) }
 | bits = BITS; 
 { BVLeaf (List.length bits, bits) }
+| id = ID; 
+{ VarLeaf (id) }

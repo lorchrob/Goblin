@@ -26,3 +26,7 @@ let parse_sygus: string -> SygusAst.sygus_ast
 = fun s ->
   let lexbuf = Lexing.from_string s in 
   SygusParser.s SygusLexer.read lexbuf
+
+let pp_print_string_map_keys: Format.formatter -> 'a StringMap.t -> unit 
+= fun ppf map -> 
+  StringMap.iter (fun k _ -> Format.pp_print_string ppf k) map
