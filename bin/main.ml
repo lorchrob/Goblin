@@ -28,9 +28,12 @@ let () =
       "
   in 
 
-  (* Step 0: Parse user input *)
   let ppf = Format.std_formatter in
+
+  (* Step 0: Parse user input *)
+  Format.fprintf ppf "Lexing and parsing:";
   Lib.pp_print_newline ppf;
+  Format.pp_print_flush ppf ();
   let ast = Utils.parse input_string in 
   Ast.pp_print_ast ppf ast;
 
@@ -52,67 +55,69 @@ let () =
   Format.pp_print_flush ppf ();
 
   (* Step 3: Abstract away dependent terms in the grammar *)
-  let dep_map, ast = AbstractDeps.abstract_dependencies ast in 
+  
   Lib.pp_print_newline ppf;
-  Ast.pp_print_ast ppf ast;
-  Lib.pp_print_newline ppf;
-  Format.fprintf ppf "Dependent term abstraction complete";
+  Format.fprintf ppf "Dependent term abstraction:";
   Lib.pp_print_newline ppf;
   Format.pp_print_flush ppf ();
+  let dep_map, ast = AbstractDeps.abstract_dependencies ast in 
+  Ast.pp_print_ast ppf ast;
+  Lib.pp_print_newline ppf;
 
   (* Step 4: Divide and conquer *)
   (* TODO *)
   let asts = DivideAndConquer.split_ast ast in 
-  Lib.pp_print_newline ppf;
   Format.fprintf ppf "Divide and conquer complete";
   Lib.pp_print_newline ppf;
   Format.pp_print_flush ppf ();
 
   (* Step 5: Print to SyGuS language and call SyGuS engine *)
   Lib.pp_print_newline ppf;
+  Format.fprintf ppf "SyGuS translation:";
+  Lib.pp_print_newline ppf;
+  Format.pp_print_flush ppf ();
   List.iter (Sygus.pp_print_ast ppf ctx dep_map) asts;
   Lib.pp_print_newline ppf;
-  let sygus_outputs = List.map (Sygus.call_sygus ctx dep_map) asts in
-  Lib.pp_print_newline ppf;
-  Format.fprintf ppf "SyGuS translation and execution complete";
-  Lib.pp_print_newline ppf;
+  
+  (* Step 6: Call sygus engine *)
+  Format.fprintf ppf "Calling SyGuS:";
   Lib.pp_print_newline ppf;
   Format.pp_print_flush ppf ();
+  let sygus_outputs = List.map (Sygus.call_sygus ctx dep_map) asts in
+  List.iter (Format.pp_print_string ppf) sygus_outputs;
+  
 
   (* Step 6: Parse SyGuS output *)
-  let sygus_asts = List.map Utils.parse_sygus sygus_outputs in
   Lib.pp_print_newline ppf;
-  List.iter (SygusAst.pp_print_sygus_ast ppf) sygus_asts;
-  Lib.pp_print_newline ppf;
-  Format.fprintf ppf "SyGuS output parsing complete";
+  Format.fprintf ppf "Parsing SyGuS output:";
   Lib.pp_print_newline ppf;
   Format.pp_print_flush ppf ();
+  let sygus_asts = List.map Utils.parse_sygus sygus_outputs in
+  List.iter (SygusAst.pp_print_sygus_ast ppf) sygus_asts;
+  
 
   (* Step 7: Recombine to single AST *)
   (* TODO *)
-  let sygus_ast = Recombine.recombine sygus_asts in 
   Lib.pp_print_newline ppf;
-  SygusAst.pp_print_sygus_ast ppf sygus_ast;
-  Lib.pp_print_newline ppf;
-  Format.fprintf ppf "Recombining complete";
+  Format.fprintf ppf "Recombining to single AST:";
   Lib.pp_print_newline ppf;
   Format.pp_print_flush ppf ();
+  let sygus_ast = Recombine.recombine sygus_asts in 
+  SygusAst.pp_print_sygus_ast ppf sygus_ast;
 
   (* Step 8: Compute dependencies *)
-  (* TODO *)
-  let sygus_ast = ComputeDeps.compute_deps dep_map sygus_ast in 
   Lib.pp_print_newline ppf;
-  SygusAst.pp_print_sygus_ast ppf sygus_ast;
-  Lib.pp_print_newline ppf;
-  Format.fprintf ppf "Dependency computation complete";
+  Format.fprintf ppf "Computing dependencies:";
   Lib.pp_print_newline ppf;
   Format.pp_print_flush ppf ();
+  let sygus_ast = ComputeDeps.compute_deps dep_map sygus_ast in 
+  SygusAst.pp_print_sygus_ast ppf sygus_ast;
 
   (* Step 9: Serialize! *)
-  let output = Utils.capture_output SygusAst.serialize sygus_ast in 
   Lib.pp_print_newline ppf;
-  Format.pp_print_string ppf output;
-  Lib.pp_print_newline ppf;
-  Format.fprintf ppf "Serialization complete";
+  Format.fprintf ppf "Serializing:";
   Lib.pp_print_newline ppf;
   Format.pp_print_flush ppf ();
+  let output = Utils.capture_output SygusAst.serialize sygus_ast in 
+  Format.pp_print_string ppf output;
+  
