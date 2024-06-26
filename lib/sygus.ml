@@ -60,11 +60,20 @@ let pp_print_datatypes: Format.formatter -> TC.context -> Ast.semantic_constrain
     ((String.lowercase_ascii nt) ^ "_con")
     (Lib.pp_print_list (pp_print_constructor ctx) " ") ges;
     Lib.pp_print_newline ppf;
+  | StubbedElement (nt, stub_id) -> 
+    Format.fprintf ppf "(declare-datatype %s (\n\t(%s)\n))"
+    (String.uppercase_ascii nt)
+    ((String.lowercase_ascii stub_id) ^ "_con");
+    Lib.pp_print_newline ppf;
   ) ast 
 
 let pp_print_nt_decs: Ast.semantic_constraint Utils.StringMap.t -> Format.formatter ->  ast -> unit 
 = fun dep_map ppf ast -> List.iter (fun element -> match element with 
-| ProdRule (nt, _, _) -> 
+| ProdRule (nt, _, _) ->
+  Format.fprintf ppf "\t(%s %s)\n"
+  (String.lowercase_ascii nt)
+  (String.uppercase_ascii nt) 
+| StubbedElement (nt, _) ->
   Format.fprintf ppf "\t(%s %s)\n"
   (String.lowercase_ascii nt)
   (String.uppercase_ascii nt) 
@@ -168,10 +177,16 @@ let pp_print_constraints: Format.formatter -> ast -> unit
   List.iter (pp_print_semantic_constraint ppf nt ges) scs
 | TypeAnnotation _ :: _ -> 
   failwith "Semantic constraint with type annotation not yet supported"
+| StubbedElement _ :: _ -> Format.pp_print_string ppf "STUB\n"
 
 let pp_print_rules: Ast.semantic_constraint Utils.StringMap.t -> Format.formatter -> ast -> unit 
 = fun dep_map ppf ast -> 
   List.iter (fun element -> match element with 
+  | StubbedElement (nt, stub_id) -> 
+    Format.fprintf ppf "\t(%s %s (%s))\n"
+    (String.lowercase_ascii nt) 
+    (String.uppercase_ascii nt) 
+    ((String.lowercase_ascii stub_id) ^ "_con")
   | ProdRule (nt, ges, _) -> 
     let ges = List.map Utils.grammar_element_to_string ges in 
     let ges = List.map String.lowercase_ascii ges in
@@ -200,6 +215,7 @@ let pp_print_grammar: Format.formatter -> Ast.semantic_constraint Utils.StringMa
   let top_datatype_str = match List.hd ast with 
   | ProdRule (nt, _, _) 
   | TypeAnnotation (nt, _, _) -> String.uppercase_ascii nt
+  | StubbedElement _ -> "STUB\n"
   in
   Format.fprintf ppf 
   "(synth-fun top () %s\n; declare nonterminals\n(\n%a\n)\n; grammar rules\n(\n%a\n)\n)"
@@ -214,7 +230,7 @@ let pp_print_ast: Format.formatter -> TC.context -> Ast.semantic_constraint Util
   Lib.pp_print_newline ppf;
   Lib.pp_print_newline ppf;
 
-  pp_print_datatypes ppf ctx dep_map ast;
+  pp_print_datatypes ppf ctx dep_map (List.rev ast);
 
   Lib.pp_print_newline ppf;
 

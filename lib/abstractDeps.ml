@@ -52,6 +52,7 @@ let stub_grammar_element: semantic_constraint list -> grammar_element -> semanti
 let simp_ast: ast -> (semantic_constraint Utils.StringMap.t * ast) 
 = fun ast -> 
   let dep_maps, ast = List.map (fun element -> match element with 
+  | StubbedElement _ -> Utils.StringMap.empty, element
   | ProdRule (nt, ges, scs) -> 
     (* Compute BV -> int casts *)
     let scs = List.map (fun sc -> match sc with 

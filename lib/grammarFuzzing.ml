@@ -17,6 +17,7 @@ let mutate_grammar: ast -> ast
   | ProdRule (nt, ge1 :: ge2 :: ges, scs) -> ProdRule (nt, ge2 :: ge1 :: ges, scs)
   | ProdRule (nt, _, _) -> ProdRule (nt, [], [])
   | TypeAnnotation _ -> element
+  | StubbedElement _ -> element
   ) ast
 
 let has_rgid_length_with_value_2 _ = assert false 

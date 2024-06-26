@@ -62,6 +62,7 @@ type grammar_element =
 type element = 
 | ProdRule of string * grammar_element list * semantic_constraint list
 | TypeAnnotation of string * il_type * semantic_constraint list
+| StubbedElement of string * string
 
 (* DANIYAL: This is the type of the grammar terms *)
 type ast = element list
@@ -209,6 +210,9 @@ let pp_print_element: Format.formatter -> element ->  unit
   pp_print_nonterminal nt 
   pp_print_ty ty
   (Lib.pp_print_list pp_print_semantic_constraint " ") scs
+
+| StubbedElement (id, stub) -> 
+  Format.pp_print_string ppf (id ^ " " ^ stub)
 
 let pp_print_ast: Format.formatter -> ast ->  unit 
 = fun ppf ast -> 

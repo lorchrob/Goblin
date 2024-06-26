@@ -11,7 +11,8 @@ open Sbf
 
 (* Main function *)
 let () = 
-  let input_string = 
+  (* Semantic constraint example *)
+  let _ = 
       "<SAE_PACKET> ::= <AUTH_ALGO> <STATUS_CODE> 
          { <AUTH_ALGO> = int_to_bitvector(16, 12); };
 
@@ -19,6 +20,8 @@ let () =
          <AUTH_ALGO> :: BitVector(16);
       "
   in
+
+  (* Dependent term calculation example *)
   let _ = 
       "<SAE_PACKET> ::= <AUTH_ALGO> <STATUS_CODE> 
          { <AUTH_ALGO> <- int_to_bitvector(16, 12); };
@@ -27,6 +30,15 @@ let () =
          <AUTH_ALGO> :: BitVector(16);
       "
   in 
+
+  (* Divide and conquer example *)
+  let input_string = 
+   "<SAE_PACKET> ::= <AUTH_ALGO> <STATUS_CODE>;
+   <STATUS_CODE> ::= <BV> { <BV> = 0b0000000000000000; };
+   <AUTH_ALGO> ::= <BV> { <BV> = 0b0000000000000001; };
+   <BV> :: BitVector(16);
+   "
+in 
 
   let ppf = Format.std_formatter in
 
@@ -64,18 +76,24 @@ let () =
   Lib.pp_print_newline ppf;
 
   (* Step 4: Divide and conquer *)
-  (* TODO *)
+  Lib.pp_print_newline ppf;
+  Format.fprintf ppf "Divide and conquer:";
+  Lib.pp_print_newline ppf;
   let asts = DivideAndConquer.split_ast ast in 
-  Format.fprintf ppf "Divide and conquer complete";
+  List.iter (fun ast -> Ast.pp_print_ast ppf ast; Lib.pp_print_newline ppf) asts;
   Lib.pp_print_newline ppf;
   Format.pp_print_flush ppf ();
+
+  (* Step 4.5: Prune grammars (both within grammars, and unreachable stubs) *)
+  (* TODO *)
+  let asts = [List.hd asts] in
 
   (* Step 5: Print to SyGuS language and call SyGuS engine *)
   Lib.pp_print_newline ppf;
   Format.fprintf ppf "SyGuS translation:";
   Lib.pp_print_newline ppf;
   Format.pp_print_flush ppf ();
-  List.iter (Sygus.pp_print_ast ppf ctx dep_map) asts;
+  List.iter (fun ast -> Sygus.pp_print_ast ppf ctx dep_map ast; Lib.pp_print_newline ppf) asts;
   Lib.pp_print_newline ppf;
   
   (* Step 6: Call sygus engine *)
@@ -85,6 +103,7 @@ let () =
   let sygus_outputs = List.map (Sygus.call_sygus ctx dep_map) asts in
   List.iter (Format.pp_print_string ppf) sygus_outputs;
   
+  let _ = assert false in
 
   (* Step 6: Parse SyGuS output *)
   Lib.pp_print_newline ppf;
