@@ -3,7 +3,7 @@ type sygus_ast =
 | BVLeaf of int * bool list 
 | IntLeaf of int
 | BLLeaf of bool list
-| VarLeaf of string
+| VarLeaf of string (* DANIYAL: Placeholder can go here *)
 
 let pp_print_sygus_ast: Format.formatter -> sygus_ast -> unit 
 = fun ppf sygus_ast -> 

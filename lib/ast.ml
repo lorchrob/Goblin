@@ -42,8 +42,8 @@ expr =
 | IntConst of int 
 
 type semantic_constraint = 
-| Dependency of string * expr 
-| SyGuSExpr of expr
+| Dependency of string * expr (* <nonterminal> <- <expression> *)
+| SyGuSExpr of expr (* Any boolean expression *)
 
 type il_type = 
 | Bool 
@@ -63,7 +63,15 @@ type element =
 | ProdRule of string * grammar_element list * semantic_constraint list
 | TypeAnnotation of string * il_type * semantic_constraint list
 
+(* DANIYAL: This is the type of the grammar terms *)
 type ast = element list
+
+(* 
+Basic ADT:
+type btree = 
+| Leaf of int
+| Node of btree * int * btree 
+*)
 
 let pp_print_nonterminal: Format.formatter -> string -> unit 
 = fun ppf nt -> 

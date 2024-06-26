@@ -11,7 +11,7 @@ open Sbf
 
 (* Main function *)
 let () = 
-  let _ = 
+  let input_string = 
       "<SAE_PACKET> ::= <AUTH_ALGO> <STATUS_CODE> 
          { <AUTH_ALGO> = int_to_bitvector(16, 12); };
 
@@ -19,7 +19,7 @@ let () =
          <AUTH_ALGO> :: BitVector(16);
       "
   in
-  let input_string = 
+  let _ = 
       "<SAE_PACKET> ::= <AUTH_ALGO> <STATUS_CODE> 
          { <AUTH_ALGO> <- int_to_bitvector(16, 12); };
 
@@ -55,7 +55,6 @@ let () =
   Format.pp_print_flush ppf ();
 
   (* Step 3: Abstract away dependent terms in the grammar *)
-  
   Lib.pp_print_newline ppf;
   Format.fprintf ppf "Dependent term abstraction:";
   Lib.pp_print_newline ppf;
