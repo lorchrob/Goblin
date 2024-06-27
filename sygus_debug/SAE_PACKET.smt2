@@ -7,7 +7,7 @@
 	(_stub1_grammar_element_con)
 ))
 (declare-datatype SAE_PACKET (
-	(sae_packet_con (des2 AUTH_ALGO) (des3 STATUS_CODE))
+	(sae_packet_con (des8 AUTH_ALGO) (des9 STATUS_CODE))
 ))
 
 (synth-fun top () SAE_PACKET

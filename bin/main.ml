@@ -1,6 +1,6 @@
 open Sbf
 
-(*!! TODO: 
+(* TODO: 
    1. Collect stubs in some data structure and add them to sygus printing stuff
    2. Fix indexing 
    3. Syntax checks on case expressions (make sure they're valid cases and exhaustive)
@@ -86,7 +86,7 @@ in
 
   (* Step 4.5: Prune grammars (both within grammars, and unreachable stubs) *)
   (* TODO *)
-  let asts = [List.hd asts] in
+  (* let asts = [List.hd asts] in *)
 
   (* Step 5: Print to SyGuS language and call SyGuS engine *)
   Lib.pp_print_newline ppf;
@@ -102,8 +102,6 @@ in
   Format.pp_print_flush ppf ();
   let sygus_outputs = List.map (Sygus.call_sygus ctx dep_map) asts in
   List.iter (Format.pp_print_string ppf) sygus_outputs;
-  
-  let _ = assert false in
 
   (* Step 6: Parse SyGuS output *)
   Lib.pp_print_newline ppf;
@@ -115,7 +113,6 @@ in
   
 
   (* Step 7: Recombine to single AST *)
-  (* TODO *)
   Lib.pp_print_newline ppf;
   Format.fprintf ppf "Recombining to single AST:";
   Lib.pp_print_newline ppf;
