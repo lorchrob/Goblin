@@ -255,6 +255,7 @@ fun ctx dep_map ast ->
   | TypeAnnotation (nt, _, _) :: _ -> nt
   | _ -> assert false
   in
+  ignore (Unix.system "mkdir sygus_debug");
   let input_filename = "./sygus_debug/" ^ top_nt ^ ".smt2" in
   let output_filename = "./sygus_debug/" ^ top_nt ^ "_out.smt2" in
 

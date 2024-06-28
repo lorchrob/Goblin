@@ -1,7 +1,7 @@
 (set-logic ALL)
 
 (declare-datatype _STUB0_GRAMMAR_ELEMENT (
-	(_stub0_grammar_element_con (des14 (_ BitVec 16)))
+	(_stub0_grammar_element_con (des24 (_ BitVec 16)))
 ))
 
 (synth-fun top () _STUB0_GRAMMAR_ELEMENT
@@ -19,12 +19,12 @@
 )
 )
 
-(define-fun c15 ((_stub0_grammar_element _STUB0_GRAMMAR_ELEMENT)) Bool 
+(define-fun c25 ((_stub0_grammar_element _STUB0_GRAMMAR_ELEMENT)) Bool 
 	(match _stub0_grammar_element (
 		((_stub0_grammar_element_con bv)
 		 (= bv #b0000000000000001)) 
 	))
 )
-(constraint (c15 top))
+(constraint (c25 top))
 
 (check-synth)
