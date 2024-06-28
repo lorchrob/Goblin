@@ -10,6 +10,11 @@
     "define", DEFINE ;
     "fun", FUN ;
     "top", TOP ;
+    "as", AS ;
+    "seq", SEQ ;
+    "Seq", CAPSEQ ;
+    "Bool", BOOL ;
+    "empty", EMPTY ;
   ] 
 }
 
@@ -28,6 +33,7 @@ rule read =
   | "-" { HYPHEN }
   | "(" { LPAREN }
   | ")" { RPAREN }
+  | "." { DOT }
   | "#b" { read_bits lexbuf }
   (* | int as p { INTEGER (int_of_string p) } *)
   | id as p {

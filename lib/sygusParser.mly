@@ -8,6 +8,12 @@ open SygusAst
 %token HYPHEN
 %token LPAREN 
 %token RPAREN
+%token AS
+%token SEQ 
+%token CAPSEQ
+%token DOT
+%token EMPTY
+%token BOOL
 
 (*%token<int> INTEGER*)
 %token<bool list> BITS
@@ -27,8 +33,14 @@ sygus_term:
 
 lisp_term: 
 | LPAREN; id = ID; ts = list(lisp_term); RPAREN; 
-{ Node (id, ts) }
+  { Node (id, ts) }
 | bits = BITS; 
-{ BVLeaf (List.length bits, bits) }
+  { BVLeaf (List.length bits, bits) }
 | id = ID; 
-{ VarLeaf (id) }
+  { VarLeaf (id) }
+| bits = bit_list; 
+  { BLLeaf bits }
+
+bit_list:
+| LPAREN; AS; SEQ; DOT; EMPTY; LPAREN; CAPSEQ; BOOL; RPAREN; RPAREN; 
+  { [] } 

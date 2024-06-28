@@ -11,11 +11,11 @@ open Sbf
 
 (* Main function *)
 let () = 
-  let _ = Pipeline.main_pipeline "<SAE_PACKET> ::= <AUTH_ALGO> <STATUS_CODE> 
-  { <AUTH_ALGO> = int_to_bitvector(16, 12); };
+  ignore (Pipeline.main_pipeline 
+     "<SAE_PACKET> ::= <AUTH_ALGO> <STATUS_CODE>;
 
-  <STATUS_CODE> :: BitVector(16);
-  <AUTH_ALGO> :: BitVector(16);
-" in 
-  ()
+     <STATUS_CODE> :: BitList;
+     <AUTH_ALGO> :: BitList;
+   "
+   )
   
