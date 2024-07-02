@@ -18,6 +18,7 @@ open SygusAst
 %token TRUE
 %token FALSE
 %token PLUSPLUS
+%token INT
 
 %token<bool list> BITS
 %token<string> ID
@@ -31,8 +32,17 @@ open SygusAst
 s: d = sygus_term; EOF { d } ;
 	
 sygus_term:
-| LPAREN; LPAREN; DEFINE; HYPHEN; FUN; TOP; LPAREN; RPAREN; ID; t = lisp_term; RPAREN; RPAREN;
+| LPAREN; LPAREN; DEFINE; HYPHEN; FUN; TOP; LPAREN; RPAREN; top_type; t = lisp_term; RPAREN; RPAREN;
   { t }
+
+top_type:
+| ID; {}
+| il_ty; {}
+
+il_ty:
+| INT; {}
+| BOOL; {}
+| LPAREN; CAPSEQ; BOOL; RPAREN; {}
 
 lisp_term: 
 | LPAREN; id = ID; ts = list(lisp_term); RPAREN; 

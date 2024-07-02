@@ -175,8 +175,9 @@ let pp_print_constraints: Format.formatter -> ast -> unit
 | [] -> failwith "Input grammar must have at least one production rule or type annotation"
 | ProdRule (nt, ges, scs) :: _ -> 
   List.iter (pp_print_semantic_constraint ppf nt ges) scs
-| TypeAnnotation _ :: _ -> 
+| TypeAnnotation (_, _, _ :: _) :: _ -> 
   failwith "Semantic constraint with type annotation not yet supported"
+| TypeAnnotation _ :: _ -> ()
 | StubbedElement _ :: _ -> Format.pp_print_string ppf "STUB\n"
 
 let pp_print_rules: Ast.semantic_constraint Utils.StringMap.t -> Format.formatter -> ast -> unit 
@@ -213,8 +214,9 @@ let pp_print_rules: Ast.semantic_constraint Utils.StringMap.t -> Format.formatte
 let pp_print_grammar: Format.formatter -> Ast.semantic_constraint Utils.StringMap.t ->  ast -> unit 
 = fun ppf dep_map ast -> 
   let top_datatype_str = match List.hd ast with 
-  | ProdRule (nt, _, _) 
-  | TypeAnnotation (nt, _, _) -> String.uppercase_ascii nt
+  | ProdRule (nt, _, _) -> String.uppercase_ascii nt
+  | TypeAnnotation (_, ty, _) -> 
+    Utils.capture_output pp_print_ty ty
   | StubbedElement _ -> "STUB\n"
   in
   Format.fprintf ppf 

@@ -18,6 +18,7 @@
     "unit", UNIT ;
     "true", TRUE ;
     "false", FALSE ;
+    "Int", INT ;
   ] 
 }
 

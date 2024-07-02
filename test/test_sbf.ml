@@ -50,10 +50,19 @@ let test_bl () =
   let output = main_pipeline input in 
   check string "test_bl" output "00000000\n"
 
+let test_top_level_ty_annot () = 
+  let input = 
+  " <STATUS_CODE> :: BitList;
+  "
+  in 
+  let output = main_pipeline input in 
+  check string "test_top_level_ty_annot" output "\n"
+
 let () = 
   run "My_module" [
       "test_sc", [test_case "Semantic constraint example" `Quick test_sc];
       "test_dt", [test_case "Dependent term example" `Quick test_dt];
       "test_dc", [test_case "Divide and conquer example" `Quick test_dc];
       "test_bl", [test_case "Bit list example" `Quick test_bl];
+      "test_top_level_ty_annot", [test_case "Top level type annotation example" `Quick test_top_level_ty_annot];
     ]
