@@ -39,9 +39,21 @@ let test_dc () =
   let output = main_pipeline input in 
   check string "test_dc" output "00000000000000010000000000000000\n"
 
+let test_bl () = 
+  let input = 
+  "<SAE_PACKET> ::= <AUTH_ALGO> <STATUS_CODE> { length(<AUTH_ALGO>) > 1; length(<STATUS_CODE>) > 5; };
+
+  <STATUS_CODE> :: BitList;
+  <AUTH_ALGO> :: BitList;
+  "
+  in 
+  let output = main_pipeline input in 
+  check string "test_bl" output "00000000\n"
+
 let () = 
   run "My_module" [
       "test_sc", [test_case "Semantic constraint example" `Quick test_sc];
       "test_dt", [test_case "Dependent term example" `Quick test_dt];
       "test_dc", [test_case "Divide and conquer example" `Quick test_dc];
+      "test_bl", [test_case "Bit list example" `Quick test_bl];
     ]
