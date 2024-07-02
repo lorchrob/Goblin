@@ -1,22 +1,19 @@
 (set-logic ALL)
 
 
-(synth-fun top () (Seq Bool)
+(synth-fun top () (_ BitVec 16)
 ; declare nonterminals
 (
-	(status_code (Seq Bool))
+	(status_code (_ BitVec 16))
 
 )
 ; grammar rules
 (
-	(status_code (Seq Bool) ((Constant (Seq Bool))))
+	(status_code (_ BitVec 16) ((Constant (_ BitVec 16))))
 
 )
 )
 
-(define-fun c1 ((status_code (Seq Bool))) Bool 
-	(> (seq.len status_code) 0)
-)
-(constraint (c1 top))
+
 
 (check-synth)

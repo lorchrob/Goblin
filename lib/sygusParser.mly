@@ -19,9 +19,12 @@ open SygusAst
 %token FALSE
 %token PLUSPLUS
 %token INT
+%token UNDERSCORE
+%token BITVEC
 
 %token<bool list> BITS
 %token<string> ID
+%token<int> INTEGER
 
 %token EOF
 
@@ -43,6 +46,7 @@ il_ty:
 | INT; {}
 | BOOL; {}
 | LPAREN; CAPSEQ; BOOL; RPAREN; {}
+| LPAREN; UNDERSCORE; BITVEC; INTEGER; RPAREN; {}
 
 lisp_term: 
 | LPAREN; id = ID; ts = list(lisp_term); RPAREN; 

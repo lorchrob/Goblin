@@ -19,6 +19,7 @@
     "true", TRUE ;
     "false", FALSE ;
     "Int", INT ;
+    "BitVec", BITVEC ;
   ] 
 }
 
@@ -38,8 +39,10 @@ rule read =
   | "(" { print_endline "("; LPAREN }
   | ")" { print_endline ")"; RPAREN }
   | "." { print_endline "."; DOT } 
+  | "_" { print_endline "_"; UNDERSCORE } 
   | "++" { print_endline "++"; PLUSPLUS }
   | "#b" { print_endline "BITS"; read_bits lexbuf }
+  | int as p { INTEGER (int_of_string p) }
   | id as p {
     try (print_endline p; Hashtbl.find keyword_table p) with Not_found -> ID (p)
   }
