@@ -1,7 +1,7 @@
 (set-logic ALL)
 
 (declare-datatype SAE_PACKET (
-	(sae_packet_con (des2 (Seq Bool)) (des3 (Seq Bool)))
+	(sae_packet_con (des4 (Seq Bool)) (des5 (Seq Bool)))
 ))
 
 (synth-fun top () SAE_PACKET
@@ -21,6 +21,18 @@
 )
 )
 
-
+(define-fun c6 ((sae_packet SAE_PACKET)) Bool 
+	(match sae_packet (
+		((sae_packet_con auth_algo status_code)
+		 (> (seq.len auth_algo) 1)) 
+	))
+)
+(constraint (c6 top))(define-fun c7 ((sae_packet SAE_PACKET)) Bool 
+	(match sae_packet (
+		((sae_packet_con auth_algo status_code)
+		 (> (seq.len status_code) 5)) 
+	))
+)
+(constraint (c7 top))
 
 (check-synth)

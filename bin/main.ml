@@ -12,7 +12,7 @@ open Sbf
 (* Main function *)
 let () = 
   ignore (Pipeline.main_pipeline 
-     "<SAE_PACKET> ::= <AUTH_ALGO> <STATUS_CODE>;
+     "<SAE_PACKET> ::= <AUTH_ALGO> <STATUS_CODE> { length(<AUTH_ALGO>) > 1; length(<STATUS_CODE>) > 5; };
 
      <STATUS_CODE> :: BitList;
      <AUTH_ALGO> :: BitList;

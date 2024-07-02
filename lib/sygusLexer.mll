@@ -15,6 +15,9 @@
     "Seq", CAPSEQ ;
     "Bool", BOOL ;
     "empty", EMPTY ;
+    "unit", UNIT ;
+    "true", TRUE ;
+    "false", FALSE ;
   ] 
 }
 
@@ -30,12 +33,12 @@ rule read =
   parse
   | white { read lexbuf }
   | newline { Lexing.new_line lexbuf ; read lexbuf }
-  | "-" { HYPHEN }
-  | "(" { LPAREN }
-  | ")" { RPAREN }
-  | "." { DOT }
-  | "#b" { read_bits lexbuf }
-  (* | int as p { INTEGER (int_of_string p) } *)
+  | "-" { print_endline "-"; HYPHEN }
+  | "(" { print_endline "("; LPAREN }
+  | ")" { print_endline ")"; RPAREN }
+  | "." { print_endline "."; DOT } 
+  | "++" { print_endline "++"; PLUSPLUS }
+  | "#b" { print_endline "BITS"; read_bits lexbuf }
   | id as p {
     try (print_endline p; Hashtbl.find keyword_table p) with Not_found -> ID (p)
   }

@@ -14,8 +14,11 @@ open SygusAst
 %token DOT
 %token EMPTY
 %token BOOL
+%token UNIT
+%token TRUE
+%token FALSE
+%token PLUSPLUS
 
-(*%token<int> INTEGER*)
 %token<bool list> BITS
 %token<string> ID
 
@@ -44,3 +47,12 @@ lisp_term:
 bit_list:
 | LPAREN; AS; SEQ; DOT; EMPTY; LPAREN; CAPSEQ; BOOL; RPAREN; RPAREN; 
   { [] } 
+| LPAREN; SEQ; DOT; UNIT; b = bool; RPAREN; 
+  { [b] }
+| LPAREN; SEQ; DOT; PLUSPLUS; bls = nonempty_list(bit_list); RPAREN;
+  { List.flatten bls }
+
+
+bool:
+| TRUE { true }
+| FALSE { false }
