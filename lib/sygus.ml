@@ -124,25 +124,25 @@ let rec pp_print_expr: Format.formatter -> expr -> unit
 | NTExpr ([nt], None) -> Format.pp_print_string ppf (String.lowercase_ascii nt)
 | BinOp (expr1, op, expr2) -> 
   Format.fprintf ppf "(%a %a %a)"
-  pp_print_binop op 
-  pp_print_expr expr1 
-  pp_print_expr expr2
+    pp_print_binop op 
+    pp_print_expr expr1 
+    pp_print_expr expr2
 | CompOp (expr1, op, expr2) -> 
   Format.fprintf ppf "(%a %a %a)"
-  pp_print_compop op 
-  pp_print_expr expr1 
-  pp_print_expr expr2
+    pp_print_compop op 
+    pp_print_expr expr1 
+    pp_print_expr expr2
 | UnOp (op, expr) -> 
   Format.fprintf ppf "(%a %a)"
-  pp_print_unop op 
-  pp_print_expr expr
+    pp_print_unop op 
+    pp_print_expr expr
 | Length expr -> 
   Format.fprintf ppf "(seq.len %a)"
-  pp_print_expr expr
+    pp_print_expr expr
 | BVConst (_, bits) -> 
   let bits = List.map Bool.to_int bits in
   Format.fprintf ppf "#b%a"
-  (Lib.pp_print_list Format.pp_print_int "") bits
+    (Lib.pp_print_list Format.pp_print_int "") bits
 | BConst b ->  Format.fprintf ppf "%b" b
 | IntConst i -> Format.fprintf ppf "%d" i
 | CaseExpr _  -> failwith "Case expressions not yet fully supported"
@@ -150,7 +150,7 @@ let rec pp_print_expr: Format.formatter -> expr -> unit
 | BLConst _ -> failwith "BitList literals not yet fully supported"
 | BVCast _ -> failwith "Internal error: a BV cast survived preprocessing!"
  
-let pp_print_semantic_constraint: Format.formatter -> string -> grammar_element list -> semantic_constraint -> unit 
+let pp_print_semantic_constraint_prod_rule: Format.formatter -> string -> grammar_element list -> semantic_constraint -> unit 
 = fun ppf nt ges sc -> match sc with 
 | Dependency _ -> () 
 | SyGuSExpr expr -> 
@@ -160,24 +160,37 @@ let pp_print_semantic_constraint: Format.formatter -> string -> grammar_element 
   in 
   Format.fprintf ppf "(define-fun %s ((%s %s)) Bool \n\t(match %s (\n\t\t((%s %a)\n\t\t %a) \n\t))\n)"
   constraint_id
-  (String.lowercase_ascii nt) 
-  (String.uppercase_ascii nt) 
-  (String.lowercase_ascii nt) 
-  ((String.lowercase_ascii nt) ^ "_con") 
-  (Lib.pp_print_list Format.pp_print_string " ") ges
-  pp_print_expr expr; 
-  Lib.pp_print_newline ppf;
+    (String.lowercase_ascii nt) 
+    (String.uppercase_ascii nt) 
+    (String.lowercase_ascii nt) 
+    ((String.lowercase_ascii nt) ^ "_con") 
+    (Lib.pp_print_list Format.pp_print_string " ") ges
+    pp_print_expr expr; 
+    Lib.pp_print_newline ppf;
   Format.fprintf ppf "(constraint (%s top))"
-  constraint_id
+    constraint_id
+
+let pp_print_semantic_constraint_ty_annot: Format.formatter -> string -> il_type -> semantic_constraint -> unit 
+= fun ppf nt ty sc -> match sc with 
+| Dependency _ -> () 
+| SyGuSExpr expr -> 
+  let constraint_id = fresh_constraint () in 
+  Format.fprintf ppf "(define-fun %s ((%s %a)) Bool \n\t%a\n)\n"
+    constraint_id
+    (String.lowercase_ascii nt) 
+    pp_print_ty ty
+    pp_print_expr expr;
+  Format.fprintf ppf "(constraint (%s top))"
+    constraint_id
 
 let pp_print_constraints: Format.formatter -> ast -> unit 
 = fun ppf ast -> match ast with 
 | [] -> failwith "Input grammar must have at least one production rule or type annotation"
 | ProdRule (nt, ges, scs) :: _ -> 
-  List.iter (pp_print_semantic_constraint ppf nt ges) scs
-| TypeAnnotation (_, _, _ :: _) :: _ -> 
-  failwith "Semantic constraint with type annotation not yet supported"
-| TypeAnnotation _ :: _ -> ()
+  List.iter (pp_print_semantic_constraint_prod_rule ppf nt ges) scs
+| TypeAnnotation (nt, ty, scs) :: _ -> 
+  List.iter (pp_print_semantic_constraint_ty_annot ppf nt ty) scs
+(* | TypeAnnotation _ :: _ -> () *)
 | StubbedElement _ :: _ -> Format.pp_print_string ppf "STUB\n"
 
 let pp_print_rules: Ast.semantic_constraint Utils.StringMap.t -> Format.formatter -> ast -> unit 
@@ -185,29 +198,29 @@ let pp_print_rules: Ast.semantic_constraint Utils.StringMap.t -> Format.formatte
   List.iter (fun element -> match element with 
   | StubbedElement (nt, stub_id) -> 
     Format.fprintf ppf "\t(%s %s (%s))\n"
-    (String.lowercase_ascii nt) 
-    (String.uppercase_ascii nt) 
-    ((String.lowercase_ascii stub_id) ^ "_con")
+      (String.lowercase_ascii nt) 
+      (String.uppercase_ascii nt) 
+      ((String.lowercase_ascii stub_id) ^ "_con")
   | ProdRule (nt, ges, _) -> 
     let ges = List.map Utils.grammar_element_to_string ges in 
     let ges = List.map String.lowercase_ascii ges in
     Format.fprintf ppf "\t(%s %s ((%s %a)))\n"
-    (String.lowercase_ascii nt) 
-    (String.uppercase_ascii nt) 
-    ((String.lowercase_ascii nt) ^ "_con")
+      (String.lowercase_ascii nt) 
+      (String.uppercase_ascii nt) 
+      ((String.lowercase_ascii nt) ^ "_con")
     (Lib.pp_print_list Format.pp_print_string " ") ges
   | TypeAnnotation (nt, ty, _) -> 
     Format.fprintf ppf "\t(%s %a ((Constant %a)))\n"
-    (String.lowercase_ascii nt) 
-    pp_print_ty ty
-    pp_print_ty ty
+      (String.lowercase_ascii nt) 
+      pp_print_ty ty
+      pp_print_ty ty
   ) ast;
   Utils.StringMap.iter (fun stub_id dep -> match dep with 
   | Dependency _ -> 
     Format.fprintf ppf "\t(%s %s (%s))"
-    (String.lowercase_ascii stub_id) 
-    (String.uppercase_ascii stub_id) 
-    ((String.lowercase_ascii stub_id) ^ "_con")
+      (String.lowercase_ascii stub_id) 
+      (String.uppercase_ascii stub_id) 
+      ((String.lowercase_ascii stub_id) ^ "_con")
   | SyGuSExpr _ -> failwith "Internal error: dependency map contains a SyGuSExpr"
   ) dep_map
 
@@ -220,10 +233,10 @@ let pp_print_grammar: Format.formatter -> Ast.semantic_constraint Utils.StringMa
   | StubbedElement _ -> "STUB\n"
   in
   Format.fprintf ppf 
-  "(synth-fun top () %s\n; declare nonterminals\n(\n%a\n)\n; grammar rules\n(\n%a\n)\n)"
-   top_datatype_str
-   (pp_print_nt_decs dep_map) ast 
-   (pp_print_rules dep_map) ast
+    "(synth-fun top () %s\n; declare nonterminals\n(\n%a\n)\n; grammar rules\n(\n%a\n)\n)"
+    top_datatype_str
+    (pp_print_nt_decs dep_map) ast 
+    (pp_print_rules dep_map) ast
 
 let pp_print_ast: Format.formatter -> TC.context -> Ast.semantic_constraint Utils.StringMap.t -> ast -> unit 
 = fun ppf ctx dep_map ast -> 

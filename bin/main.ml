@@ -12,7 +12,7 @@ open Sbf
 (* Main function *)
 let () = 
   ignore (Pipeline.main_pipeline 
-     " <STATUS_CODE> :: BitList;
+     " <STATUS_CODE> :: BitList { length(<STATUS_CODE>) > 0; };
    "
    )
   

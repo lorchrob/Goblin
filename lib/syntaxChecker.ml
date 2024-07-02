@@ -83,9 +83,32 @@ let rec check_nt_expr_refs: prod_rule_map -> nt_expr -> nt_expr
 
 (* Check each nonterminal expression begins with a valid nonterminal
    and contains valid dot notation references *)
-let rec check_nt_exprs: prod_rule_map -> Utils.StringSet.t -> expr -> expr 
+let rec check_prod_rule_nt_exprs: prod_rule_map -> Utils.StringSet.t -> expr -> expr 
 = fun prm nts expr -> 
-  let call = check_nt_exprs prm nts in
+  let call = check_prod_rule_nt_exprs prm nts in
+  match expr with 
+  | NTExpr (nt_expr, index) -> 
+    if (not (Utils.StringSet.mem (List.hd nt_expr) nts)) 
+    then failwith ("Nonterminal " ^  (List.hd nt_expr) ^ " not found in current production rule or type annotation")
+    else
+      let nt_expr = check_nt_expr_refs prm nt_expr in 
+      NTExpr (nt_expr, index) 
+  | BinOp (expr1, op, expr2) -> BinOp (call expr1, op, call expr2) 
+  | UnOp (op, expr) -> UnOp (op, call expr) 
+  | CompOp (expr1, op, expr2) -> CompOp (call expr1, op, call expr2) 
+  | Length expr -> Length (call expr) 
+  | CaseExpr (nt_expr, cases) -> CaseExpr (check_nt_expr_refs prm nt_expr, cases) 
+  | BVConst _ 
+  | BLConst _ 
+  | BConst _ 
+  | BVCast _  
+  | IntConst _ -> expr
+
+(* Check each nonterminal expression begins with a valid nonterminal
+   and contains valid dot notation references *)
+let rec check_type_annot_nt_exprs: prod_rule_map -> Utils.StringSet.t -> expr -> expr 
+= fun prm nts expr -> 
+  let call = check_type_annot_nt_exprs prm nts in
   match expr with 
   | NTExpr (nt_expr, index) -> 
     if (not (Utils.StringSet.mem (List.hd nt_expr) nts)) 
@@ -115,11 +138,11 @@ let check_syntax: prod_rule_map -> Utils.StringSet.t -> ast -> ast
       if (not (Utils.StringSet.mem nt2 nt_set)) then failwith ("Dangling identifier " ^ nt2) else
       if (not (List.mem nt2 ges')) then failwith ("Dependency LHS identifier " ^ nt2 ^ " is not present on the RHS of the corresponding production rule") else
       let expr = check_dangling_identifiers nt_set expr in 
-      let expr = check_nt_exprs prm (Utils.StringSet.of_list ges') expr in
+      let expr = check_prod_rule_nt_exprs prm (Utils.StringSet.of_list ges') expr in
       Dependency (nt2, expr)
     | SyGuSExpr expr -> 
       let expr = check_dangling_identifiers nt_set expr in 
-      let expr = check_nt_exprs prm (Utils.StringSet.of_list ges') expr in
+      let expr = check_prod_rule_nt_exprs prm (Utils.StringSet.of_list ges') expr in
       SyGuSExpr expr
     ) scs in 
     ProdRule (nt, ges, scs)
@@ -129,11 +152,11 @@ let check_syntax: prod_rule_map -> Utils.StringSet.t -> ast -> ast
       if (not (Utils.StringSet.mem nt2 nt_set)) then failwith ("Dangling identifier " ^ nt2) else
       if (not (nt2 = nt)) then failwith ("Dependency LHS identifier " ^ nt2 ^ " is not present in the corresponding type annotation") else
       let expr = check_dangling_identifiers nt_set expr in 
-      let expr = check_nt_exprs prm (Utils.StringSet.empty) expr in
+      let expr = check_type_annot_nt_exprs prm (Utils.StringSet.singleton nt) expr in
       Dependency (nt2, expr) 
     | SyGuSExpr expr -> 
       let expr = check_dangling_identifiers nt_set expr in  
-      let expr = check_nt_exprs prm (Utils.StringSet.empty) expr in
+      let expr = check_type_annot_nt_exprs prm (Utils.StringSet.singleton nt) expr in
       SyGuSExpr expr
     ) scs in 
     TypeAnnotation (nt, ty, scs)

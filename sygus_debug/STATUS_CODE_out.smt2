@@ -1,3 +1,3 @@
 (
-(define-fun top () (Seq Bool) (as seq.empty (Seq Bool)))
+(define-fun top () (Seq Bool) (seq.unit false))
 )

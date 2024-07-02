@@ -14,6 +14,9 @@
 )
 )
 
-
+(define-fun c1 ((status_code (Seq Bool))) Bool 
+	(> (seq.len status_code) 0)
+)
+(constraint (c1 top))
 
 (check-synth)
