@@ -116,47 +116,47 @@ let pp_print_comp_op: Format.formatter -> comp_operator -> unit
 let rec pp_print_case: Format.formatter -> case -> unit 
 = fun ppf (nt_expr, expr) -> 
   Format.fprintf ppf "| %a -> %a"
-  pp_print_nt_expr nt_expr 
-  pp_print_expr expr
+    pp_print_nt_expr nt_expr 
+    pp_print_expr expr
 
 and pp_print_expr: Format.formatter -> expr -> unit 
 = fun ppf expr -> match expr with
 | BinOp (expr1, op, expr2) -> 
   Format.fprintf ppf "%a %a %a" 
-  pp_print_expr expr1 
-  pp_print_bin_op op 
-  pp_print_expr expr2
+    pp_print_expr expr1 
+    pp_print_bin_op op 
+    pp_print_expr expr2
 | UnOp (op, expr) -> 
   Format.fprintf ppf "%a %a" 
-  pp_print_unary_op op 
-  pp_print_expr expr
+    pp_print_unary_op op 
+    pp_print_expr expr
 | CompOp (expr1, op, expr2) -> 
   Format.fprintf ppf "%a %a %a" 
-  pp_print_expr expr1 
-  pp_print_comp_op op 
-  pp_print_expr expr2
+    pp_print_expr expr1 
+    pp_print_comp_op op 
+    pp_print_expr expr2
 | Length expr -> 
   Format.fprintf ppf "length(%a)"
-  pp_print_expr expr 
+    pp_print_expr expr 
 | BVCast (width, value) -> 
   Format.fprintf ppf "int_to_bitvector(%d, %d)" width value 
 | CaseExpr (nt, cases) -> 
   Format.fprintf ppf "case %a of %a"
-  pp_print_nt_expr nt 
+    pp_print_nt_expr nt 
   (Lib.pp_print_list pp_print_case " ") cases 
 | NTExpr (nt_expr, None) -> pp_print_nt_expr ppf nt_expr 
 | NTExpr (nt_expr, Some index) -> 
   Format.fprintf ppf "%a(%d)"
-  pp_print_nt_expr nt_expr 
-  index
+    pp_print_nt_expr nt_expr 
+    index
 | BLConst bits -> 
   let bits = List.map Bool.to_int bits in
   Format.fprintf ppf "(BitList 0b%a)"
-  (Lib.pp_print_list Format.pp_print_int "") bits
+    (Lib.pp_print_list Format.pp_print_int "") bits
 | BVConst (_, bits) -> 
   let bits = List.map Bool.to_int bits in
   Format.fprintf ppf "0b%a"
-  (Lib.pp_print_list Format.pp_print_int "") bits
+    (Lib.pp_print_list Format.pp_print_int "") bits
 | BConst b -> Format.fprintf ppf "%b" b
 | IntConst i -> Format.fprintf ppf "%d" i
 
@@ -164,11 +164,11 @@ let pp_print_semantic_constraint: Format.formatter -> semantic_constraint -> uni
 = fun ppf sc -> match sc with 
 | Dependency (nt, expr) -> 
   Format.fprintf ppf "%a <- %a;"
-  pp_print_nonterminal nt 
-  pp_print_expr expr
+    pp_print_nonterminal nt 
+    pp_print_expr expr
 | SyGuSExpr expr -> 
   Format.fprintf ppf "%a;"
-  pp_print_expr expr
+    pp_print_expr expr
 
 let pp_print_ty: Format.formatter -> il_type -> unit 
 = fun ppf ty -> match ty with 
@@ -183,33 +183,33 @@ let pp_print_grammar_element: Format.formatter -> grammar_element ->  unit
 | Nonterminal nt -> pp_print_nonterminal ppf nt
 | NamedNonterminal (id, nt) -> 
   Format.fprintf ppf "%s = %a" 
-  id 
-  pp_print_nonterminal nt
+    id 
+    pp_print_nonterminal nt
 | StubbedNonterminal (_, stub_id) -> Format.pp_print_string ppf stub_id
 
 let pp_print_element: Format.formatter -> element ->  unit 
 = fun ppf el -> match el with 
 | ProdRule (nt, g_els, []) -> 
   Format.fprintf ppf "%a ::= %a;"
-  pp_print_nonterminal nt
-  (Lib.pp_print_list pp_print_grammar_element " ") g_els
+    pp_print_nonterminal nt
+    (Lib.pp_print_list pp_print_grammar_element " ") g_els
   
 | ProdRule (nt, g_els, scs) -> 
   Format.fprintf ppf "%a :: %a \n{ %a };"
-  pp_print_nonterminal nt
-  (Lib.pp_print_list pp_print_grammar_element " ") g_els
-  (Lib.pp_print_list pp_print_semantic_constraint " ") scs
+    pp_print_nonterminal nt
+    (Lib.pp_print_list pp_print_grammar_element " ") g_els
+    (Lib.pp_print_list pp_print_semantic_constraint " ") scs
 
 | TypeAnnotation (nt, ty, []) -> 
   Format.fprintf ppf "%a :: %a;"
-  pp_print_nonterminal nt 
-  pp_print_ty ty
+    pp_print_nonterminal nt 
+    pp_print_ty ty
 
 | TypeAnnotation (nt, ty, scs) -> 
   Format.fprintf ppf "%a :: %a { %a };"
-  pp_print_nonterminal nt 
-  pp_print_ty ty
-  (Lib.pp_print_list pp_print_semantic_constraint " ") scs
+    pp_print_nonterminal nt 
+    pp_print_ty ty
+    (Lib.pp_print_list pp_print_semantic_constraint " ") scs
 
 | StubbedElement (id, stub) -> 
   Format.pp_print_string ppf (id ^ " " ^ stub)
@@ -217,4 +217,4 @@ let pp_print_element: Format.formatter -> element ->  unit
 let pp_print_ast: Format.formatter -> ast ->  unit 
 = fun ppf ast -> 
   Format.fprintf ppf "%a\n"
-  (Lib.pp_print_list pp_print_element "\n") ast
+    (Lib.pp_print_list pp_print_element "\n") ast
