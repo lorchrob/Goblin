@@ -17,17 +17,21 @@ let build_prm: ast -> prod_rule_map
 = fun ast -> 
   let prm = List.fold_left (fun acc element -> match element with 
   | StubbedElement _ -> acc
-  | ProdRule (nt, grammar_elements, _) -> 
-    let grammar_elements = List.map Utils.grammar_element_to_string grammar_elements in
-    let grammar_elements = Utils.StringSet.of_list grammar_elements in (
-    match Utils.StringMap.find_opt nt acc with 
-    | Some mem -> 
-      if (Utils.StringSet.is_empty mem) then 
-        failwith ("Nonterminal " ^ nt ^ " has both a type annotation and a production rule")
-      else Utils.StringMap.add nt (Utils.StringSet.union mem grammar_elements) acc 
-    | None -> 
-      Utils.StringMap.add nt grammar_elements acc 
-    )
+  | ProdRule (nt, rhss) -> 
+    List.fold_left (fun acc rhss -> match rhss with 
+    | Rhs (ges, _) -> 
+      let grammar_elements = List.map Utils.grammar_element_to_string ges in
+      let grammar_elements = Utils.StringSet.of_list grammar_elements in (
+      match Utils.StringMap.find_opt nt acc with 
+      | Some mem -> 
+        if (Utils.StringSet.is_empty mem) then 
+          failwith ("Nonterminal " ^ nt ^ " has both a type annotation and a production rule")
+        else Utils.StringMap.add nt (Utils.StringSet.union mem grammar_elements) acc 
+      | None -> 
+        Utils.StringMap.add nt grammar_elements acc     
+      )
+    | StubbedRhs _ -> acc
+    ) acc rhss
   | TypeAnnotation (nt, _, _) -> 
     match Utils.StringMap.find_opt nt acc with 
     | Some _ -> 
@@ -42,7 +46,7 @@ let build_prm: ast -> prod_rule_map
 let build_nt_set: ast -> Utils.StringSet.t 
 = fun ast -> 
   List.fold_left (fun acc element -> match element with 
-  | ProdRule (nt, _, _)
+  | ProdRule (nt, _)
   | TypeAnnotation (nt, _, _) -> Utils.StringSet.add nt acc
   | StubbedElement _ -> acc
   ) Utils.StringSet.empty ast
@@ -127,25 +131,32 @@ let rec check_type_annot_nt_exprs: prod_rule_map -> Utils.StringSet.t -> expr ->
   | BVCast _  
   | IntConst _ -> expr
 
+let check_syntax_prod_rule: prod_rule_map -> Utils.StringSet.t -> prod_rule_rhs -> prod_rule_rhs
+= fun prm nt_set rhss -> match rhss with 
+| Rhs (ges, scs) ->
+  let ges' = List.map Utils.grammar_element_to_string ges in
+  let scs = List.map (fun sc -> match sc with 
+  | Dependency (nt2, expr) -> 
+    if (not (Utils.StringSet.mem nt2 nt_set)) then failwith ("Dangling identifier " ^ nt2) else
+    if (not (List.mem nt2 ges')) then failwith ("Dependency LHS identifier " ^ nt2 ^ " is not present on the RHS of the corresponding production rule") else
+    let expr = check_dangling_identifiers nt_set expr in 
+    let expr = check_prod_rule_nt_exprs prm (Utils.StringSet.of_list ges') expr in
+    Dependency (nt2, expr)
+  | SyGuSExpr expr -> 
+    let expr = check_dangling_identifiers nt_set expr in 
+    let expr = check_prod_rule_nt_exprs prm (Utils.StringSet.of_list ges') expr in
+    SyGuSExpr expr
+  ) scs in 
+  Rhs (ges, scs)
+| StubbedRhs _ -> assert false
+
 let check_syntax: prod_rule_map -> Utils.StringSet.t -> ast -> ast 
 = fun prm nt_set ast -> 
   let ast = List.map (fun element -> match element with 
   | StubbedElement _ -> element
-  | ProdRule (nt, ges, scs) -> 
-    let ges' = List.map Utils.grammar_element_to_string ges in
-    let scs = List.map (fun sc -> match sc with 
-    | Dependency (nt2, expr) -> 
-      if (not (Utils.StringSet.mem nt2 nt_set)) then failwith ("Dangling identifier " ^ nt2) else
-      if (not (List.mem nt2 ges')) then failwith ("Dependency LHS identifier " ^ nt2 ^ " is not present on the RHS of the corresponding production rule") else
-      let expr = check_dangling_identifiers nt_set expr in 
-      let expr = check_prod_rule_nt_exprs prm (Utils.StringSet.of_list ges') expr in
-      Dependency (nt2, expr)
-    | SyGuSExpr expr -> 
-      let expr = check_dangling_identifiers nt_set expr in 
-      let expr = check_prod_rule_nt_exprs prm (Utils.StringSet.of_list ges') expr in
-      SyGuSExpr expr
-    ) scs in 
-    ProdRule (nt, ges, scs)
+  | ProdRule (nt, rhss) -> 
+    let rhss = List.map (check_syntax_prod_rule prm nt_set) rhss in
+    ProdRule (nt, rhss)
   | TypeAnnotation (nt, ty, scs) -> 
     let scs = List.map (fun sc -> match sc with 
     | Dependency (nt2, expr) ->

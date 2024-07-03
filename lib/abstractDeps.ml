@@ -49,26 +49,33 @@ let stub_grammar_element: semantic_constraint list -> grammar_element -> semanti
 | NamedNonterminal _ -> failwith "Named nonterminals not yet supported"
 
 
+let simp_rhss: prod_rule_rhs -> semantic_constraint Utils.StringMap.t * prod_rule_rhs 
+= fun rhss -> match rhss with 
+| Rhs (ges, scs) ->
+  let scs = List.map (fun sc -> match sc with 
+  | Dependency (nt, expr) -> Dependency (nt, calculate_casts expr)
+  | SyGuSExpr expr -> SyGuSExpr (calculate_casts expr)
+  ) scs in 
+  (* Abstract away dependent terms. Whenever we abstract away a term, we store 
+     a mapping from the abstracted stub ID to the original dependency *)
+  let dep_map, ges = List.fold_left (fun acc ge -> 
+    match stub_grammar_element scs ge with 
+    | Some dep, StubbedNonterminal (nt, stub_id) -> 
+      Utils.StringMap.add (String.uppercase_ascii stub_id) dep (fst acc), snd acc @ [StubbedNonterminal (nt, stub_id)]
+    | None, ge -> (fst acc), snd acc @ [ge] 
+    | Some _, _ -> assert false 
+  ) (Utils.StringMap.empty, []) ges in 
+  dep_map, Rhs (ges, scs)
+| StubbedRhs _ -> assert false
+
 let simp_ast: ast -> (semantic_constraint Utils.StringMap.t * ast) 
 = fun ast -> 
   let dep_maps, ast = List.map (fun element -> match element with 
   | StubbedElement _ -> Utils.StringMap.empty, element
-  | ProdRule (nt, ges, scs) -> 
-    (* Compute BV -> int casts *)
-    let scs = List.map (fun sc -> match sc with 
-    | Dependency (nt, expr) -> Dependency (nt, calculate_casts expr)
-    | SyGuSExpr expr -> SyGuSExpr (calculate_casts expr)
-    ) scs in 
-    (* Abstract away dependent terms. Whenever we abstract away a term, we store 
-       a mapping from the abstracted stub ID to the original dependency *)
-    let dep_map, ges = List.fold_left (fun acc ge -> 
-      match stub_grammar_element scs ge with 
-      | Some dep, StubbedNonterminal (nt, stub_id) -> 
-        Utils.StringMap.add (String.uppercase_ascii stub_id) dep (fst acc), snd acc @ [StubbedNonterminal (nt, stub_id)]
-      | None, ge -> (fst acc), snd acc @ [ge] 
-      | Some _, _ -> assert false 
-    ) (Utils.StringMap.empty, []) ges in 
-    dep_map, ProdRule (nt, ges, scs) 
+  | ProdRule (nt, rhss) -> 
+    let dep_maps, rhss = List.map simp_rhss rhss |> List.split in
+    let dep_map = List.fold_left (Utils.StringMap.merge Lib.union_keys) Utils.StringMap.empty dep_maps in
+    dep_map, ProdRule (nt, rhss) 
   | TypeAnnotation (nt, ty, scs) -> 
     let scs = List.map (fun sc -> match sc with 
     | Dependency (nt, expr) -> Dependency (nt, calculate_casts expr)

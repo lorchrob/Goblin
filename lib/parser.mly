@@ -80,12 +80,15 @@ element:
     | Some scs -> TypeAnnotation (nt, t, scs) 
   }
 (* Production rule *)
-| nt = nonterminal; PRODUCTION; ges = nonempty_list(grammar_element); 
-  scs = option(semantic_constraints); SEMICOLON;
+| nt = nonterminal; PRODUCTION; rhss = separated_nonempty_list(OPTION, rhs); SEMICOLON;
+  { ProdRule (nt, rhss) }
+
+rhs:
+| ges = nonempty_list(grammar_element); scs = option(semantic_constraints);
   { 
     match scs with 
-    | None -> ProdRule (nt, ges, [])
-    | Some scs -> ProdRule (nt, ges, scs) 
+    | None -> Rhs (ges, [])
+    | Some scs -> Rhs (ges, scs) 
   }
 
 il_type: 

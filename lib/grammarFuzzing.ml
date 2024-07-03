@@ -14,8 +14,8 @@ open SygusAst
 (* Mutating the grammar, but without a concrete packet. *)
 let mutate_grammar: ast -> ast 
 = fun ast -> List.map (fun element -> match element with
-  | ProdRule (nt, ge1 :: ge2 :: ges, scs) -> ProdRule (nt, ge2 :: ge1 :: ges, scs)
-  | ProdRule (nt, _, _) -> ProdRule (nt, [], [])
+  | ProdRule (nt, Rhs (ge1 :: ge2 :: ges, scs) :: rules) -> ProdRule (nt, Rhs (ge2 :: ge1 :: ges, scs) :: rules)
+  | ProdRule (nt, _) -> ProdRule (nt, [])
   | TypeAnnotation _ -> element
   | StubbedElement _ -> element
   ) ast

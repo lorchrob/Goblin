@@ -1,38 +1,32 @@
 (set-logic ALL)
 
 (declare-datatype SAE_PACKET (
-	(sae_packet_con (des4 (Seq Bool)) (des5 (Seq Bool)))
+	(sae_packet_con0 (des3 (_ BitVec 16)) (des4 (_ BitVec 16)))
 ))
 
 (synth-fun top () SAE_PACKET
 ; declare nonterminals
 (
 	(sae_packet SAE_PACKET)
-	(status_code (Seq Bool))
-	(auth_algo (Seq Bool))
+	(status_code (_ BitVec 16))
+	(auth_algo (_ BitVec 16))
 
 )
 ; grammar rules
 (
-	(sae_packet SAE_PACKET ((sae_packet_con auth_algo status_code)))
-	(status_code (Seq Bool) ((Constant (Seq Bool))))
-	(auth_algo (Seq Bool) ((Constant (Seq Bool))))
+	(sae_packet SAE_PACKET ((sae_packet_con0 auth_algo status_code)))
+	(status_code (_ BitVec 16) ((Constant (_ BitVec 16))))
+	(auth_algo (_ BitVec 16) ((Constant (_ BitVec 16))))
 
 )
 )
 
-(define-fun c6 ((sae_packet SAE_PACKET)) Bool 
+(define-fun c5 ((sae_packet SAE_PACKET)) Bool 
 	(match sae_packet (
 		((sae_packet_con auth_algo status_code)
-		 (> (seq.len auth_algo) 1)) 
+		 (= auth_algo #b0000000000001100)) 
 	))
 )
-(constraint (c6 top))(define-fun c7 ((sae_packet SAE_PACKET)) Bool 
-	(match sae_packet (
-		((sae_packet_con auth_algo status_code)
-		 (> (seq.len status_code) 5)) 
-	))
-)
-(constraint (c7 top))
+(constraint (c5 top))
 
 (check-synth)

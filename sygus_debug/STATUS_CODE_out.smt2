@@ -1,3 +1,3 @@
 (
-(define-fun top () (_ BitVec 16) #b0000000000000000)
+(define-fun top () STATUS_CODE (status_code_con #b0000010000000000))
 )

@@ -1,3 +1,3 @@
 (
-(define-fun top () _STUB0_GRAMMAR_ELEMENT (_stub0_grammar_element_con #b0000000000000001))
+(define-fun top () (_ BitVec 8) #b00000000)
 )

@@ -136,28 +136,33 @@ and check_type_expr: context -> il_type -> expr -> expr
     failwith error_message
   else expr
   
+let check_prod_rhs ctx rhss = match rhss with 
+| Rhs (ges, scs) -> 
+  let scs = List.map (fun sc -> match sc with 
+  | Dependency (nt2, expr) -> 
+    let exp_ty = 
+      match Utils.StringMap.find_opt nt2 ctx with 
+      | None -> 
+        failwith "Dependency LHS must be a nonterminal with a primitive (non-inductive) type"
+      | Some exp_ty -> exp_ty 
+    in
+    let expr = check_type_expr ctx exp_ty expr in 
+    Dependency (nt2, expr)
+  | SyGuSExpr expr -> 
+    let exp_ty = Bool in
+    let expr = check_type_expr ctx exp_ty expr in 
+    SyGuSExpr expr
+  ) scs in 
+  Rhs (ges, scs)
+| StubbedRhs _ -> assert false
 
 let check_types: context -> ast -> ast 
 = fun ctx ast -> 
   let ast = List.map (fun element -> match element with 
   | StubbedElement _ -> element
-  | ProdRule (nt, ges, scs) -> 
-    let scs = List.map (fun sc -> match sc with 
-    | Dependency (nt2, expr) -> 
-      let exp_ty = 
-        match Utils.StringMap.find_opt nt2 ctx with 
-        | None -> 
-          failwith "Dependency LHS must be a nonterminal with a primitive (non-inductive) type"
-        | Some exp_ty -> exp_ty 
-      in
-      let expr = check_type_expr ctx exp_ty expr in 
-      Dependency (nt2, expr)
-    | SyGuSExpr expr -> 
-      let exp_ty = Bool in
-      let expr = check_type_expr ctx exp_ty expr in 
-      SyGuSExpr expr
-    ) scs in 
-    ProdRule (nt, ges, scs)
+  | ProdRule (nt, rhss) -> 
+    let rhss = List.map (check_prod_rhs ctx) rhss in
+    ProdRule (nt, rhss)
   | TypeAnnotation (nt, ty, scs) -> 
     let scs = List.map (fun sc -> match sc with 
     | Dependency (nt2, expr) ->

@@ -42,8 +42,12 @@ type grammar_element =
 | NamedNonterminal of string * string
 | StubbedNonterminal of string * string
 
+type prod_rule_rhs = 
+| Rhs of grammar_element list * semantic_constraint list
+| StubbedRhs of string
+
 type element =
-| ProdRule of string * grammar_element list * semantic_constraint list
+| ProdRule of string * prod_rule_rhs list
 | TypeAnnotation of string * il_type * semantic_constraint list
 | StubbedElement of string * string
 

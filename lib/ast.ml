@@ -57,10 +57,12 @@ type grammar_element =
 | NamedNonterminal of string * string
 | StubbedNonterminal of string * string
 
-(*!! TODO: Update ProdRule to (grammar_element list * semantic_constraint list) StringMap
-           to support multiple production rules for a grammar element *)
+type prod_rule_rhs = 
+| Rhs of grammar_element list * semantic_constraint list
+| StubbedRhs of string
+
 type element = 
-| ProdRule of string * grammar_element list * semantic_constraint list
+| ProdRule of string * prod_rule_rhs list
 | TypeAnnotation of string * il_type * semantic_constraint list
 | StubbedElement of string * string
 
@@ -187,18 +189,24 @@ let pp_print_grammar_element: Format.formatter -> grammar_element ->  unit
     pp_print_nonterminal nt
 | StubbedNonterminal (_, stub_id) -> Format.pp_print_string ppf stub_id
 
+let pp_print_prod_rule_rhs: Format.formatter -> prod_rule_rhs -> unit 
+= fun ppf rhss -> 
+  match rhss with 
+| Rhs (ges, []) -> 
+  Format.fprintf ppf "%a"
+  (Lib.pp_print_list pp_print_grammar_element " ") ges
+| Rhs (ges, scs) ->
+  Format.fprintf ppf "%a \n{ %a }"
+  (Lib.pp_print_list pp_print_grammar_element " ") ges
+  (Lib.pp_print_list pp_print_semantic_constraint " ") scs
+| StubbedRhs _ -> assert false
+
 let pp_print_element: Format.formatter -> element ->  unit 
 = fun ppf el -> match el with 
-| ProdRule (nt, g_els, []) -> 
+| ProdRule (nt, rhss) -> 
   Format.fprintf ppf "%a ::= %a;"
     pp_print_nonterminal nt
-    (Lib.pp_print_list pp_print_grammar_element " ") g_els
-  
-| ProdRule (nt, g_els, scs) -> 
-  Format.fprintf ppf "%a :: %a \n{ %a };"
-    pp_print_nonterminal nt
-    (Lib.pp_print_list pp_print_grammar_element " ") g_els
-    (Lib.pp_print_list pp_print_semantic_constraint " ") scs
+    (Lib.pp_print_list pp_print_prod_rule_rhs " | ") rhss
 
 | TypeAnnotation (nt, ty, []) -> 
   Format.fprintf ppf "%a :: %a;"
