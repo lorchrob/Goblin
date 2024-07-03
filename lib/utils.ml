@@ -3,6 +3,9 @@ open Ast
 module StringMap = Map.Make(String)
 module StringSet = Set.Make(String)
 
+(* Module state for creating fresh identifiers *)
+let k = ref 0
+
 let capture_output: (Format.formatter -> 'a -> unit) -> 'a -> string = 
 fun f arg ->
   let buf = Buffer.create 80 in

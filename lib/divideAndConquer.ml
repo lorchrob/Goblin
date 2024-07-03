@@ -1,15 +1,12 @@
 open Ast
 
-(* Module state for creating fresh identifiers *)
-let k = ref 0
-
 (* Loop through all production rules and type annotations. 
    If we hit a semantic constraint, stub it out, 
    make a recursive call to generate a new AST 
    with new top-level element, and continue. *)
 let mk_fresh_stub_id () = 
-  let id = "_stub" ^ (string_of_int !k) ^ "_grammar_element" in 
-  k := !k + 1;
+  let id = "_stub" ^ (string_of_int !Utils.k) ^ "_grammar_element" in 
+  Utils.k := !Utils.k + 1;
   String.uppercase_ascii id
   
 let rec stub_subproblems_prod_rule_rhss
@@ -29,6 +26,8 @@ let stub_subproblems: ast -> ast * ast list
   let rec stub_subproblems' ast = match ast with 
   | element :: elements -> (match element with 
     | ProdRule (nt, rhss) ->
+      (* NOTE: We could consider all the RHSs together rather than splitting them up. Then the solver 
+         can decide which production rule to use, rather than doing all of them. *)
       let ast', subproblems1 = stub_subproblems' elements in 
       let rhss, subproblems2 = stub_subproblems_prod_rule_rhss elements rhss in
       ProdRule (nt, rhss) :: ast', subproblems1 @ subproblems2

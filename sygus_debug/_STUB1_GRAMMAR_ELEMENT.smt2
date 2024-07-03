@@ -4,7 +4,7 @@
 	(_stub2_grammar_element_con0)
 ))
 (declare-datatype _STUB1_GRAMMAR_ELEMENT (
-	(_stub1_grammar_element_con0 (des12 (_ BitVec 16)))
+	(_stub1_grammar_element_con0 (des19 (_ BitVec 16)))
 ))
 
 (synth-fun top () _STUB1_GRAMMAR_ELEMENT
@@ -12,24 +12,26 @@
 (
 	(_stub1_grammar_element _STUB1_GRAMMAR_ELEMENT)
 	(auth_algo AUTH_ALGO)
-	(bv (_ BitVec 16))
+	(bv1 (_ BitVec 16))
+	(bv2 (_ BitVec 16))
 
 )
 ; grammar rules
 (
-	(_stub1_grammar_element _STUB1_GRAMMAR_ELEMENT ((_stub1_grammar_element_con0 bv)))
+	(_stub1_grammar_element _STUB1_GRAMMAR_ELEMENT ((_stub1_grammar_element_con0 bv2)))
 	(auth_algo AUTH_ALGO (_stub2_grammar_element_con0))
-	(bv (_ BitVec 16) ((Constant (_ BitVec 16))))
+	(bv1 (_ BitVec 16) ((Constant (_ BitVec 16))))
+	(bv2 (_ BitVec 16) ((Constant (_ BitVec 16))))
 
 )
 )
 
-(define-fun c13 ((_stub1_grammar_element _STUB1_GRAMMAR_ELEMENT)) Bool 
+(define-fun c20 ((_stub1_grammar_element _STUB1_GRAMMAR_ELEMENT)) Bool 
 	(match _stub1_grammar_element (
-		((_stub1_grammar_element_con0 bv)
-		 (= bv #b0000000000000000))
+		((_stub1_grammar_element_con0 bv2)
+		 (= bv2 #b0000000000000011))
 	))
 )
-(constraint (c13 top))
+(constraint (c20 top))
 
 (check-synth)

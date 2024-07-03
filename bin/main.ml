@@ -28,9 +28,10 @@ open Sbf
 let () = 
   ignore (Pipeline.main_pipeline 
   "<SAE_PACKET> ::= <AUTH_ALGO> <STATUS_CODE>;
-  <STATUS_CODE> ::= <BV> { <BV> = 0b0000000000000000; };
-  <AUTH_ALGO> ::= <BV> { <BV> = 0b0000000000000001; };
-  <BV> :: BitVector(16);
+  <STATUS_CODE> ::= <BV1> <BV2> | <BV2> { <BV2> = 0b0000000000000011; };
+  <AUTH_ALGO> ::= <BV1> { <BV1> = 0b0000000000000111; };
+  <BV1> :: BitVector(16);
+  <BV2> :: BitVector(16);
   "
   )
 

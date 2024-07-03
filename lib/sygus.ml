@@ -1,20 +1,17 @@
 open Ast
 
-(* Module state for creating fresh identifiers *)
-let i = ref 0
-
 module TC = TypeChecker
 
 let fresh_destructor: unit -> string 
 = fun () ->
-  let id = "des" ^ string_of_int !i in 
-  i := !i + 1;
+  let id = "des" ^ string_of_int !Utils.k in 
+  Utils.k := !Utils.k + 1;
   id
 
 let fresh_constraint: unit -> string 
 = fun () ->
-  let id = "c" ^ string_of_int !i in 
-  i := !i + 1;
+  let id = "c" ^ string_of_int !Utils.k in 
+  Utils.k := !Utils.k + 1;
   id
 
 let pp_print_ty: Format.formatter -> il_type -> unit 

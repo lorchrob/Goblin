@@ -1,8 +1,5 @@
 open Ast
 
-(* Module state for fresh identifiers *)
-let k = ref 0
-
 let il_int_to_bitvector: int -> int -> expr 
 = fun length n ->
   if n >= (1 lsl length) then
@@ -41,8 +38,8 @@ let stub_grammar_element: semantic_constraint list -> grammar_element -> semanti
   | Dependency (nt2, _) -> nt = nt2
   ) scs with 
   | Some dep -> 
-    let stub_id = "_stub" ^ (string_of_int !k) ^ "_" ^ nt in
-    k := !k + 1;
+    let stub_id = "_stub" ^ (string_of_int !Utils.k) ^ "_" ^ nt in
+    Utils.k := !Utils.k + 1;
     Some dep, StubbedNonterminal (nt, stub_id) 
   | None -> None, ge
   )
