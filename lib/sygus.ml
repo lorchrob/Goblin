@@ -43,10 +43,10 @@ let pp_print_constructor: TC.context -> Format.formatter -> grammar_element -> u
   (String.uppercase_ascii stub_id)
 
 let pp_print_datatype_rhs 
-= fun ctx nt ppf (rhs, i) -> match rhs with 
+= fun ctx nt ppf (rhs, idx) -> match rhs with 
 | Rhs (ges, _) -> 
   Format.fprintf ppf "\n\t(%s %a)"
-   ((String.lowercase_ascii nt) ^ "_con" ^ (string_of_int i))
+   ((String.lowercase_ascii nt) ^ "_con" ^ (string_of_int idx))
     (Lib.pp_print_list (pp_print_constructor ctx) " ") ges
 | StubbedRhs _ -> Format.fprintf ppf "STUB\n"
 
@@ -156,26 +156,6 @@ let rec pp_print_expr: Format.formatter -> expr -> unit
 | NTExpr _ -> failwith "Nonterminal expressions with either dot notation or indexing are not yet fully supported" 
 | BLConst _ -> failwith "BitList literals not yet fully supported"
 | BVCast _ -> failwith "Internal error: a BV cast survived preprocessing!"
- 
-let pp_print_semantic_constraint_prod_rule: Format.formatter -> string -> grammar_element list -> semantic_constraint -> unit 
-= fun ppf nt ges sc -> match sc with 
-| Dependency _ -> () 
-| SyGuSExpr expr -> 
-  let constraint_id = fresh_constraint () in 
-  let 
-    ges = List.map Utils.grammar_element_to_string ges |> List.map String.lowercase_ascii 
-  in 
-  Format.fprintf ppf "(define-fun %s ((%s %s)) Bool \n\t(match %s (\n\t\t((%s %a)\n\t\t %a) \n\t))\n)"
-  constraint_id
-    (String.lowercase_ascii nt) 
-    (String.uppercase_ascii nt) 
-    (String.lowercase_ascii nt) 
-    ((String.lowercase_ascii nt) ^ "_con") 
-    (Lib.pp_print_list Format.pp_print_string " ") ges
-    pp_print_expr expr; 
-    Lib.pp_print_newline ppf;
-  Format.fprintf ppf "(constraint (%s top))"
-    constraint_id
 
 let pp_print_semantic_constraint_ty_annot: Format.formatter -> string -> il_type -> semantic_constraint -> unit 
 = fun ppf nt ty sc -> match sc with 
@@ -190,18 +170,53 @@ let pp_print_semantic_constraint_ty_annot: Format.formatter -> string -> il_type
   Format.fprintf ppf "(constraint (%s top))"
     constraint_id
 
-let pp_print_constraints_rhs 
-= fun ppf nt rhs -> match rhs with 
-| StubbedRhs _ -> () 
-| Rhs (ges, scs) -> 
-  List.iter (pp_print_semantic_constraint_prod_rule ppf nt ges) scs
+let pp_print_constraints_rhs: string -> Format.formatter -> prod_rule_rhs * int -> unit
+= fun nt ppf (rhs, idx) -> match rhs with 
+| StubbedRhs _ -> Format.fprintf ppf "STUB\n"
+| Rhs (ges, scs) ->
+  let 
+    ges = List.map Utils.grammar_element_to_string ges |> List.map String.lowercase_ascii 
+  in  
+  let exprs = List.filter_map (fun sc -> match sc with 
+  | SyGuSExpr expr -> Some expr 
+  | _ -> None
+  ) scs in
+  if List.length exprs > 1 then
+    Format.fprintf ppf "((%s %a)\n\t\t (and %a))"
+    ((String.lowercase_ascii nt) ^ "_con" ^ (string_of_int idx)) 
+      (Lib.pp_print_list Format.pp_print_string " ") ges
+      (Lib.pp_print_list pp_print_expr " ") exprs
+  else if List.length exprs = 1 then 
+    Format.fprintf ppf "((%s %a)\n\t\t %a)"
+    ((String.lowercase_ascii nt) ^ "_con" ^ (string_of_int idx)) 
+      (Lib.pp_print_list Format.pp_print_string " ") ges
+      (Lib.pp_print_list pp_print_expr " ") exprs 
+  else 
+    Format.fprintf ppf "((%s %a)\n\t\t true)"
+    ((String.lowercase_ascii nt) ^ "_con" ^ (string_of_int idx)) 
+      (Lib.pp_print_list Format.pp_print_string " ") ges
+  
+let pp_print_semantic_constraints_prod_rule
+= fun ppf nt rhss ->
+  let constraint_id = fresh_constraint () in 
 
+  Format.fprintf ppf "(define-fun %s ((%s %s)) Bool \n\t(match %s (\n\t\t%a\n\t))\n)"
+  constraint_id
+    (String.lowercase_ascii nt) 
+    (String.uppercase_ascii nt) 
+    (String.lowercase_ascii nt)
+    (Lib.pp_print_list (pp_print_constraints_rhs nt) "\n") rhss;
+    Lib.pp_print_newline ppf;
+  Format.fprintf ppf "(constraint (%s top))"
+    constraint_id
 
 let pp_print_constraints: Format.formatter -> ast -> unit 
 = fun ppf ast -> match ast with 
 | [] -> failwith "Input grammar must have at least one production rule or type annotation"
 | ProdRule (nt, rhss) :: _ -> 
-  List.iter (pp_print_constraints_rhs ppf nt) rhss
+  if List.exists (fun rhs -> match rhs with | Rhs (_, _ :: _) -> true | _ -> false) rhss then
+  let rhss = List.mapi (fun i rhs -> (rhs, i)) rhss in
+  pp_print_semantic_constraints_prod_rule ppf nt rhss
 | TypeAnnotation (nt, ty, scs) :: _ -> 
   List.iter (pp_print_semantic_constraint_ty_annot ppf nt ty) scs
 | StubbedElement _ :: _ -> Format.pp_print_string ppf "STUB\n"

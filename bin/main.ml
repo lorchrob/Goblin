@@ -27,12 +27,11 @@ open Sbf
 (* Main function *)
 let () = 
   ignore (Pipeline.main_pipeline 
-  "<SAE_PACKET> ::= <AUTH_ALGO> <STATUS_CODE> 
-  { <AUTH_ALGO> = int_to_bitvector(16, 12); };
-
-  <STATUS_CODE> :: BitVector(16);
-  <AUTH_ALGO> :: BitVector(16);
-"
+  "<SAE_PACKET> ::= <AUTH_ALGO> <STATUS_CODE>;
+  <STATUS_CODE> ::= <BV> { <BV> = 0b0000000000000000; };
+  <AUTH_ALGO> ::= <BV> { <BV> = 0b0000000000000001; };
+  <BV> :: BitVector(16);
+  "
   )
 
 

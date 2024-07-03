@@ -199,7 +199,8 @@ let pp_print_prod_rule_rhs: Format.formatter -> prod_rule_rhs -> unit
   Format.fprintf ppf "%a \n{ %a }"
   (Lib.pp_print_list pp_print_grammar_element " ") ges
   (Lib.pp_print_list pp_print_semantic_constraint " ") scs
-| StubbedRhs _ -> assert false
+| StubbedRhs stub_id -> 
+  Format.pp_print_string ppf stub_id
 
 let pp_print_element: Format.formatter -> element ->  unit 
 = fun ppf el -> match el with 
