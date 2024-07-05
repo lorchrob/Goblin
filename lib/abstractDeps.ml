@@ -45,6 +45,18 @@ let stub_grammar_element: semantic_constraint list -> grammar_element -> semanti
   )
 | NamedNonterminal _ -> failwith "Named nonterminals not yet supported"
 
+let stub_ty_annot
+= fun nt ty scs -> 
+  match List.find_opt (fun sc -> match sc with
+  | SyGuSExpr _ -> false 
+  | Dependency (nt2, _) -> nt = nt2
+  ) scs with 
+  | Some dep -> 
+    let stub_id = "_stub" ^ (string_of_int !Utils.k) ^ "_" ^ nt in
+    Utils.k := !Utils.k + 1;
+    Utils.StringMap.singleton stub_id dep, StubbedElement (nt, stub_id)
+  | None -> Utils.StringMap.empty, TypeAnnotation (nt, ty, scs)
+
 
 let simp_rhss: prod_rule_rhs -> semantic_constraint Utils.StringMap.t * prod_rule_rhs 
 = fun rhss -> match rhss with 
@@ -65,6 +77,7 @@ let simp_rhss: prod_rule_rhs -> semantic_constraint Utils.StringMap.t * prod_rul
   dep_map, Rhs (ges, scs)
 | StubbedRhs _ -> assert false
 
+
 let simp_ast: ast -> (semantic_constraint Utils.StringMap.t * ast) 
 = fun ast -> 
   let dep_maps, ast = List.map (fun element -> match element with 
@@ -78,7 +91,8 @@ let simp_ast: ast -> (semantic_constraint Utils.StringMap.t * ast)
     | Dependency (nt, expr) -> Dependency (nt, calculate_casts expr)
     | SyGuSExpr expr -> SyGuSExpr (calculate_casts expr)
     ) scs in 
-    Utils.StringMap.empty, TypeAnnotation (nt, ty, scs)
+    let dep_map, element = stub_ty_annot nt ty scs in
+    dep_map, element
   ) ast |> List.split in 
   let dep_map = List.fold_left (Utils.StringMap.merge Lib.union_keys) Utils.StringMap.empty dep_maps in
   dep_map, ast

@@ -3,14 +3,10 @@
 (declare-datatype _STUB0_AC_ELEMENT_ID_EXTENSION (
 	(_stub0_ac_element_id_extension_con)
 ))
-(declare-datatype AC_ELEMENT_ID_EXTENSION (
-	(_stub0_ac_element_id_extension_con)
-))
 
-(synth-fun top () _stub0_AC_ELEMENT_ID_EXTENSION
+(synth-fun top () _STUB0_AC_ELEMENT_ID_EXTENSION
 ; declare nonterminals
 (
-	(ac_element_id_extension AC_ELEMENT_ID_EXTENSION)
 	(ac_token_element (Seq Bool))
 	(scalar (Seq Bool))
 	(element (Seq Bool))
@@ -20,7 +16,6 @@
 )
 ; grammar rules
 (
-	(ac_element_id_extension AC_ELEMENT_ID_EXTENSION (_stub0_ac_element_id_extension_con))
 	(ac_token_element (Seq Bool) ((Constant (Seq Bool))))
 	(scalar (Seq Bool) ((Constant (Seq Bool))))
 	(element (Seq Bool) ((Constant (Seq Bool))))
@@ -29,3 +24,7 @@
 	(_stub0_ac_element_id_extension _STUB0_AC_ELEMENT_ID_EXTENSION (_stub0_ac_element_id_extension_con))
 )
 )
+
+
+
+(check-synth)

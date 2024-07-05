@@ -32,7 +32,7 @@ let stub_subproblems: ast -> ast * ast list
       let rhss, subproblems2 = stub_subproblems_prod_rule_rhss elements rhss in
       ProdRule (nt, rhss) :: ast', subproblems1 @ subproblems2
     | StubbedElement _
-    | TypeAnnotation (_, _, [])-> 
+    | TypeAnnotation (_, _, []) -> 
       let ast', subproblems = stub_subproblems' elements in 
       element :: ast', subproblems
     | TypeAnnotation (nt, ty, scs) ->

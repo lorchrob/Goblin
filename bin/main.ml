@@ -27,12 +27,28 @@ open Sbf
 (* Main function *)
 let () = 
   ignore (Pipeline.main_pipeline 
-  "<SAE_PACKET> ::= <AUTH_ALGO> <STATUS_CODE>;
-  <STATUS_CODE> ::= <BV1> <BV2> | <BV2> { <BV2> = 0b0000000000000011; };
-  <AUTH_ALGO> ::= <BV1> { <BV1> = 0b0000000000000111; };
-  <BV1> :: BitVector(16);
-  <BV2> :: BitVector(16);
   "
+  <SAE_PACKET> ::= <AUTH_ALGO> <STATUS_CODE>;
+  <STATUS_CODE> :: BitVector(16);
+  <AUTH_ALGO> :: BitVector(16) { <AUTH_ALGO> <- 0b0000000000000111; };
+  "
+  
+  (* "
+  <SAE_PACKET> ::= <AUTH_ALGO> <STATUS_CODE>;
+  <STATUS_CODE> :: BitVector(16);
+  <AUTH_ALGO> :: BitVector(16) { <AUTH_ALGO> = 0b0000000000000111; };
+  " *)
+
+    (* "
+  <AC_ELEMENT_ID_EXTENSION> :: BitVector(8)
+  { <AC_ELEMENT_ID_EXTENSION> <- int_to_bitvector(8, 93); };
+
+  <AC_TOKEN_ELEMENT> :: BitList;
+  <SCALAR> :: BitList;
+  <ELEMENT> :: BitList;
+  <CONFIRM_HASH> :: BitVector(256);
+  <SEND_CONFIRM_COUNTER> :: BitVector(16);
+  " *)
   )
 
 

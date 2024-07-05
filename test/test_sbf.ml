@@ -80,11 +80,11 @@ let test_mult_prod_rules () =
 
 let () = 
   run "My_module" [
-      "test_sc", [test_case "Semantic constraint" `Quick test_sc];
-      "test_dt", [test_case "Dependent term" `Quick test_dt];
-      "test_dc", [test_case "Divide and conquer" `Quick test_dc];
-      "test_bl", [test_case "Bit list" `Quick test_bl];
-      "test_top_level_ty_annot", [test_case "Top level type annotation" `Quick test_top_level_ty_annot];
-      "test_ty_annot_sc", [test_case "Top level type annotation with semantic constraint" `Quick test_ty_annot_sc];
-      "test_mult_prod_rules", [test_case "Test example with nonterminal with multiple prod rules, with semantic constraints" `Quick test_mult_prod_rules];
-    ]
+    "test_sc", [test_case "Semantic constraint" `Quick test_sc];
+    "test_dt", [test_case "Dependent term" `Quick test_dt];
+    "test_dc", [test_case "Divide and conquer" `Quick test_dc];
+    "test_bl", [test_case "Bit list" `Quick test_bl];
+    "test_top_level_ty_annot", [test_case "Top level type annotation" `Quick test_top_level_ty_annot];
+    "test_ty_annot_sc", [test_case "Top level type annotation with semantic constraint" `Quick test_ty_annot_sc];
+    "test_mult_prod_rules", [test_case "Test example with nonterminal with multiple prod rules, with semantic constraints" `Quick test_mult_prod_rules];
+  ]

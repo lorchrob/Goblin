@@ -64,10 +64,7 @@ let pp_print_datatypes: Format.formatter -> TC.context -> Ast.semantic_constrain
     Format.fprintf ppf "(declare-datatype %s (%a\n))\n"
       (String.uppercase_ascii nt)
       (Lib.pp_print_list (pp_print_datatype_rhs ctx nt) " ") (List.mapi (fun i rhs -> (rhs, i)) rhss);
-  | StubbedElement (nt, stub_id) -> 
-    Format.fprintf ppf "(declare-datatype %s (\n\t(%s)\n))\n"
-      (String.uppercase_ascii nt)
-      ((String.lowercase_ascii stub_id) ^ "_con");
+  | StubbedElement _ -> ()
   ) ast 
 
 let pp_print_nt_decs: Ast.semantic_constraint Utils.StringMap.t -> Format.formatter -> ast -> unit 
@@ -76,10 +73,7 @@ let pp_print_nt_decs: Ast.semantic_constraint Utils.StringMap.t -> Format.format
   Format.fprintf ppf "\t(%s %s)\n"
   (String.lowercase_ascii nt)
   (String.uppercase_ascii nt) 
-| StubbedElement (nt, _) ->
-  Format.fprintf ppf "\t(%s %s)\n"
-  (String.lowercase_ascii nt)
-  (String.uppercase_ascii nt) 
+| StubbedElement _ -> ()
 | TypeAnnotation (nt, ty, _) -> 
   Format.fprintf ppf "\t(%s %a)\n"
   (String.lowercase_ascii nt) 
@@ -214,7 +208,7 @@ let pp_print_constraints: Format.formatter -> ast -> unit
   pp_print_semantic_constraints_prod_rule ppf nt rhss
 | TypeAnnotation (nt, ty, scs) :: _ -> 
   List.iter (pp_print_semantic_constraint_ty_annot ppf nt ty) scs
-| StubbedElement _ :: _ -> Format.pp_print_string ppf "3STUB\n"
+| StubbedElement _ :: _ -> ()
 
 let pp_print_rhs: string -> Format.formatter -> prod_rule_rhs * int -> unit
 = fun nt ppf (rhs, idx) -> match rhs with 
@@ -231,11 +225,7 @@ let pp_print_rhs: string -> Format.formatter -> prod_rule_rhs * int -> unit
 let pp_print_rules: Ast.semantic_constraint Utils.StringMap.t -> Format.formatter -> ast -> unit 
 = fun dep_map ppf ast -> 
   List.iter (fun element -> match element with 
-  | StubbedElement (nt, stub_id) -> 
-    Format.fprintf ppf "\t(%s %s (%s))\n"
-      (String.lowercase_ascii nt) 
-      (String.uppercase_ascii nt) 
-      ((String.lowercase_ascii stub_id) ^ "_con")
+  | StubbedElement _ -> ()
   | ProdRule (nt, rhss) -> 
     Format.fprintf ppf "\t(%s %s (%a))\n"
       (String.lowercase_ascii nt) 
@@ -259,10 +249,10 @@ let pp_print_rules: Ast.semantic_constraint Utils.StringMap.t -> Format.formatte
 let pp_print_grammar: Format.formatter -> Ast.semantic_constraint Utils.StringMap.t ->  ast -> unit 
 = fun ppf dep_map ast -> 
   let top_datatype_str = match List.hd ast with 
+  | StubbedElement (_, nt)
   | ProdRule (nt, _) -> String.uppercase_ascii nt
   | TypeAnnotation (_, ty, _) -> 
     Utils.capture_output pp_print_ty ty
-  | StubbedElement _ -> "5STUB\n"
   in
   Format.fprintf ppf 
     "(synth-fun top () %s\n; declare nonterminals\n(\n%a\n)\n; grammar rules\n(\n%a\n)\n)"
@@ -300,6 +290,7 @@ fun ctx dep_map ast ->
   let top_nt = match ast with
   | ProdRule (nt, _) :: _ -> nt
   | TypeAnnotation (nt, _, _) :: _ -> nt
+  | StubbedElement (_, nt) :: _ -> nt
   | _ -> assert false
   in
   ignore (Unix.system "mkdir sygus_debug");
