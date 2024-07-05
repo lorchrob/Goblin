@@ -22,14 +22,17 @@ let pp_print_ty: Format.formatter -> il_type -> unit
 | BitList -> Format.fprintf ppf "(Seq Bool)"
 | MachineInt width -> Format.fprintf ppf "(_ BitVec %d)" (Lib.pow 2 width)
 
-let pp_print_constructor: TC.context -> Format.formatter -> grammar_element -> unit 
-= fun ctx ppf ge -> match ge with 
+let pp_print_constructor: TC.context -> Ast.semantic_constraint Utils.StringMap.t -> Format.formatter -> grammar_element -> unit 
+= fun ctx dep_map ppf ge -> match ge with 
 | Nonterminal nt 
 | NamedNonterminal (_, nt) -> 
   let d_str = fresh_destructor () in 
-  let ty_str = match Utils.StringMap.find_opt nt ctx with 
-  | None -> String.uppercase_ascii nt
-  | Some ty -> Utils.capture_output pp_print_ty ty
+  let ty_str = 
+  match Utils.StringMap.find_opt nt dep_map,
+        Utils.StringMap.find_opt nt ctx with 
+  | None, None 
+  | Some _, _ -> String.uppercase_ascii nt
+  | _, Some ty -> Utils.capture_output pp_print_ty ty
   in
   Format.fprintf ppf "(%s %s)"
   d_str
@@ -40,11 +43,11 @@ let pp_print_constructor: TC.context -> Format.formatter -> grammar_element -> u
   (String.uppercase_ascii stub_id)
 
 let pp_print_datatype_rhs 
-= fun ctx nt ppf (rhs, idx) -> match rhs with 
+= fun ctx dep_map nt ppf (rhs, idx) -> match rhs with 
 | Rhs (ges, _) -> 
   Format.fprintf ppf "\n\t(%s %a)"
    ((String.lowercase_ascii nt) ^ "_con" ^ (string_of_int idx))
-    (Lib.pp_print_list (pp_print_constructor ctx) " ") ges
+    (Lib.pp_print_list (pp_print_constructor ctx dep_map) " ") ges
 | StubbedRhs stub_id -> 
   Format.fprintf ppf "\n\t(%s)"
   ((String.lowercase_ascii stub_id) ^ "_con" ^ (string_of_int idx))
@@ -63,7 +66,7 @@ let pp_print_datatypes: Format.formatter -> TC.context -> Ast.semantic_constrain
   | ProdRule (nt, rhss) -> 
     Format.fprintf ppf "(declare-datatype %s (%a\n))\n"
       (String.uppercase_ascii nt)
-      (Lib.pp_print_list (pp_print_datatype_rhs ctx nt) " ") (List.mapi (fun i rhs -> (rhs, i)) rhss);
+      (Lib.pp_print_list (pp_print_datatype_rhs ctx dep_map nt) " ") (List.mapi (fun i rhs -> (rhs, i)) rhss);
   | StubbedElement _ -> ()
   ) ast 
 
@@ -249,7 +252,7 @@ let pp_print_rules: Ast.semantic_constraint Utils.StringMap.t -> Format.formatte
 let pp_print_grammar: Format.formatter -> Ast.semantic_constraint Utils.StringMap.t ->  ast -> unit 
 = fun ppf dep_map ast -> 
   let top_datatype_str = match List.hd ast with 
-  | StubbedElement (_, nt)
+  | StubbedElement nt
   | ProdRule (nt, _) -> String.uppercase_ascii nt
   | TypeAnnotation (_, ty, _) -> 
     Utils.capture_output pp_print_ty ty
@@ -290,7 +293,8 @@ fun ctx dep_map ast ->
   let top_nt = match ast with
   | ProdRule (nt, _) :: _ -> nt
   | TypeAnnotation (nt, _, _) :: _ -> nt
-  | StubbedElement (_, nt) :: _ -> nt
+  | StubbedElement _ :: _ -> 
+    failwith "Dependent type annotation cannot be the top-level symbol"
   | _ -> assert false
   in
   ignore (Unix.system "mkdir sygus_debug");

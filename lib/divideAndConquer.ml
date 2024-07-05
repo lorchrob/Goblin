@@ -37,8 +37,7 @@ let stub_subproblems: ast -> ast * ast list
       element :: ast', subproblems
     | TypeAnnotation (nt, ty, scs) ->
       let ast', subproblems = stub_subproblems' elements in 
-      let stub_id = mk_fresh_stub_id () in
-      StubbedElement (nt, stub_id) :: ast', (TypeAnnotation (stub_id, ty, scs) :: elements) :: subproblems
+      StubbedElement nt :: ast', (TypeAnnotation (nt, ty, scs) :: elements) :: subproblems
     )
   | [] -> [], []
   in 

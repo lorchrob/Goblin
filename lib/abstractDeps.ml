@@ -52,9 +52,7 @@ let stub_ty_annot
   | Dependency (nt2, _) -> nt = nt2
   ) scs with 
   | Some dep -> 
-    let stub_id = "_stub" ^ (string_of_int !Utils.k) ^ "_" ^ nt in
-    Utils.k := !Utils.k + 1;
-    Utils.StringMap.singleton stub_id dep, StubbedElement (nt, stub_id)
+    Utils.StringMap.singleton nt dep, StubbedElement nt
   | None -> Utils.StringMap.empty, TypeAnnotation (nt, ty, scs)
 
 
