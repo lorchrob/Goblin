@@ -1,5 +1,3 @@
-(* NOTE: This module's logic might fail if a subproblem has its own subproblems *)
-
 let extract_stub str =
   let open Str in
   let re = regexp "^\\(_stub[0-9]+\\).*" in
@@ -8,7 +6,7 @@ let extract_stub str =
   else
     ""
 
-  let replace_stub: string -> SygusAst.sygus_ast list -> SygusAst.sygus_ast option
+let replace_stub: string -> SygusAst.sygus_ast list -> SygusAst.sygus_ast option
 = fun possible_stub sygus_asts ->
   List.find_opt (fun sygus_ast -> match sygus_ast with 
   | SygusAst.IntLeaf _ | BVLeaf _ | BLLeaf _ | VarLeaf _ -> false 

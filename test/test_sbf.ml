@@ -27,6 +27,17 @@ let test_dt () =
   let output = main_pipeline input in
   check string "test_dt" output "00000000000011000000000000000000\n"
 
+let test_dt2 () =
+  let input = 
+    "
+    <SAE_PACKET> ::= <AUTH_ALGO> <STATUS_CODE>;
+    <STATUS_CODE> :: BitVector(16);
+    <AUTH_ALGO> :: BitVector(16) { <AUTH_ALGO> <- 0b0000000000000111; };
+    "
+  in
+  let output = main_pipeline input in
+  check string "test_sc" output "00000000000001110000000000000000\n"
+
 (* Divide and conquer example *)
 let test_dc () = 
   let input = 
@@ -82,6 +93,7 @@ let () =
   run "My_module" [
     "test_sc", [test_case "Semantic constraint" `Quick test_sc];
     "test_dt", [test_case "Dependent term" `Quick test_dt];
+    "test_dt2", [test_case "Dependent term 2" `Quick test_dt2];
     "test_dc", [test_case "Divide and conquer" `Quick test_dc];
     "test_bl", [test_case "Bit list" `Quick test_bl];
     "test_top_level_ty_annot", [test_case "Top level type annotation" `Quick test_top_level_ty_annot];

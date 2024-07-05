@@ -49,7 +49,6 @@ type prod_rule_rhs =
 type element =
 | ProdRule of string * prod_rule_rhs list
 | TypeAnnotation of string * il_type * semantic_constraint list
-| StubbedElement of string
 
 type ast = element list
 

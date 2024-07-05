@@ -29,35 +29,37 @@ let rec calculate_casts: expr -> expr
 | BConst _ 
 | IntConst _ -> expr
 
-let stub_grammar_element: semantic_constraint list -> grammar_element -> semantic_constraint option * grammar_element 
-= fun scs ge -> match ge with 
-| StubbedNonterminal _ -> None, ge 
+let stub_grammar_element: Utils.context -> semantic_constraint list -> grammar_element -> semantic_constraint option * grammar_element * Utils.context
+= fun ctx scs ge -> match ge with 
+| StubbedNonterminal _ -> None, ge, ctx 
 | Nonterminal nt -> (
   match List.find_opt (fun sc -> match sc with
   | SyGuSExpr _ -> false 
   | Dependency (nt2, _) -> nt = nt2
   ) scs with 
   | Some dep -> 
-    let stub_id = "_stub" ^ (string_of_int !Utils.k) ^ "_" ^ nt in
-    Utils.k := !Utils.k + 1;
-    Some dep, StubbedNonterminal (nt, stub_id) 
-  | None -> None, ge
+    let stub_id = Utils.mk_fresh_stub_id () in
+    let ctx = Utils.StringMap.remove nt ctx in
+    Some dep, StubbedNonterminal (nt, stub_id), ctx  
+  | None -> None, ge, ctx
   )
 | NamedNonterminal _ -> failwith "Named nonterminals not yet supported"
 
 let stub_ty_annot
-= fun nt ty scs -> 
+= fun ctx nt ty scs -> 
   match List.find_opt (fun sc -> match sc with
   | SyGuSExpr _ -> false 
   | Dependency (nt2, _) -> nt = nt2
   ) scs with 
   | Some dep -> 
-    Utils.StringMap.singleton nt dep, StubbedElement nt
-  | None -> Utils.StringMap.empty, TypeAnnotation (nt, ty, scs)
+    let stub_id = Utils.mk_fresh_stub_id () in
+    let ctx = Utils.StringMap.remove nt ctx in
+    Utils.StringMap.singleton stub_id dep, ProdRule (nt, [Rhs ([StubbedNonterminal(nt, stub_id)], [])]), ctx
+  | None -> Utils.StringMap.empty, TypeAnnotation (nt, ty, scs), ctx
 
 
-let simp_rhss: prod_rule_rhs -> semantic_constraint Utils.StringMap.t * prod_rule_rhs 
-= fun rhss -> match rhss with 
+let simp_rhss: Utils.context -> prod_rule_rhs -> semantic_constraint Utils.StringMap.t * prod_rule_rhs * Utils.context 
+= fun ctx rhss -> match rhss with 
 | Rhs (ges, scs) ->
   let scs = List.map (fun sc -> match sc with 
   | Dependency (nt, expr) -> Dependency (nt, calculate_casts expr)
@@ -65,35 +67,42 @@ let simp_rhss: prod_rule_rhs -> semantic_constraint Utils.StringMap.t * prod_rul
   ) scs in 
   (* Abstract away dependent terms. Whenever we abstract away a term, we store 
      a mapping from the abstracted stub ID to the original dependency *)
-  let dep_map, ges = List.fold_left (fun acc ge -> 
-    match stub_grammar_element scs ge with 
-    | Some dep, StubbedNonterminal (nt, stub_id) -> 
-      Utils.StringMap.add (String.uppercase_ascii stub_id) dep (fst acc), snd acc @ [StubbedNonterminal (nt, stub_id)]
-    | None, ge -> (fst acc), snd acc @ [ge] 
-    | Some _, _ -> assert false 
-  ) (Utils.StringMap.empty, []) ges in 
-  dep_map, Rhs (ges, scs)
+  let dep_map, ges, ctx = List.fold_left (fun (acc_dep_map, acc_ges, acc_ctx) ge -> 
+    match stub_grammar_element acc_ctx scs ge with 
+    | Some dep, StubbedNonterminal (nt, stub_id), ctx -> 
+      Utils.StringMap.add (String.uppercase_ascii stub_id) dep acc_dep_map, 
+      acc_ges @ [StubbedNonterminal (nt, stub_id)], 
+      ctx
+    | None, ge, ctx -> acc_dep_map, acc_ges @ [ge], ctx
+    | Some _, _, _ -> assert false 
+  ) (Utils.StringMap.empty, [], ctx) ges in 
+  dep_map, Rhs (ges, scs), ctx
 | StubbedRhs _ -> assert false
 
 
-let simp_ast: ast -> (semantic_constraint Utils.StringMap.t * ast) 
-= fun ast -> 
-  let dep_maps, ast = List.map (fun element -> match element with 
-  | StubbedElement _ -> Utils.StringMap.empty, element
+(*     let dep_map = List.fold_left (Utils.StringMap.merge Lib.union_keys) acc_dep_map dep_maps in *)
+
+let simp_ast: Utils.context -> ast -> (semantic_constraint Utils.StringMap.t * ast * Utils.context) 
+= fun ctx ast -> 
+  let dep_map, ast, ctx = List.fold_left (fun (acc_dep_map, acc_elements, acc_ctx) element -> match element with 
   | ProdRule (nt, rhss) -> 
-    let dep_maps, rhss = List.map simp_rhss rhss |> List.split in
-    let dep_map = List.fold_left (Utils.StringMap.merge Lib.union_keys) Utils.StringMap.empty dep_maps in
-    dep_map, ProdRule (nt, rhss) 
+    let dep_map, rhss, ctx = List.fold_left (fun (acc_dep_map, acc_rhss, acc_ctx) rhs -> 
+      let dep_map, rhs, ctx = (simp_rhss acc_ctx rhs) in 
+      let dep_map = Utils.StringMap.merge Lib.union_keys dep_map acc_dep_map in
+      dep_map, rhs :: acc_rhss, ctx
+    ) (acc_dep_map, [], acc_ctx)  rhss in
+    let dep_map = Utils.StringMap.merge Lib.union_keys dep_map acc_dep_map in
+    dep_map, ProdRule (nt, List.rev rhss) :: acc_elements, ctx 
   | TypeAnnotation (nt, ty, scs) -> 
     let scs = List.map (fun sc -> match sc with 
     | Dependency (nt, expr) -> Dependency (nt, calculate_casts expr)
     | SyGuSExpr expr -> SyGuSExpr (calculate_casts expr)
     ) scs in 
-    let dep_map, element = stub_ty_annot nt ty scs in
-    dep_map, element
-  ) ast |> List.split in 
-  let dep_map = List.fold_left (Utils.StringMap.merge Lib.union_keys) Utils.StringMap.empty dep_maps in
-  dep_map, ast
+    let dep_map, element, ctx = stub_ty_annot acc_ctx nt ty scs in
+    let dep_map = Utils.StringMap.merge Lib.union_keys dep_map acc_dep_map in
+    dep_map, element :: acc_elements, ctx
+  ) (Utils.StringMap.empty, [], ctx) ast  in 
+  dep_map, List.rev ast, ctx
 
-let abstract_dependencies: ast -> (semantic_constraint Utils.StringMap.t * ast)  
-= fun ast -> simp_ast ast
+let abstract_dependencies: Utils.context -> ast -> (semantic_constraint Utils.StringMap.t * ast * Utils.context)  
+= fun ctx ast -> simp_ast ctx ast

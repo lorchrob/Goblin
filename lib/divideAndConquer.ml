@@ -4,10 +4,6 @@ open Ast
    If we hit a semantic constraint, stub it out, 
    make a recursive call to generate a new AST 
    with new top-level element, and continue. *)
-let mk_fresh_stub_id () = 
-  let id = "_stub" ^ (string_of_int !Utils.k) ^ "_grammar_element" in 
-  Utils.k := !Utils.k + 1;
-  String.uppercase_ascii id
   
 let rec stub_subproblems_prod_rule_rhss
 = fun elements rhss -> match rhss with 
@@ -18,7 +14,7 @@ let rec stub_subproblems_prod_rule_rhss
   hd :: tl', subproblems 
 | Rhs (ges, scs) :: tl -> 
   let tl', subproblems = stub_subproblems_prod_rule_rhss elements tl in
-  let stub_id = mk_fresh_stub_id () in
+  let stub_id = Utils.mk_fresh_stub_id () in
   StubbedRhs (stub_id) :: tl', (ProdRule (stub_id, [Rhs (ges, scs)]) :: elements) :: subproblems
 
 let stub_subproblems: ast -> ast * ast list
@@ -31,13 +27,14 @@ let stub_subproblems: ast -> ast * ast list
       let ast', subproblems1 = stub_subproblems' elements in 
       let rhss, subproblems2 = stub_subproblems_prod_rule_rhss elements rhss in
       ProdRule (nt, rhss) :: ast', subproblems1 @ subproblems2
-    | StubbedElement _
     | TypeAnnotation (_, _, []) -> 
       let ast', subproblems = stub_subproblems' elements in 
       element :: ast', subproblems
     | TypeAnnotation (nt, ty, scs) ->
       let ast', subproblems = stub_subproblems' elements in 
-      StubbedElement nt :: ast', (TypeAnnotation (nt, ty, scs) :: elements) :: subproblems
+
+      let stub_id = Utils.mk_fresh_stub_id () in
+      ProdRule (nt, [StubbedRhs stub_id]) :: ast', (TypeAnnotation (nt, ty, scs) :: elements) :: subproblems
     )
   | [] -> [], []
   in 

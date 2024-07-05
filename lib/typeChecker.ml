@@ -7,7 +7,6 @@ let build_context: ast -> ast * context
   let ctx = List.fold_left (fun acc element -> match element with 
   | ProdRule _ -> acc 
   | TypeAnnotation (nt, ty, _) -> Utils.StringMap.add nt ty acc
-  | StubbedElement _ -> acc
   ) Utils.StringMap.empty ast in 
   ast, ctx
 
@@ -159,7 +158,6 @@ let check_prod_rhs ctx rhss = match rhss with
 let check_types: context -> ast -> ast 
 = fun ctx ast -> 
   let ast = List.map (fun element -> match element with 
-  | StubbedElement _ -> element
   | ProdRule (nt, rhss) -> 
     let rhss = List.map (check_prod_rhs ctx) rhss in
     ProdRule (nt, rhss)

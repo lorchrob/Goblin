@@ -30,7 +30,7 @@ let main_pipeline input_string =
   Format.fprintf ppf "Dependent term abstraction:";
   Lib.pp_print_newline ppf;
   Format.pp_print_flush ppf ();
-  let dep_map, ast = AbstractDeps.abstract_dependencies ast in 
+  let dep_map, ast, ctx = AbstractDeps.abstract_dependencies ctx ast in 
   Ast.pp_print_ast ppf ast;
   Lib.pp_print_newline ppf;
 

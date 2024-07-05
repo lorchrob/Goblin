@@ -16,7 +16,6 @@ type prod_rule_map = (Utils.StringSet.t) Utils.StringMap.t
 let build_prm: ast -> prod_rule_map
 = fun ast -> 
   let prm = List.fold_left (fun acc element -> match element with 
-  | StubbedElement _ -> acc
   | ProdRule (nt, rhss) -> 
     List.fold_left (fun acc rhss -> match rhss with 
     | Rhs (ges, _) -> 
@@ -48,7 +47,6 @@ let build_nt_set: ast -> Utils.StringSet.t
   List.fold_left (fun acc element -> match element with 
   | ProdRule (nt, _)
   | TypeAnnotation (nt, _, _) -> Utils.StringSet.add nt acc
-  | StubbedElement _ -> acc
   ) Utils.StringSet.empty ast
 
 let rec check_dangling_identifiers: Utils.StringSet.t -> expr -> expr 
@@ -153,7 +151,6 @@ let check_syntax_prod_rule: prod_rule_map -> Utils.StringSet.t -> prod_rule_rhs 
 let check_syntax: prod_rule_map -> Utils.StringSet.t -> ast -> ast 
 = fun prm nt_set ast -> 
   let ast = List.map (fun element -> match element with 
-  | StubbedElement _ -> element
   | ProdRule (nt, rhss) -> 
     let rhss = List.map (check_syntax_prod_rule prm nt_set) rhss in
     ProdRule (nt, rhss)

@@ -3,8 +3,22 @@ open Ast
 module StringMap = Map.Make(String)
 module StringSet = Set.Make(String)
 
+type context = il_type StringMap.t
+
 (* Module state for creating fresh identifiers *)
 let k = ref 0
+
+let rec split3 lst =
+  match lst with
+  | [] -> ([], [], [])
+  | (x, y, z) :: t ->
+      let (xs, ys, zs) = split3 t in
+      (x :: xs, y :: ys, z :: zs)
+
+let mk_fresh_stub_id () = 
+  let id = "_stub" ^ (string_of_int !k) ^ "_grammar_element" in 
+  k := !k + 1;
+  String.uppercase_ascii id
 
 let capture_output: (Format.formatter -> 'a -> unit) -> 'a -> string = 
 fun f arg ->
