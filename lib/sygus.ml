@@ -156,7 +156,7 @@ let rec pp_print_expr: Format.formatter -> expr -> unit
 | CaseExpr _  -> failwith "Case expressions not yet fully supported"
 | NTExpr _ -> failwith "Nonterminal expressions with either dot notation or indexing are not yet fully supported" 
 | BLConst _ -> failwith "BitList literals not yet fully supported"
-| BVCast _ -> failwith "Internal error: a BV cast survived preprocessing!"
+| BVCast _ -> failwith "Integer to bitvector casts in semantic constraints that aren't preprocessable are not supported"
 
 let pp_print_semantic_constraint_ty_annot: Format.formatter -> string -> il_type -> semantic_constraint -> unit 
 = fun ppf nt ty sc -> match sc with 

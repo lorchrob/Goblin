@@ -15,31 +15,11 @@ open Sbf
 let () = 
   ignore (Pipeline.main_pipeline 
     "
-    <RG_ELEMENT_ID_EXTENSION> :: BitVector(8) 
-    { <RG_ELEMENT_ID_EXTENSION> <- int_to_bitvector(8, 92); };
+    <AC_TOKEN_CONTAINER> ::= <AC_ID_LENGTH>  <AC_TOKEN_ELEMENT>
+    { <AC_ID_LENGTH> <- <AC_TOKEN_ELEMENT>; };
 
-
-    <RG_ID_LIST> ::= <RG_ID> | <RG_ID> <RG_ID_LIST>;
-
-    <RG_ID> :: BitVector(8);
-
-    <AC_TOKEN_CONTAINER> ::= <AC_ELEMENT_ID> <AC_ID_LENGTH> <AC_ELEMENT_ID_EXTENSION> <AC_TOKEN_ELEMENT>
-    { <AC_ID_LENGTH> <- int_to_bitvector(8, 0); };
-
-
-    <AC_ELEMENT_ID> :: BitVector(8)
-    { <AC_ELEMENT_ID> <- int_to_bitvector(8, 255); };
-
-    <AC_ID_LENGTH> :: BitVector(8);
-
-    <AC_ELEMENT_ID_EXTENSION> :: BitVector(8)
-    { <AC_ELEMENT_ID_EXTENSION> <- int_to_bitvector(8, 93); };
-
-    <AC_TOKEN_ELEMENT> :: BitList;
-    <SCALAR> :: BitList;
-    <ELEMENT> :: BitList;
-    <CONFIRM_HASH> :: BitVector(256);
-    <SEND_CONFIRM_COUNTER> :: BitVector(16);
+    <AC_ID_LENGTH> :: Int;
+    <AC_TOKEN_ELEMENT> :: Int;
     "
   )
 

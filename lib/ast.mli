@@ -23,7 +23,7 @@ and expr =
 | UnOp of unary_operator * expr
 | CompOp of expr * comp_operator * expr
 | Length of expr
-| BVCast of int * int
+| BVCast of int * expr
 | CaseExpr of nt_expr * case list
 | NTExpr of nt_expr * int option
 | BVConst of int * bool list

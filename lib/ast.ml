@@ -33,7 +33,7 @@ expr =
 | UnOp of unary_operator * expr
 | CompOp of expr * comp_operator * expr 
 | Length of expr
-| BVCast of int * int
+| BVCast of int * expr
 | CaseExpr of nt_expr * case list
 | NTExpr of nt_expr * int option 
 | BVConst of int * bool list
@@ -139,12 +139,14 @@ and pp_print_expr: Format.formatter -> expr -> unit
 | Length expr -> 
   Format.fprintf ppf "length(%a)"
     pp_print_expr expr 
-| BVCast (width, value) -> 
-  Format.fprintf ppf "int_to_bitvector(%d, %d)" width value 
+| BVCast (width, expr) -> 
+  Format.fprintf ppf "int_to_bitvector(%d, %a)" 
+    width 
+    pp_print_expr expr 
 | CaseExpr (nt, cases) -> 
   Format.fprintf ppf "case %a of %a"
     pp_print_nt_expr nt 
-  (Lib.pp_print_list pp_print_case " ") cases 
+    (Lib.pp_print_list pp_print_case " ") cases 
 | NTExpr (nt_expr, None) -> pp_print_nt_expr ppf nt_expr 
 | NTExpr (nt_expr, Some index) -> 
   Format.fprintf ppf "%a(%d)"

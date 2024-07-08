@@ -54,9 +54,11 @@ lisp_term:
 | bits = BITS; 
   { BVLeaf (List.length bits, bits) }
 | id = ID; 
-  { VarLeaf (id) }
+  { VarLeaf id }
 | bits = bit_list; 
   { BLLeaf bits }
+| i = INTEGER; 
+  { IntLeaf i }
 
 bit_list:
 | LPAREN; AS; SEQ; DOT; EMPTY; LPAREN; CAPSEQ; BOOL; RPAREN; RPAREN; 

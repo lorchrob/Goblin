@@ -1,23 +1,12 @@
 open Ast
 
-let il_int_to_bitvector: int -> int -> expr 
-= fun length n ->
-  if n >= (1 lsl length) then
-    failwith ("Tried to cast integer " ^ string_of_int n ^ " to BitVector of inadequate width " ^ string_of_int length)
-  else
-    let rec to_bits acc len n =
-      if len = 0 then acc
-      else
-        let bit = (n land 1) = 1 in
-        to_bits (bit :: acc) (len - 1) (n lsr 1)
-    in
-    let bits = to_bits [] length n in 
-    BVConst (length, bits)
-
 let rec calculate_casts: expr -> expr 
 = fun expr -> match expr with 
-| BVCast (len, int) ->
-  il_int_to_bitvector len int
+| BVCast (len, expr) -> (
+  match expr with 
+  | IntConst i -> Utils.il_int_to_bitvector len i
+  | _ -> expr
+  )
 | BinOp (expr1, op, expr2) -> BinOp (calculate_casts expr1, op, calculate_casts expr2) 
 | UnOp (op, expr) -> UnOp (op, calculate_casts expr) 
 | CompOp (expr1, op, expr2) -> CompOp (calculate_casts expr1, op, calculate_casts expr2) 

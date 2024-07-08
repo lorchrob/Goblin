@@ -145,7 +145,7 @@ expr:
 | LPAREN; BITLIST; bl = BITS; RPAREN; { BLConst (bl) }
 (* Built-in functions *)
 | INTTOBITVECTOR; 
-  LPAREN; width = INTEGER; COMMA; n = INTEGER; RPAREN; { BVCast (width, n) }
+  LPAREN; width = INTEGER; COMMA; e = expr; RPAREN; { BVCast (width, e) }
 | LENGTH; LPAREN; e = expr; RPAREN; { Length (e) }
 (* Case expressions *)
 | CASE; e = nt_expr; OF; cs = case_list { CaseExpr (e, cs) }

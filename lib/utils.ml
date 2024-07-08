@@ -20,6 +20,20 @@ let mk_fresh_stub_id () =
   k := !k + 1;
   String.uppercase_ascii id
 
+let il_int_to_bitvector: int -> int -> expr 
+= fun length n ->
+  if n >= (1 lsl length) then
+    failwith ("Tried to cast integer " ^ string_of_int n ^ " to BitVector of inadequate width " ^ string_of_int length)
+  else
+    let rec to_bits acc len n =
+      if len = 0 then acc
+      else
+        let bit = (n land 1) = 1 in
+        to_bits (bit :: acc) (len - 1) (n lsr 1)
+    in
+    let bits = to_bits [] length n in 
+    BVConst (length, bits)
+
 let capture_output: (Format.formatter -> 'a -> unit) -> 'a -> string = 
 fun f arg ->
   let buf = Buffer.create 80 in
