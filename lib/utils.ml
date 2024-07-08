@@ -39,10 +39,17 @@ let parse: string -> ast
   let lexbuf = Lexing.from_string s in 
   Parser.s Lexer.read lexbuf
 
-let parse_sygus: string -> SygusAst.sygus_ast 
-= fun s ->
+let parse_sygus: string -> Ast.ast -> SygusAst.sygus_ast 
+= fun s ast ->
   let lexbuf = Lexing.from_string s in 
-  SygusParser.s SygusLexer.read lexbuf
+  let sygus_ast = SygusParser.s SygusLexer.read lexbuf in 
+  match ast with 
+  | ProdRule _ :: _ -> sygus_ast 
+  (* Sygus files with top-level type annotations lose their constructor name *)
+  | TypeAnnotation (nt, _, _) :: _ -> 
+    let constructor = String.lowercase_ascii nt ^ "_con0" in
+    SygusAst.Node (constructor, [sygus_ast])
+  | [] -> assert false
 
 let pp_print_string_map_keys: Format.formatter -> 'a StringMap.t -> unit 
 = fun ppf map -> 

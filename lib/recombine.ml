@@ -12,10 +12,14 @@ let replace_stub: string -> SygusAst.sygus_ast list -> SygusAst.sygus_ast option
   | SygusAst.IntLeaf _ | BVLeaf _ | BLLeaf _ | VarLeaf _ -> false 
   | Node (constructor, _) -> 
     (* To compare stubs, we only need the stub ID prefix "_stubN"*)
-    (extract_stub possible_stub = extract_stub constructor) && 
-    (extract_stub possible_stub <> "") 
+    ((extract_stub possible_stub = extract_stub constructor) && 
+     (extract_stub possible_stub <> ""))
+    || 
+    (* For type annotations, we don't use a stub ID *)
+    (possible_stub = constructor)
   ) sygus_asts
 
+(* Invariant: First element of sygus_asts is the combined AST *)
 let rec recombine: SygusAst.sygus_ast list -> SygusAst.sygus_ast 
 = fun sygus_asts -> match sygus_asts with 
 | [] -> assert false
@@ -24,7 +28,7 @@ let rec recombine: SygusAst.sygus_ast list -> SygusAst.sygus_ast
   let children = List.map (fun sygus_ast -> recombine (sygus_ast :: sygus_asts)) children in
   Node (constructor, children)
 
-(* To deal with the above note, might need to recurse on what is currently a "_" in this pattern match *)
+(* Might need to recurse on what is currently a "_" in this pattern match *)
 | VarLeaf possible_stub :: _ -> 
   match replace_stub possible_stub sygus_asts with 
   | Some sygus_ast -> sygus_ast 

@@ -14,9 +14,9 @@
 )
 )
 
-(define-fun c6 ((auth_algo (_ BitVec 16))) Bool 
+(define-fun c5 ((auth_algo (_ BitVec 16))) Bool 
 	(= auth_algo #b0000000000000111)
 )
-(constraint (c6 top))
+(constraint (c5 top))
 
 (check-synth)

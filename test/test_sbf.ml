@@ -77,6 +77,17 @@ let test_ty_annot_sc () =
   let output = main_pipeline input in 
   check string "test_ty_annot_sc" output "0\n"
 
+let test_ty_annot_sc2 () = 
+  let input = 
+    "
+    <SAE_PACKET> ::= <AUTH_ALGO> <STATUS_CODE>;
+    <STATUS_CODE> :: BitVector(16);
+    <AUTH_ALGO> :: BitVector(16) { <AUTH_ALGO> = 0b0000000000000111; };
+    "
+  in 
+  let output = main_pipeline input in 
+  check string "test_ty_annot_sc2" output "00000000000001110000000000000000\n"
+
 let test_mult_prod_rules () = 
   let input = 
   "<SAE_PACKET> ::= <AUTH_ALGO> <STATUS_CODE>;
@@ -99,4 +110,5 @@ let () =
     "test_top_level_ty_annot", [test_case "Top level type annotation" `Quick test_top_level_ty_annot];
     "test_ty_annot_sc", [test_case "Top level type annotation with semantic constraint" `Quick test_ty_annot_sc];
     "test_mult_prod_rules", [test_case "Test example with nonterminal with multiple prod rules, with semantic constraints" `Quick test_mult_prod_rules];
+    "test_ty_annot_sc2", [test_case "Top level type annotation with semantic constraint 2" `Quick test_ty_annot_sc2];
   ]

@@ -67,7 +67,8 @@ let main_pipeline input_string =
   Format.fprintf ppf "Parsing SyGuS output:";
   Lib.pp_print_newline ppf;
   Format.pp_print_flush ppf ();
-  let sygus_asts = List.map Utils.parse_sygus sygus_outputs in
+  let sygus_asts = List.map2 Utils.parse_sygus sygus_outputs asts in
+  Format.fprintf ppf "SyGuS ASTs:\n";
   List.iter (SygusAst.pp_print_sygus_ast ppf) sygus_asts;
   
 

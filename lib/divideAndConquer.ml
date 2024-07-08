@@ -32,9 +32,8 @@ let stub_subproblems: ast -> ast * ast list
       element :: ast', subproblems
     | TypeAnnotation (nt, ty, scs) ->
       let ast', subproblems = stub_subproblems' elements in 
-
-      let stub_id = Utils.mk_fresh_stub_id () in
-      ProdRule (nt, [StubbedRhs stub_id]) :: ast', (TypeAnnotation (nt, ty, scs) :: elements) :: subproblems
+      (* let stub_id = Utils.mk_fresh_stub_id () in *)
+      ProdRule (nt, [StubbedRhs nt]) :: ast', (TypeAnnotation (nt, ty, scs) :: elements) :: subproblems
     )
   | [] -> [], []
   in 
