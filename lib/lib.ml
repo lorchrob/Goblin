@@ -28,8 +28,10 @@ let pow base exponent =
     | e -> aux (base * accumulator) (base * base) ((e - 1) / 2) in
   aux 1 base exponent
 
-let union_keys _ id1 id2 = match id1, id2 with 
-| Some id1, None -> Some id1 
-| None, Some id2 -> Some id2 
+let union_keys k v1 v2 = match v1, v2 with 
+| Some v1, None -> Some v1 
+| None, Some v2 -> Some v2 
 | None, None -> None 
-| Some _, Some _ -> failwith "Failure unioning two maps"
+| Some _, Some _ -> 
+  print_endline k;
+  failwith "Failure unioning two maps"

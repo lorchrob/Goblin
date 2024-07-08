@@ -43,11 +43,11 @@ let main_pipeline input_string =
   Lib.pp_print_newline ppf;
   Format.pp_print_flush ppf ();
 
-  (* Step 4.5: Prune grammars (both within grammars, and unreachable stubs) *)
+  (* Step 5: Prune grammars (both within grammars, and unreachable stubs) *)
   (* TODO *)
   (* let asts = [List.hd asts] in *)
 
-  (* Step 5: Print to SyGuS language and call SyGuS engine *)
+  (* Step 6: Translate to SyGuS problems *)
   Lib.pp_print_newline ppf;
   Format.fprintf ppf "SyGuS translation:";
   Lib.pp_print_newline ppf;
@@ -55,14 +55,14 @@ let main_pipeline input_string =
   List.iter (fun ast -> Sygus.pp_print_ast ppf ctx dep_map ast; Lib.pp_print_newline ppf) asts;
   Lib.pp_print_newline ppf;
   
-  (* Step 6: Call sygus engine *)
+  (* Step 7: Call sygus engine *)
   Format.fprintf ppf "Calling SyGuS:";
   Lib.pp_print_newline ppf;
   Format.pp_print_flush ppf ();
   let sygus_outputs = List.map (Sygus.call_sygus ctx dep_map) asts in
   List.iter (Format.pp_print_string ppf) sygus_outputs;
 
-  (* Step 6: Parse SyGuS output *)
+  (* Step 8: Parse SyGuS output *)
   Lib.pp_print_newline ppf;
   Format.fprintf ppf "Parsing SyGuS output:";
   Lib.pp_print_newline ppf;
@@ -72,7 +72,7 @@ let main_pipeline input_string =
   List.iter (SygusAst.pp_print_sygus_ast ppf) sygus_asts;
   
 
-  (* Step 7: Recombine to single AST *)
+  (* Step 9: Recombine to single AST *)
   Lib.pp_print_newline ppf;
   Format.fprintf ppf "Recombining to single AST:";
   Lib.pp_print_newline ppf;
@@ -80,7 +80,7 @@ let main_pipeline input_string =
   let sygus_ast = Recombine.recombine sygus_asts in 
   SygusAst.pp_print_sygus_ast ppf sygus_ast;
 
-  (* Step 8: Compute dependencies *)
+  (* Step 10: Compute dependencies *)
   Lib.pp_print_newline ppf;
   Format.fprintf ppf "Computing dependencies:";
   Lib.pp_print_newline ppf;
@@ -88,7 +88,7 @@ let main_pipeline input_string =
   let sygus_ast = ComputeDeps.compute_deps dep_map sygus_ast in 
   SygusAst.pp_print_sygus_ast ppf sygus_ast;
 
-  (* Step 9: Serialize! *)
+  (* Step 11: Serialize! *)
   Lib.pp_print_newline ppf;
   Format.fprintf ppf "Serializing:";
   Lib.pp_print_newline ppf;
