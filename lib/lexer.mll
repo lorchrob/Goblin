@@ -41,6 +41,7 @@ rule read =
   parse
   | white { read lexbuf }
   | newline { Lexing.new_line lexbuf ; read lexbuf }
+  | "//" [^ '\n']* '\n' { read lexbuf }
   | "::=" { PRODUCTION }
   | "::" {TYPEANNOT}
   | "|" { OPTION }
