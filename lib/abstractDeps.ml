@@ -80,7 +80,7 @@ let simp_ast: Utils.context -> ast -> (semantic_constraint Utils.StringMap.t * a
       let dep_map = Utils.StringMap.merge Lib.union_keys dep_map acc_dep_map in
       dep_map, rhs :: acc_rhss, ctx
     ) (acc_dep_map, [], acc_ctx)  rhss in
-    let dep_map = Utils.StringMap.merge Lib.union_keys dep_map acc_dep_map in
+    let dep_map = Utils.StringMap.merge Lib.union_keys dep_map Utils.StringMap.empty in
     dep_map, ProdRule (nt, List.rev rhss) :: acc_elements, ctx 
   | TypeAnnotation (nt, ty, scs) -> 
     let scs = List.map (fun sc -> match sc with 
