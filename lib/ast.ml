@@ -75,6 +75,25 @@ type btree =
 | Node of btree * int * btree 
 *)
 
+(* Substitute e1 for var in e2. In other words, output e1[var\e2] *)
+let rec substitute: expr -> string -> expr -> expr 
+= fun e1 var e2 -> 
+  match e1 with 
+  | NTExpr ([id], None) -> 
+    if id = var then e2 else e1 
+  | NTExpr _ -> failwith "Nested or indexed NTExprs not yet supported"
+  | CaseExpr _ -> failwith "CaseExpr not yet supported"
+  | BinOp (expr1, op, expr2) -> BinOp (substitute expr1 var e2, op, substitute expr2 var e2) 
+  | UnOp (op, expr) -> UnOp (op, substitute expr var e2) 
+  | CompOp (expr1, op, expr2) -> CompOp (substitute expr1 var e2, op, substitute expr2 var e2) 
+  | Length expr -> Length (substitute expr var e2) 
+  | BVConst _ 
+  | BLConst _ 
+  | BConst _ 
+  | BVCast _  
+  | IntConst _ -> e1
+
+
 let pp_print_nonterminal: Format.formatter -> string -> unit 
 = fun ppf nt -> 
   Format.fprintf ppf "<%s>" nt

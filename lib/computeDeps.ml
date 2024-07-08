@@ -1,7 +1,7 @@
 module SA = SygusAst
 module A = Ast
 
-let eval_fail index = failwith ("Internal error " ^ string_of_int index ^ ": expression evaluation in dependency computation")
+let eval_fail index = failwith ("Internal error: evaluation error #" ^ string_of_int index)
 
 (* Constructor string created with: "_stub" ^ (string_of_int !k) ^ "_" ^ nt *)
 let process_constructor_str: string -> string 
@@ -220,7 +220,11 @@ let compute_dep: A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -> stri
 
 let rec compute_deps: A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -> SA.sygus_ast 
 = fun dep_map sygus_ast -> match sygus_ast with
-| VarLeaf var -> compute_dep dep_map sygus_ast var
+| VarLeaf _ -> eval_fail 28
 | Node (constructor, subterms) -> 
-  Node (constructor, List.map (compute_deps dep_map) subterms)
+  Node (constructor, List.map (fun subterm -> match subterm with 
+  | SygusAst.Node _ -> compute_deps dep_map subterm
+  | VarLeaf var -> compute_dep dep_map sygus_ast var
+  | _ -> subterm
+  ) subterms)
 | BVLeaf _ | BLLeaf _ | IntLeaf _ -> sygus_ast
