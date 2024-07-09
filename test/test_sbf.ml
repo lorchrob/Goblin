@@ -100,6 +100,16 @@ let test_mult_prod_rules () =
   let output = main_pipeline input in 
   check string "test_mult_prod_rules" output "00000000000001110000000000000011\n"
 
+let test_bv_len () = 
+  let input = 
+  "
+  <S> ::= <A> { <A> <- int_to_bitvector(8, length(0b00000)); } ;
+  <A> :: BitVector(8);
+  "
+  in 
+  let output = main_pipeline input in 
+  check string "test_bv_len" output "00000101\n"
+
 let () = 
   run "My_module" [
     "test_sc", [test_case "Semantic constraint" `Quick test_sc];
@@ -111,4 +121,5 @@ let () =
     "test_ty_annot_sc", [test_case "Top level type annotation with semantic constraint" `Quick test_ty_annot_sc];
     "test_mult_prod_rules", [test_case "Test example with nonterminal with multiple prod rules, with semantic constraints" `Quick test_mult_prod_rules];
     "test_ty_annot_sc2", [test_case "Top level type annotation with semantic constraint 2" `Quick test_ty_annot_sc2];
+    "test_bv_len", [test_case "Top length function on bitvector" `Quick test_bv_len];
   ]

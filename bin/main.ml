@@ -27,11 +27,15 @@ open Sbf
 (* Main function *)
 let () = 
   ignore (Pipeline.main_pipeline 
-    "
+    (* "
     <S> ::= <A> <B> { <A> <- <B>; };
 
     <A> :: Int; 
     <B> :: Int;
+    " *)
+    "
+    <S> ::= <A> { <A> <- int_to_bitvector(8, length(0b00000)); } ;
+    <A> :: BitVector(8);
     "
   )
 

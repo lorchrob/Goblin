@@ -241,6 +241,7 @@ let rec evaluate: SA.sygus_ast -> A.expr -> A.expr
 | Length expr -> (
   match evaluate sygus_ast expr with 
   | BLConst bits -> IntConst (List.length bits) 
+  | BVConst (_, bits) -> IntConst (List.length bits)
   | _ -> eval_fail 26
   )
 | BVCast (len, expr) -> (

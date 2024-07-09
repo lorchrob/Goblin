@@ -150,9 +150,23 @@ let rec infer_type_expr: context -> expr -> il_type
       let error_message = "Type checking error: case expression " ^ expr_str ^ " has cases of differing types" in
       failwith error_message
     else List.hd inf_tys
-| Length _ -> Int
-| BVCast (len, _)  -> BitVector len
-| BVConst (len, _) -> BitVector len 
+| Length expr -> (
+  let inf_ty = infer_type_expr ctx expr in
+  match inf_ty with 
+  | BitList 
+  | BitVector _ ->   Int
+  | _ -> 
+    let expr_str = Utils.capture_output Ast.pp_print_expr expr in 
+    let inf_ty_str = Utils.capture_output Ast.pp_print_ty inf_ty in
+    let error_message = "Type checking error: Input to length function " ^ expr_str ^ " has type " ^ inf_ty_str ^ " but must have type Int or BitVector" in 
+    failwith error_message
+  )
+| BVCast (len, _)  -> 
+  (*!! TODO: check type of ignored var in match *)
+  BitVector len
+| BVConst (len, _) -> 
+  (*!! TODO: check type of ignored var in match *)
+  BitVector len 
 | BLConst _ -> BitList 
 | BConst _ -> Bool
 | IntConst _ -> Int
