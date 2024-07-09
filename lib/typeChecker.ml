@@ -161,12 +161,16 @@ let rec infer_type_expr: context -> expr -> il_type
     let error_message = "Type checking error: Input to length function " ^ expr_str ^ " has type " ^ inf_ty_str ^ " but must have type Int or BitVector" in 
     failwith error_message
   )
-| BVCast (len, _)  -> 
-  (*!! TODO: check type of ignored var in match *)
+| BVCast (len, expr)  -> 
+  let _ = check_type_expr ctx Int expr in 
   BitVector len
-| BVConst (len, _) -> 
-  (*!! TODO: check type of ignored var in match *)
-  BitVector len 
+| BVConst (len1, bits) -> 
+  let len2 = List.length bits in
+  if len1 != len2 then 
+    let error_message = "BitVector constant with expected length " ^ string_of_int len1 ^ " has actual length " ^ string_of_int len2 in 
+    failwith error_message
+  else
+    BitVector len1 
 | BLConst _ -> BitList 
 | BConst _ -> Bool
 | IntConst _ -> Int
