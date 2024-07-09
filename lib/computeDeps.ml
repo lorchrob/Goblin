@@ -3,6 +3,22 @@ module A = Ast
 
 let eval_fail index = failwith ("Internal error: evaluation error #" ^ string_of_int index)
 
+
+
+let bvult bv1 bv2 =
+  let rec compare_bits bv1 bv2 =
+    match bv1, bv2 with
+    | [], [] -> false
+    | b1 :: t1, b2 :: t2 ->
+      if b1 = b2 then compare_bits t1 t2
+      else b1 < b2
+    | _ -> failwith "Evaluator error: Bit vector operands must be of equal length"
+  in
+  if List.length bv1 <> List.length bv2 then
+    failwith "Evaluator error: Bit vector operands must be of equal length"
+  else
+    compare_bits bv1 bv2
+
 (* Constructor string created with: "_stub" ^ (string_of_int !k) ^ "_" ^ nt *)
 let process_constructor_str: string -> string 
 = fun input -> 
@@ -189,6 +205,38 @@ let rec evaluate: SA.sygus_ast -> A.expr -> A.expr
   | BVConst (_, bv1), BVConst (_, bv2) -> BConst (bv1 = bv2)
   | BLConst bl1, BLConst bl2 -> BConst (bl1 = bl2)
   | _ -> eval_fail 25
+  )
+| CompOp (expr1, BVLt, expr2) -> 
+  let expr1 = evaluate sygus_ast expr1 in 
+  let expr2 = evaluate sygus_ast expr2 in (
+  match expr1, expr2 with 
+  | BVConst (_, bv1), BVConst (_, bv2) ->
+    BConst (bvult bv1 bv2) 
+  | _ -> eval_fail 12
+  )
+| CompOp (expr1, BVLte, expr2) -> 
+  let expr1 = evaluate sygus_ast expr1 in 
+  let expr2 = evaluate sygus_ast expr2 in (
+  match expr1, expr2 with 
+  | BVConst (_, bv1), BVConst (_, bv2) ->
+    BConst (bvult bv1 bv2 || bv1 = bv2) 
+  | _ -> eval_fail 12
+  )
+| CompOp (expr1, BVGt, expr2) -> 
+  let expr1 = evaluate sygus_ast expr1 in 
+  let expr2 = evaluate sygus_ast expr2 in (
+  match expr1, expr2 with 
+  | BVConst (_, bv1), BVConst (_, bv2) ->
+    BConst (bvult bv2 bv1) 
+  | _ -> eval_fail 12
+  )
+| CompOp (expr1, BVGte, expr2) -> 
+  let expr1 = evaluate sygus_ast expr1 in 
+  let expr2 = evaluate sygus_ast expr2 in (
+  match expr1, expr2 with 
+  | BVConst (_, bv1), BVConst (_, bv2) ->
+    BConst (bvult bv2 bv1 || bv1 = bv2) 
+  | _ -> eval_fail 12
   )
 | Length expr -> (
   match evaluate sygus_ast expr with 

@@ -43,6 +43,10 @@ open Ast
 %token TRUE 
 %token FALSE
 %token DOT
+%token BVLT
+%token BVLTE
+%token BVGT
+%token BVGTE
 
 %token<int> INTEGER
 %token<bool list> BITS
@@ -56,7 +60,7 @@ open Ast
 %right LIMPLIES
 %left BVOR BVXOR LOR LXOR
 %left LAND BVAND
-%left GT LTE EQ GTE LT
+%left GT LTE EQ GTE LT BVGT BVLTE BVGTE BVLT 
 %left PLUS MINUS
 %left TIMES DIV
 %nonassoc LNOT
@@ -132,6 +136,10 @@ expr:
 | e1 = expr; GT; e2 = expr { CompOp (e1, Gt, e2) }
 | e1 = expr; GTE; e2 = expr { CompOp (e1, Gte, e2) }
 | e1 = expr; EQ; e2 = expr { CompOp (e1, Eq, e2) }
+| e1 = expr; BVLT; e2 = expr { CompOp (e1, BVLt, e2) }
+| e1 = expr; BVLTE; e2 = expr { CompOp (e1, BVLte, e2) }
+| e1 = expr; BVGT; e2 = expr { CompOp (e1, BVGt, e2) }
+| e1 = expr; BVGTE; e2 = expr { CompOp (e1, BVGte, e2) }
 (* Unary operations *)
 | BVNOT; e = expr { UnOp (BVNot, e) }
 | PLUS; e = expr { UnOp (UPlus, e) }

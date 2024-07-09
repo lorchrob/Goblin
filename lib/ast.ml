@@ -12,6 +12,10 @@ type comp_operator =
 | Gt 
 | Gte 
 | Eq
+| BVLt 
+| BVLte
+| BVGt 
+| BVGte
 
 type bin_operator = 
 | BVAnd 
@@ -130,6 +134,10 @@ let pp_print_comp_op: Format.formatter -> comp_operator -> unit
 | Gt  -> Format.fprintf ppf ">"
 | Gte -> Format.fprintf ppf ">="
 | Eq -> Format.fprintf ppf "="
+| BVLt -> Format.fprintf ppf  "bvlt"
+| BVLte -> Format.fprintf ppf  "bvlte"
+| BVGt -> Format.fprintf ppf  "bvgt"
+| BVGte -> Format.fprintf ppf  "bvgte"
 
 (* let pp_print_bit: Format.formatter -> bool ->  *)
 

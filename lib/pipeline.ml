@@ -44,8 +44,7 @@ let main_pipeline input_string =
   Format.pp_print_flush ppf ();
 
   (* Step 5: Prune grammars (both within grammars, and unreachable stubs) *)
-  (* TODO *)
-  (* let asts = [List.hd asts] in *)
+  (* TODO, if needed for better performance *)
 
   (* Step 6: Translate to SyGuS problems *)
   Lib.pp_print_newline ppf;

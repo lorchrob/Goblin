@@ -26,6 +26,10 @@
     "bvnot", BVNOT ;
     "true", TRUE ; 
     "false", FALSE ;
+    "bvlt", BVLT ;
+    "bvlte", BVLTE ;
+    "bvgt", BVGT ; 
+    "bvgte", BVGTE ;
   ] 
 }
 

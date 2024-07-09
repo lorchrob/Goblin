@@ -119,6 +119,7 @@ let pp_print_compop: Format.formatter -> comp_operator -> unit
 | Gt -> Format.fprintf ppf ">"
 | Gte -> Format.fprintf ppf ">="
 | Eq -> Format.fprintf ppf "="
+| _ -> assert false
 
 let pp_print_unop: Format.formatter -> unary_operator -> unit 
 = fun ppf op -> match op with 
@@ -135,6 +136,26 @@ let rec pp_print_expr: Format.formatter -> expr -> unit
     pp_print_binop op 
     pp_print_expr expr1 
     pp_print_expr expr2
+| CompOp (expr1, BVLt, expr2) -> 
+  Format.fprintf ppf "(bvult %a %a)"
+    pp_print_expr expr1 
+    pp_print_expr expr2
+| CompOp (expr1, BVLte, expr2) -> 
+  Format.fprintf ppf "(or (bvult %a %a) (= %a %a))"
+    pp_print_expr expr1 
+    pp_print_expr expr2
+    pp_print_expr expr1 
+    pp_print_expr expr2
+| CompOp (expr1, BVGt, expr2) -> 
+  Format.fprintf ppf "(bvult %a %a)"
+    pp_print_expr expr2
+    pp_print_expr expr1 
+| CompOp (expr1, BVGte, expr2) -> 
+  Format.fprintf ppf "(or (bvult %a %a) (= %a %a))"
+    pp_print_expr expr2
+    pp_print_expr expr1 
+    pp_print_expr expr2
+    pp_print_expr expr1 
 | CompOp (expr1, op, expr2) -> 
   Format.fprintf ppf "(%a %a %a)"
     pp_print_compop op 

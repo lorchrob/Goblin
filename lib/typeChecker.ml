@@ -88,6 +88,40 @@ let rec infer_type_expr: context -> expr -> il_type
   let _ = check_type_expr ctx Int expr1 in 
   let _ = check_type_expr ctx Int expr2 in
   Bool
+| CompOp (expr1, BVLt, expr2) 
+| CompOp (expr1, BVLte, expr2) 
+| CompOp (expr1, BVGt, expr2) 
+| CompOp (expr1, BVGte, expr2) ->
+  let inf_ty1 = infer_type_expr ctx expr1 in 
+  let inf_ty2 = infer_type_expr ctx expr2 in (
+  match inf_ty1, inf_ty2 with 
+  | BitVector len1, BitVector len2 -> 
+    if not (len1 = len2) then
+      let expr_str = Utils.capture_output Ast.pp_print_expr expr in
+      let inf_ty_str1 = Utils.capture_output Ast.pp_print_ty (BitVector len1) in
+      let inf_ty_str2 = Utils.capture_output Ast.pp_print_ty (BitVector len2) in 
+      let error_message = "Type checking error: BitVector operation " ^ expr_str ^ " has one operand of type " ^ inf_ty_str1 ^ " and another of type " ^ inf_ty_str2 in
+      failwith error_message
+    else Bool
+  | BitVector len, _ -> 
+    let expr_str = Utils.capture_output Ast.pp_print_expr expr2 in
+    let inf_ty_str = Utils.capture_output Ast.pp_print_ty inf_ty2 in
+    let exp_ty_str = Utils.capture_output Ast.pp_print_ty (BitVector len) in 
+    let error_message = "Type checking error: expression " ^ expr_str ^ " has type " ^ inf_ty_str ^ " but has expected type " ^ exp_ty_str in
+    failwith error_message
+  | _, BitVector len ->
+    let expr_str = Utils.capture_output Ast.pp_print_expr expr1 in
+    let inf_ty_str = Utils.capture_output Ast.pp_print_ty inf_ty1 in
+    let exp_ty_str = Utils.capture_output Ast.pp_print_ty (BitVector len) in 
+    let error_message = "Type checking error: expression " ^ expr_str ^ " has type " ^ inf_ty_str ^ " but has expected type " ^ exp_ty_str in
+    failwith error_message
+  | _ -> 
+    let expr_str = Utils.capture_output Ast.pp_print_expr expr1 in
+    let inf_ty_str = Utils.capture_output Ast.pp_print_ty inf_ty1 in
+    let exp_ty_str = "BitVector" in 
+    let error_message = "Type checking error: expression " ^ expr_str ^ " has type " ^ inf_ty_str ^ " but has expected type " ^ exp_ty_str in
+    failwith error_message
+  )
 | CompOp (expr1, Eq, expr2) -> 
   let inf_ty1 = infer_type_expr ctx expr1 in 
   let inf_ty2 = infer_type_expr ctx expr2 in 

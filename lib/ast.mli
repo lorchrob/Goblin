@@ -2,7 +2,16 @@ type nt_expr = string list
 
 type unary_operator = UPlus | UMinus | LNot | BVNot
 
-type comp_operator = Lt | Lte | Gt | Gte | Eq
+type comp_operator = 
+| Lt 
+| Lte 
+| Gt 
+| Gte 
+| Eq 
+| BVLt 
+| BVLte
+| BVGt 
+| BVGte
 
 type bin_operator =
 | BVAnd
