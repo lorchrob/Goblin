@@ -41,38 +41,38 @@ let test_dt2 () =
 (* Divide and conquer example *)
 let test_dc () = 
   let input = 
-  "<SAE_PACKET> ::= <AUTH_ALGO> <STATUS_CODE>;
-  <STATUS_CODE> ::= <BV> { <BV> = 0b0000000000000000; };
-  <AUTH_ALGO> ::= <BV> { <BV> = 0b0000000000000001; };
-  <BV> :: BitVector(16);
-  "
+    "<SAE_PACKET> ::= <AUTH_ALGO> <STATUS_CODE>;
+    <STATUS_CODE> ::= <BV> { <BV> = 0b0000000000000000; };
+    <AUTH_ALGO> ::= <BV> { <BV> = 0b0000000000000001; };
+    <BV> :: BitVector(16);
+    "
   in 
   let output = main_pipeline input in 
   check string "test_dc" output "00000000000000010000000000000000\n"
 
 let test_bl () = 
   let input = 
-  "<SAE_PACKET> ::= <AUTH_ALGO> <STATUS_CODE> { length(<AUTH_ALGO>) > 1; length(<STATUS_CODE>) > 5; };
+    "<SAE_PACKET> ::= <AUTH_ALGO> <STATUS_CODE> { length(<AUTH_ALGO>) > 1; length(<STATUS_CODE>) > 5; };
 
-  <STATUS_CODE> :: BitList;
-  <AUTH_ALGO> :: BitList;
-  "
+    <STATUS_CODE> :: BitList;
+    <AUTH_ALGO> :: BitList;
+    "
   in 
   let output = main_pipeline input in 
   check string "test_bl" output "00000000\n"
 
 let test_top_level_ty_annot () = 
   let input = 
-  " <STATUS_CODE> :: BitList;
-  "
+    " <STATUS_CODE> :: BitList;
+    "
   in 
   let output = main_pipeline input in 
   check string "test_top_level_ty_annot" output "\n"
 
 let test_ty_annot_sc () = 
   let input = 
-  " <STATUS_CODE> :: BitList { length(<STATUS_CODE>) > 0; };
-  "
+    " <STATUS_CODE> :: BitList { length(<STATUS_CODE>) > 0; };
+    "
   in 
   let output = main_pipeline input in 
   check string "test_ty_annot_sc" output "0\n"
@@ -90,25 +90,37 @@ let test_ty_annot_sc2 () =
 
 let test_mult_prod_rules () = 
   let input = 
-  "<SAE_PACKET> ::= <AUTH_ALGO> <STATUS_CODE>;
-  <STATUS_CODE> ::= <BV1> <BV2> | <BV2> { <BV2> = 0b0000000000000011; };
-  <AUTH_ALGO> ::= <BV1> { <BV1> = 0b0000000000000111; };
-  <BV1> :: BitVector(16);
-  <BV2> :: BitVector(16);
-  "
+    "<SAE_PACKET> ::= <AUTH_ALGO> <STATUS_CODE>;
+    <STATUS_CODE> ::= <BV1> <BV2> | <BV2> { <BV2> = 0b0000000000000011; };
+    <AUTH_ALGO> ::= <BV1> { <BV1> = 0b0000000000000111; };
+    <BV1> :: BitVector(16);
+    <BV2> :: BitVector(16);
+    "
   in 
   let output = main_pipeline input in 
   check string "test_mult_prod_rules" output "00000000000001110000000000000011\n"
 
 let test_bv_len () = 
   let input = 
-  "
-  <S> ::= <A> { <A> <- int_to_bitvector(8, length(0b00000)); } ;
-  <A> :: BitVector(8);
-  "
+    "
+    <S> ::= <A> { <A> <- int_to_bitvector(8, length(0b00000)); } ;
+    <A> :: BitVector(8);
+    "
   in 
   let output = main_pipeline input in 
   check string "test_bv_len" output "00000101\n"
+
+let test_dt3 () = 
+  let input = 
+    "
+    <S> ::= <A> <B> { <A> <- <B>; };
+
+    <A> :: BitVector(2); 
+    <B> :: BitVector(2) { <B> = 0b01; } ;
+    "
+  in 
+  let output = main_pipeline input in 
+  check string "test_bv_len" output "0101\n"
 
 let () = 
   run "My_module" [
@@ -122,4 +134,5 @@ let () =
     "test_mult_prod_rules", [test_case "Test example with nonterminal with multiple prod rules, with semantic constraints" `Quick test_mult_prod_rules];
     "test_ty_annot_sc2", [test_case "Top level type annotation with semantic constraint 2" `Quick test_ty_annot_sc2];
     "test_bv_len", [test_case "Top length function on bitvector" `Quick test_bv_len];
+    "test_dt3", [test_case "Dependent term 3" `Quick test_dt3];
   ]

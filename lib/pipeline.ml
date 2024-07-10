@@ -84,7 +84,7 @@ let main_pipeline input_string =
   Format.fprintf ppf "Computing dependencies:";
   Lib.pp_print_newline ppf;
   Format.pp_print_flush ppf ();
-  let sygus_ast = ComputeDeps.compute_deps dep_map sygus_ast in 
+  let sygus_ast = ComputeDeps.compute_deps dep_map ast sygus_ast in 
   SygusAst.pp_print_sygus_ast ppf sygus_ast;
 
   (* Step 11: Serialize! *)

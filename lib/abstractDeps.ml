@@ -27,7 +27,7 @@ let stub_grammar_element: Utils.context -> semantic_constraint list -> grammar_e
   | Dependency (nt2, _) -> nt = nt2
   ) scs with 
   | Some dep -> 
-    let stub_id = Utils.mk_fresh_stub_id () in
+    let stub_id = Utils.mk_fresh_stub_id nt in
     let ctx = Utils.StringMap.remove nt ctx in
     Some dep, StubbedNonterminal (nt, stub_id), ctx  
   | None -> None, ge, ctx
@@ -41,7 +41,7 @@ let stub_ty_annot
   | Dependency (nt2, _) -> nt = nt2
   ) scs with 
   | Some dep -> 
-    let stub_id = Utils.mk_fresh_stub_id () in
+    let stub_id = Utils.mk_fresh_stub_id nt in
     let ctx = Utils.StringMap.remove nt ctx in
     Utils.StringMap.singleton stub_id dep, ProdRule (nt, [Rhs ([StubbedNonterminal(nt, stub_id)], [])]), ctx
   | None -> Utils.StringMap.empty, TypeAnnotation (nt, ty, scs), ctx

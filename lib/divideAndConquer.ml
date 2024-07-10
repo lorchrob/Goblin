@@ -14,7 +14,7 @@ let rec stub_subproblems_prod_rule_rhss
   hd :: tl', subproblems 
 | Rhs (ges, scs) :: tl -> 
   let tl', subproblems = stub_subproblems_prod_rule_rhss elements tl in
-  let stub_id = Utils.mk_fresh_stub_id () in
+  let stub_id = Utils.mk_fresh_stub_id "" in
   StubbedRhs (stub_id) :: tl', (ProdRule (stub_id, [Rhs (ges, scs)]) :: elements) :: subproblems
 
 let stub_subproblems: ast -> ast * ast list
@@ -32,7 +32,6 @@ let stub_subproblems: ast -> ast * ast list
       element :: ast', subproblems
     | TypeAnnotation (nt, ty, scs) ->
       let ast', subproblems = stub_subproblems' elements in 
-      (* let stub_id = Utils.mk_fresh_stub_id () in *)
       ProdRule (nt, [StubbedRhs nt]) :: ast', (TypeAnnotation (nt, ty, scs) :: elements) :: subproblems
     )
   | [] -> [], []

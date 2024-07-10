@@ -15,8 +15,8 @@ let rec split3 lst =
       let (xs, ys, zs) = split3 t in
       (x :: xs, y :: ys, z :: zs)
 
-let mk_fresh_stub_id () = 
-  let id = "_stub" ^ (string_of_int !k) ^ "_grammar_element" in 
+let mk_fresh_stub_id id = 
+  let id = "_stub" ^ (string_of_int !k) ^ "_" ^ id ^ "_grammar_element" in 
   k := !k + 1;
   String.uppercase_ascii id
 
@@ -33,6 +33,13 @@ let il_int_to_bitvector: int -> int -> expr
     in
     let bits = to_bits [] length n in 
     BVConst (length, bits)
+    
+let find_index predicate lst =
+  let rec aux i = function
+    | [] -> raise Not_found
+    | x :: xs -> if predicate x then i else aux (i + 1) xs
+  in
+  aux 0 lst
 
 let capture_output: (Format.formatter -> 'a -> unit) -> 'a -> string = 
 fun f arg ->
