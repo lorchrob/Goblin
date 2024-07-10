@@ -16,7 +16,7 @@ let rec split3 lst =
       (x :: xs, y :: ys, z :: zs)
 
 let mk_fresh_stub_id id = 
-  let id = "_stub" ^ (string_of_int !k) ^ "_" ^ id ^ "_grammar_element" in 
+  let id = "_stub" ^ (string_of_int !k) ^ "_" ^ id in 
   k := !k + 1;
   String.uppercase_ascii id
 

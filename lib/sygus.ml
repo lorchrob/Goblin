@@ -333,7 +333,7 @@ fun ctx dep_map ast ->
   close_out oc;
 
   (* Call sygus command *)
-  let cvc5 = "/Users/lorchrob/Documents/CodeProjects/grammar-based_fuzzing/SyGuS-fuzzing/CVC4/build/bin/cvc5" in
+  let cvc5 = "/Users/lorchrob/Downloads/cvc5-macOS-arm64-static/bin/cvc5" in
   let command = Printf.sprintf "%s --lang=sygus2 %s > %s" cvc5 input_filename output_filename in
   ignore (Unix.system command); (* Execute the command and ignore the exit status *)
 

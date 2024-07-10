@@ -20,6 +20,7 @@
     "false", FALSE ;
     "Int", INT ;
     "BitVec", BITVEC ;
+    "str", STR ;
   ] 
 }
 

@@ -21,6 +21,7 @@ open SygusAst
 %token INT
 %token UNDERSCORE
 %token BITVEC
+%token STR
 
 %token<bool list> BITS
 %token<string> ID
@@ -65,7 +66,7 @@ bit_list:
   { [] } 
 | LPAREN; SEQ; DOT; UNIT; b = bool; RPAREN; 
   { [b] }
-| LPAREN; SEQ; DOT; PLUSPLUS; bls = nonempty_list(bit_list); RPAREN;
+| LPAREN; STR; DOT; PLUSPLUS; bls = nonempty_list(bit_list); RPAREN;
   { List.flatten bls }
 
 

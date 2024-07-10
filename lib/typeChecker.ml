@@ -14,8 +14,11 @@ let last lst = lst |> List.rev |> List.hd
 
 let rec infer_type_expr: context -> expr -> il_type
 = fun ctx expr -> match expr with 
-| NTExpr (nt_expr, _) -> 
-  Utils.StringMap.find (last nt_expr) ctx 
+| NTExpr (nt_expr, _) -> (
+  match Utils.StringMap.find_opt (last nt_expr) ctx with 
+  | Some ty -> ty 
+  | None -> failwith ("Type checking error: Nonterminal '" ^ (last nt_expr) ^ "' has a composite type, but is used in some operation that requires a primitive type")
+  )
 | UnOp (UPlus, expr) 
 | UnOp (UMinus, expr) -> 
   let _ = check_type_expr ctx Int expr in

@@ -296,12 +296,18 @@ let rec compute_deps: A.semantic_constraint Utils.StringMap.t -> A.ast -> SA.syg
   List.map (fun subterm -> match subterm with 
   | SygusAst.Node _ -> compute_deps dep_map ast subterm
   | VarLeaf var -> 
-    let element = List.find (fun element -> match element with 
+    let element = List.find_opt (fun element -> match element with 
     | A.TypeAnnotation (nt, _, _)  
     | ProdRule (nt, _) -> 
-      print_endline (constructor |> remove_stub |> remove_suffix);
       nt = (constructor |> remove_stub |> remove_suffix)
     ) ast in
+    let element = match element with 
+    | None -> 
+      print_endline constructor; 
+      print_endline (constructor |> remove_stub |> remove_suffix);
+      failwith "Internal error in computeDeps.ml"
+    | Some element -> element 
+    in
     compute_dep dep_map sygus_ast element var
   | _ -> subterm
   ) subterms in 

@@ -6,15 +6,15 @@ open Ast
    with new top-level element, and continue. *)
   
 let rec stub_subproblems_prod_rule_rhss
-= fun elements rhss -> match rhss with 
+= fun nt elements rhss -> match rhss with 
 | [] -> [], []
 | (Rhs (_, []) as hd) :: tl 
 | (StubbedRhs _ as hd) :: tl -> 
-  let tl', subproblems = stub_subproblems_prod_rule_rhss elements tl in
+  let tl', subproblems = stub_subproblems_prod_rule_rhss nt elements tl in
   hd :: tl', subproblems 
 | Rhs (ges, scs) :: tl -> 
-  let tl', subproblems = stub_subproblems_prod_rule_rhss elements tl in
-  let stub_id = Utils.mk_fresh_stub_id "" in
+  let tl', subproblems = stub_subproblems_prod_rule_rhss nt elements tl in
+  let stub_id = Utils.mk_fresh_stub_id nt in
   StubbedRhs (stub_id) :: tl', (ProdRule (stub_id, [Rhs (ges, scs)]) :: elements) :: subproblems
 
 let stub_subproblems: ast -> ast * ast list
@@ -25,7 +25,7 @@ let stub_subproblems: ast -> ast * ast list
       (* NOTE: We could consider all the RHSs together rather than splitting them up. Then the solver 
          can decide which production rule to use, rather than doing all of them. *)
       let ast', subproblems1 = stub_subproblems' elements in 
-      let rhss, subproblems2 = stub_subproblems_prod_rule_rhss elements rhss in
+      let rhss, subproblems2 = stub_subproblems_prod_rule_rhss nt elements rhss in
       ProdRule (nt, rhss) :: ast', subproblems1 @ subproblems2
     | TypeAnnotation (_, _, []) -> 
       let ast', subproblems = stub_subproblems' elements in 
