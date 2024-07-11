@@ -68,6 +68,8 @@ bit_list:
   { [b] }
 | LPAREN; STR; DOT; PLUSPLUS; bls = nonempty_list(bit_list); RPAREN;
   { List.flatten bls }
+| LPAREN; SEQ; DOT; PLUSPLUS; bls = nonempty_list(bit_list); RPAREN;
+{ List.flatten bls }
 
 
 bool:

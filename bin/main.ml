@@ -4,6 +4,8 @@ open Sbf
 
   * I think some of the length constraints are written informally in comments rather than in the grammar
   * Test length constraint with RG_ID_LIST more rigorously
+    * It should work, but it is conservatively rejected by the type checker. The type checker 
+      should be more permissive in dependency expressions because we can concatenate bitlists and bitvectors and such.
 
   * The PASSWORD_IDENTIFIER nonterminal is optional in the notes, and it is a composite nonterminal 
     (not just a BitList). So, we should really model this with two 
@@ -14,11 +16,13 @@ open Sbf
 (* Main function *)
 let () = 
   ignore (Pipeline.main_pipeline 
-  "
-  <SAE_PACKET> ::= <AUTH_ALGO> <STATUS_CODE>;
-  <STATUS_CODE> :: BitVector(16);
-  <AUTH_ALGO> :: BitVector(16) { <AUTH_ALGO> = 0b0000000000000111; };
-  "
+    "
+    <S> ::= <A> <B> { <A> <- length(<B>); };
+    <B> ::= <C> <D>;
+    <C> :: BitList { length(<C>) > 0; }; 
+    <D> :: BitVector(8);
+    <A> :: Int;
+    "
 
     (* "
     <SAE_PACKET> ::= <AUTH_ALGO> <AUTH_SEQ_COMMIT> <STATUS_CODE> <GROUP_ID> <AC_TOKEN> <SCALAR> <ELEMENT> <PASSWORD_IDENTIFIER> <REJECTED_GROUPS> <AC_TOKEN_CONTAINER>
@@ -81,8 +85,8 @@ let () =
     
     <PASSWD_ID> :: BitList;  
     
-    <REJECTED_GROUPS> ::= <RG_ELEMENT_ID> <RG_ID_LENGTH> <RG_ELEMENT_ID_EXTENSION> <RG_ID_LIST>;
-    //{ <RG_ID_LENGTH> <- int_to_bitvector(8, length(<RG_ID_LIST>)); };
+    <REJECTED_GROUPS> ::= <RG_ELEMENT_ID> <RG_ID_LENGTH> <RG_ELEMENT_ID_EXTENSION> <RG_ID_LIST>
+    { <RG_ID_LENGTH> <- int_to_bitvector(8, length(<RG_ID_LIST>)); };
     
     <RG_ELEMENT_ID> :: BitVector(8) 
     { <RG_ELEMENT_ID> <- int_to_bitvector(8, 255); };

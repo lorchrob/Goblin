@@ -120,7 +120,20 @@ let test_dt3 () =
     "
   in 
   let output = main_pipeline input in 
-  check string "test_bv_len" output "0101\n" 
+  check string "test_dt3" output "0101\n" 
+
+let test_dynamic_typing () = 
+  let input = 
+    "
+    <S> ::= <A> <B> { <A> <- length(<B>); };
+    <B> ::= <C> <D>;
+    <C> :: BitList { length(<C>) > 0; }; 
+    <D> :: BitVector(8);
+    <A> :: Int;
+    "
+  in 
+  let output = main_pipeline input in 
+  check string "test_dynamic_typing" output "9000000000\n" 
 
 let () = 
   run "My_module" [
@@ -133,6 +146,7 @@ let () =
     "test_ty_annot_sc", [test_case "Top level type annotation with semantic constraint" `Quick test_ty_annot_sc];
     "test_mult_prod_rules", [test_case "Test example with nonterminal with multiple prod rules, with semantic constraints" `Quick test_mult_prod_rules];
     "test_ty_annot_sc2", [test_case "Top level type annotation with semantic constraint 2" `Quick test_ty_annot_sc2];
-    (*"test_bv_len", [test_case "Top length function on bitvector" `Quick test_bv_len];
-    "test_dt3", [test_case "Dependent term 3" `Quick test_dt3]; *)
+    "test_bv_len", [test_case "Top length function on bitvector" `Quick test_bv_len];
+    "test_dt3", [test_case "Dependent term 3" `Quick test_dt3];
+    "test_dynamic_typing", [test_case "Dynamic typing" `Quick test_dynamic_typing];
   ]

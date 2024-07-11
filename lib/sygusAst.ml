@@ -39,7 +39,7 @@ let serialize: Format.formatter -> sygus_ast -> unit
     Format.fprintf ppf "%a"
     (Lib.pp_print_list Format.pp_print_int "") bits
   | VarLeaf _ -> failwith "Internal error: serializing final packet, but encountered leaf variable (possibly uncomputed dependent term)"
-  | IntLeaf _ -> failwith "Serializing sygus AST with IntLeaf not yet supported"
+  | IntLeaf i -> Format.pp_print_int ppf i
   in 
   Format.fprintf ppf "%a\n" 
   pp_print_sygus_ast' sygus_ast
