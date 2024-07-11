@@ -320,16 +320,16 @@ type result =
 
 (* Run two commands in parallel and report which finishes first *)
 let run_commands cmd1 cmd2 =
-  let pid1 = Unix.create_process "/bin/sh" [| "sh"; "-c"; cmd1 |] Unix.stdin Unix.stdout Unix.stderr in
-  let pid2 = Unix.create_process "/bin/sh" [| "sh"; "-c"; cmd2 |] Unix.stdin Unix.stdout Unix.stderr in
+  let pid1 = Unix.create_process "/bin/zsh" [| "zsh"; "-c"; cmd1 |] Unix.stdin Unix.stdout Unix.stderr in
+  let pid2 = Unix.create_process "/bin/zsh" [| "zsh"; "-c"; cmd2 |] Unix.stdin Unix.stdout Unix.stderr in
 
   let rec wait_for_first pid1 pid2 =
     let pid, _ = Unix.wait () in
     if pid = pid1 then (
-      Unix.kill pid2 Sys.sigkill;
+      Unix.kill pid2 Sys.sigterm;
       Command1
     ) else if pid = pid2 then (
-      Unix.kill pid1 Sys.sigkill;
+      Unix.kill pid1 Sys.sigterm;
       Command2
     ) else
       wait_for_first pid1 pid2
