@@ -314,6 +314,29 @@ let pp_print_ast: Format.formatter -> TC.context -> Ast.semantic_constraint Util
 
   Lib.pp_print_newline ppf
 
+type result = 
+| Command1
+| Command2
+
+(* Run two commands in parallel and report which finishes first *)
+let run_commands cmd1 cmd2 =
+  let pid1 = Unix.create_process "/bin/sh" [| "sh"; "-c"; cmd1 |] Unix.stdin Unix.stdout Unix.stderr in
+  let pid2 = Unix.create_process "/bin/sh" [| "sh"; "-c"; cmd2 |] Unix.stdin Unix.stdout Unix.stderr in
+
+  let rec wait_for_first pid1 pid2 =
+    let pid, _ = Unix.wait () in
+    if pid = pid1 then (
+      Unix.kill pid2 Sys.sigkill;
+      Command1
+    ) else if pid = pid2 then (
+      Unix.kill pid1 Sys.sigkill;
+      Command2
+    ) else
+      wait_for_first pid1 pid2
+  in
+
+  wait_for_first pid1 pid2
+
 let call_sygus : TC.context -> Ast.semantic_constraint Utils.StringMap.t -> ast -> string =
 fun ctx dep_map ast ->
   let top_nt = match ast with
@@ -324,6 +347,7 @@ fun ctx dep_map ast ->
   ignore (Unix.system "mkdir sygus_debug");
   let input_filename = "./sygus_debug/" ^ top_nt ^ ".smt2" in
   let output_filename = "./sygus_debug/" ^ top_nt ^ "_out.smt2" in
+  let output_filename2 = "./sygus_debug/" ^ top_nt ^ "_out2.smt2" in
 
   (* Create sygus input file *)
   let oc = open_out input_filename in
@@ -333,14 +357,21 @@ fun ctx dep_map ast ->
   close_out oc;
 
   (* Call sygus command *)
-  (* let cvc5 = "/Users/lorchrob/Downloads/cvc5-macOS-arm64-static/bin/cvc5" in *)
-  let cvc5 = "/Users/lorchrob/Documents/CodeProjects/grammar-based_fuzzing/SyGuS-fuzzing/CVC4/build/bin/cvc5" in
+  let cvc5 = "/Users/lorchrob/Downloads/cvc5-macOS-arm64-static/bin/cvc5" in
+  let cvc5_2 = "/Users/lorchrob/Documents/CodeProjects/grammar-based_fuzzing/SyGuS-fuzzing/CVC4/build/bin/cvc5" in
   let command = Printf.sprintf "%s --lang=sygus2 %s > %s" cvc5 input_filename output_filename in
-  ignore (Unix.system command); (* Execute the command and ignore the exit status *)
-
-  (* Read sygus output *)
-  let ic = open_in output_filename in
-  let len = in_channel_length ic in
-  let output = really_input_string ic len in
-  close_in ic;
-  output
+  let command2 = Printf.sprintf "%s --lang=sygus2 %s > %s" cvc5_2 input_filename output_filename2 in
+  (* Run two versions of sygus in parallel and use results from whichever finishes first *)
+  match run_commands command command2 with 
+  | Command1 -> 
+    let ic = open_in output_filename in
+    let len = in_channel_length ic in
+    let output = really_input_string ic len in
+    close_in ic;
+    output
+  | Command2 -> 
+    let ic = open_in output_filename2 in
+    let len = in_channel_length ic in
+    let output = really_input_string ic len in
+    close_in ic;
+    output

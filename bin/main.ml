@@ -10,21 +10,15 @@ open Sbf
   * The PASSWORD_IDENTIFIER nonterminal is optional in the notes, and it is a composite nonterminal 
     (not just a BitList). So, we should really model this with two 
     production rules-- one where it is present, and one where it is absent, and update the semantic constraints accordingly.
-  * Same for REJECTED_GROUPS. 
+  * Same for REJECTED_GROUPS.
+  
+  * Using multiple versions of cvc5
 *)
 
 (* Main function *)
 let () = 
   ignore (Pipeline.main_pipeline 
     "
-    <S> ::= <A> <B> { <A> <- length(<B>); };
-    <B> ::= <C> <D>;
-    <C> :: BitList { length(<C>) > 0; }; 
-    <D> :: BitVector(8);
-    <A> :: Int;
-    "
-
-    (* "
     <SAE_PACKET> ::= <AUTH_ALGO> <AUTH_SEQ_COMMIT> <STATUS_CODE> <GROUP_ID> <AC_TOKEN> <SCALAR> <ELEMENT> <PASSWORD_IDENTIFIER> <REJECTED_GROUPS> <AC_TOKEN_CONTAINER>
     {
     <AUTH_ALGO> <- int_to_bitvector(16, 3);
@@ -100,8 +94,7 @@ let () =
      
     <RG_ID> :: BitVector(8);
     
-    <AC_TOKEN_CONTAINER> ::= <AC_ELEMENT_ID> <AC_ID_LENGTH> 
-                                                                <AC_ELEMENT_ID_EXTENSION> 
+    <AC_TOKEN_CONTAINER> ::= <AC_ELEMENT_ID> <AC_ID_LENGTH> <AC_ELEMENT_ID_EXTENSION> 
                          <AC_TOKEN_ELEMENT>
     { <AC_ID_LENGTH> <- int_to_bitvector(8, length(<AC_TOKEN_ELEMENT>)); };
     
@@ -124,7 +117,7 @@ let () =
     <SEND_CONFIRM_COUNTER> :: BitVector(16);
     
     
-    " *)
+    "
   )
 
 
