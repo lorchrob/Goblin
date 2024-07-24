@@ -58,12 +58,12 @@ type il_type =
 
 type grammar_element = 
 | Nonterminal of string 
-| NamedNonterminal of string * string
-| StubbedNonterminal of string * string
+| NamedNonterminal of string * string (* Ignore *)
+| StubbedNonterminal of string * string (* Ignore *)
 
 type prod_rule_rhs = 
 | Rhs of grammar_element list * semantic_constraint list
-| StubbedRhs of string
+| StubbedRhs of string (* Ignore *)
 
 type element = 
 | ProdRule of string * prod_rule_rhs list
