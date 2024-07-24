@@ -94,21 +94,21 @@ let scoreFunction (traces : population) status c : (trace list * population) =
   match status with
   | CRASH -> let thisScore : score = (second c) +. 0.7 in
     let newPackets : trace = (first c |> first) in
-      let updatedInterestingTraces : traceSet = newPackets :: interestingTracesToAnalyse in
-        let updatedChildren : childSet = ((first c |> first, first c |> second), thisScore) :: children in
-          (updatedInterestingTraces, updatedChildren)
+    let updatedInterestingTraces : traceSet = newPackets :: interestingTracesToAnalyse in
+    let updatedChildren : childSet = ((first c |> first, first c |> second), thisScore) :: children in
+    (updatedInterestingTraces, updatedChildren)
   | TIMEOUT -> let thisScore : score = (c |> second) +. 0.5 in
     let updatedChildren : childSet = ((first c |> first, first c |> second), thisScore) :: children in
-      (interestingTracesToAnalyse, updatedChildren)
+    (interestingTracesToAnalyse, updatedChildren)
   | EXPECTED_OUTPUT -> let thisScore : score = (second c) +. 0.1 in
     let updatedChildren : childSet = ((first c |> first, first c |> second), thisScore) :: children in
-      (interestingTracesToAnalyse, updatedChildren)
+    (interestingTracesToAnalyse, updatedChildren)
   | _ ->
     let thisScore : score = (second c) +. 0.9 in
-      let updatedChildren : childSet = ((first c |> first, first c |> second), thisScore) :: children in
-        let newPackets : trace = (first c |> first) in
-          let updatedInterestingTraces : traceSet = newPackets :: interestingTracesToAnalyse in
-            (updatedInterestingTraces, updatedChildren)
+    let updatedChildren : childSet = ((first c |> first, first c |> second), thisScore) :: children in
+    let newPackets : trace = (first c |> first) in
+    let updatedInterestingTraces : traceSet = newPackets :: interestingTracesToAnalyse in
+    (updatedInterestingTraces, updatedChildren)
 ;;
     
 let random_element (lst: 'a list) : 'a option =
@@ -177,13 +177,13 @@ let callDriver packet : output = pythonstdIn packet
 let rec sendPacket (c:child) : packet * output =
   let stateTransition = first c |> first in
     let packetToSend = Pipeline.sygusGrammarToPacket (first x |> second) in
-      match stateTransition with
-        [] -> (packetToSend, callDriver packetToSend)
-      | x::xs ->  let _ = callDriver x in sendPacket xs
+    match stateTransition with
+    |  [] -> (packetToSend, callDriver packetToSend)
+    | x::xs ->  let _ = callDriver x in sendPacket xs
 
 let executeMutatedPopulation (mutatedPopulation : population) : (trace list * population) =
   let outputList = List.map sendPacket mutatedPopulation in
-    scorePopulation 
+  scorePopulation 
 
 
 (* Filter population based on standard deviation *)
@@ -191,20 +191,20 @@ let getScores (p:population) : score list = List.map second p
 
 let calcMean (s:score list) : float =
   let sum = List.fold_left (+.) 0.0 s in
-    sum /. float_of_int (List.length s)
+  sum /. float_of_int (List.length s)
 
 let stdDev (s:score list) : float =
   let m = calcMean s in
-    let variance = List.fold_left (fun a x -> a +. (x -. m) ** 2.0) 0.0 s in
-      sqrt (variance /. float_of_int (List.length s))
+  let variance = List.fold_left (fun a x -> a +. (x -. m) ** 2.0) 0.0 s in
+  sqrt (variance /. float_of_int (List.length s))
 
 
 let cleaupPopulation (p: population) : population =
   (* check scores for staleness, remove population that has scores with little to no SD, 
      ignore 0.0 when checking for staleness *)
   let s = getScores p in 
-    let sd = stdDev s in
-      List.filter (fun (_, sc) -> sc = 0.0 || s > sd) p
+  let sd = stdDev s in
+  List.filter (fun (_, sc) -> sc = 0.0 || s > sd) p
 (* END CLEANUP *)
 
 let rec fuzzingAlgorithm 
@@ -223,10 +223,10 @@ let rec fuzzingAlgorithm
       fuzzingAlgorithm maxCurrentPopulation (cleaupPopulation currentPopulation) iTraces tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations
     else
       let top_sample = sample_from_percentile_range currentPopulation 0.0 10.0 1 in
-        let middle_sample = sample_from_percentile_range currentPopulation 30.0 60.0 2 in
-          let bottom_sample = sample_from_percentile_range currentPopulation 80.0 100.0 1 in
-            let newPopulation = top_sample @ middle_sample @ bottom_sample in
-              let selectedMutations = mutationList random_element mutationOperations (List.length newPopulation) in
-                let mutatedPopulation = newMutatedSet newPopulation selectedMutations (List.length newPopulation) in
-                  let (iT, newPopulation) = executeMutatedPopulation mutatedPopulation in
-                    fuzzingAlgorithm maxCurrentPopulation (List.append newPopulation currentPopulation) (List.append iTraces iT) tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations
+      let middle_sample = sample_from_percentile_range currentPopulation 30.0 60.0 2 in
+      let bottom_sample = sample_from_percentile_range currentPopulation 80.0 100.0 1 in
+      let newPopulation = top_sample @ middle_sample @ bottom_sample in
+      let selectedMutations = mutationList random_element mutationOperations (List.length newPopulation) in
+      let mutatedPopulation = newMutatedSet newPopulation selectedMutations (List.length newPopulation) in
+      let (iT, newPopulation) = executeMutatedPopulation mutatedPopulation in
+      fuzzingAlgorithm maxCurrentPopulation (List.append newPopulation currentPopulation) (List.append iTraces iT) tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations
