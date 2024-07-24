@@ -90,7 +90,7 @@ let second (tuple: ('a * 'b)) : 'b =
 let interestingTracesToAnalyse : trace list = []
 let children : childSet = []
 
-let scoreFunction (traces : population) status c : (trace list * population) =
+let scoreFunction (_ : population) status c : (trace list * population) =
   match status with
   | CRASH -> let thisScore : score = (second c) +. 0.7 in
     let newPackets : trace = (first c |> first) in
@@ -111,12 +111,12 @@ let scoreFunction (traces : population) status c : (trace list * population) =
     (updatedInterestingTraces, updatedChildren)
 ;;
     
-let random_element (lst: 'a list) : 'a option =
-  if lst = [] then None
+let random_element (lst: 'a list) : 'a =
+  if lst = [] then failwith "random_element tried to select element from empty list"
   else begin
     let len = List.length lst in
     let random_index = Random.int len in
-    Some (List.nth lst random_index)
+    List.nth lst random_index
   end
 
 let sample_from_percentile_range (pop: population) (lower_percentile: float) (upper_percentile: float) (sample_size: int) : child list =
@@ -151,7 +151,7 @@ let rec sample acc remaining size =
 in
 sample [] segment sample_size
 
-let applyMutation (m:mutation) (g:grammar) : grammar =
+let applyMutation (m:mutation) (_ :grammar) : grammar =
   match m with
     Add -> "did addition"
   | Delete -> "did deletion"
@@ -204,7 +204,7 @@ let cleaupPopulation (p: population) : population =
      ignore 0.0 when checking for staleness *)
   let s = getScores p in 
   let sd = stdDev s in
-  List.filter (fun (_, sc) -> sc = 0.0 || s > sd) p
+  List.filter (fun (_, sc) -> sc = 0.0 || sc > sd) p
 (* END CLEANUP *)
 
 let rec fuzzingAlgorithm 
