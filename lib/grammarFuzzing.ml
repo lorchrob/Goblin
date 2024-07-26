@@ -41,7 +41,7 @@ let rec mutate_concrete_packet: sygus_ast -> sygus_ast
 
 (* Deletes the first grammar element from every production rule 
    of the grammar *)
-let delete: ast -> ast 
+(* let delete: ast -> ast 
 (* Apply the mutation to every production rule in the ast *)
 = fun ast -> List.map (fun element -> match element with
   (* Remove the first element of the first Rhs of each production rule *)
@@ -51,14 +51,14 @@ let delete: ast -> ast
   | ProdRule _ -> element
   (* Ignore type annotations *)
   | TypeAnnotation _ -> element
-  ) ast
+  ) ast *)
 
 open Random
 
 type packet = bytes 
 type score = float 
 
-type grammar = string
+type grammar = ast
 
 type mutation = Add | Delete | Modify | CrossOver | None
 
@@ -111,12 +111,12 @@ let scoreFunction (_ : population) status c : (trace list * population) =
     (updatedInterestingTraces, updatedChildren)
 ;;
     
-let random_element (lst: 'a list) : 'a =
-  if lst = [] then failwith "random_element tried to select element from empty list"
+let random_element (lst: 'a list) : 'a option =
+  if lst = [] then None
   else begin
     let len = List.length lst in
     let random_index = Random.int len in
-    List.nth lst random_index
+    Some (List.nth lst random_index)
   end
 
 let sample_from_percentile_range (pop: population) (lower_percentile: float) (upper_percentile: float) (sample_size: int) : child list =
@@ -176,7 +176,7 @@ let callDriver packet : output = pythonstdIn packet
 
 let rec sendPacket (c:child) : packet * output =
   let stateTransition = first c |> first in
-    let packetToSend = Pipeline.sygusGrammarToPacket (first x |> second) in
+    let packetToSend = Pipeline.sygusGrammarToPacket (first c |> second) in
     match stateTransition with
     |  [] -> (packetToSend, callDriver packetToSend)
     | x::xs ->  let _ = callDriver x in sendPacket xs
