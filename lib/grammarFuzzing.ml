@@ -52,6 +52,7 @@ let rec mutate_concrete_packet: sygus_ast -> sygus_ast
   (* Ignore type annotations *)
   | TypeAnnotation _ -> element
   ) ast *)
+
 open Unix
 
 let read_from_file filename =
@@ -87,8 +88,8 @@ let wait_for_python_response response_file =
   loop ()
 
 let callDriver x =
-  let message_file = "message.txt" in
-  let response_file = "response.txt" in
+  let message_file = "../message.txt" in
+  let response_file = "../response.txt" in
 
   (* Write x to the message file *)
   write_to_file message_file x;
