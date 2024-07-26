@@ -90,26 +90,29 @@ let second (tuple: ('a * 'b)) : 'b =
 let interestingTracesToAnalyse : trace list = []
 let children : childSet = []
 
-let scoreFunction (_ : population) status c : (trace list * population) =
-  match status with
-  | CRASH -> let thisScore : score = (second c) +. 0.7 in
-    let newPackets : trace = (first c |> first) in
-    let updatedInterestingTraces : traceSet = newPackets :: interestingTracesToAnalyse in
-    let updatedChildren : childSet = ((first c |> first, first c |> second), thisScore) :: children in
-    (updatedInterestingTraces, updatedChildren)
-  | TIMEOUT -> let thisScore : score = (c |> second) +. 0.5 in
-    let updatedChildren : childSet = ((first c |> first, first c |> second), thisScore) :: children in
-    (interestingTracesToAnalyse, updatedChildren)
-  | EXPECTED_OUTPUT -> let thisScore : score = (second c) +. 0.1 in
-    let updatedChildren : childSet = ((first c |> first, first c |> second), thisScore) :: children in
-    (interestingTracesToAnalyse, updatedChildren)
-  | _ ->
-    let thisScore : score = (second c) +. 0.9 in
-    let updatedChildren : childSet = ((first c |> first, first c |> second), thisScore) :: children in
-    let newPackets : trace = (first c |> first) in
-    let updatedInterestingTraces : traceSet = newPackets :: interestingTracesToAnalyse in
-    (updatedInterestingTraces, updatedChildren)
-;;
+let rec scoreFunction (pktStatus : (packet * output) list) (mutatedPopulation : population) : (trace * population) =
+  match pktStatus, mutatedPopulation with
+    [], [] -> [], []
+  | status :: statuses, c :: remainingPopulation ->
+    match status with
+      (_, CRASH) -> let thisScore : score = (second c) +. 0.7 in
+      let newPackets : trace = (first c |> first) in
+      let iTraces : trace list = [newPackets :: (first status)] :: (first (scorePopulation statuses remainingPopulation))  in
+      let updatedChildren : population = ((iTraces, first c |> second), thisScore) :: (second (scorePopulation statuses remainingPopulation)) in
+      (iTraces, updatedChildren)
+    | (_, TIMEOUT) -> let thisScore : score = (c |> second) +. 0.5 in
+      let updatedChildren : population = ((first c |> first :: (first status), first c |> second), thisScore) :: (second (scorePopulation statuses remainingPopulation)) in
+      ((first (scorePopulation statuses remainingPopulation)), updatedChildren)
+    | (_, EXPECTED_OUTPUT) -> let thisScore : score = (second c) +. 0.1 in
+      let updatedChildren : population = ((first c |> first :: (first status), first c |> second), thisScore) :: (second (scorePopulation statuses remainingPopulation)) in
+      ((first (scorePopulation statuses remainingPopulation)), updatedChildren)
+    | (_,_) ->
+      let thisScore : score = (second c) +. 0.9 in
+      let newPackets : trace = (first c |> first) in
+      let iTraces : trace list = [newPackets :: (first status)] :: (first (scorePopulation statuses remainingPopulation))  in
+      let updatedChildren : population = ((iTraces, first c |> second), thisScore) :: (second (scorePopulation statuses remainingPopulation)) in
+      (iTraces, updatedChildren)
+
     
 let random_element (lst: 'a list) : 'a option =
   if lst = [] then None
@@ -174,16 +177,20 @@ let pythonstdIn _ = assert false
 
 let callDriver packet : output = pythonstdIn packet
 
-let rec sendPacket (c:child) : packet * output =
-  let stateTransition = first c |> first in
-    let packetToSend = Pipeline.sygusGrammarToPacket (first c |> second) in
-    match stateTransition with
-    |  [] -> (packetToSend, callDriver packetToSend)
-    | x::xs ->  let _ = callDriver x in sendPacket xs
+let rec sendPacketsToState (p : packet list) : unit = 
+  match p with
+    [] -> ()
+  | x :: xs -> let _ = callDriver x in sendPacketsToState xs
 
+let sendPacket (c:child) : packet * output =
+  let stateTransition = first c |> first in
+    let packetToSend = Pipeline.sygusGrammarToPacket (first c |> second) in sendPacketsToState stateTransition ;
+    (packetToSend, callDriver packetToSend)
+    
 let executeMutatedPopulation (mutatedPopulation : population) : (trace list * population) =
   let outputList = List.map sendPacket mutatedPopulation in
-  scorePopulation 
+  let scoredPopulation = scoreFunction outputList mutatedPopulation
+
 
 
 (* Filter population based on standard deviation *)
