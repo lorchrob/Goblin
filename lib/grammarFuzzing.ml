@@ -52,7 +52,50 @@ let rec mutate_concrete_packet: sygus_ast -> sygus_ast
   (* Ignore type annotations *)
   | TypeAnnotation _ -> element
   ) ast *)
+open Unix
 
+let read_from_file filename =
+  let ic = open_in filename in
+  try
+    let line = input_line ic in
+    close_in ic;
+    Some line
+  with End_of_file ->
+    close_in ic;
+    None
+
+let write_to_file filename msg =
+  let oc = open_out filename in
+  output_string oc msg;
+  close_out oc
+
+let clear_file filename =
+  let oc = open_out filename in
+  close_out oc  (* Opens and immediately closes the file to clear its content *)
+
+let wait_for_python_response response_file =
+  let rec loop () =
+    match read_from_file response_file with
+    | Some response ->
+        (* Clear the file after reading *)
+        clear_file response_file;
+        response
+    | None ->
+        sleep 1;  (* Wait for a while before checking again *)
+        loop ()
+  in
+  loop ()
+
+let callDriver x =
+  let message_file = "message.txt" in
+  let response_file = "response.txt" in
+
+  (* Write x to the message file *)
+  write_to_file message_file x;
+
+  (* Wait for the Python process to write a response and return it *)
+  wait_for_python_response response_file
+  
 type packet = bytes 
 type score = float 
 
