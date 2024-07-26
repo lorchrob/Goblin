@@ -47,56 +47,14 @@ let rec mutate_concrete_packet: sygus_ast -> sygus_ast
   (* Remove the first element of the first Rhs of each production rule *)
   | ProdRule (nt, Rhs (_ :: ges, scs) :: rules) -> 
     ProdRule (nt, Rhs (ges, scs) :: rules)
-  (* If the production rule does not have an Rhs with at least one element, ignore it *)
-  | ProdRule _ -> element
-  (* Ignore type annotations *)
-  | TypeAnnotation _ -> element
-  ) ast *)
-
-open Unix
-
-let read_from_file filename =
-  let ic = open_in filename in
-  try
-    let line = input_line ic in
-    close_in ic;
-    Some line
-  with End_of_file ->
-    close_in ic;
-    None
-
-let write_to_file filename msg =
-  let oc = open_out filename in
-  output_string oc msg;
-  close_out oc
-
-let clear_file filename =
-  let oc = open_out filename in
-  close_out oc  (* Opens and immediately closes the file to clear its content *)
-
-let wait_for_python_response response_file =
-  let rec loop () =
-    match read_from_file response_file with
-    | Some response ->
-        (* Clear the file after reading *)
-        clear_file response_file;
-        response
-    | None ->
-        sleep 1;  (* Wait for a while before checking again *)
-        loop ()
-  in
-  loop ()
-
-let callDriver x =
-  let message_file = "../message.txt" in
-  let response_file = "../response.txt" in
-
-  (* Write x to the message file *)
-  write_to_file message_file x;
-
-  (* Wait for the Python process to write a response and return it *)
-  wait_for_python_response response_file
-  
+    (* If the production rule does not have an Rhs with at least one element, ignore it *)
+    | ProdRule _ -> element
+    (* Ignore type annotations *)
+    | TypeAnnotation _ -> element
+    ) ast *)
+    
+    open Unix
+    
 type packet = bytes 
 type score = float 
 
@@ -128,6 +86,53 @@ let second (tuple: ('a * 'b)) : 'b =
   match tuple with
   (_, t2) -> t2
 ;;
+
+
+let read_from_file filename =
+  let ic = open_in filename in
+  try
+    let line = input_line ic in
+    close_in ic;
+    Some line
+  with End_of_file ->
+    close_in ic;
+    None
+
+let write_to_file filename msg =
+  let oc = open_out_bin filename in
+  output_bytes oc msg;
+  close_out oc
+
+let clear_file filename =
+  let oc = open_out filename in
+  close_out oc  (* Opens and immediately closes the file to clear its content *)
+
+let wait_for_python_response (response_file : string) : output =
+  let rec loop () =
+    match read_from_file response_file with
+    | Some response ->
+        (* Clear the file after reading *)
+        clear_file response_file;
+        if response = "CRASH" then CRASH
+        else if response = "TIMEOUT" then TIMEOUT
+        else if response = "EXPECTED_OUTPUT" then EXPECTED_OUTPUT
+        else UNEXPECTED_OUTPUT
+    | None ->
+        sleep 1;  (* Wait for a while before checking again *)
+        loop ()
+  in
+  loop ()
+
+let callDriver x =
+  let message_file = "../message.txt" in
+  let response_file = "../response.txt" in
+
+  (* Write x to the message file *)
+  write_to_file message_file x;
+
+  (* Wait for the Python process to write a response and return it *)
+  wait_for_python_response response_file
+  
 
 
 let rec scoreFunction (pktStatus : (packet * output) list) (mutatedPopulation : population) : (trace list * population) =
@@ -199,13 +204,13 @@ let sample_from_percentile_range (pop: population) (lower_percentile: float) (up
 
   sample [] segment sample_size
 
-let applyMutation (m:mutation) (g :grammar) : grammar =
-  match m with
+let applyMutation (m:mutation) (g :grammar) : grammar = g
+  (* match m with
     Add -> g
   | Delete -> g
   | Modify -> g
   | CrossOver -> g
-  | None -> g
+  | None -> g *)
 
 let rec newMutatedSet (p:population) (m:mutationOperations) (n:int) : population = 
   match n, p, m with
@@ -217,10 +222,6 @@ let rec mutationList sampleFunction (mutationOps:mutationOperations) (n:int): mu
   match n with
     0 -> []
   | _ -> sampleFunction mutationOps :: mutationList sampleFunction mutationOps (n - 1)
-
-let pythonstdIn _ = assert false 
-
-let callDriver packet : output = pythonstdIn packet
 
 let rec sendPacketsToState (p : packet list) : unit = 
   match p with
