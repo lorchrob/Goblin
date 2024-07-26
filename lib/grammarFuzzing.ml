@@ -53,8 +53,6 @@ let rec mutate_concrete_packet: sygus_ast -> sygus_ast
   | TypeAnnotation _ -> element
   ) ast *)
 
-open Random
-
 type packet = bytes 
 type score = float 
 
@@ -73,9 +71,9 @@ type trace = packet list
 
 type traceSet = trace list
 
-type iterationCount = int 
+(* type iterationCount = int  *)
 
-type childSet = child list
+(* type childSet = child list *)
 
 let first (tuple: ('a * 'b)) : 'a =
   match tuple with
@@ -87,41 +85,43 @@ let second (tuple: ('a * 'b)) : 'b =
   (_, t2) -> t2
 ;;
 
-let interestingTracesToAnalyse : trace list = []
-let children : childSet = []
 
-let rec scoreFunction (pktStatus : (packet * output) list) (mutatedPopulation : population) : (trace * population) =
+let rec scoreFunction (pktStatus : (packet * output) list) (mutatedPopulation : population) : (trace list * population) =
   match pktStatus, mutatedPopulation with
     [], [] -> [], []
   | status :: statuses, c :: remainingPopulation ->
     match status with
       (_, CRASH) -> let thisScore : score = (second c) +. 0.7 in
       let newPackets : trace = (first c |> first) in
-      let iTraces : trace list = [newPackets :: (first status)] :: (first (scorePopulation statuses remainingPopulation))  in
-      let updatedChildren : population = ((iTraces, first c |> second), thisScore) :: (second (scorePopulation statuses remainingPopulation)) in
+      let iTraces : trace list = [newPackets @ [(first status)]] @ (first (scoreFunction statuses remainingPopulation))  in
+      let updatedChildren : population = ((newPackets @ [(first status)], first c |> second), thisScore) :: (second (scoreFunction statuses remainingPopulation)) in
       (iTraces, updatedChildren)
     | (_, TIMEOUT) -> let thisScore : score = (c |> second) +. 0.5 in
-      let updatedChildren : population = ((first c |> first :: (first status), first c |> second), thisScore) :: (second (scorePopulation statuses remainingPopulation)) in
-      ((first (scorePopulation statuses remainingPopulation)), updatedChildren)
+      let newPackets : trace = (first c |> first) in
+      let updatedChildren : population = ((newPackets @ [(first status)], first c |> second), thisScore) :: (second (scoreFunction statuses remainingPopulation)) in
+      ((first (scoreFunction statuses remainingPopulation)), updatedChildren)
     | (_, EXPECTED_OUTPUT) -> let thisScore : score = (second c) +. 0.1 in
-      let updatedChildren : population = ((first c |> first :: (first status), first c |> second), thisScore) :: (second (scorePopulation statuses remainingPopulation)) in
-      ((first (scorePopulation statuses remainingPopulation)), updatedChildren)
+      let newPackets : trace = (first c |> first) in
+      let updatedChildren : population = ((newPackets @ [(first status)], first c |> second), thisScore) :: (second (scoreFunction statuses remainingPopulation)) in
+      ((first (scoreFunction statuses remainingPopulation)), updatedChildren)
     | (_,_) ->
       let thisScore : score = (second c) +. 0.9 in
       let newPackets : trace = (first c |> first) in
-      let iTraces : trace list = [newPackets :: (first status)] :: (first (scorePopulation statuses remainingPopulation))  in
-      let updatedChildren : population = ((iTraces, first c |> second), thisScore) :: (second (scorePopulation statuses remainingPopulation)) in
+      let iTraces : trace list = [newPackets @ [(first status)]] @ (first (scoreFunction statuses remainingPopulation))  in
+      let updatedChildren : population = ((newPackets @ [(first status)], first c |> second), thisScore) :: (second (scoreFunction statuses remainingPopulation)) in
       (iTraces, updatedChildren)
 
     
-let random_element (lst: 'a list) : 'a option =
-  if lst = [] then None
+(* Function to get a random element from a list *)
+let random_element (lst: 'a list) : 'a =
+  if lst = [] then failwith "Empty list"
   else begin
     let len = List.length lst in
     let random_index = Random.int len in
-    Some (List.nth lst random_index)
+    List.nth lst random_index
   end
 
+(* Function to sample from a given percentile range *)
 let sample_from_percentile_range (pop: population) (lower_percentile: float) (upper_percentile: float) (sample_size: int) : child list =
   let sorted_pop = List.sort (fun (_, score1) (_, score2) -> compare score2 score1) pop in
   let pop_len = List.length sorted_pop in
@@ -139,20 +139,21 @@ let sample_from_percentile_range (pop: population) (lower_percentile: float) (up
   in
 
   (* Slice the list to get the segment *)
-let segment =
-  let segment_start = max start_index 0 in
-  let segment_length = min (end_index - start_index + 1) (pop_len - segment_start) in
-  slice segment_start segment_length sorted_pop
-in
+  let segment =
+    let segment_start = max start_index 0 in
+    let segment_length = min (end_index - start_index + 1) (pop_len - segment_start) in
+    slice segment_start segment_length sorted_pop
+  in
 
-(* Randomly sample from the segment *)
-let rec sample acc remaining size =
-  if size <= 0 || remaining = [] then acc
-  else match random_element remaining with
-        | Some elem -> sample (elem :: acc) (List.filter ((<>) elem) remaining) (size - 1)
-        | None -> acc
-in
-sample [] segment sample_size
+  (* Randomly sample from the segment *)
+  let rec sample acc remaining size =
+    if size <= 0 || remaining = [] then acc
+    else
+      let elem = random_element remaining in
+      sample (elem :: acc) (List.filter ((<>) elem) remaining) (size - 1)
+  in
+
+  sample [] segment sample_size
 
 let applyMutation (m:mutation) (g :grammar) : grammar =
   match m with
@@ -189,7 +190,7 @@ let sendPacket (c:child) : packet * output =
     
 let executeMutatedPopulation (mutatedPopulation : population) : (trace list * population) =
   let outputList = List.map sendPacket mutatedPopulation in
-  let scoredPopulation = scoreFunction outputList mutatedPopulation
+  scoreFunction outputList mutatedPopulation
 
 
 
