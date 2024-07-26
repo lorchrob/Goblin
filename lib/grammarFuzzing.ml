@@ -151,13 +151,13 @@ let rec sample acc remaining size =
 in
 sample [] segment sample_size
 
-let applyMutation (m:mutation) (_ :grammar) : grammar =
+let applyMutation (m:mutation) (g :grammar) : grammar =
   match m with
-    Add -> "did addition"
-  | Delete -> "did deletion"
-  | Modify -> "modified"
-  | CrossOver -> "crossovered"
-  | None -> "nothing"
+    Add -> g
+  | Delete -> g
+  | Modify -> g
+  | CrossOver -> g
+  | None -> g
 
 let rec newMutatedSet (p:population) (m:mutationOperations) (n:int) : population = 
   match n, p, m with
