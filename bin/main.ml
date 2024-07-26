@@ -2,6 +2,9 @@ open Sbf
 
 (* NOTES: 
 
+  * Should use proper debugging output to not hamper performance, and so specific debug print statements
+    don't get lost in the junk
+
   * I think some of the length constraints are written informally in comments rather than in the grammar
   * Test length constraint with RG_ID_LIST more rigorously
     * It should work, but it is conservatively rejected by the type checker. The type checker 
@@ -18,7 +21,11 @@ open Sbf
 (* Main function *)
 let () = 
   ignore (Pipeline.main_pipeline 
-    "
+  "
+  <S> ::= <A> { <A> > 0; };
+  <A> :: Int { <A> < 100; }; 
+  "
+    (* "
     <SAE_PACKET> ::= <AUTH_ALGO> <AUTH_SEQ_COMMIT> <STATUS_CODE> <GROUP_ID> <AC_TOKEN> <SCALAR> <ELEMENT> <PASSWORD_IDENTIFIER> <REJECTED_GROUPS> <AC_TOKEN_CONTAINER>
     {
     <AUTH_ALGO> <- int_to_bitvector(16, 3);
@@ -117,7 +124,7 @@ let () =
     <SEND_CONFIRM_COUNTER> :: BitVector(16);
     
     
-    "
+    " *)
   )
 
 
