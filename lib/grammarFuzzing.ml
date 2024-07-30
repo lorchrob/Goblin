@@ -53,7 +53,7 @@ let rec mutate_concrete_packet: sygus_ast -> sygus_ast
     | TypeAnnotation _ -> element
     ) ast *)
     
-    open Unix
+open Unix
     
 type packet = bytes 
 type score = float 
@@ -124,8 +124,8 @@ let wait_for_python_response (response_file : string) : output =
   loop ()
 
 let callDriver x =
-  let message_file = "../message.txt" in
-  let response_file = "../response.txt" in
+  let message_file = "../../message.txt" in
+  let response_file = "../../response.txt" in
 
   (* Write x to the message file *)
   write_to_file message_file x;
@@ -138,6 +138,8 @@ let callDriver x =
 let rec scoreFunction (pktStatus : (packet * output) list) (mutatedPopulation : population) : (trace list * population) =
   match pktStatus, mutatedPopulation with
     [], [] -> [], []
+  | ([], _::_) -> failwith "edge case unhandled"
+  | (_::_, []) -> failwith "edge case unhandled"
   | status :: statuses, c :: remainingPopulation ->
     match status with
       (_, CRASH) -> let thisScore : score = (second c) +. 0.7 in
@@ -204,13 +206,13 @@ let sample_from_percentile_range (pop: population) (lower_percentile: float) (up
 
   sample [] segment sample_size
 
-let applyMutation (m:mutation) (g :grammar) : grammar = g
-  (* match m with
+let applyMutation (m:mutation) (g :grammar) : grammar =
+  match m with
     Add -> g
   | Delete -> g
   | Modify -> g
   | CrossOver -> g
-  | None -> g *)
+  | None -> g
 
 let rec newMutatedSet (p:population) (m:mutationOperations) (n:int) : population = 
   match n, p, m with
@@ -266,10 +268,10 @@ let rec fuzzingAlgorithm
 (iTraces : trace list)
 (tlenBound : int) 
 (currentIteration : int) 
-(terminationIteration) 
+(terminationIteration:int) 
 (cleanupIteration : int) 
 (newChildThreshold : int) 
-(mutationOperations : mutationOperations) : trace list =
+(mutationOperations : mutationOperations) =
   if currentIteration >= terminationIteration then iTraces
   else
     if currentIteration mod cleanupIteration = 0 || List.length currentPopulation >= maxCurrentPopulation then
@@ -283,3 +285,7 @@ let rec fuzzingAlgorithm
       let mutatedPopulation = newMutatedSet newPopulation selectedMutations (List.length newPopulation) in
       let (iT, newPopulation) = executeMutatedPopulation mutatedPopulation in
       fuzzingAlgorithm maxCurrentPopulation (List.append newPopulation currentPopulation) (List.append iTraces iT) tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations
+
+let () = 
+  let _ = fuzzingAlgorithm 10 [] [] 100 0 1000 20 100 [Add; Delete; CrossOver] in
+  ()
