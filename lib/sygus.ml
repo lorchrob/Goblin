@@ -276,7 +276,7 @@ let pp_print_rules: Ast.semantic_constraint Utils.StringMap.t -> Format.formatte
   | SyGuSExpr _ -> failwith "Internal error: dependency map contains a SyGuSExpr"
   ) dep_map
 
-let pp_print_grammar: Format.formatter -> Ast.semantic_constraint Utils.StringMap.t ->  ast -> unit 
+let pp_print_grammar: Format.formatter -> Ast.semantic_constraint Utils.StringMap.t -> ast -> unit 
 = fun ppf dep_map ast -> 
   let top_datatype_str = match List.hd ast with 
   | ProdRule (nt, _) -> String.uppercase_ascii nt
@@ -289,30 +289,27 @@ let pp_print_grammar: Format.formatter -> Ast.semantic_constraint Utils.StringMa
     (pp_print_nt_decs dep_map) ast 
     (pp_print_rules dep_map) ast
 
-let pp_print_ast: Format.formatter -> TC.context -> Ast.semantic_constraint Utils.StringMap.t -> ast -> unit 
-= fun ppf ctx dep_map ast -> 
-  Format.fprintf ppf "(set-logic ALL)";
-
-  Lib.pp_print_newline ppf;
-  Lib.pp_print_newline ppf;
+let pp_print_ast: Format.formatter -> (TC.context * Ast.semantic_constraint Utils.StringMap.t * ast) -> unit 
+= fun ppf (ctx, dep_map, ast) -> 
+  Format.fprintf ppf "(set-logic ALL)\n\n";
 
   pp_print_datatypes ppf ctx dep_map (List.rev ast);
 
-  Lib.pp_print_newline ppf;
+  Lib.pp_print_newline ppf ();
 
   pp_print_grammar ppf dep_map ast;
   
-  Lib.pp_print_newline ppf;
-  Lib.pp_print_newline ppf;
+  Lib.pp_print_newline ppf ();
+  Lib.pp_print_newline ppf ();
 
   pp_print_constraints ppf ast;
 
-  Lib.pp_print_newline ppf;
-  Lib.pp_print_newline ppf;
+  Lib.pp_print_newline ppf ();
+  Lib.pp_print_newline ppf ();
 
   Format.fprintf ppf "(check-synth)";
 
-  Lib.pp_print_newline ppf
+  Lib.pp_print_newline ppf ()
 
 type result = 
 | Command1
@@ -320,8 +317,8 @@ type result =
 
 (* Run two commands in parallel and report which finishes first *)
 let run_commands cmd1 cmd2 =
-  let pid1 = Unix.create_process "/bin/bash" [| "bash"; "-c"; cmd1 |] Unix.stdin Unix.stdout Unix.stderr in
-  let pid2 = Unix.create_process "/bin/bash" [| "bash"; "-c"; cmd2 |] Unix.stdin Unix.stdout Unix.stderr in
+  let pid1 = Unix.create_process "/bin/zsh" [| "zsh"; "-c"; cmd1 |] Unix.stdin Unix.stdout Unix.stderr in
+  let pid2 = Unix.create_process "/bin/zsh" [| "zsh"; "-c"; cmd2 |] Unix.stdin Unix.stdout Unix.stderr in
 
   let rec wait_for_first pid1 pid2 =
     let pid, _ = Unix.wait () in
@@ -344,7 +341,7 @@ fun ctx dep_map ast ->
   | TypeAnnotation (nt, _, _) :: _ -> nt
   | _ -> assert false
   in
-  (* ignore (Unix.system "mkdir sygus_debug"); *)
+  ignore (Unix.system "mkdir sygus_debug > /dev/null");
   let input_filename = "./sygus_debug/" ^ top_nt ^ ".smt2" in
   let output_filename = "./sygus_debug/" ^ top_nt ^ "_out.smt2" in
   let output_filename2 = "./sygus_debug/" ^ top_nt ^ "_out2.smt2" in
@@ -352,7 +349,7 @@ fun ctx dep_map ast ->
   (* Create sygus input file *)
   let oc = open_out input_filename in
   let ppf = Format.formatter_of_out_channel oc in
-  pp_print_ast ppf ctx dep_map ast;
+  pp_print_ast ppf (ctx, dep_map, ast);
   Format.pp_print_flush ppf ();
   close_out oc;
 

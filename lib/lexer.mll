@@ -71,7 +71,10 @@ rule read =
   | "0b" { read_bits lexbuf }
   | int as p { INTEGER (int_of_string p) }
   | id as p {
-    try (print_endline p; Hashtbl.find keyword_table p) with Not_found -> ID (p)
+    try (
+      Debug.debug_print Format.pp_print_string Format.std_formatter p; (* switch to true for more debug output *)
+      Hashtbl.find keyword_table p
+    ) with Not_found -> ID (p)
   }
   | eof { EOF }
   | _ as c { failwith (Printf.sprintf "Unexpected character: %c" c) }

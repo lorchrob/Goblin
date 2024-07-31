@@ -7,8 +7,8 @@ let rec pp_print_list pp sep ppf = function
     Format.fprintf ppf sep; 
     pp_print_list pp sep ppf tl
 
-let pp_print_newline: Format.formatter -> unit 
-= fun ppf -> 
+let pp_print_newline: Format.formatter -> unit -> unit 
+= fun ppf () -> 
   Format.fprintf ppf "\n"
 
 let all_equal lst =

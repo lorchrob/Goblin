@@ -1,6 +1,6 @@
 (library
  (name sbf)
- (libraries unix menhirLib str))
+ (libraries unix menhirLib str cmdliner))
 
 (menhir
  (modules parser sygusParser))

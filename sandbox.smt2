@@ -1,31 +1,32 @@
 (set-logic ALL)
 
-(declare-datatype _STUB0_AC_ELEMENT_ID_EXTENSION (
-	(_stub0_ac_element_id_extension_con)
-))
-(declare-datatype AC_ELEMENT_ID_EXTENSION (
-	(_stub0_ac_element_id_extension_con)
+(declare-datatype SAE_PACKET (
+	(sae_packet_con0 (des0 (_ BitVec 16)) (des1 (_ BitVec 16)))
 ))
 
-(synth-fun top () _stub0_AC_ELEMENT_ID_EXTENSION
+(synth-fun top () SAE_PACKET
 ; declare nonterminals
 (
-	(ac_element_id_extension AC_ELEMENT_ID_EXTENSION)
-	(ac_token_element (Seq Bool))
-	(scalar (Seq Bool))
-	(element (Seq Bool))
-	(confirm_hash (_ BitVec 256))
-	(send_confirm_counter (_ BitVec 16))
-	(_stub0_ac_element_id_extension _STUB0_AC_ELEMENT_ID_EXTENSION)
+	(sae_packet SAE_PACKET)
+	(status_code (_ BitVec 16))
+	(auth_algo (_ BitVec 16))
+
 )
 ; grammar rules
 (
-	(ac_element_id_extension AC_ELEMENT_ID_EXTENSION (_stub0_ac_element_id_extension_con))
-	(ac_token_element (Seq Bool) ((Constant (Seq Bool))))
-	(scalar (Seq Bool) ((Constant (Seq Bool))))
-	(element (Seq Bool) ((Constant (Seq Bool))))
-	(confirm_hash (_ BitVec 256) ((Constant (_ BitVec 256))))
-	(send_confirm_counter (_ BitVec 16) ((Constant (_ BitVec 16))))
-	(_stub0_ac_element_id_extension _STUB0_AC_ELEMENT_ID_EXTENSION (_stub0_ac_element_id_extension_con))
+	(sae_packet SAE_PACKET ((sae_packet_con0 auth_algo status_code)))
+	(status_code (_ BitVec 16) ((Constant (_ BitVec 16))))
+	(auth_algo (_ BitVec 16) ((Constant (_ BitVec 16))))
+
 )
 )
+
+(define-fun c2 ((sae_packet SAE_PACKET)) Bool 
+	(match sae_packet (
+		((sae_packet_con0 auth_algo status_code)
+		 (= auth_algo #b0000000000001100))
+	))
+)
+(constraint (c2 top))
+
+(check-synth)

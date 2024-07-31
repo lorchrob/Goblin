@@ -1,6 +1,8 @@
 {
   open SygusParser
 
+  let debug = false
+
   let mk_hashtbl init =
     let tbl = List.length init |> Hashtbl.create in
     init |> List.iter (fun (k, v) -> Hashtbl.add tbl k v) ;
@@ -36,16 +38,19 @@ rule read =
   parse
   | white { read lexbuf }
   | newline { Lexing.new_line lexbuf ; read lexbuf }
-  | "-" { print_endline "-"; HYPHEN }
-  | "(" { print_endline "("; LPAREN }
-  | ")" { print_endline ")"; RPAREN }
-  | "." { print_endline "."; DOT } 
-  | "_" { print_endline "_"; UNDERSCORE } 
-  | "++" { print_endline "++"; PLUSPLUS }
-  | "#b" { print_endline "BITS"; read_bits lexbuf }
+  | "-" { Debug.debug_print Format.pp_print_string Format.std_formatter "-"; HYPHEN }
+  | "(" { Debug.debug_print Format.pp_print_string Format.std_formatter "("; LPAREN }
+  | ")" { Debug.debug_print Format.pp_print_string Format.std_formatter ")"; RPAREN }
+  | "." { Debug.debug_print Format.pp_print_string Format.std_formatter "."; DOT } 
+  | "_" { Debug.debug_print Format.pp_print_string Format.std_formatter "_"; UNDERSCORE } 
+  | "++" { Debug.debug_print Format.pp_print_string Format.std_formatter "++"; PLUSPLUS }
+  | "#b" { Debug.debug_print Format.pp_print_string Format.std_formatter "BITS"; read_bits lexbuf }
   | int as p { INTEGER (int_of_string p) }
   | id as p {
-    try (print_endline p; Hashtbl.find keyword_table p) with Not_found -> ID (p)
+    try (
+      Debug.debug_print Format.pp_print_string Format.std_formatter p; 
+      Hashtbl.find keyword_table p
+    ) with Not_found -> ID (p)
   }
   | eof { EOF }
   | _ as c { failwith (Printf.sprintf "Unexpected character: %c" c) }
