@@ -320,8 +320,8 @@ type result =
 
 (* Run two commands in parallel and report which finishes first *)
 let run_commands cmd1 cmd2 =
-  let pid1 = Unix.create_process "/bin/zsh" [| "zsh"; "-c"; cmd1 |] Unix.stdin Unix.stdout Unix.stderr in
-  let pid2 = Unix.create_process "/bin/zsh" [| "zsh"; "-c"; cmd2 |] Unix.stdin Unix.stdout Unix.stderr in
+  let pid1 = Unix.create_process "/bin/bash" [| "bash"; "-c"; cmd1 |] Unix.stdin Unix.stdout Unix.stderr in
+  let pid2 = Unix.create_process "/bin/bash" [| "bash"; "-c"; cmd2 |] Unix.stdin Unix.stdout Unix.stderr in
 
   let rec wait_for_first pid1 pid2 =
     let pid, _ = Unix.wait () in
@@ -344,7 +344,7 @@ fun ctx dep_map ast ->
   | TypeAnnotation (nt, _, _) :: _ -> nt
   | _ -> assert false
   in
-  ignore (Unix.system "mkdir sygus_debug");
+  (* ignore (Unix.system "mkdir sygus_debug"); *)
   let input_filename = "./sygus_debug/" ^ top_nt ^ ".smt2" in
   let output_filename = "./sygus_debug/" ^ top_nt ^ "_out.smt2" in
   let output_filename2 = "./sygus_debug/" ^ top_nt ^ "_out2.smt2" in
@@ -357,8 +357,8 @@ fun ctx dep_map ast ->
   close_out oc;
 
   (* Call sygus command *)
-  let cvc5 = "/Users/lorchrob/Downloads/cvc5-macOS-arm64-static/bin/cvc5" in
-  let cvc5_2 = "/Users/lorchrob/Documents/CodeProjects/grammar-based_fuzzing/SyGuS-fuzzing/CVC4/build/bin/cvc5" in
+  let cvc5 = "/home/pirwani/Desktop/cvc5/build/bin/cvc5" in
+  let cvc5_2 = "/home/pirwani/Desktop/cvc5/build/bin/cvc5" in
   let command = Printf.sprintf "%s --lang=sygus2 %s > %s" cvc5 input_filename output_filename in
   let command2 = Printf.sprintf "%s --lang=sygus2 %s > %s" cvc5_2 input_filename output_filename2 in
   (* Run two versions of sygus in parallel and use results from whichever finishes first *)

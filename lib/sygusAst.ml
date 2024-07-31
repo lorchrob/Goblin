@@ -80,7 +80,7 @@ let bools_to_bytes bools =
     in
   
   (* Convert the list of bytes to a byte array *)
-  let byte_list = bools_to_byte_list bools in
+  let byte_list = bools_to_byte_list bools |> List.rev in
   Bytes.of_string (String.concat "" (List.map (String.make 1) (List.map char_of_int byte_list)))
 
 let rec serialize_bytes: sygus_ast -> bytes 

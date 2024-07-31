@@ -89,25 +89,39 @@ let second (tuple: ('a * 'b)) : 'b =
 
 
 let read_from_file filename =
+  let _ = Unix.system ("touch " ^ filename) in
+  Unix.sleep 1 ;
+  print_endline "read_from_file" ;
+
   let ic = open_in filename in
   try
     let line = input_line ic in
     close_in ic;
+    print_endline line ;
     Some line
   with End_of_file ->
     close_in ic;
     None
 
 let write_to_file filename msg =
+  let _ = Unix.system ("touch " ^ filename) in
+  Unix.sleep 1 ;
+  print_endline "write_to_file" ;
   let oc = open_out_bin filename in
   output_bytes oc msg;
   close_out oc
 
 let clear_file filename =
+  let _ = Unix.system ("touch " ^ filename) in
+  Unix.sleep 1 ;
+  print_endline "clear_file" ;
   let oc = open_out filename in
   close_out oc  (* Opens and immediately closes the file to clear its content *)
 
 let wait_for_python_response (response_file : string) : output =
+  let _ = Unix.system ("touch " ^ response_file) in
+  Unix.sleep 1 ;
+  print_endline "wait_for__python" ;
   let rec loop () =
     match read_from_file response_file with
     | Some response ->
@@ -124,8 +138,8 @@ let wait_for_python_response (response_file : string) : output =
   loop ()
 
 let callDriver x =
-  let message_file = "../../message.txt" in
-  let response_file = "../../response.txt" in
+  let message_file = "/home/pirwani/Desktop/message.txt" in
+  let response_file = "/home/pirwani/Desktop/response.txt" in
 
   (* Write x to the message file *)
   write_to_file message_file x;
@@ -286,6 +300,6 @@ let rec fuzzingAlgorithm
       let (iT, newPopulation) = executeMutatedPopulation mutatedPopulation in
       fuzzingAlgorithm maxCurrentPopulation (List.append newPopulation currentPopulation) (List.append iTraces iT) tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations
 
-let () = 
-  let _ = fuzzingAlgorithm 10 [] [] 100 0 1000 20 100 [Add; Delete; CrossOver] in
+let runFuzzer grammar = 
+  let _ = fuzzingAlgorithm 10 [(([], grammar), 0.0); (([], grammar), 0.0); (([], grammar), 0.0)] [] 100 0 1000 20 100 [Add; Delete; CrossOver] in
   ()
