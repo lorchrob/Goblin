@@ -225,20 +225,11 @@ let addTerminalCandidates = [Nonterminal "RG_ID_LIST"; Nonterminal "REJECTED_GRO
 
 let applyMutation (m:mutation) (g : grammar) : grammar =
   match m with
-    Add -> let (mutatedG, success_code) = mutation_add_s1 g in
-            if success_code then mutatedG else g
-  | Delete -> 
-    let (mutatedG, success_code) = mutation_add_s1 g in
-            if success_code then mutatedG else g
-  | Modify -> 
-    let (mutatedG, success_code) = mutation_add_s1 g in
-            if success_code then mutatedG else g
-  | CrossOver -> 
-    let (mutatedG, success_code) = mutation_add_s1 g in
-            if success_code then mutatedG else g
-  | None -> 
-    let (mutatedG, success_code) = mutation_add_s1 g in
-            if success_code then mutatedG else g
+    Add -> let gg = first (mutation_add_s1 g) in pp_print_ast Format.std_formatter gg ; gg
+  | Delete -> first (mutation_add_s1 g)
+  | Modify -> first (mutation_add_s1 g)
+  | CrossOver -> first (mutation_add_s1 g)
+  | None -> first (mutation_add_s1 g)
 
 let rec newMutatedSet (p:population) (m:mutationOperations) (n:int) : population = 
   match n, p, m with
