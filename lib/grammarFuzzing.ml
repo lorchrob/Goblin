@@ -220,13 +220,30 @@ let sample_from_percentile_range (pop: population) (lower_percentile: float) (up
 
   sample [] segment sample_size
 
-let applyMutation (m:mutation) (g :grammar) : grammar =
+let addTerminalCandidates = [Nonterminal "RG_ID_LIST"; Nonterminal "REJECTED_GROUPS"; Nonterminal "AC_TOKEN"; Nonterminal "AC_TOKEN_CONTAINER"]
+
+let addNonTerminal (a : grammar_element) (g : grammar) : grammar =
+  match g with
+    x :: xs -> match x with
+     ProdRule(a, clist) -> match clist with
+                            
+    | _ -> x :: addNonTerminal a xs nt
+
+let applyMutation (m:mutation) (g : grammar) : grammar =
   match m with
-    Add -> g
-  | Delete -> g
-  | Modify -> g
-  | CrossOver -> g
-  | None -> g
+  Add -> addNonTerminal (random_element addTerminalCandidates) g 
+  | Delete -> 
+    Ast.pp_print_ast Format.std_formatter g ; 
+    g
+  | Modify -> 
+    Ast.pp_print_ast Format.std_formatter g ;
+  g
+  | CrossOver -> 
+    Ast.pp_print_ast Format.std_formatter g ;
+  g
+  | None -> 
+    Ast.pp_print_ast Format.std_formatter g ;
+  g
 
 let rec newMutatedSet (p:population) (m:mutationOperations) (n:int) : population = 
   match n, p, m with

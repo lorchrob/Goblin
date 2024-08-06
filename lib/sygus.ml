@@ -317,8 +317,8 @@ type result =
 
 (* Run two commands in parallel and report which finishes first *)
 let run_commands cmd1 cmd2 =
-  let pid1 = Unix.create_process "/bin/zsh" [| "zsh"; "-c"; cmd1 |] Unix.stdin Unix.stdout Unix.stderr in
-  let pid2 = Unix.create_process "/bin/zsh" [| "zsh"; "-c"; cmd2 |] Unix.stdin Unix.stdout Unix.stderr in
+  let pid1 = Unix.create_process "/bin/bash" [| "bash"; "-c"; cmd1 |] Unix.stdin Unix.stdout Unix.stderr in
+  let pid2 = Unix.create_process "/bin/bash" [| "bash"; "-c"; cmd2 |] Unix.stdin Unix.stdout Unix.stderr in
 
   let rec wait_for_first pid1 pid2 =
     let pid, _ = Unix.wait () in
@@ -341,7 +341,7 @@ fun ctx dep_map ast ->
   | TypeAnnotation (nt, _, _) :: _ -> nt
   | _ -> assert false
   in
-  ignore (Unix.system "mkdir sygus_debug > /dev/null");
+  (* ignore (Unix.system "mkdir sygus_debug > /dev/null"); *)
   let input_filename = "./sygus_debug/" ^ top_nt ^ ".smt2" in
   let output_filename = "./sygus_debug/" ^ top_nt ^ "_out.smt2" in
   let output_filename2 = "./sygus_debug/" ^ top_nt ^ "_out2.smt2" in
