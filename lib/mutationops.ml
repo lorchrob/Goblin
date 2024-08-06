@@ -1,3 +1,5 @@
+open Ast
+
 let rec isPresentInList elem lst = 
 match lst with 
 | [] -> false 
@@ -7,19 +9,19 @@ match lst with
 let rec isNonTerminalPresent nt_name prod_options = 
 match prod_options with 
 | [] -> false 
-| Rhs(ge_list, sc_list)::xs -> (isPresentInList nt_name ge_list) || (isNonTerminalPresent nt_name prod_options) 
+| Rhs(ge_list, _)::_ -> (isPresentInList nt_name ge_list) || (isNonTerminalPresent nt_name prod_options) 
 | _ :: ys -> isNonTerminalPresent nt_name ys 
 
 
 
-let rec apply_add_s1_to_rule production_options = 
+let apply_add_s1_to_rule production_options = 
     (
         List.map 
             (fun rhs_prod_rul -> 
                 match rhs_prod_rul with 
                 | Rhs(geList, scList) -> 
                     if isPresentInList "REJECTED_GROUPS" geList
-                        then Rhs(geList @ Nonterminal("REJECTED_GROUPS"), scList) 
+                        then Rhs(geList @ [Nonterminal("REJECTED_GROUPS")], scList) 
                     else Rhs(geList, scList)
                 | StubbedRhs(s) -> StubbedRhs(s) 
             )
@@ -41,6 +43,6 @@ let rec mutation_add_s1 g =
             let (gg, r) = mutation_add_s1 xs 
                     in 
             (ProdRule(nonTerminal, production_options)::gg, r)   
-    | TypeAnnotation(v) :: ys -> 
+    | TypeAnnotation(v, w, x) :: ys -> 
         let (gg, r) = mutation_add_s1 ys 
-                in (TypeAnnotation(v)::gg, r)
+                in (TypeAnnotation(v, w, x)::gg, r)

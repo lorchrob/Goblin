@@ -1,5 +1,5 @@
 open Ast
-
+open Mutationops
 (* DANIYAL: File with basic mutation examples
 
 open Ast
@@ -222,28 +222,23 @@ let sample_from_percentile_range (pop: population) (lower_percentile: float) (up
 
 let addTerminalCandidates = [Nonterminal "RG_ID_LIST"; Nonterminal "REJECTED_GROUPS"; Nonterminal "AC_TOKEN"; Nonterminal "AC_TOKEN_CONTAINER"]
 
-let addNonTerminal (a : grammar_element) (g : grammar) : grammar =
-  match g with
-    x :: xs -> match x with
-     ProdRule(a, clist) -> match clist with
-                            
-    | _ -> x :: addNonTerminal a xs nt
 
 let applyMutation (m:mutation) (g : grammar) : grammar =
   match m with
-  Add -> addNonTerminal (random_element addTerminalCandidates) g 
+    Add -> let (mutatedG, success_code) = mutation_add_s1 g in
+            if success_code then mutatedG else g
   | Delete -> 
-    Ast.pp_print_ast Format.std_formatter g ; 
-    g
+    let (mutatedG, success_code) = mutation_add_s1 g in
+            if success_code then mutatedG else g
   | Modify -> 
-    Ast.pp_print_ast Format.std_formatter g ;
-  g
+    let (mutatedG, success_code) = mutation_add_s1 g in
+            if success_code then mutatedG else g
   | CrossOver -> 
-    Ast.pp_print_ast Format.std_formatter g ;
-  g
+    let (mutatedG, success_code) = mutation_add_s1 g in
+            if success_code then mutatedG else g
   | None -> 
-    Ast.pp_print_ast Format.std_formatter g ;
-  g
+    let (mutatedG, success_code) = mutation_add_s1 g in
+            if success_code then mutatedG else g
 
 let rec newMutatedSet (p:population) (m:mutationOperations) (n:int) : population = 
   match n, p, m with

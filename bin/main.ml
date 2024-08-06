@@ -52,8 +52,8 @@ let () =
     <SAE_PACKET> ::= <AUTH_ALGO> <AUTH_SEQ_COMMIT> <STATUS_CODE> <GROUP_ID> <AC_TOKEN> <SCALAR> <ELEMENT> <PASSWORD_IDENTIFIER> <REJECTED_GROUPS> <AC_TOKEN_CONTAINER>
     {
     <AUTH_ALGO> <- int_to_bitvector(16, 3);
-    int_to_bitvector(16, 15) bvlte <GROUP_ID> land 
-              <GROUP_ID> bvlte int_to_bitvector(16, 21); 
+    int_to_bitvector(16, 18) bvlte <GROUP_ID> land 
+              <GROUP_ID> bvlte int_to_bitvector(16, 19); 
     <AUTH_SEQ_COMMIT> <- int_to_bitvector(16, 1); 
     <STATUS_CODE> = int_to_bitvector(16, 0) lor 
     <STATUS_CODE> = int_to_bitvector(16, 1) lor 
@@ -73,7 +73,7 @@ let () =
     <GROUP_ID> = int_to_bitvector(16, 18) => 
     length(<SCALAR>) = 1024 land length(<ELEMENT>) = 1024;
     <GROUP_ID> = int_to_bitvector(16, 19) => 
-    length(<SCALAR>) = 32 land length(<ELEMENT>) = 64;
+    length(<SCALAR>) = 256 land length(<ELEMENT>) = 512;
     <GROUP_ID> = int_to_bitvector(16, 20) => 
     length(<SCALAR>) = 48 land length(<ELEMENT>) = 96;
     <GROUP_ID> = int_to_bitvector(16, 21) => 
@@ -101,13 +101,14 @@ let () =
     <PASSWD_ELEMENT_ID> :: BitVector(8) 
     { <PASSWD_ELEMENT_ID> <- int_to_bitvector(8, 255); };
     
-    <PASSWD_ID_LENGTH> :: BitVector(8);
+    <PASSWD_ID_LENGTH> :: BitVector(8)
+    { <PASSWD_ID_LENGTH> <- int_to_bitvector(8, 2); };
     
     <PASSWD_ELEMENT_ID_EXTENSION> :: BitVector(8)
     { <PASSWD_ELEMENT_ID_EXTENSION> <- int_to_bitvector(8, 33); };
     
     
-    <PASSWD_ID> :: BitList;  
+    <PASSWD_ID> :: BitVector(8);
     
     <REJECTED_GROUPS> ::= <RG_ELEMENT_ID> <RG_ID_LENGTH> <RG_ELEMENT_ID_EXTENSION> <RG_ID_LIST>
     { <RG_ID_LENGTH> <- int_to_bitvector(8, length(<RG_ID_LIST>)); };
