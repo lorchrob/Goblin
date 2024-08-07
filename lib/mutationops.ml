@@ -1,5 +1,13 @@
 open Ast
 
+let random_element (lst: 'a list) : 'a =
+    if lst = [] then failwith "Empty list"
+    else begin
+      let len = List.length lst in
+      let random_index = Random.int len in
+      List.nth lst random_index
+    end
+
 let rec isPresentInList elem lst = 
 match lst with 
 | [] -> false 
@@ -172,19 +180,24 @@ let rec mutation_update g nt =
 
 let rec replace_element geList nt1 nt2 =
     match geList with
-    | [] -> failswith "error crossover"
+    | [] -> failwith "error crossover"
     | x :: xs -> if x = nt1 then nt2 :: xs
                  else x :: (replace_element xs nt1 nt2)
 
 
-let mutation_crossover rhs1 rhs2 =
-    match rh1, rh2 with
-    | [], [] -> ([], [])
-    | Rhs(geList1, scList1) :: xs1, Rhs (geList2, scList2) :: xs2 -> 
+let mutation_crossover (rhs1 : prod_rule_rhs) (rhs2 : prod_rule_rhs) : (prod_rule_rhs * prod_rule_rhs) =
+    match rhs1, rhs2 with
+    | Rhs([],[]), Rhs([],[]) -> Rhs([],[]), Rhs([],[])
+    | Rhs(geList1, scList1), Rhs (geList2, scList2) -> 
         let randomGe1 = random_element geList1 in
         let randomGe2 = random_element geList2 in
         let crossoverList1 = replace_element geList1 randomGe1 randomGe2 in
-        let crossoverList2 = replace_element geList2 randomGe2 randomGe1 in
-        match randomGe1, randomGe2 with
-        | (Nonterminal a), (Nonterminal b) -> 
-            (Rhs(crossoverList1, (remove_constraints a)), Rhs(crossoverList2, (remove_constraints b)))
+        let crossoverList2 = replace_element geList2 randomGe2 randomGe1 in (
+            match randomGe1, randomGe2 with
+            | (Nonterminal a), (Nonterminal b) -> 
+                (Rhs(crossoverList1, (remove_constraints a scList1)), Rhs(crossoverList2, (remove_constraints b scList2)))
+            | (Nonterminal _, (NamedNonterminal (_, _)|StubbedNonterminal (_, _))) -> failwith "unexpected crossover"
+            | ((NamedNonterminal (_, _)|StubbedNonterminal (_, _)), _) -> failwith "unexpected crossover"
+        )
+    | (Rhs (_, _), StubbedRhs _) -> failwith "unexpected crossover"
+    | (StubbedRhs _, _) -> failwith "unexpected crossover"

@@ -222,6 +222,33 @@ let sample_from_percentile_range (pop: population) (lower_percentile: float) (up
 
 let nonterminals = ["RG_ID_LIST"; "REJECTED_GROUPS"; "AC_TOKEN"; "AC_TOKEN_CONTAINER"; "SCALAR"; "GROUP_ID"; "ELEMENT";]
 
+let rec get_production_rules_for_crossover g =
+  match g with
+  | [] -> failwith "error finding PR for crossover"
+  | ProdRule(a, b) :: xs -> (
+      match xs with
+      | [] -> failwith "error finding PR for crossover"
+      | ProdRule(c, d) :: ys -> 
+        if a = c then (a, (random_element b, random_element d))
+        else get_production_rules_for_crossover ys
+      | _ -> get_production_rules_for_crossover xs
+    )
+  | _ :: xs -> get_production_rules_for_crossover xs 
+
+let rec replace_Rhs production_options rhs1 crossoverRhs = 
+  match production_options with
+  | [] -> []
+  | x :: xs -> if x = rhs1 then crossoverRhs :: xs
+               else x :: (replace_Rhs xs rhs1 crossoverRhs)
+
+let rec grammarUpdateAfterCrossover g rhs1 rhs2 crossoverPRs = 
+  match g with
+    | [] -> []
+    | ProdRule(a, b) :: xs -> if b = rhs1 
+      then (replace_Rhs b rhs1 (first crossoverPRs)) :: (grammarUpdateAfterCrossover xs rhs1 rhs2 crossoverPRs)
+      else if b = rhs2 then (replace_Rhs b rhs2 (second crossoverPRs))
+      else ProdRule(a, b) :: (grammarUpdateAfterCrossover xs rhs1 rhs2 crossoverPRs)
+    | TypeAnnotation(x,y,z) :: xs -> TypeAnnotation(x,y,z) :: (grammarUpdateAfterCrossover xs rhs1 rhs2 crossoverPRs)
 
 let applyMutation (m:mutation) (g : grammar) : grammar =
   let nt = random_element nonterminals in
@@ -229,7 +256,10 @@ let applyMutation (m:mutation) (g : grammar) : grammar =
     Add -> first (mutation_add_s1 g nt)
   | Delete -> first (mutation_delete g nt)
   | Modify -> first (mutation_update g nt)
-  | CrossOver -> first (mutation_crossover g nt)
+  | CrossOver -> 
+      let (a, (rhs1, rhs2)) = get_production_rules_for_crossover g in
+      let crossoverPRs = mutation_crossover rhs1 rhs2 in
+        grammarUpdateAfterCrossover g rhs1 rhs2 crossoverPRs
   | None -> g
 
 let rec newMutatedSet (p:population) (m:mutationOperations) (n:int) : population = 
