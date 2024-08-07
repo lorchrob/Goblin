@@ -220,16 +220,17 @@ let sample_from_percentile_range (pop: population) (lower_percentile: float) (up
 
   sample [] segment sample_size
 
-let addTerminalCandidates = [Nonterminal "RG_ID_LIST"; Nonterminal "REJECTED_GROUPS"; Nonterminal "AC_TOKEN"; Nonterminal "AC_TOKEN_CONTAINER"]
+let nonterminals = ["RG_ID_LIST"; "REJECTED_GROUPS"; "AC_TOKEN"; "AC_TOKEN_CONTAINER"; "SCALAR"; "GROUP_ID"; "ELEMENT";]
 
 
 let applyMutation (m:mutation) (g : grammar) : grammar =
+  let nt = random_element nonterminals in
   match m with
-    Add -> let gg = first (mutation_add_s1 g) in pp_print_ast Format.std_formatter gg ; gg
-  | Delete -> first (mutation_add_s1 g)
-  | Modify -> first (mutation_add_s1 g)
-  | CrossOver -> first (mutation_add_s1 g)
-  | None -> first (mutation_add_s1 g)
+    Add -> first (mutation_add_s1 g nt)
+  | Delete -> first (mutation_delete g nt)
+  | Modify -> first (mutation_update g nt)
+  | CrossOver -> first (mutation_crossover g nt)
+  | None -> g
 
 let rec newMutatedSet (p:population) (m:mutationOperations) (n:int) : population = 
   match n, p, m with
@@ -304,5 +305,5 @@ let rec fuzzingAlgorithm
       fuzzingAlgorithm maxCurrentPopulation (List.append newPopulation currentPopulation) (List.append iTraces iT) tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations
 
 let runFuzzer grammar = 
-  let _ = fuzzingAlgorithm 10 [(([], grammar), 0.0); (([], grammar), 0.0); (([], grammar), 0.0)] [] 100 0 1000 20 100 [Add; Delete; CrossOver] in
+  let _ = fuzzingAlgorithm 1000 [(([], grammar), 0.0); (([], grammar), 0.0); (([], grammar), 0.0)] [] 100 0 1000 20 100 [Add; Delete; Modify; CrossOver] in
   ()
