@@ -224,7 +224,6 @@ let nonterminals = ["RG_ID_LIST"; "REJECTED_GROUPS"; "AC_TOKEN"; "AC_TOKEN_CONTA
 let rec get_production_rules_for_crossover g =
   let r1 = random_element g in
   let r2 = random_element g in
-  if r1 = "SAE_PACKET" || r2 = "SAE_PACKET"
   match r1, r2 with
   | ProdRule(a, _), ProdRule(c, _) -> print_endline a ; print_endline c ; r1, r2
   | _, _ -> get_production_rules_for_crossover g
