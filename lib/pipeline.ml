@@ -70,8 +70,18 @@ let main_pipeline input_string =
 (*!! TODO: Make sure this actually outputs bytes, not string *)
 (* 0x01 -> 00000001 *)
 (* Call this function *)
+
+let rec sortAst ast =
+  match ast with
+  | [] -> []
+  | ProdRule(a, b) :: TypeAnnotation(x,y,z) :: xs -> ProdRule(a, b) :: (sortAst xs) :: TypeAnnotation(x,y,z)
+  | TypeAnnotation(x,y,z) :: ProdRule(a, b) :: xs -> ProdRule(a, b) :: (sortAst xs) :: TypeAnnotation(x,y,z)
+  | ProdRule(a, b) :: ProdRule(x,y) :: xs -> ProdRule(a, b) :: ProdRule(x,y) :: (sortAst xs)
+  | TypeAnnotation(x,y,z) :: TypeAnnotation(a,b,c) :: xs -> (sortAst xs) :: TypeAnnotation(x,y,z) :: TypeAnnotation(a,b,c)
+  | a :: [] -> a
+
 let sygusGrammarToPacket input_grammar = 
-  let ast = input_grammar in
+  let ast = sortAst input_grammar in
 
   (* Step 1: Syntactic checks *)
   let prm = SyntaxChecker.build_prm ast in

@@ -76,7 +76,6 @@ type traceSet = trace list
 (* type iterationCount = int  *)
 
 (* type childSet = child list *)
-
 let first (tuple: ('a * 'b)) : 'a =
   match tuple with
   (t1, _) -> t1
@@ -223,17 +222,12 @@ let sample_from_percentile_range (pop: population) (lower_percentile: float) (up
 let nonterminals = ["RG_ID_LIST"; "REJECTED_GROUPS"; "AC_TOKEN"; "AC_TOKEN_CONTAINER"; "SCALAR"; "GROUP_ID"; "ELEMENT";]
 
 let rec get_production_rules_for_crossover g =
-  match g with
-  | [] -> failwith "error finding PR for crossover"
-  | ProdRule(a, b) :: xs -> (
-      match xs with
-      | [] -> failwith "error finding PR for crossover"
-      | ProdRule(c, d) :: ys -> 
-        if a = c then (a, (random_element b, random_element d))
-        else get_production_rules_for_crossover ys
-      | _ -> get_production_rules_for_crossover xs
-    )
-  | _ :: xs -> get_production_rules_for_crossover xs 
+  let r1 = random_element g in
+  let r2 = random_element g in
+  if r1 = "SAE_PACKET" || r2 = "SAE_PACKET"
+  match r1, r2 with
+  | ProdRule(a, _), ProdRule(c, _) -> print_endline a ; print_endline c ; r1, r2
+  | _, _ -> get_production_rules_for_crossover g
 
 let rec replace_Rhs production_options rhs1 crossoverRhs = 
   match production_options with
@@ -241,14 +235,30 @@ let rec replace_Rhs production_options rhs1 crossoverRhs =
   | x :: xs -> if x = rhs1 then crossoverRhs :: xs
                else x :: (replace_Rhs xs rhs1 crossoverRhs)
 
-let rec grammarUpdateAfterCrossover g rhs1 rhs2 crossoverPRs = 
+let rec replace_geList b rhs1 rhs2 crossoverPRs =
+  match b with
+  | [] -> []
+  | x :: xss -> 
+    if x = rhs1 
+      then (replace_Rhs b rhs1 (first crossoverPRs)) @ (replace_geList xss rhs1 rhs2 crossoverPRs)
+    else if x = rhs2
+      then (replace_Rhs b rhs2 (second crossoverPRs)) @ (replace_geList xss rhs1 rhs2 crossoverPRs)
+    else (replace_geList xss rhs1 rhs2 crossoverPRs)
+
+let rec grammarUpdateAfterCrossover nt g rhs1 rhs2 crossoverPRs = 
   match g with
     | [] -> []
-    | ProdRule(a, b) :: xs -> if b = rhs1 
-      then (replace_Rhs b rhs1 (first crossoverPRs)) :: (grammarUpdateAfterCrossover xs rhs1 rhs2 crossoverPRs)
-      else if b = rhs2 then (replace_Rhs b rhs2 (second crossoverPRs))
-      else ProdRule(a, b) :: (grammarUpdateAfterCrossover xs rhs1 rhs2 crossoverPRs)
-    | TypeAnnotation(x,y,z) :: xs -> TypeAnnotation(x,y,z) :: (grammarUpdateAfterCrossover xs rhs1 rhs2 crossoverPRs)
+    | ProdRule(a, b) :: xs -> 
+      if a = nt then  
+        let newPR = replace_geList b rhs1 rhs2 crossoverPRs in
+          ProdRule(a, newPR) :: (grammarUpdateAfterCrossover nt xs rhs1 rhs2 crossoverPRs)
+      else ProdRule(a, b) :: (grammarUpdateAfterCrossover nt xs rhs1 rhs2 crossoverPRs)
+    | TypeAnnotation(x,y,z) :: xs -> TypeAnnotation(x,y,z) :: (grammarUpdateAfterCrossover nt xs rhs1 rhs2 crossoverPRs)
+
+let extract_nt_po pr1 pr2 =
+  match pr1, pr2 with
+  | ProdRule(a, b), ProdRule(c, d) -> a, c, b, d
+  | _, _ -> failwith "bad random for crossover"
 
 let applyMutation (m:mutation) (g : grammar) : grammar =
   let nt = random_element nonterminals in
@@ -257,9 +267,15 @@ let applyMutation (m:mutation) (g : grammar) : grammar =
   | Delete -> first (mutation_delete g nt)
   | Modify -> first (mutation_update g nt)
   | CrossOver -> 
-      let (a, (rhs1, rhs2)) = get_production_rules_for_crossover g in
+      let (pr1, pr2) = get_production_rules_for_crossover g in
+      let nt1, nt2, po1, po2 = extract_nt_po pr1 pr2 in
+      let rhs1 = random_element po1 in
+      let rhs2 = random_element po2 in
       let crossoverPRs = mutation_crossover rhs1 rhs2 in
-        grammarUpdateAfterCrossover g rhs1 rhs2 crossoverPRs
+      let newPR = grammarUpdateAfterCrossover nt1 g rhs1 rhs2 crossoverPRs in
+      let finalGrammar = grammarUpdateAfterCrossover nt2 newPR rhs1 rhs2 crossoverPRs in
+      pp_print_ast Format.std_formatter finalGrammar ;
+      finalGrammar
   | None -> g
 
 let rec newMutatedSet (p:population) (m:mutationOperations) (n:int) : population = 
@@ -335,5 +351,6 @@ let rec fuzzingAlgorithm
       fuzzingAlgorithm maxCurrentPopulation (List.append newPopulation currentPopulation) (List.append iTraces iT) tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations
 
 let runFuzzer grammar = 
+  Random.self_init ();
   let _ = fuzzingAlgorithm 1000 [(([], grammar), 0.0); (([], grammar), 0.0); (([], grammar), 0.0)] [] 100 0 1000 20 100 [Add; Delete; Modify; CrossOver] in
   ()
