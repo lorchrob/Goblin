@@ -18,7 +18,7 @@ let rec get_all_nt_from_rhs (rvalue : prod_rule_rhs list) : string list =
 
 let get_all_dependencies_from_one_element (ge : element) : (string * string) list = 
   match ge with 
-  | ProdRule(lvalue, rhs) -> List.map (fun x-> (lvalue, x))(get_all_nt_from_rhs rhs)  
+  | ProdRule(lvalue, rhs) -> (List.map (fun x-> (lvalue, x))(get_all_nt_from_rhs rhs))  |> (List.filter (fun (x,y) ->  x <> y) )
   | TypeAnnotation(_, _, _) -> [] 
 
 let rec get_all_dependencies_from_grammar (g : ast) : (string * string) list = 
@@ -142,6 +142,10 @@ let remove_duplicates x =
   let set_rep = create_set_from_list StringPairSet.empty x in 
   StringPairSet.to_list set_rep     *)
 
+
+
+
+
 let buildGraph gr =
   let g = G.create() in 
   let all_nt = get_all_nt gr in 
@@ -149,7 +153,8 @@ let buildGraph gr =
   let all_dependencies = get_all_dependencies_from_grammar gr in 
   let unique_dependencies = StringPairSet.of_list all_dependencies in 
   StringSet.iter (fun s -> G.add_vertex g s) unique_nts; 
-  StringPairSet.iter (fun s-> G.add_edge g (first s) (second s)) unique_dependencies ; 
+  StringPairSet.iter (fun s-> G.add_edge g (first s) (second s)) unique_dependencies ;
+
   G.iter_vertex (fun x->print_endline x) g; 
   Printf.printf "\n\n\n\n\n\n" ;
   G.iter_edges_e (fun edg -> Printf.printf "(%s -> %s)\n" (first edg) (second edg)) g ; 
