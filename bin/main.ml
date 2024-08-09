@@ -1,4 +1,5 @@
 open Sbf
+open Ast 
 (* NOTES: 
 
   * Should use proper debugging output to not hamper performance, and so specific debug print statements
@@ -147,4 +148,8 @@ let () =
     <SEND_CONFIRM_COUNTER> :: BitVector(16);
     
     
-    " in Topological_sort.runGraph grammar;
+    " in 
+    let res = Topological_sort.canonicalize grammar in 
+    match res with 
+    | Some(cgrammar) ->  pp_print_ast Format.std_formatter cgrammar
+    | None -> Printf.printf "Couldn't canonicalize grammar because the grammar is cyclic";

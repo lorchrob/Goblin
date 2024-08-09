@@ -143,7 +143,39 @@ let remove_duplicates x =
   StringPairSet.to_list set_rep     *)
 
 
+let rec collect_rules_for_nt (cnt : string) (ogrammar : ast) : ast = 
+  match ogrammar with 
+  | [] -> [] 
+  | ProdRule(x, y):: xs -> 
+    if x = cnt then ProdRule(x, y):: collect_rules_for_nt cnt xs
+    else collect_rules_for_nt cnt xs 
+    | TypeAnnotation(x, y, z)::xs -> 
+      if x = cnt then TypeAnnotation(x, y, z)  :: collect_rules_for_nt cnt xs
+      else collect_rules_for_nt cnt xs 
 
+let rec collect_rules (non_term_list : string list ) (ogrammar : ast) (cgrammar : ast) : ast = 
+  match non_term_list with 
+  | [] -> cgrammar 
+  | x::xs -> 
+    let cntr = collect_rules_for_nt x ogrammar in 
+    collect_rules xs ogrammar (cgrammar @ cntr)  
+
+let canonicalize (ogrammar : ast) : ast option = 
+  let g = G.create() in 
+  let all_nt = get_all_nt ogrammar in 
+  let unique_nts = StringSet.of_list all_nt in 
+  let all_dependencies = get_all_dependencies_from_grammar ogrammar in 
+  let unique_dependencies = StringPairSet.of_list all_dependencies in 
+  StringSet.iter (fun s -> G.add_vertex g s) unique_nts; 
+  StringPairSet.iter (fun s-> G.add_edge g (first s) (second s)) unique_dependencies ;
+  let module My_Dfs = Traverse.Dfs(G) in
+  if (My_Dfs.has_cycle g) then None  
+  else 
+    let module TopSort = Topological.Make_stable(G)  in  
+    TopSort.iter (fun x -> Printf.printf "%s " x) g;   Printf.printf "\n\n"; 
+    let top_sort_nts = TopSort.fold (fun x y -> x :: y) g [] in 
+    let rev_top_sort_nts = List.rev top_sort_nts in 
+    Some(collect_rules rev_top_sort_nts ogrammar [])
 
 
 let buildGraph gr =
@@ -164,6 +196,13 @@ let buildGraph gr =
   let module My_Dfs = Traverse.Dfs(G) in 
   if (My_Dfs.has_cycle g) then Printf.printf "Graph has cycles\n" 
   else Printf.printf "Graph does not have cycles\n"; 
+  let module TopSort = Topological.Make_stable(G)  in  
+    TopSort.iter (fun x -> Printf.printf "%s " x) g;   Printf.printf "\n\n"; 
+    let top_sort_nts = TopSort.fold (fun x y -> x :: y) g [] in 
+    let rev_top_sort_nts = List.rev top_sort_nts in 
+    List.iter (fun x-> Printf.printf "%s " x) top_sort_nts; Printf.printf "\n\n";
+    List.iter (fun x-> Printf.printf "%s " x) rev_top_sort_nts; 
+    Printf.printf "\n"; 
   g
 (* 
 
