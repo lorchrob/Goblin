@@ -149,7 +149,7 @@ let () =
     
     
     " in
-    Topological_sort.buildGraph grammar
+    Topological_sort.runGraph grammar
 
 
   

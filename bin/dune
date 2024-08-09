@@ -1,5 +1,5 @@
 (executable
  (public_name sbf)
  (name main)
- (libraries sbf ocamlgraph)
+ (libraries sbf)
  )
