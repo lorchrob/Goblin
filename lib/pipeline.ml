@@ -46,6 +46,7 @@ let main_pipeline input_string =
   (* Step 8: Parse SyGuS output *)
   Debug.debug_print Format.pp_print_string ppf "\nParsing SyGuS output:\n";
   let sygus_asts = List.map2 Utils.parse_sygus sygus_outputs asts in
+  let sygus_asts = List.map Result.get_ok sygus_asts in
   Debug.debug_print Format.pp_print_string ppf "SyGuS ASTs:\n";
   List.iter (Debug.debug_print SygusAst.pp_print_sygus_ast ppf) sygus_asts;
   
@@ -71,17 +72,26 @@ let main_pipeline input_string =
 (* 0x01 -> 00000001 *)
 (* Call this function *)
 
-let rec sortAst ast =
+(* let rec sortAst ast =
   match ast with
   | [] -> []
-  | ProdRule(a, b) :: TypeAnnotation(x,y,z) :: xs -> ProdRule(a, b) :: (sortAst xs) :: TypeAnnotation(x,y,z)
+  | Ast.ProdRule(a, b) :: TypeAnnotation(x,y,z) :: xs -> ProdRule(a, b) :: (sortAst xs) :: TypeAnnotation(x,y,z)
   | TypeAnnotation(x,y,z) :: ProdRule(a, b) :: xs -> ProdRule(a, b) :: (sortAst xs) :: TypeAnnotation(x,y,z)
   | ProdRule(a, b) :: ProdRule(x,y) :: xs -> ProdRule(a, b) :: ProdRule(x,y) :: (sortAst xs)
   | TypeAnnotation(x,y,z) :: TypeAnnotation(a,b,c) :: xs -> (sortAst xs) :: TypeAnnotation(x,y,z) :: TypeAnnotation(a,b,c)
-  | a :: [] -> a
+  | a :: [] -> a *)
 
-let sygusGrammarToPacket input_grammar = 
-  let ast = sortAst input_grammar in
+let rec collect_results results =
+  match results with
+  | [] -> Ok []
+  | Ok v :: rest ->
+      (match collect_results rest with
+        | Ok vs -> Ok (v :: vs)
+        | Error e -> Error e)
+  | Error e :: _ -> Error e
+
+let sygusGrammarToPacket ast = 
+  (* let ast = sortAst input_grammar in *)
 
   (* Step 1: Syntactic checks *)
   let prm = SyntaxChecker.build_prm ast in
@@ -104,15 +114,17 @@ let sygusGrammarToPacket input_grammar =
   (* Step 6: Call sygus engine *)
   let sygus_outputs = List.map (Sygus.call_sygus ctx dep_map) asts in
 
-  (* Step 7: Parse SyGuS output *)
+  (* Step 7: Parse SyGuS output. *)
   let sygus_asts = List.map2 Utils.parse_sygus sygus_outputs asts in
+  match collect_results sygus_asts with
+  | Error e -> Error e
+  | Ok sygus_asts -> 
+    (* Step 8: Recombine to single AST *)
+    let sygus_ast = Recombine.recombine sygus_asts in 
 
-  (* Step 8: Recombine to single AST *)
-  let sygus_ast = Recombine.recombine sygus_asts in 
+    (* Step 9: Compute dependencies *)
+    let sygus_ast = ComputeDeps.compute_deps dep_map ast sygus_ast in 
 
-  (* Step 9: Compute dependencies *)
-  let sygus_ast = ComputeDeps.compute_deps dep_map ast sygus_ast in 
-
-  (* Step 10: Serialize! *)
-  let output = SygusAst.serialize_bytes sygus_ast in 
-  output
+    (* Step 10: Serialize! *)
+    let output = SygusAst.serialize_bytes sygus_ast in 
+    Ok output

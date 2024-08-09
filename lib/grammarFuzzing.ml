@@ -295,7 +295,7 @@ let rec sendPacketsToState (p : packet list) : unit =
 
 let sendPacket (c:child) : packet * output =
   let stateTransition = first c |> first in
-    let packetToSend = Pipeline.sygusGrammarToPacket (first c |> second) in sendPacketsToState stateTransition ;
+    let packetToSend = Result.get_ok (Pipeline.sygusGrammarToPacket (first c |> second)) in sendPacketsToState stateTransition ;
     (packetToSend, callDriver packetToSend)
     
 let executeMutatedPopulation (mutatedPopulation : population) : (trace list * population) =
