@@ -154,6 +154,11 @@ let buildGraph gr =
   Printf.printf "\n\n\n\n\n\n" ;
   G.iter_edges_e (fun edg -> Printf.printf "(%s -> %s)\n" (first edg) (second edg)) g ; 
   Printf.printf "\n\n\n\n\n\n" ;
+  G.iter_edges_e (fun edg -> if G.is_directed then Printf.printf "(%s -> %s)\n" (first edg) (second edg) else Printf.printf "skipping edge (%s %s)\n" (first edg) (second edg)) g ; 
+  Printf.printf "\n\n\n\n\n\n" ;
+  let module My_Dfs = Traverse.Dfs(G) in 
+  if (My_Dfs.has_cycle g) then Printf.printf "Graph has cycles\n" 
+  else Printf.printf "Graph does not have cycles\n"; 
   g
 (* 
 

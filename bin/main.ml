@@ -147,8 +147,4 @@ let () =
     <SEND_CONFIRM_COUNTER> :: BitVector(16);
     
     
-    " in
-    Topological_sort.runGraph grammar
-
-
-  
+    " in Topological_sort.runGraph grammar;
