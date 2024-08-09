@@ -148,13 +148,14 @@ let callDriver x =
   
 
 
-let rec scoreFunction (pktStatus : (packet * output) list) (mutatedPopulation : population) : (trace list * population) =
+let scoreFunction (pktStatus : (packet * output) list) (mutatedPopulation : population) : (trace list * population) =
   match pktStatus, mutatedPopulation with
     [], [] -> [], []
   | ([], _::_) -> failwith "edge case unhandled"
   | (_::_, []) -> failwith "edge case unhandled"
-  | status :: statuses, c :: remainingPopulation ->
-    match status with
+  | _, _ -> [], mutatedPopulation
+  (* | status :: statuses, c :: remainingPopulation -> *)
+    (* match status with
       (_, CRASH) -> let thisScore : score = (second c) +. 0.7 in
       let newPackets : trace = (first c |> first) in
       let iTraces : trace list = [newPackets @ [(first status)]] @ (first (scoreFunction statuses remainingPopulation))  in
@@ -173,7 +174,7 @@ let rec scoreFunction (pktStatus : (packet * output) list) (mutatedPopulation : 
       let newPackets : trace = (first c |> first) in
       let iTraces : trace list = [newPackets @ [(first status)]] @ (first (scoreFunction statuses remainingPopulation))  in
       let updatedChildren : population = ((newPackets @ [(first status)], first c |> second), thisScore) :: (second (scoreFunction statuses remainingPopulation)) in
-      (iTraces, updatedChildren)
+      (iTraces, updatedChildren) *)
 
     
 (* Function to get a random element from a list *)
@@ -262,10 +263,10 @@ let extract_nt_po pr1 pr2 =
 let applyMutation (m:mutation) (g : grammar) : grammar =
   let nt = random_element nonterminals in
   match m with
-    Add -> first (mutation_add_s1 g nt)
-  | Delete -> first (mutation_delete g nt)
-  | Modify -> first (mutation_update g nt)
-  | CrossOver -> 
+    Add -> print_endline "\n\n\nENTERING ADD\n\n\n" ; first (mutation_add_s1 g nt)
+  | Delete -> print_endline "\n\n\nENTERING delete\n\n\n" ;first (mutation_delete g nt)
+  | Modify -> print_endline "\n\n\nENTERING modify\n\n\n" ; first (mutation_update g nt)
+  | CrossOver -> print_endline "\n\n\nENTERING CROSSOVER\n\n\n" ;
       let (pr1, pr2) = get_production_rules_for_crossover g in
       let nt1, nt2, po1, po2 = extract_nt_po pr1 pr2 in
       let rhs1 = random_element po1 in
@@ -273,7 +274,8 @@ let applyMutation (m:mutation) (g : grammar) : grammar =
       let crossoverPRs = mutation_crossover rhs1 rhs2 in
       let newPR = grammarUpdateAfterCrossover nt1 g rhs1 rhs2 crossoverPRs in
       let finalGrammar = grammarUpdateAfterCrossover nt2 newPR rhs1 rhs2 crossoverPRs in
-      pp_print_ast Format.std_formatter finalGrammar ;
+      (* pp_print_ast Format.std_formatter finalGrammar ; *)
+      print_endline "\n\n\nEXITING CROSSOVER\n\n\n" ;
       finalGrammar
   | None -> g
 

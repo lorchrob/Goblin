@@ -149,7 +149,7 @@ let () =
     
     
     " in
-    GrammarFuzzing.runFuzzer grammar
+    Topological_sort.buildGraph grammar
 
 
   
