@@ -261,13 +261,22 @@ let extract_nt_po pr1 pr2 =
   match pr1, pr2 with
   | ProdRule(a, b), ProdRule(c, d) -> a, c, b, d
   | _, _ -> failwith "bad random for crossover"
-
-let applyMutation (m:mutation) (g : grammar) : grammar =
+  
+let rec applyMutation (m:mutation) (g : grammar) : grammar =
   let nt = random_element nonterminals in
   match m with
-    Add -> print_endline "\n\nADDING\n\n" ; first (mutation_add_s1 g nt)
-  | Delete -> print_endline "\n\nDELETING\n\n" ;first (mutation_delete g nt)
-  | Modify -> print_endline "\n\nMODIFYING\n\n" ;first (mutation_update g nt)
+    Add -> print_endline "\n\nADDING\n\n" ; 
+    let added_grammar = first (mutation_add_s1 g nt) in
+    mutate_till_success added_grammar g Add
+
+  | Delete -> print_endline "\n\nDELETING\n\n" ;
+    let deleted_grammar = first (mutation_delete g nt) in
+    mutate_till_success deleted_grammar g Delete
+
+  | Modify -> print_endline "\n\nMODIFYING\n\n" ;
+    let modified_grammar = first (mutation_delete g nt) in
+    mutate_till_success modified_grammar g Modify
+
   | CrossOver -> print_endline "\n\n\nENTERING CROSSOVER\n\n\n" ;
       let (pr1, pr2) = get_production_rules_for_crossover g in
       let nt1, nt2, po1, po2 = extract_nt_po pr1 pr2 in
@@ -278,12 +287,47 @@ let applyMutation (m:mutation) (g : grammar) : grammar =
       let finalGrammar = grammarUpdateAfterCrossover nt2 newPR rhs1 rhs2 crossoverPRs in
       let canonicalizedGrammar = canonicalize finalGrammar in
         (match canonicalizedGrammar with
-        | Some(x) -> pp_print_ast Format.std_formatter x; x
-        | None -> g)
+        | Some(x) -> pp_print_ast Format.std_formatter x; 
+          mutate_till_success x g CrossOver
+        | None -> applyMutation CrossOver g
+        )
       (* pp_print_ast Format.std_formatter finalGrammar ; *)
       (* print_endline "\n\n\nEXITING CROSSOVER\n\n\n" ; *)
       (* finalGrammar *)
   | None -> g
+and 
+  mutate_till_success (mutated_grammar : grammar) (original_grammar : grammar) (mutation_op : mutation) : grammar = 
+  let sygusOutput = (Pipeline.sygusGrammarToPacket mutated_grammar) in
+    match sygusOutput with
+    | Ok _ -> mutated_grammar
+    | Error _ ->
+      print_endline "sygus_error, retrying\n\n" ;
+      let new_nt = random_element nonterminals in
+      match mutation_op with
+      | Add ->
+        let updated_mutation = first (mutation_add_s1 original_grammar new_nt) in
+        mutate_till_success updated_mutation original_grammar mutation_op
+      | Delete -> 
+        let updated_mutation = first (mutation_delete original_grammar new_nt) in
+        mutate_till_success updated_mutation original_grammar mutation_op
+      | Modify ->
+        let updated_mutation = first (mutation_update original_grammar new_nt) in
+        mutate_till_success updated_mutation original_grammar mutation_op
+      | CrossOver ->
+        let (pr1, pr2) = get_production_rules_for_crossover original_grammar in
+        let nt1, nt2, po1, po2 = extract_nt_po pr1 pr2 in
+        let rhs1 = random_element po1 in
+        let rhs2 = random_element po2 in
+        let crossoverPRs = mutation_crossover rhs1 rhs2 in
+        let newPR = grammarUpdateAfterCrossover nt1 original_grammar rhs1 rhs2 crossoverPRs in
+        let finalGrammar = grammarUpdateAfterCrossover nt2 newPR rhs1 rhs2 crossoverPRs in
+        let canonicalizedGrammar = canonicalize finalGrammar in
+          (match canonicalizedGrammar with
+          | Some(x) -> pp_print_ast Format.std_formatter x; 
+            mutate_till_success x original_grammar mutation_op
+          | None -> applyMutation CrossOver original_grammar)
+      | None -> original_grammar
+
 
 let rec newMutatedSet (p:population) (m:mutationOperations) (n:int) : population = 
   match n, p, m with
@@ -301,10 +345,11 @@ let rec sendPacketsToState (p : packet list) : unit =
     [] -> ()
   | x :: xs -> let _ = callDriver x in sendPacketsToState xs
 
-let sendPacket (c:child) : packet * output =
+let sendPacket (c:child) : (packet * output) =
   let stateTransition = first c |> first in
-    let packetToSend = Result.get_ok (Pipeline.sygusGrammarToPacket (first c |> second)) in sendPacketsToState stateTransition ;
-    (packetToSend, callDriver packetToSend)
+    let packetToSend = Result.get_ok (Pipeline.sygusGrammarToPacket (first c |> second)) in 
+      sendPacketsToState stateTransition ;
+      (packetToSend, callDriver packetToSend)
     
 let executeMutatedPopulation (mutatedPopulation : population) : (trace list * population) =
   let outputList = List.map sendPacket mutatedPopulation in
