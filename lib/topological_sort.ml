@@ -173,12 +173,12 @@ let canonicalize (ogrammar : ast) : ast option =
   else 
     let module TopSort = Topological.Make_stable(G)  in  
     TopSort.iter (fun x -> Printf.printf "%s " x) g;   Printf.printf "\n\n"; 
-    let top_sort_nts = TopSort.fold (fun x y -> x :: y) g [] in 
-    let rev_top_sort_nts = List.rev top_sort_nts in 
-    Some(collect_rules rev_top_sort_nts ogrammar [])
+    let top_sort_nts = TopSort.fold (fun x y -> y @ [x]) g [] in 
+    (* let rev_top_sort_nts = List.rev top_sort_nts in  *)
+    Some(collect_rules top_sort_nts ogrammar [])
 
-
-let buildGraph gr =
+(* 
+let buildGraph (gr : ast) =
   let g = G.create() in 
   let all_nt = get_all_nt gr in 
   let unique_nts = StringSet.of_list all_nt in 
@@ -204,7 +204,7 @@ let buildGraph gr =
     List.iter (fun x-> Printf.printf "%s " x) rev_top_sort_nts; 
     Printf.printf "\n"; 
   g
-(* 
+(*  *)
 
   print_tuple_list (remove_duplicates (get_all_dependencies_from_grammar gr)); 
   Printf.printf "\n\n\n\n\n\n" ;
@@ -219,7 +219,7 @@ let buildGraph gr =
   (* g *)
 
 
-let runGraph g =
+(* let runGraph g =
   let _ = buildGraph g in
 
-  ()
+  () *)

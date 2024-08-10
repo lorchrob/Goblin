@@ -1,5 +1,7 @@
 open Ast
 open Mutationops
+open Topological_sort
+
 (* DANIYAL: File with basic mutation examples
 
 open Ast
@@ -263,9 +265,9 @@ let extract_nt_po pr1 pr2 =
 let applyMutation (m:mutation) (g : grammar) : grammar =
   let nt = random_element nonterminals in
   match m with
-    Add -> print_endline "\n\n\nENTERING ADD\n\n\n" ; first (mutation_add_s1 g nt)
-  | Delete -> print_endline "\n\n\nENTERING delete\n\n\n" ;first (mutation_delete g nt)
-  | Modify -> print_endline "\n\n\nENTERING modify\n\n\n" ; first (mutation_update g nt)
+    Add -> print_endline "\n\nADDING\n\n" ; first (mutation_add_s1 g nt)
+  | Delete -> print_endline "\n\nDELETING\n\n" ;first (mutation_delete g nt)
+  | Modify -> print_endline "\n\nMODIFYING\n\n" ;first (mutation_update g nt)
   | CrossOver -> print_endline "\n\n\nENTERING CROSSOVER\n\n\n" ;
       let (pr1, pr2) = get_production_rules_for_crossover g in
       let nt1, nt2, po1, po2 = extract_nt_po pr1 pr2 in
@@ -274,9 +276,13 @@ let applyMutation (m:mutation) (g : grammar) : grammar =
       let crossoverPRs = mutation_crossover rhs1 rhs2 in
       let newPR = grammarUpdateAfterCrossover nt1 g rhs1 rhs2 crossoverPRs in
       let finalGrammar = grammarUpdateAfterCrossover nt2 newPR rhs1 rhs2 crossoverPRs in
+      let canonicalizedGrammar = canonicalize finalGrammar in
+        (match canonicalizedGrammar with
+        | Some(x) -> pp_print_ast Format.std_formatter x; x
+        | None -> g)
       (* pp_print_ast Format.std_formatter finalGrammar ; *)
-      print_endline "\n\n\nEXITING CROSSOVER\n\n\n" ;
-      finalGrammar
+      (* print_endline "\n\n\nEXITING CROSSOVER\n\n\n" ; *)
+      (* finalGrammar *)
   | None -> g
 
 let rec newMutatedSet (p:population) (m:mutationOperations) (n:int) : population = 
