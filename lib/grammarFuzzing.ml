@@ -66,7 +66,7 @@ type mutation = Add | Delete | Modify | CrossOver | None
 
 type mutationOperations = mutation list
 
-type output = CRASH | TIMEOUT | EXPECTED_OUTPUT | UNEXPECTED_OUTPUT
+type output = CRASH | TIMEOUT | EXPECTED_OUTPUT | UNEXPECTED_OUTPUT | Message of string
 
 type child = (packet list * grammar) * score
 type population = child list
@@ -119,7 +119,7 @@ let clear_file filename =
   let oc = open_out filename in
   close_out oc  (* Opens and immediately closes the file to clear its content *)
 
-let wait_for_python_response (response_file : string) : output =
+let wait_for_python_response response_file =
   let _ = Unix.system ("touch " ^ response_file) in
   Unix.sleep 1 ;
   print_endline "wait_for__python" ;
@@ -131,12 +131,18 @@ let wait_for_python_response (response_file : string) : output =
         if response = "CRASH" then CRASH
         else if response = "TIMEOUT" then TIMEOUT
         else if response = "EXPECTED_OUTPUT" then EXPECTED_OUTPUT
-        else UNEXPECTED_OUTPUT
+        else if response = "UNEXPECTED_OUTPUT" then UNEXPECTED_OUTPUT
+        else if response = "SUCCESSFUL_TRANSITION_TO_CONFIRMED" then EXPECTED_OUTPUT
+        else Message response
     | None ->
         sleep 1;  (* Wait for a while before checking again *)
         loop ()
   in
   loop ()
+let get_message message = 
+  match message with
+  | Message message -> message
+  | _ -> failwith "not message type"
 
 let callDriver x =
   let message_file = "/home/pirwani/Desktop/message.txt" in
@@ -261,7 +267,13 @@ let extract_nt_po pr1 pr2 =
   match pr1, pr2 with
   | ProdRule(a, b), ProdRule(c, d) -> a, c, b, d
   | _, _ -> failwith "bad random for crossover"
-  
+
+let log_grammar msg =
+  let oc = open_out_gen [Open_append; Open_creat] 0o666 "../../failed_grammar.grammar" in
+  pp_print_ast (Format.formatter_of_out_channel oc) msg;
+  close_out oc;
+  ()
+
 let rec applyMutation (m:mutation) (g : grammar) : grammar =
   let nt = random_element nonterminals in
   match m with
@@ -300,7 +312,8 @@ and
   let sygusOutput = (Pipeline.sygusGrammarToPacket mutated_grammar) in
     match sygusOutput with
     | Ok _ -> mutated_grammar
-    | Error _ ->
+    | Error _ -> 
+      log_grammar mutated_grammar ;
       print_endline "sygus_error, retrying\n\n" ;
       let new_nt = random_element nonterminals in
       match mutation_op with
@@ -404,5 +417,5 @@ let rec fuzzingAlgorithm
 
 let runFuzzer grammar = 
   Random.self_init ();
-  let _ = fuzzingAlgorithm 1000 [(([], grammar), 0.0); (([], grammar), 0.0); (([], grammar), 0.0)] [] 100 0 1000 20 100 [Add; Delete; Modify; CrossOver] in
+  let _ = fuzzingAlgorithm 1000 [(([], grammar), 0.0); (([(Bytes.of_string (get_message (wait_for_python_response "/home/pirwani/Desktop/response.txt")));], grammar), 0.0);] [] 100 0 1000 20 100 [Add; Delete; Modify; CrossOver] in
   ()

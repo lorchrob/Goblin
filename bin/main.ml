@@ -52,7 +52,7 @@ let () =
     <SAE_PACKET> ::= <AUTH_ALGO> <AUTH_SEQ_COMMIT> <STATUS_CODE> <GROUP_ID> <AC_TOKEN> <SCALAR> <ELEMENT> <PASSWORD_IDENTIFIER> <REJECTED_GROUPS> <AC_TOKEN_CONTAINER>
     {
     <AUTH_ALGO> <- int_to_bitvector(16, 3);
-    int_to_bitvector(16, 18) bvlte <GROUP_ID> land 
+    int_to_bitvector(16, 19) bvlte <GROUP_ID> land 
               <GROUP_ID> bvlte int_to_bitvector(16, 19); 
     <AUTH_SEQ_COMMIT> <- int_to_bitvector(16, 1); 
     <STATUS_CODE> = int_to_bitvector(16, 0) lor 
