@@ -103,7 +103,6 @@ let read_from_file filename =
   try
     let line = input_line ic in
     close_in ic;
-    print_endline line ;
     Some line
   with End_of_file ->
     close_in ic;
@@ -146,7 +145,7 @@ let wait_for_python_response response_file =
         else if response = "TIMEOUT" then TIMEOUT
         else if response = "EXPECTED_OUTPUT" then EXPECTED_OUTPUT
         else if response = "UNEXPECTED_OUTPUT" then UNEXPECTED_OUTPUT
-        else if response = "SUCCESSFUL_TRANSITION_TO_CONFIRMED" then EXPECTED_OUTPUT
+        else if response = "SUCCESSFUL_TRANSITION_SUCCESS" then EXPECTED_OUTPUT
         else Message response
     | None ->
         sleep 1;  (* Wait for a while before checking again *)
