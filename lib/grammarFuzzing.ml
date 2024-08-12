@@ -60,15 +60,20 @@ open Unix
 type packet = bytes 
 type score = float 
 
+
+type packet_type = COMMIT | CONFIRM | ASSOCIATION_REQUEST | NOTHING
+
 type grammar = ast
 
-type mutation = Add | Delete | Modify | CrossOver | None
+type mutation = Add | Delete | Modify | CrossOver | None | CorrectPacket of packet_type
 
 type mutationOperations = mutation list
 
 type output = CRASH | TIMEOUT | EXPECTED_OUTPUT | UNEXPECTED_OUTPUT | Message of string
 
-type child = (packet list * grammar) * score
+type provenance = RawPacket of packet | ValidPacket of packet_type
+
+type child = (provenance list * grammar) * score
 type population = child list
 
 type trace = packet list
@@ -103,6 +108,15 @@ let read_from_file filename =
   with End_of_file ->
     close_in ic;
     None
+
+let write_symbol_to_file filename msg =
+  let _ = Unix.system ("touch " ^ filename) in
+  Unix.sleep 1 ;
+  print_endline "write_to_file" ;
+  let oc = open_out filename in
+  output_string oc msg;
+  close_out oc
+    
 
 let write_to_file filename msg =
   let _ = Unix.system ("touch " ^ filename) in
@@ -144,16 +158,25 @@ let get_message message =
   | Message message -> message
   | _ -> failwith "not message type"
 
+let map_provenance_to_string (p : provenance) : string =
+  match p with
+  | ValidPacket COMMIT -> "COMMIT"
+  | ValidPacket CONFIRM -> "CONFIRM"
+  | ValidPacket ASSOCIATION_REQUEST -> "ASSOCIATION_REQUEST"
+  | ValidPacket NOTHING -> failwith "unexpected symbol.."
+  | RawPacket _ -> failwith "handle the raw packet case"
+  
 let callDriver x =
   let message_file = "/home/pirwani/Desktop/message.txt" in
   let response_file = "/home/pirwani/Desktop/response.txt" in
 
-  (* Write x to the message file *)
-  write_to_file message_file x;
-
-  (* Wait for the Python process to write a response and return it *)
-  wait_for_python_response response_file
-  
+  match x with 
+  | ValidPacket _ -> 
+    write_symbol_to_file message_file (map_provenance_to_string x);
+    wait_for_python_response response_file
+  | RawPacket y -> 
+    write_to_file message_file y;
+    wait_for_python_response response_file
 
 
 let scoreFunction (pktStatus : (packet * output) list) (mutatedPopulation : population) : (trace list * population) =
@@ -274,20 +297,20 @@ let log_grammar msg =
   close_out oc;
   ()
 
-let rec applyMutation (m:mutation) (g : grammar) : grammar =
+let rec applyMutation (m : mutation) (g : ast) : packet_type * grammar =
   let nt = random_element nonterminals in
   match m with
     Add -> print_endline "\n\nADDING\n\n" ; 
     let added_grammar = first (mutation_add_s1 g nt) in
-    mutate_till_success added_grammar g Add
+    NOTHING, (mutate_till_success added_grammar g Add)
 
   | Delete -> print_endline "\n\nDELETING\n\n" ;
     let deleted_grammar = first (mutation_delete g nt) in
-    mutate_till_success deleted_grammar g Delete
+    NOTHING, (mutate_till_success deleted_grammar g Delete)
 
   | Modify -> print_endline "\n\nMODIFYING\n\n" ;
     let modified_grammar = first (mutation_delete g nt) in
-    mutate_till_success modified_grammar g Modify
+    NOTHING, (mutate_till_success modified_grammar g Modify)
 
   | CrossOver -> print_endline "\n\n\nENTERING CROSSOVER\n\n\n" ;
       let (pr1, pr2) = get_production_rules_for_crossover g in
@@ -300,15 +323,28 @@ let rec applyMutation (m:mutation) (g : grammar) : grammar =
       let canonicalizedGrammar = canonicalize finalGrammar in
         (match canonicalizedGrammar with
         | Some(x) -> pp_print_ast Format.std_formatter x; 
-          mutate_till_success x g CrossOver
-        | None -> applyMutation CrossOver g
+          NOTHING, (mutate_till_success x g CrossOver)
+        | None -> (applyMutation CrossOver g)
         )
       (* pp_print_ast Format.std_formatter finalGrammar ; *)
       (* print_endline "\n\n\nEXITING CROSSOVER\n\n\n" ; *)
       (* finalGrammar *)
-  | None -> g
+  | CorrectPacket x -> 
+    (match x with 
+    | COMMIT -> 
+      print_endline "\n\nINJECTING CORRECT COMMIT\n\n" ;
+      COMMIT, g
+    | CONFIRM -> 
+      print_endline "\n\nINJECTING CORRECT CONFIRM\n\n" ;
+      CONFIRM, g
+    | ASSOCIATION_REQUEST -> 
+      print_endline "\n\nINJECTING ASSOCIATION REQUEST\n\n" ;
+      ASSOCIATION_REQUEST, g
+    | NOTHING -> failwith "unexpected symbol NOTHING"
+    )
+  | None -> NOTHING, g
 and 
-  mutate_till_success (mutated_grammar : grammar) (original_grammar : grammar) (mutation_op : mutation) : grammar = 
+  mutate_till_success (mutated_grammar : ast) (original_grammar : ast) (mutation_op : mutation) : ast = 
   let sygusOutput = (Pipeline.sygusGrammarToPacket mutated_grammar) in
     match sygusOutput with
     | Ok _ -> mutated_grammar
@@ -338,32 +374,42 @@ and
           (match canonicalizedGrammar with
           | Some(x) -> pp_print_ast Format.std_formatter x; 
             mutate_till_success x original_grammar mutation_op
-          | None -> applyMutation CrossOver original_grammar)
+          | None -> let tupleMutation = applyMutation CrossOver original_grammar in
+            match tupleMutation with
+            (_, x) -> x
+          )
+      | CorrectPacket _ -> failwith "correctpacket mutation shouldnt have been passed to this func.."
       | None -> original_grammar
 
 
 let rec newMutatedSet (p:population) (m:mutationOperations) (n:int) : population = 
   match n, p, m with
-  | 0, _, _ -> p
-  | _, (x::xs), (mu::ms) -> (((first x |> first), (applyMutation mu (first x |> second))), 0.0) :: (newMutatedSet xs ms (n - 1))
-  | _ -> failwith "grammarFuzzing.ml incomplete pattern matching"
-
+  | 0, _, _ -> []
+  | _, _, [] -> []
+  | _, [], _ -> []
+  | _, (x::xs), (mu::ms) ->
+    let mutated_grammar = applyMutation mu (first x |> second) in
+    (match mutated_grammar with
+    | (NOTHING, z) -> ((((first x |> first)), z), 0.0) :: (newMutatedSet xs ms (n - 1))
+    | (y, z) -> (((first x |> first) @ [(ValidPacket y)], z), 0.0) :: (newMutatedSet xs ms (n - 1))
+      (* (((first x |> first), mutated_grammar), 0.0) :: (newMutatedSet xs ms (n - 1)) *)
+    )
 let rec mutationList sampleFunction (mutationOps:mutationOperations) (n:int): mutation list =
   match n with
     0 -> []
   | _ -> sampleFunction mutationOps :: mutationList sampleFunction mutationOps (n - 1)
 
-let rec sendPacketsToState (p : packet list) : unit = 
+let rec sendPacketsToState (p : provenance list) : unit = 
   match p with
     [] -> ()
   | x :: xs -> let _ = callDriver x in sendPacketsToState xs
 
-let sendPacket (c:child) : (packet * output) =
+let sendPacket (c : child) : (packet * output) =
   let stateTransition = first c |> first in
-    let packetToSend = Result.get_ok (Pipeline.sygusGrammarToPacket (first c |> second)) in 
-      sendPacketsToState stateTransition ;
-      (packetToSend, callDriver packetToSend)
-    
+  let packetToSend = Result.get_ok (Pipeline.sygusGrammarToPacket (first c |> second)) in 
+    sendPacketsToState stateTransition ;
+    (packetToSend, callDriver (RawPacket packetToSend))
+  
 let executeMutatedPopulation (mutatedPopulation : population) : (trace list * population) =
   let outputList = List.map sendPacket mutatedPopulation in
   scoreFunction outputList mutatedPopulation
@@ -417,5 +463,5 @@ let rec fuzzingAlgorithm
 
 let runFuzzer grammar = 
   Random.self_init ();
-  let _ = fuzzingAlgorithm 1000 [(([], grammar), 0.0); (([(Bytes.of_string (get_message (wait_for_python_response "/home/pirwani/Desktop/response.txt")));], grammar), 0.0);] [] 100 0 1000 20 100 [Add; Delete; Modify; CrossOver] in
+  let _ = fuzzingAlgorithm 1000 [(([], grammar), 0.0); (([], grammar), 0.0); (([], grammar), 0.0);] [] 100 0 1000 20 100 [Add; Delete; Modify; CrossOver] in
   ()
