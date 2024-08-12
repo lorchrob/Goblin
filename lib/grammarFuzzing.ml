@@ -65,7 +65,7 @@ type packet_type = COMMIT | CONFIRM | ASSOCIATION_REQUEST | NOTHING
 
 type grammar = ast
 
-type mutation = Add | Delete | Modify | CrossOver | None | CorrectPacket of packet_type
+type mutation = Add | Delete | Modify | CrossOver | None | CorrectPacket
 
 type mutationOperations = mutation list
 
@@ -329,18 +329,19 @@ let rec applyMutation (m : mutation) (g : ast) : packet_type * grammar =
       (* pp_print_ast Format.std_formatter finalGrammar ; *)
       (* print_endline "\n\n\nEXITING CROSSOVER\n\n\n" ; *)
       (* finalGrammar *)
-  | CorrectPacket x -> 
-    (match x with 
-    | COMMIT -> 
-      print_endline "\n\nINJECTING CORRECT COMMIT\n\n" ;
-      COMMIT, g
-    | CONFIRM -> 
-      print_endline "\n\nINJECTING CORRECT CONFIRM\n\n" ;
-      CONFIRM, g
-    | ASSOCIATION_REQUEST -> 
-      print_endline "\n\nINJECTING ASSOCIATION REQUEST\n\n" ;
-      ASSOCIATION_REQUEST, g
-    | NOTHING -> failwith "unexpected symbol NOTHING"
+  | CorrectPacket -> 
+    let x = random_element [COMMIT; CONFIRM; ASSOCIATION_REQUEST] in (
+      match x with 
+      | COMMIT -> 
+        print_endline "\n\nINJECTING CORRECT COMMIT\n\n" ;
+        COMMIT, g
+      | CONFIRM -> 
+        print_endline "\n\nINJECTING CORRECT CONFIRM\n\n" ;
+        CONFIRM, g
+      | ASSOCIATION_REQUEST -> 
+        print_endline "\n\nINJECTING ASSOCIATION REQUEST\n\n" ;
+        ASSOCIATION_REQUEST, g
+      | NOTHING -> failwith "unexpected symbol NOTHING"
     )
   | None -> NOTHING, g
 and 
@@ -378,7 +379,7 @@ and
             match tupleMutation with
             (_, x) -> x
           )
-      | CorrectPacket _ -> failwith "correctpacket mutation shouldnt have been passed to this func.."
+      | CorrectPacket -> failwith "correctpacket mutation shouldnt have been passed to this func.."
       | None -> original_grammar
 
 
@@ -463,5 +464,5 @@ let rec fuzzingAlgorithm
 
 let runFuzzer grammar = 
   Random.self_init ();
-  let _ = fuzzingAlgorithm 1000 [(([], grammar), 0.0); (([], grammar), 0.0); (([], grammar), 0.0);] [] 100 0 1000 20 100 [Add; Delete; Modify; CrossOver] in
+  let _ = fuzzingAlgorithm 1000 [(([], grammar), 0.0); (([], grammar), 0.0); (([], grammar), 0.0);] [] 100 0 1000 20 100 [CorrectPacket;] in
   ()
