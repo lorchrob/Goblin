@@ -29,6 +29,7 @@ let process_constructor_str: string -> string
 let expr_to_sygus_ast: A.expr -> SA.sygus_ast 
 = fun expr -> match expr with 
 | IntConst i -> IntLeaf i 
+| StrConst s -> VarLeaf s
 | BVConst (len, bits) -> BVLeaf (len, bits)
 | BLConst bits -> BLLeaf bits 
 | _ -> eval_fail 1
@@ -254,7 +255,7 @@ let rec evaluate: SA.sygus_ast -> A.element -> A.expr -> A.expr
   | IntConst i -> Utils.il_int_to_bitvector len i
   | _ -> eval_fail 27
  )
-| BVConst _ | BLConst _ | IntConst _ | BConst _ -> expr
+| BVConst _ | BLConst _ | IntConst _ | BConst _ | StrConst _ -> expr
 | NTExpr _ -> failwith "Internal error: Complicated NTExprs not yet supported"
 | CaseExpr _ -> failwith "Internal error: CaseExpr not yet supported"
 

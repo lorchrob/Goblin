@@ -16,7 +16,8 @@ let rec calculate_casts: expr -> expr
 | BVConst _ 
 | BLConst _ 
 | BConst _ 
-| IntConst _ -> expr
+| IntConst _ 
+| StrConst _ -> expr
 
 let stub_grammar_element: Utils.context -> semantic_constraint list -> grammar_element -> semantic_constraint option * grammar_element * Utils.context
 = fun ctx scs ge -> match ge with 

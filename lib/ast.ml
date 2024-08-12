@@ -44,6 +44,7 @@ expr =
 | BLConst of bool list
 | BConst of bool
 | IntConst of int 
+| StrConst of string
 
 type semantic_constraint = 
 | Dependency of string * expr (* <nonterminal> <- <expression> *)
@@ -52,6 +53,7 @@ type semantic_constraint =
 type il_type = 
 | Bool 
 | Int 
+| String
 | BitVector of int 
 | BitList
 | MachineInt of int
@@ -95,6 +97,7 @@ let rec substitute: expr -> string -> expr -> expr
   | BLConst _ 
   | BConst _ 
   | BVCast _  
+  | StrConst _
   | IntConst _ -> e1
 
 
@@ -189,6 +192,7 @@ and pp_print_expr: Format.formatter -> expr -> unit
     (Lib.pp_print_list Format.pp_print_int "") bits
 | BConst b -> Format.fprintf ppf "%b" b
 | IntConst i -> Format.fprintf ppf "%d" i
+| StrConst s -> Format.fprintf ppf "\"%s\"" s
 
 let pp_print_semantic_constraint: Format.formatter -> semantic_constraint -> unit 
 = fun ppf sc -> match sc with 
@@ -204,6 +208,7 @@ let pp_print_ty: Format.formatter -> il_type -> unit
 = fun ppf ty -> match ty with 
 | Bool -> Format.fprintf ppf "Bool"
 | Int -> Format.fprintf ppf "Int"
+| String -> Format.fprintf ppf "Str"
 | BitList -> Format.fprintf ppf "BitList" 
 | BitVector width -> Format.fprintf ppf "BitVector(%d)" width
 | MachineInt width -> Format.fprintf ppf "MachineInt(%d)" width

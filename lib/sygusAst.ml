@@ -38,7 +38,7 @@ let serialize: Format.formatter -> sygus_ast -> unit
     let bits = List.map Bool.to_int bits in
     Format.fprintf ppf "%a"
     (Lib.pp_print_list Format.pp_print_int "") bits
-  | VarLeaf _ -> failwith "Internal error: serializing final packet, but encountered leaf variable (possibly uncomputed dependent term)"
+  | VarLeaf s -> Format.pp_print_string ppf s
   | IntLeaf i -> Format.pp_print_int ppf i
   in 
   Format.fprintf ppf "%a\n" 

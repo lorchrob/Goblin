@@ -4,6 +4,7 @@ open Ast
 
 %token BOOL
 %token INT
+%token STR
 %token BITVECTOR
 %token INTTOBITVECTOR
 %token BITLIST
@@ -51,6 +52,7 @@ open Ast
 %token<int> INTEGER
 %token<bool list> BITS
 %token<string> ID
+%token<string> STRING
 
 %token EOF
 
@@ -98,6 +100,7 @@ rhs:
 il_type: 
 | BOOL { Bool }
 | INT { Int }
+| STR { String }
 | BITVECTOR; LPAREN; len = INTEGER; RPAREN; { BitVector (len) }
 | BITLIST { BitList }
 | MACHINEINT; LPAREN; width = INTEGER; RPAREN; { MachineInt (width) }
@@ -147,6 +150,7 @@ expr:
 | LNOT; e = expr { UnOp (LNot, e) }
 (* Concrete constants *)
 | i = INTEGER; { IntConst (i) }
+| s = STRING; { StrConst (s) }
 | TRUE; { BConst (true) }
 | FALSE; { BConst (false) }
 | bv = BITS { BVConst (List.length bv, bv) }

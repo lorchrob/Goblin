@@ -35,19 +35,19 @@ let () =
   <A> :: Int { <A> < 100; }; 
   "); *)
 
-  (* let input = 
+  let input = 
     "<SAE_PACKET> ::= <AUTH_ALGO> <STATUS_CODE> 
-       { <AUTH_ALGO> = int_to_bitvector(16, 12); };
+       { <AUTH_ALGO> <- \"placeholder\" + 3; };
  
        <STATUS_CODE> :: BitVector(16);
-       <AUTH_ALGO> :: BitVector(16);
+       <AUTH_ALGO> :: String;
     "
    in
    let _ = Pipeline.main_pipeline input in
-   () *)
+   ()
 
   
-  
+(*   
   let grammar = Utils.parse "
     <SAE_PACKET> ::= <AUTH_ALGO> <AUTH_SEQ_COMMIT> <STATUS_CODE> <GROUP_ID> <AC_TOKEN> <SCALAR> <ELEMENT> <PASSWORD_IDENTIFIER> <REJECTED_GROUPS> <AC_TOKEN_CONTAINER>
     {
@@ -149,7 +149,7 @@ let () =
     
     
     " in
-    GrammarFuzzing.runFuzzer grammar
+    GrammarFuzzing.runFuzzer grammar *)
 
 
   

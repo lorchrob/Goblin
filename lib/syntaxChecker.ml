@@ -71,7 +71,8 @@ let rec check_dangling_identifiers: Utils.StringSet.t -> expr -> expr
   | BLConst _ 
   | BConst _ 
   | BVCast _  
-  | IntConst _ -> expr
+  | IntConst _ 
+  | StrConst _ -> expr
 
 let rec check_nt_expr_refs: prod_rule_map -> nt_expr -> nt_expr 
 = fun prm nt_expr -> match nt_expr with 
@@ -104,7 +105,8 @@ let rec check_prod_rule_nt_exprs: prod_rule_map -> Utils.StringSet.t -> expr -> 
   | BLConst _ 
   | BConst _ 
   | BVCast _  
-  | IntConst _ -> expr
+  | IntConst _ 
+  | StrConst _ -> expr
 
 (* Check each nonterminal expression begins with a valid nonterminal
    and contains valid dot notation references *)
@@ -127,7 +129,8 @@ let rec check_type_annot_nt_exprs: prod_rule_map -> Utils.StringSet.t -> expr ->
   | BLConst _ 
   | BConst _ 
   | BVCast _  
-  | IntConst _ -> expr
+  | IntConst _ 
+  | StrConst _ -> expr
 
 let check_syntax_prod_rule: prod_rule_map -> Utils.StringSet.t -> prod_rule_rhs -> prod_rule_rhs
 = fun prm nt_set rhss -> match rhss with 

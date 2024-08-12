@@ -18,6 +18,9 @@ let pp_print_ty: Format.formatter -> il_type -> unit
 = fun ppf ty -> match ty with 
 | Int -> Format.fprintf ppf "Int"
 | Bool -> Format.fprintf ppf "Bool"
+(* Strings should only be present for dependency computations. 
+   If it's here, it is a grammar element that would be pruned anyway. *)
+| String -> Format.fprintf ppf "Int"
 | BitVector len -> Format.fprintf ppf "(_ BitVec %d)" len
 | BitList -> Format.fprintf ppf "(Seq Bool)"
 | MachineInt width -> Format.fprintf ppf "(_ BitVec %d)" (Lib.pow 2 width)
@@ -174,6 +177,7 @@ let rec pp_print_expr: Format.formatter -> expr -> unit
     (Lib.pp_print_list Format.pp_print_int "") bits
 | BConst b ->  Format.fprintf ppf "%b" b
 | IntConst i -> Format.fprintf ppf "%d" i
+| StrConst _ -> failwith "Error: String constants can only be in dependencies (of the form 'nonterminal <- string_literal')"
 | CaseExpr _  -> failwith "Case expressions not yet fully supported"
 | NTExpr _ -> failwith "Nonterminal expressions with either dot notation or indexing are not yet fully supported" 
 | BLConst _ -> failwith "BitList literals not yet fully supported"

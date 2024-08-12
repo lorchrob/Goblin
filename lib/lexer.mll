@@ -9,6 +9,7 @@
   let keyword_table = mk_hashtbl [
     "Bool", BOOL ;
     "Int", INT ;
+    "String", STR ;
     "BitVector", BITVECTOR ;
     "int_to_bitvector", INTTOBITVECTOR ;
     "BitList", BITLIST ; 
@@ -69,6 +70,7 @@ rule read =
   | ";" { SEMICOLON }
   | "." { DOT }
   | "0b" { read_bits lexbuf }
+  | '"'[^ '"']*'"' as s   { STRING (String.sub s 1 (String.length s - 2)) }
   | int as p { INTEGER (int_of_string p) }
   | id as p {
     try (

@@ -190,13 +190,18 @@ let rec infer_type_expr: context -> mode -> expr -> il_type option
 | BVConst (len1, bits) -> 
   let len2 = List.length bits in
   if len1 != len2 then 
-    let error_message = "BitVector constant with expected length " ^ string_of_int len1 ^ " has actual length " ^ string_of_int len2 in 
+    let error_message = "Type checking error: BitVector constant with expected length " ^ string_of_int len1 ^ " has actual length " ^ string_of_int len2 in 
     failwith error_message
   else
     Some (BitVector len1) 
 | BLConst _ -> Some BitList 
 | BConst _ -> Some Bool
 | IntConst _ -> Some Int
+| StrConst _ -> 
+  if mode = Dep then Some String
+  else 
+    let error_message = "String constants can only be in dependencies (of the form 'nonterminal <- string_literal')" in 
+    failwith error_message
 
 and check_type_expr: context -> mode -> il_type -> expr -> expr 
 = fun ctx mode exp_ty expr -> 

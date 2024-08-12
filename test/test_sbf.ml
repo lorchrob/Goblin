@@ -14,6 +14,18 @@ let test_sc () =
   let output = main_pipeline input in
   check string "test_sc" output "00000000000011000000000000000000\n"
 
+let test_placeholder () =
+  let input = 
+    "<SAE_PACKET> ::= <AUTH_ALGO> <STATUS_CODE> 
+       { <AUTH_ALGO> <- \"placeholder\"; };
+ 
+       <STATUS_CODE> :: BitVector(16);
+       <AUTH_ALGO> :: String;
+    "
+  in
+  let output = main_pipeline input in
+  check string "test_sc" output "placeholder0000000000000000\n"
+
 (* Dependent term calculation example *)
 let test_dt () =
   let input = 
@@ -138,6 +150,7 @@ let test_dynamic_typing () =
 let () = 
   run "My_module" [
     "test_sc", [test_case "Semantic constraint" `Quick test_sc];
+    "test_placeholder", [test_case "Placeholder" `Quick test_placeholder];
     "test_dt", [test_case "Dependent term" `Quick test_dt];
     "test_dt2", [test_case "Dependent term 2" `Quick test_dt2];
     "test_dc", [test_case "Divide and conquer" `Quick test_dc];
