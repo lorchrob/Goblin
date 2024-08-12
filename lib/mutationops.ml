@@ -14,10 +14,10 @@ match lst with
 | x::xs -> if x =  elem then true else isPresentInList elem xs
 
 let rec isNonTerminalPresent nt_name prod_options = 
-match prod_options with 
-| [] -> false 
-| Rhs(ge_list, _)::_ -> (isPresentInList (Nonterminal nt_name) ge_list) || (isNonTerminalPresent nt_name prod_options) 
-| _ :: ys -> isNonTerminalPresent nt_name ys 
+    match prod_options with 
+    | [] -> false 
+    | Rhs(ge_list, _) :: xs -> (isPresentInList (Nonterminal nt_name) ge_list) || (isNonTerminalPresent nt_name xs) 
+    | _ :: ys -> isNonTerminalPresent nt_name ys 
 
 let rec removeFromList nt lst =
     match lst with
@@ -168,15 +168,15 @@ let rec mutation_update g nt =
             if found then
                 let po = apply_update_to_rule nt production_options in
                     (ProdRule(nonTerminal, po) :: xs, true)
-                else 
-                    (ProdRule(nonTerminal, production_options)::xs, false)       
             else 
-                let (gg, r) = mutation_update xs nt 
-                        in 
-                (ProdRule(nonTerminal, production_options)::gg, r)   
-        | TypeAnnotation(v, w, x) :: ys -> 
-            let (gg, r) = mutation_update ys nt
-                    in (TypeAnnotation(v, w, x)::gg, r)
+                (ProdRule(nonTerminal, production_options)::xs, false)       
+        else 
+            let (gg, r) = mutation_update xs nt 
+                    in 
+            (ProdRule(nonTerminal, production_options)::gg, r)
+    | TypeAnnotation(v, w, x) :: ys -> 
+        let (gg, r) = mutation_update ys nt
+                in (TypeAnnotation(v, w, x)::gg, r)
 
 let rec replace_element geList nt1 nt2 =
     match geList with

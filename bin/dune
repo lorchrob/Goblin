@@ -1,4 +1,5 @@
 (executable
  (public_name sbf)
  (name main)
- (libraries sbf))
+ (libraries sbf)
+ )
