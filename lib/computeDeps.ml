@@ -3,7 +3,21 @@ module A = Ast
 
 let eval_fail index = failwith ("Internal error: evaluation error #" ^ string_of_int index)
 
+let remove_stub input = 
+  let open Str in
+  let re = regexp "^_stub[0-9]+_\\(.*\\)$" in
+  if string_match re input 0 then
+    matched_group 1 input
+  else
+    input
 
+let remove_suffix input = 
+  let open Str in
+  let re = regexp "^\\(.*\\)_con[0-9]*$" in
+  if string_match re input 0 then
+    String.uppercase_ascii (matched_group 1 input)
+  else
+    String.uppercase_ascii input
 
 let bvult bv1 bv2 =
   let rec compare_bits bv1 bv2 =
@@ -38,28 +52,53 @@ let sygus_ast_to_expr: SA.sygus_ast -> A.expr
 = fun sygus_ast -> match sygus_ast with 
 | IntLeaf i -> IntConst i 
 | BVLeaf (len, bits) -> BVConst (len, bits)
-| BLLeaf bits -> BLConst bits 
+| BLLeaf bits -> BLConst bits
+| VarLeaf s -> StrConst s 
 | _ -> eval_fail 2
+
+let rec compute_dep: A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -> A.element -> string -> SA.sygus_ast
+= fun dep_map sygus_ast element var -> 
+  let var = process_constructor_str var in
+  match Utils.StringMap.find_opt var dep_map with 
+  | None -> 
+    failwith ("Internal error: Hanging identifier '" ^ var ^ "' when computing dependencies")
+  | Some sc -> (
+    match sc with 
+    | SyGuSExpr _ -> failwith "Internal error: Encountered SyGuSExpr when computing dependencies"
+    | Dependency (_, expr) -> 
+      evaluate dep_map sygus_ast element expr |> expr_to_sygus_ast
+  )
 
 (* NOTE: This code assumes that the dependent term is a bitvector. If we wanted to make it general,
          we would have to have composite il_types to track the various nesting. *)
-let rec evaluate_sygus_ast: SA.sygus_ast -> SA.sygus_ast 
-= fun sygus_ast -> match sygus_ast with 
-| VarLeaf _ -> failwith "Hitting a dependency that requires computation of another dependency (I think)"
-| IntLeaf _ | BVLeaf _ | BLLeaf _ -> sygus_ast
+and evaluate_sygus_ast: A.semantic_constraint Utils.StringMap.t -> A.element -> SA.sygus_ast -> SA.sygus_ast 
+= fun dep_map element sygus_ast -> match sygus_ast with 
+| VarLeaf _ | IntLeaf _ | BVLeaf _ | BLLeaf _ -> sygus_ast
 | Node (_, subterms) -> 
-  let subterms = List.map evaluate_sygus_ast subterms in 
-  let len, subterms = List.fold_left (fun (acc_len, acc_subterms) subterm -> match subterm with
-  | SA.BVLeaf (len, subterms) -> acc_len + len, acc_subterms @ subterms
-  | BLLeaf subterms -> acc_len + List.length subterms, acc_subterms @ subterms
-  | _ -> eval_fail 3
-  ) (0, []) subterms in 
+  let subterms = List.map (evaluate_sygus_ast dep_map element) subterms in 
+  let rec over_subterms (acc_len, acc_subterms) subterm = match subterm with
+    | SA.BVLeaf (len, subterms) -> acc_len + len, acc_subterms @ subterms
+    | BLLeaf subterms -> acc_len + List.length subterms, acc_subterms @ subterms
+    | VarLeaf var -> 
+      let subterm = 
+      (* If we encounter a dependency, we have to compute it first.
+        Could loop infinitely! Maybe use a cache to see if we've tried to compute this before? *)
+      if Utils.StringMap.mem (remove_suffix var |> String.uncapitalize_ascii) dep_map 
+        then 
+          let sygus_ast = compute_dep dep_map sygus_ast element var in 
+          evaluate_sygus_ast dep_map element sygus_ast
+        else sygus_ast
+      in 
+      over_subterms (acc_len, acc_subterms) subterm
+    | _ -> SygusAst.pp_print_sygus_ast Format.std_formatter subterm; eval_fail 3
+  in
+  let len, subterms = List.fold_left over_subterms (0, []) subterms in 
   BVLeaf (len, subterms)
 
 
-let rec evaluate: SA.sygus_ast -> A.element -> A.expr -> A.expr
-= fun sygus_ast element expr -> 
-  let call = evaluate sygus_ast element in
+and evaluate: A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -> A.element -> A.expr -> A.expr
+= fun dep_map sygus_ast element expr -> 
+  let call = evaluate dep_map sygus_ast element in
   match expr with 
 | NTExpr ([id], None) -> 
   let child_index = match element with 
@@ -67,15 +106,27 @@ let rec evaluate: SA.sygus_ast -> A.element -> A.expr -> A.expr
   | A.ProdRule (_, (Rhs (ges, _)) :: _) -> 
     Utils.find_index (fun ge -> match ge with 
     | A.Nonterminal nt -> id = nt 
+    | StubbedNonterminal (nt, _) -> id = nt;
     | _ -> false
     ) ges 
   | A.ProdRule _ -> assert false
   in (
   match sygus_ast with 
-  | VarLeaf _ | BVLeaf _ | IntLeaf _ | BLLeaf _ -> eval_fail 4
+  | VarLeaf _ | BVLeaf _ | IntLeaf _ | BLLeaf _ -> 
+    sygus_ast_to_expr sygus_ast 
   | Node (_, subterms) -> 
-    let sygus_ast = List.nth subterms child_index in 
-    evaluate_sygus_ast sygus_ast |> sygus_ast_to_expr
+    let child_sygus_ast = List.nth subterms child_index in 
+    match child_sygus_ast with 
+    | VarLeaf var -> 
+      (* If we encounter a dependency, we have to compute it first.
+         Could loop infinitely! Maybe use a cache to see if we've tried to compute this before? *)
+      if Utils.StringMap.mem (remove_suffix var |> String.uncapitalize_ascii) dep_map 
+      then 
+        let sygus_ast = compute_dep dep_map sygus_ast element var in 
+        evaluate_sygus_ast dep_map element sygus_ast |> sygus_ast_to_expr
+      else sygus_ast |> sygus_ast_to_expr
+    | _ ->
+      evaluate_sygus_ast dep_map element child_sygus_ast |> sygus_ast_to_expr
   )
 | UnOp (UPlus, expr) -> (
   match call expr with 
@@ -259,35 +310,6 @@ let rec evaluate: SA.sygus_ast -> A.element -> A.expr -> A.expr
 | NTExpr _ -> failwith "Internal error: Complicated NTExprs not yet supported"
 | CaseExpr _ -> failwith "Internal error: CaseExpr not yet supported"
 
-
-let compute_dep: A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -> A.element -> string -> SA.sygus_ast
-= fun dep_map sygus_ast element var -> 
-  let var = process_constructor_str var in
-  match Utils.StringMap.find_opt var dep_map with 
-  | None -> 
-    Utils.pp_print_string_map_keys Format.std_formatter dep_map;
-    failwith ("Internal error: Hanging identifier '" ^ var ^ "' when computing dependencies")
-  | Some sc -> (
-    match sc with 
-    | SyGuSExpr _ -> failwith "Internal error: Encountered SyGuSExpr when computing dependencies"
-    | Dependency (_, expr) -> evaluate sygus_ast element expr |> expr_to_sygus_ast
-  )
-
-let remove_stub input = 
-  let open Str in
-  let re = regexp "^_stub[0-9]+_\\(.*\\)$" in
-  if string_match re input 0 then
-    matched_group 1 input
-  else
-    input
-
-let remove_suffix input = 
-  let open Str in
-  let re = regexp "^\\(.*\\)_con[0-9]*$" in
-  if string_match re input 0 then
-    String.uppercase_ascii (matched_group 1 input)
-  else
-    String.uppercase_ascii input
 
 let rec compute_deps: A.semantic_constraint Utils.StringMap.t -> A.ast -> SA.sygus_ast -> SA.sygus_ast 
 = fun dep_map ast sygus_ast -> match sygus_ast with

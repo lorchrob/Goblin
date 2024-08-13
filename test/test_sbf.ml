@@ -134,6 +134,42 @@ let test_dt3 () =
   let output = main_pipeline input in 
   check string "test_dt3" output "0101\n" 
 
+let test_dt4 () = 
+  let input = 
+    "<S> ::= <A> <B> <C> { <A> <- <B>; <B> <- 3;};
+
+    <A> :: Int;
+    <B> :: Int;
+    <C> :: Int;
+  "
+  in 
+  let output = main_pipeline input in 
+  check string "test_dt4" output "330\n" 
+
+let test_dt5 () = 
+  let input = 
+    "<S> ::= <A> <B> <C> { <A> <- <B>; <B> <- <C>;} ; 
+ 
+    <A> :: BitVector(2) ;
+    <B> :: BitVector(2);
+    <C> :: BitVector(2) { <C> = 0b01; };
+    "
+  in 
+  let output = main_pipeline input in 
+  check string "test_dt4" output "010101\n" 
+
+let test_dt6 () = 
+  let input = 
+    "<S> ::= <A> <B> <C> { <A> <- <B>; <B> <- <C>;} ; 
+  
+    <A> :: BitVector(2) ;
+    <B> :: BitVector(2);
+    <C> :: BitVector(2) { <C> <- 0b01; };
+    "
+  in 
+  let output = main_pipeline input in 
+  check string "test_dt4" output "010101\n" 
+  
 let test_dynamic_typing () = 
   let input = 
     "
@@ -161,5 +197,8 @@ let () =
     "test_ty_annot_sc2", [test_case "Top level type annotation with semantic constraint 2" `Quick test_ty_annot_sc2];
     "test_bv_len", [test_case "Top length function on bitvector" `Quick test_bv_len];
     "test_dt3", [test_case "Dependent term 3" `Quick test_dt3];
+    "test_dt4", [test_case "Dependent term 4" `Quick test_dt4];
+    "test_dt5", [test_case "Dependent term 5" `Quick test_dt5];
+    "test_dt6", [test_case "Dependent term 6" `Quick test_dt6];
     "test_dynamic_typing", [test_case "Dynamic typing" `Quick test_dynamic_typing];
   ]

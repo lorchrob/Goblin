@@ -47,7 +47,7 @@ let main_pipeline input_string =
   Debug.debug_print Format.pp_print_string ppf "\nParsing SyGuS output:\n";
   let sygus_asts = List.map2 Utils.parse_sygus sygus_outputs asts in
   let sygus_asts = List.map Result.get_ok sygus_asts in
-  Debug.debug_print Format.pp_print_string ppf "SyGuS ASTs:\n";
+  Debug.debug_print Format.pp_print_string ppf "\nSyGuS ASTs:\n";
   List.iter (Debug.debug_print SygusAst.pp_print_sygus_ast ppf) sygus_asts;
   
   (* Step 9: Recombine to single AST *)

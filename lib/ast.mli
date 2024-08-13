@@ -64,6 +64,7 @@ type ast = element list
 
 val substitute : expr -> string -> expr -> expr 
 
+val pp_print_element: Format.formatter -> element ->  unit 
 val pp_print_ast : Format.formatter -> ast -> unit
 val pp_print_nt_expr : Format.formatter -> nt_expr -> unit
 val pp_print_expr : Format.formatter -> expr -> unit
