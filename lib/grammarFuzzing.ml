@@ -252,49 +252,6 @@ let sample_from_percentile_range (pop: population) (lower_percentile: float) (up
 
 let nonterminals = ["RG_ID_LIST"; "REJECTED_GROUPS"; "AC_TOKEN"; "AC_TOKEN_CONTAINER"; "SCALAR"; "GROUP_ID"; "ELEMENT";]
 
-let rec get_production_rules_for_crossover g =
-  let r1 = random_element g in
-  let r2 = random_element g in
-  match r1, r2 with
-  | ProdRule(a, _), ProdRule(c, _) -> print_endline a ; print_endline c ; r1, r2
-  | _, _ -> get_production_rules_for_crossover g
-
-let rec replace_Rhs production_options rhs1 crossoverRhs = 
-  match production_options with
-  | [] -> []
-  | x :: xs -> if x = rhs1 then crossoverRhs :: xs
-               else x :: (replace_Rhs xs rhs1 crossoverRhs)
-
-let rec replace_geList b rhs1 rhs2 crossoverPRs =
-  match b with
-  | [] -> []
-  | x :: xss -> 
-    if x = rhs1 
-      then (replace_Rhs b rhs1 (first crossoverPRs)) @ (replace_geList xss rhs1 rhs2 crossoverPRs)
-    else if x = rhs2
-      then (replace_Rhs b rhs2 (second crossoverPRs)) @ (replace_geList xss rhs1 rhs2 crossoverPRs)
-    else (replace_geList xss rhs1 rhs2 crossoverPRs)
-
-let rec grammarUpdateAfterCrossover nt g rhs1 rhs2 crossoverPRs = 
-  match g with
-    | [] -> []
-    | ProdRule(a, b) :: xs -> 
-      if a = nt then  
-        let newPR = replace_geList b rhs1 rhs2 crossoverPRs in
-          ProdRule(a, newPR) :: (grammarUpdateAfterCrossover nt xs rhs1 rhs2 crossoverPRs)
-      else ProdRule(a, b) :: (grammarUpdateAfterCrossover nt xs rhs1 rhs2 crossoverPRs)
-    | TypeAnnotation(x,y,z) :: xs -> TypeAnnotation(x,y,z) :: (grammarUpdateAfterCrossover nt xs rhs1 rhs2 crossoverPRs)
-
-let extract_nt_po pr1 pr2 =
-  match pr1, pr2 with
-  | ProdRule(a, b), ProdRule(c, d) -> a, c, b, d
-  | _, _ -> failwith "bad random for crossover"
-
-let log_grammar msg =
-  let oc = open_out_gen [Open_append; Open_creat] 0o666 "../../failed_grammar.grammar" in
-  pp_print_ast (Format.formatter_of_out_channel oc) msg;
-  close_out oc;
-  ()
 
 let rec applyMutation (m : mutation) (g : ast) : packet_type * grammar =
   let nt = random_element nonterminals in
@@ -463,5 +420,5 @@ let rec fuzzingAlgorithm
 
 let runFuzzer grammar = 
   Random.self_init ();
-  let _ = fuzzingAlgorithm 1000 [(([], grammar), 0.0); (([], grammar), 0.0); (([], grammar), 0.0);] [] 100 0 1000 20 100 [CorrectPacket;] in
+  let _ = fuzzingAlgorithm 1000 [(([], grammar), 0.0); (([], grammar), 0.0); (([], grammar), 0.0);] [] 100 0 1000 20 100 [Add; Delete; Modify; CrossOver;CorrectPacket;] in
   ()
