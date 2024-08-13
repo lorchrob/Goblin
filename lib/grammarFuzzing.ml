@@ -83,16 +83,6 @@ type traceSet = trace list
 (* type iterationCount = int  *)
 
 (* type childSet = child list *)
-let first (tuple: ('a * 'b)) : 'a =
-  match tuple with
-  (t1, _) -> t1
-;;
-
-let second (tuple: ('a * 'b)) : 'b =
-  match tuple with
-  (_, t2) -> t2
-;;
-
 
 let read_from_file filename =
   let _ = Unix.system ("touch " ^ filename) in

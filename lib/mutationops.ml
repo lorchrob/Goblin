@@ -1,5 +1,17 @@
 open Ast
 
+let first (tuple: ('a * 'b)) : 'a =
+    match tuple with
+    (t1, _) -> t1
+  ;;
+  
+  let second (tuple: ('a * 'b)) : 'b =
+    match tuple with
+    (_, t2) -> t2
+  ;;
+  
+  
+
 let random_element (lst: 'a list) : 'a =
     if lst = [] then failwith "Empty list"
     else begin
