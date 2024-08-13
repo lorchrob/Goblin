@@ -5,6 +5,10 @@ type sygus_ast =
 | BLLeaf of bool list
 | VarLeaf of string (* DANIYAL: Placeholder can go here *)
 
+type endianness = 
+| Little 
+| Big
+
 let pp_print_sygus_ast: Format.formatter -> sygus_ast -> unit 
 = fun ppf sygus_ast -> 
   let rec pp_print_sygus_ast' ppf sygus_ast = match sygus_ast with 
@@ -44,7 +48,7 @@ let serialize: Format.formatter -> sygus_ast -> unit
   Format.fprintf ppf "%a\n" 
   pp_print_sygus_ast' sygus_ast
 
-let bools_to_bytes bools =
+let bools_to_bytes endianness bools =
   (* Function to drop the first n elements of a list *)
   let rec drop n lst =
     match lst with
@@ -80,15 +84,21 @@ let bools_to_bytes bools =
     in
   
   (* Convert the list of bytes to a byte array *)
-  let byte_list = bools_to_byte_list bools |> List.rev in
+  let byte_list = 
+    if endianness = Big then bools_to_byte_list bools |> List.rev 
+    else bools_to_byte_list bools 
+  in
   Bytes.of_string (String.concat "" (List.map (String.make 1) (List.map char_of_int byte_list)))
 
-let rec serialize_bytes: sygus_ast -> bytes 
-= fun sygus_ast -> match sygus_ast with
-  | Node (_, subterms) -> 
-    let bytes_list = List.map serialize_bytes subterms in
+let rec serialize_bytes: endianness -> sygus_ast -> bytes 
+= fun endianness sygus_ast -> 
+  pp_print_sygus_ast Format.std_formatter sygus_ast;
+  match sygus_ast with
+  | Node (_id, subterms) -> 
+    let endianness = Big in (* Update endianness here based on _id. When you do that, remove the preceding underscore. *)
+    let bytes_list = List.map (serialize_bytes endianness) subterms in
     List.fold_left Bytes.cat (List.hd bytes_list) (List.tl bytes_list)
   | BLLeaf bits
-  | BVLeaf (_, bits) -> bools_to_bytes bits
+  | BVLeaf (_, bits) -> bools_to_bytes endianness bits
   | VarLeaf _ 
   | IntLeaf _ -> failwith "Internal error: serializing final packet, but encountered leaf variable (possibly uncomputed dependent term)"

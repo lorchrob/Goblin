@@ -126,5 +126,5 @@ let sygusGrammarToPacket ast =
     let sygus_ast = ComputeDeps.compute_deps dep_map ast sygus_ast in 
 
     (* Step 10: Serialize! *)
-    let output = SygusAst.serialize_bytes sygus_ast in 
+    let output = SygusAst.serialize_bytes SygusAst.Big sygus_ast in 
     Ok output
