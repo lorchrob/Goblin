@@ -78,8 +78,6 @@ type population = child list
 
 type trace = packet list
 
-type traceSet = trace list
-
 (* type iterationCount = int  *)
 
 (* type childSet = child list *)
@@ -168,33 +166,23 @@ let callDriver x =
     wait_for_python_response response_file
 
 
-let scoreFunction (pktStatus : (packet * output) list) (mutatedPopulation : population) : (trace list * population) =
+let rec scoreFunction (pktStatus : (provenance * output) list) (mutatedPopulation : population) : ((provenance list list) * population) =
   match pktStatus, mutatedPopulation with
-    [], [] -> [], []
-  | ([], _::_) -> failwith "edge case unhandled"
-  | (_::_, []) -> failwith "edge case unhandled"
-  | _, _ -> [], mutatedPopulation
-  (* | status :: statuses, c :: remainingPopulation -> *)
-    (* match status with
-      (_, CRASH) -> let thisScore : score = (second c) +. 0.7 in
-      let newPackets : trace = (first c |> first) in
-      let iTraces : trace list = [newPackets @ [(first status)]] @ (first (scoreFunction statuses remainingPopulation))  in
-      let updatedChildren : population = ((newPackets @ [(first status)], first c |> second), thisScore) :: (second (scoreFunction statuses remainingPopulation)) in
-      (iTraces, updatedChildren)
-    | (_, TIMEOUT) -> let thisScore : score = (c |> second) +. 0.5 in
-      let newPackets : trace = (first c |> first) in
-      let updatedChildren : population = ((newPackets @ [(first status)], first c |> second), thisScore) :: (second (scoreFunction statuses remainingPopulation)) in
-      ((first (scoreFunction statuses remainingPopulation)), updatedChildren)
-    | (_, EXPECTED_OUTPUT) -> let thisScore : score = (second c) +. 0.1 in
-      let newPackets : trace = (first c |> first) in
-      let updatedChildren : population = ((newPackets @ [(first status)], first c |> second), thisScore) :: (second (scoreFunction statuses remainingPopulation)) in
-      ((first (scoreFunction statuses remainingPopulation)), updatedChildren)
-    | (_,_) ->
-      let thisScore : score = (second c) +. 0.9 in
-      let newPackets : trace = (first c |> first) in
-      let iTraces : trace list = [newPackets @ [(first status)]] @ (first (scoreFunction statuses remainingPopulation))  in
-      let updatedChildren : population = ((newPackets @ [(first status)], first c |> second), thisScore) :: (second (scoreFunction statuses remainingPopulation)) in
-      (iTraces, updatedChildren) *)
+  | [], [] | _, [] -> [], []
+  | [], p -> [], p
+  | (packet, output_symbol) :: xs, ((old_provenance, current_grammar), score) :: ys ->
+    match output_symbol with
+    | TIMEOUT | EXPECTED_OUTPUT ->
+      if output_symbol = TIMEOUT then
+        ((first (scoreFunction xs ys))), (((old_provenance @ [packet], current_grammar), score +. 0.3) :: (second (scoreFunction xs ys)))
+      else 
+        ((first (scoreFunction xs ys))), (((old_provenance @ [packet], current_grammar), score +. 0.1) :: (second (scoreFunction xs ys)))
+    | CRASH | UNEXPECTED_OUTPUT ->
+      if output_symbol = CRASH then 
+        ((old_provenance @ [packet])  :: (first (scoreFunction xs ys))), (((old_provenance @ [packet], current_grammar), score +. 0.7) :: (second (scoreFunction xs ys)))
+      else 
+        ((old_provenance @ [packet]) :: (first (scoreFunction xs ys))), (((old_provenance @ [packet], current_grammar), score +. 0.9) :: (second (scoreFunction xs ys)))        
+    | Message _ -> failwith "Message type should not be matched in score func.."
 
     
 (* Function to get a random element from a list *)
@@ -351,15 +339,15 @@ let rec sendPacketsToState (p : provenance list) : unit =
     [] -> ()
   | x :: xs -> let _ = callDriver x in sendPacketsToState xs
 
-let sendPacket (c : child) : (packet * output) =
+let sendPacket (c : child) : (provenance * output) =
   let stateTransition = first c |> first in
   let packetToSend = Result.get_ok (Pipeline.sygusGrammarToPacket (first c |> second)) in 
     sendPacketsToState stateTransition ;
-    (packetToSend, callDriver (RawPacket packetToSend))
+    (RawPacket packetToSend, callDriver (RawPacket packetToSend))
   
-let executeMutatedPopulation (mutatedPopulation : population) : (trace list * population) =
+let executeMutatedPopulation (mutatedPopulation : population) : ((provenance list list) * population) =
   let outputList = List.map sendPacket mutatedPopulation in
-  scoreFunction outputList mutatedPopulation
+    scoreFunction outputList mutatedPopulation
 
 
 
@@ -387,7 +375,7 @@ let cleaupPopulation (p: population) : population =
 let rec fuzzingAlgorithm 
 (maxCurrentPopulation : int) 
 (currentPopulation : population) 
-(iTraces : trace list)
+(iTraces : provenance list list)
 (tlenBound : int) 
 (currentIteration : int) 
 (terminationIteration:int) 
