@@ -78,21 +78,9 @@ type population = child list
 
 type trace = packet list
 
-type traceSet = trace list
-
 (* type iterationCount = int  *)
 
 (* type childSet = child list *)
-let first (tuple: ('a * 'b)) : 'a =
-  match tuple with
-  (t1, _) -> t1
-;;
-
-let second (tuple: ('a * 'b)) : 'b =
-  match tuple with
-  (_, t2) -> t2
-;;
-
 
 let read_from_file filename =
   let _ = Unix.system ("touch " ^ filename) in
@@ -178,33 +166,23 @@ let callDriver x =
     wait_for_python_response response_file
 
 
-let scoreFunction (pktStatus : (packet * output) list) (mutatedPopulation : population) : (trace list * population) =
+let rec scoreFunction (pktStatus : (provenance * output) list) (mutatedPopulation : population) : ((provenance list list) * population) =
   match pktStatus, mutatedPopulation with
-    [], [] -> [], []
-  | ([], _::_) -> failwith "edge case unhandled"
-  | (_::_, []) -> failwith "edge case unhandled"
-  | _, _ -> [], mutatedPopulation
-  (* | status :: statuses, c :: remainingPopulation -> *)
-    (* match status with
-      (_, CRASH) -> let thisScore : score = (second c) +. 0.7 in
-      let newPackets : trace = (first c |> first) in
-      let iTraces : trace list = [newPackets @ [(first status)]] @ (first (scoreFunction statuses remainingPopulation))  in
-      let updatedChildren : population = ((newPackets @ [(first status)], first c |> second), thisScore) :: (second (scoreFunction statuses remainingPopulation)) in
-      (iTraces, updatedChildren)
-    | (_, TIMEOUT) -> let thisScore : score = (c |> second) +. 0.5 in
-      let newPackets : trace = (first c |> first) in
-      let updatedChildren : population = ((newPackets @ [(first status)], first c |> second), thisScore) :: (second (scoreFunction statuses remainingPopulation)) in
-      ((first (scoreFunction statuses remainingPopulation)), updatedChildren)
-    | (_, EXPECTED_OUTPUT) -> let thisScore : score = (second c) +. 0.1 in
-      let newPackets : trace = (first c |> first) in
-      let updatedChildren : population = ((newPackets @ [(first status)], first c |> second), thisScore) :: (second (scoreFunction statuses remainingPopulation)) in
-      ((first (scoreFunction statuses remainingPopulation)), updatedChildren)
-    | (_,_) ->
-      let thisScore : score = (second c) +. 0.9 in
-      let newPackets : trace = (first c |> first) in
-      let iTraces : trace list = [newPackets @ [(first status)]] @ (first (scoreFunction statuses remainingPopulation))  in
-      let updatedChildren : population = ((newPackets @ [(first status)], first c |> second), thisScore) :: (second (scoreFunction statuses remainingPopulation)) in
-      (iTraces, updatedChildren) *)
+  | [], [] | _, [] -> [], []
+  | [], p -> [], p
+  | (packet, output_symbol) :: xs, ((old_provenance, current_grammar), score) :: ys ->
+    match output_symbol with
+    | TIMEOUT | EXPECTED_OUTPUT ->
+      if output_symbol = TIMEOUT then
+        ((first (scoreFunction xs ys))), (((old_provenance @ [packet], current_grammar), score +. 0.3) :: (second (scoreFunction xs ys)))
+      else 
+        ((first (scoreFunction xs ys))), (((old_provenance @ [packet], current_grammar), score +. 0.1) :: (second (scoreFunction xs ys)))
+    | CRASH | UNEXPECTED_OUTPUT ->
+      if output_symbol = CRASH then 
+        ((old_provenance @ [packet])  :: (first (scoreFunction xs ys))), (((old_provenance @ [packet], current_grammar), score +. 0.7) :: (second (scoreFunction xs ys)))
+      else 
+        ((old_provenance @ [packet]) :: (first (scoreFunction xs ys))), (((old_provenance @ [packet], current_grammar), score +. 0.9) :: (second (scoreFunction xs ys)))        
+    | Message _ -> failwith "Message type should not be matched in score func.."
 
     
 (* Function to get a random element from a list *)
@@ -252,49 +230,6 @@ let sample_from_percentile_range (pop: population) (lower_percentile: float) (up
 
 let nonterminals = ["RG_ID_LIST"; "REJECTED_GROUPS"; "AC_TOKEN"; "AC_TOKEN_CONTAINER"; "SCALAR"; "GROUP_ID"; "ELEMENT";]
 
-let rec get_production_rules_for_crossover g =
-  let r1 = random_element g in
-  let r2 = random_element g in
-  match r1, r2 with
-  | ProdRule(a, _), ProdRule(c, _) -> print_endline a ; print_endline c ; r1, r2
-  | _, _ -> get_production_rules_for_crossover g
-
-let rec replace_Rhs production_options rhs1 crossoverRhs = 
-  match production_options with
-  | [] -> []
-  | x :: xs -> if x = rhs1 then crossoverRhs :: xs
-               else x :: (replace_Rhs xs rhs1 crossoverRhs)
-
-let rec replace_geList b rhs1 rhs2 crossoverPRs =
-  match b with
-  | [] -> []
-  | x :: xss -> 
-    if x = rhs1 
-      then (replace_Rhs b rhs1 (first crossoverPRs)) @ (replace_geList xss rhs1 rhs2 crossoverPRs)
-    else if x = rhs2
-      then (replace_Rhs b rhs2 (second crossoverPRs)) @ (replace_geList xss rhs1 rhs2 crossoverPRs)
-    else (replace_geList xss rhs1 rhs2 crossoverPRs)
-
-let rec grammarUpdateAfterCrossover nt g rhs1 rhs2 crossoverPRs = 
-  match g with
-    | [] -> []
-    | ProdRule(a, b) :: xs -> 
-      if a = nt then  
-        let newPR = replace_geList b rhs1 rhs2 crossoverPRs in
-          ProdRule(a, newPR) :: (grammarUpdateAfterCrossover nt xs rhs1 rhs2 crossoverPRs)
-      else ProdRule(a, b) :: (grammarUpdateAfterCrossover nt xs rhs1 rhs2 crossoverPRs)
-    | TypeAnnotation(x,y,z) :: xs -> TypeAnnotation(x,y,z) :: (grammarUpdateAfterCrossover nt xs rhs1 rhs2 crossoverPRs)
-
-let extract_nt_po pr1 pr2 =
-  match pr1, pr2 with
-  | ProdRule(a, b), ProdRule(c, d) -> a, c, b, d
-  | _, _ -> failwith "bad random for crossover"
-
-let log_grammar msg =
-  let oc = open_out_gen [Open_append; Open_creat] 0o666 "../../failed_grammar.grammar" in
-  pp_print_ast (Format.formatter_of_out_channel oc) msg;
-  close_out oc;
-  ()
 
 let rec applyMutation (m : mutation) (g : ast) : packet_type * grammar =
   let nt = random_element nonterminals in
@@ -404,15 +339,15 @@ let rec sendPacketsToState (p : provenance list) : unit =
     [] -> ()
   | x :: xs -> let _ = callDriver x in sendPacketsToState xs
 
-let sendPacket (c : child) : (packet * output) =
+let sendPacket (c : child) : (provenance * output) =
   let stateTransition = first c |> first in
   let packetToSend = Result.get_ok (Pipeline.sygusGrammarToPacket (first c |> second)) in 
     sendPacketsToState stateTransition ;
-    (packetToSend, callDriver (RawPacket packetToSend))
+    (RawPacket packetToSend, callDriver (RawPacket packetToSend))
   
-let executeMutatedPopulation (mutatedPopulation : population) : (trace list * population) =
+let executeMutatedPopulation (mutatedPopulation : population) : ((provenance list list) * population) =
   let outputList = List.map sendPacket mutatedPopulation in
-  scoreFunction outputList mutatedPopulation
+    scoreFunction outputList mutatedPopulation
 
 
 
@@ -440,7 +375,7 @@ let cleaupPopulation (p: population) : population =
 let rec fuzzingAlgorithm 
 (maxCurrentPopulation : int) 
 (currentPopulation : population) 
-(iTraces : trace list)
+(iTraces : provenance list list)
 (tlenBound : int) 
 (currentIteration : int) 
 (terminationIteration:int) 
@@ -463,5 +398,5 @@ let rec fuzzingAlgorithm
 
 let runFuzzer grammar = 
   Random.self_init ();
-  let _ = fuzzingAlgorithm 1000 [(([], grammar), 0.0); (([], grammar), 0.0); (([], grammar), 0.0);] [] 100 0 1000 20 100 [CorrectPacket;] in
+  let _ = fuzzingAlgorithm 1000 [(([], grammar), 0.0); (([], grammar), 0.0); (([], grammar), 0.0);] [] 100 0 1000 20 100 [Add; Delete; Modify; CrossOver;CorrectPacket;] in
   ()

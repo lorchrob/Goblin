@@ -35,7 +35,7 @@ let () =
   <A> :: Int { <A> < 100; }; 
   "); *)
 
-  let input = 
+  (* let input = 
     "<SAE_PACKET> ::= <AUTH_ALGO> <STATUS_CODE> 
        { <AUTH_ALGO> <- \"placeholder\" + 3; };
  
@@ -44,10 +44,10 @@ let () =
     "
    in
    let _ = Pipeline.main_pipeline input in
-   ()
+   () *)
 
   
-(*   
+  
   let grammar = Utils.parse "
     <SAE_PACKET> ::= <AUTH_ALGO> <AUTH_SEQ_COMMIT> <STATUS_CODE> <GROUP_ID> <AC_TOKEN> <SCALAR> <ELEMENT> <PASSWORD_IDENTIFIER> <REJECTED_GROUPS> <AC_TOKEN_CONTAINER>
     {
@@ -148,4 +148,4 @@ let () =
     <SEND_CONFIRM_COUNTER> :: BitVector(16);
     
     
-    " in GrammarFuzzing.runFuzzer grammar *)
+    " in GrammarFuzzing.runFuzzer grammar
