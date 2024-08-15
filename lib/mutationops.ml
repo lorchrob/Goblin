@@ -59,7 +59,7 @@ let rec mutation_add_s1 g nt =
     match g with 
     | [] -> ([], false) 
     | ProdRule(nonTerminal, production_options):: xs -> 
-        if nonTerminal = "SAE_PACKET" 
+        if nonTerminal = "COMMIT" || nonTerminal = "CONFIRM"
         then
             let found = isNonTerminalPresent nt production_options in 
             if found then  
@@ -121,7 +121,7 @@ let rec mutation_delete g nt =
     match g with
     | [] -> ([], false)
     | ProdRule(nonTerminal, production_options) :: xs ->
-        if nonTerminal = "SAE_PACKET"
+        if nonTerminal = "COMMIT" || nonTerminal = "CONFIRM"
         then
             let found = isNonTerminalPresent nt production_options in
             if found then
@@ -174,7 +174,7 @@ let rec mutation_update g nt =
     match g with
     | [] -> ([], false)
     | ProdRule(nonTerminal, production_options) :: xs ->
-        if nonTerminal = "SAE_PACKET"
+        if nonTerminal = "COMMIT" || nonTerminal = "CONFIRM"
         then
             let found = isNonTerminalPresent nt production_options in
             if found then

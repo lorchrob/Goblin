@@ -236,14 +236,19 @@ let rec applyMutation (m : mutation) (g : ast) : packet_type * grammar =
   match m with
     Add -> print_endline "\n\nADDING\n\n" ; 
     let added_grammar = first (mutation_add_s1 g nt) in
+    pp_print_ast Format.std_formatter added_grammar ;
     NOTHING, (mutate_till_success added_grammar g Add)
 
   | Delete -> print_endline "\n\nDELETING\n\n" ;
     let deleted_grammar = first (mutation_delete g nt) in
+    pp_print_ast Format.std_formatter deleted_grammar ;
+
     NOTHING, (mutate_till_success deleted_grammar g Delete)
 
   | Modify -> print_endline "\n\nMODIFYING\n\n" ;
     let modified_grammar = first (mutation_delete g nt) in
+    pp_print_ast Format.std_formatter modified_grammar ;
+
     NOTHING, (mutate_till_success modified_grammar g Modify)
 
   | CrossOver -> print_endline "\n\n\nENTERING CROSSOVER\n\n\n" ;
@@ -349,8 +354,6 @@ let executeMutatedPopulation (mutatedPopulation : population) : ((provenance lis
   let outputList = List.map sendPacket mutatedPopulation in
     scoreFunction outputList mutatedPopulation
 
-
-
 (* Filter population based on standard deviation *)
 let getScores (p:population) : score list = List.map second p
 
@@ -387,6 +390,7 @@ let rec fuzzingAlgorithm
     if currentIteration mod cleanupIteration = 0 || List.length currentPopulation >= maxCurrentPopulation then
       fuzzingAlgorithm maxCurrentPopulation (cleaupPopulation currentPopulation) iTraces tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations
     else
+      let currentPopulation = List.filter (fun x -> List.length (first x |> first) < 10) currentPopulation in
       let top_sample = sample_from_percentile_range currentPopulation 0.0 10.0 1 in
       let middle_sample = sample_from_percentile_range currentPopulation 30.0 60.0 2 in
       let bottom_sample = sample_from_percentile_range currentPopulation 80.0 100.0 1 in
