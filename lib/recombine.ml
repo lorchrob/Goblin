@@ -31,6 +31,6 @@ let rec recombine: SygusAst.sygus_ast list -> SygusAst.sygus_ast
 (* Might need to recurse on what is currently a "_" in this pattern match *)
 | VarLeaf possible_stub :: _ -> 
   match replace_stub possible_stub sygus_asts with 
-  | Some sygus_ast -> sygus_ast 
+  | Some sygus_ast -> recombine (sygus_ast :: sygus_asts)
   | None -> List.hd sygus_asts
  

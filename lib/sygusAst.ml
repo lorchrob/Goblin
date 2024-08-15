@@ -92,7 +92,6 @@ let bools_to_bytes endianness bools =
 
 let rec serialize_bytes: endianness -> sygus_ast -> bytes 
 = fun endianness sygus_ast -> 
-  pp_print_sygus_ast Format.std_formatter sygus_ast;
   match sygus_ast with
   | Node (_id, subterms) ->
     let regex = Str.regexp "rg_id_list_con[0-9]+" in

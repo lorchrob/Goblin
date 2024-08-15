@@ -58,8 +58,7 @@ let sygus_ast_to_expr: SA.sygus_ast -> A.expr
 
 let rec compute_dep: A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -> A.element -> string -> SA.sygus_ast
 = fun dep_map sygus_ast element var -> 
-  let var = process_constructor_str var in
-  match Utils.StringMap.find_opt var dep_map with 
+  match Utils.StringMap.find_opt (process_constructor_str var) dep_map with 
   | None -> 
     failwith ("Internal error: Hanging identifier '" ^ var ^ "' when computing dependencies")
   | Some sc -> (
@@ -83,7 +82,7 @@ and evaluate_sygus_ast: A.semantic_constraint Utils.StringMap.t -> A.element -> 
       let subterm = 
       (* If we encounter a dependency, we have to compute it first.
         Could loop infinitely! Maybe use a cache to see if we've tried to compute this before? *)
-      if Utils.StringMap.mem (remove_suffix var |> String.uncapitalize_ascii) dep_map 
+      if Utils.StringMap.mem (remove_suffix var |> String.uppercase_ascii) dep_map 
         then 
           let sygus_ast = compute_dep dep_map sygus_ast element var in 
           evaluate_sygus_ast dep_map element sygus_ast
@@ -103,12 +102,15 @@ and evaluate: A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -> A.eleme
 | NTExpr ([id], None) -> 
   let child_index = match element with 
   | A.TypeAnnotation _ -> assert false 
-  | A.ProdRule (_, (Rhs (ges, _)) :: _) -> 
-    Utils.find_index (fun ge -> match ge with 
-    | A.Nonterminal nt -> id = nt 
-    | StubbedNonterminal (nt, _) -> id = nt;
-    | _ -> false
-    ) ges 
+  | A.ProdRule (_, (Rhs (ges, _)) :: _) ->
+    (try  
+      Utils.find_index (fun ge -> match ge with 
+      | A.Nonterminal nt -> id = nt 
+      | StubbedNonterminal (nt, _) -> id = nt;
+      | _ -> false
+      ) ges 
+    with Not_found ->
+      failwith ("Dangling identifier " ^ id^ " in semantic constraint"))
   | A.ProdRule _ -> assert false
   in (
   match sygus_ast with 
@@ -120,7 +122,7 @@ and evaluate: A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -> A.eleme
     | VarLeaf var -> 
       (* If we encounter a dependency, we have to compute it first.
          Could loop infinitely! Maybe use a cache to see if we've tried to compute this before? *)
-      if Utils.StringMap.mem (remove_suffix var |> String.uncapitalize_ascii) dep_map 
+      if Utils.StringMap.mem (remove_suffix var |> String.uppercase_ascii) dep_map 
       then 
         let sygus_ast = compute_dep dep_map sygus_ast element var in 
         evaluate_sygus_ast dep_map element sygus_ast |> sygus_ast_to_expr
@@ -331,7 +333,10 @@ let rec compute_deps: A.semantic_constraint Utils.StringMap.t -> A.ast -> SA.syg
       failwith "Internal error in computeDeps.ml"
     | Some element -> element 
     in
-    compute_dep dep_map sygus_ast element var
+    if Utils.StringMap.mem (remove_suffix var |> String.uppercase_ascii) dep_map
+    then 
+      compute_dep dep_map sygus_ast element var 
+    else sygus_ast 
   | _ -> subterm
   ) subterms in 
   Node (constructor, subterms)

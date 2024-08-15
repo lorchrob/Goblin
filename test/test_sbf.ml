@@ -169,6 +169,28 @@ let test_dt6 () =
   in 
   let output = main_pipeline input in 
   check string "test_dt4" output "010101\n" 
+
+let test_recombine () =
+  let input = 
+    "
+<SAE_PACKET> ::= <COMMIT> ;
+    <COMMIT> ::= <AUTH_ALGO> <REJECTED_GROUPS>
+       {<AUTH_ALGO> <- int_to_bitvector(16, 3);};
+
+    <AUTH_ALGO> :: BitVector(16);
+    
+    <REJECTED_GROUPS> ::= <RG_ID_LENGTH>  <RG_ID_LIST> 
+    { <RG_ID_LENGTH> <- int_to_bitvector(8, length(<RG_ID_LIST>)); };
+    
+    <RG_ID_LENGTH>   :: BitVector(8); 
+    
+    <RG_ID_LIST> ::= <RG_ID> | <RG_ID> <RG_ID_LIST>;
+     
+    <RG_ID> :: BitVector(8);
+    "
+  in 
+  let output = main_pipeline input in 
+  check string "test_recombine" output "00000000000000110000100000000000\n" 
   
 let test_dynamic_typing () = 
   let input = 
@@ -201,4 +223,5 @@ let () =
     "test_dt5", [test_case "Dependent term 5" `Quick test_dt5];
     "test_dt6", [test_case "Dependent term 6" `Quick test_dt6];
     "test_dynamic_typing", [test_case "Dynamic typing" `Quick test_dynamic_typing];
+    "test_recombine", [test_case "Recombine" `Quick test_recombine];
   ]
