@@ -346,6 +346,7 @@ fun ctx dep_map ast ->
   | _ -> assert false
   in
   (* ignore (Unix.system "mkdir sygus_debug > /dev/null"); *)
+  (* ignore (Unix.system "mkdir sygus_debug > /dev/null"); *)
   let input_filename = "./sygus_debug/" ^ top_nt ^ ".smt2" in
   let output_filename = "./sygus_debug/" ^ top_nt ^ "_out.smt2" in
   let output_filename2 = "./sygus_debug/" ^ top_nt ^ "_out2.smt2" in
