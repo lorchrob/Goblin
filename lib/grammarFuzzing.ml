@@ -84,7 +84,7 @@ type trace = packet list
 
 let read_from_file filename =
   let _ = Unix.system ("touch " ^ filename) in
-  Unix.sleep 1 ;
+  Unix.sleepf 0.1 ;
   print_endline "read_from_file" ;
 
   let ic = open_in filename in
@@ -98,7 +98,7 @@ let read_from_file filename =
 
 let write_symbol_to_file filename msg =
   let _ = Unix.system ("touch " ^ filename) in
-  Unix.sleep 1 ;
+  Unix.sleepf 0.1 ;
   print_endline "write_to_file" ;
   let oc = open_out filename in
   output_string oc msg;
@@ -107,7 +107,7 @@ let write_symbol_to_file filename msg =
 
 let write_to_file filename msg =
   let _ = Unix.system ("touch " ^ filename) in
-  Unix.sleep 1 ;
+  Unix.sleepf 0.1 ;
   print_endline "write_to_file" ;
   let oc = open_out_bin filename in
   output_bytes oc msg;
@@ -115,14 +115,14 @@ let write_to_file filename msg =
 
 let clear_file filename =
   let _ = Unix.system ("touch " ^ filename) in
-  Unix.sleep 1 ;
+  Unix.sleepf 0.1 ;
   print_endline "clear_file" ;
   let oc = open_out filename in
   close_out oc  (* Opens and immediately closes the file to clear its content *)
 
 let wait_for_python_response response_file =
   let _ = Unix.system ("touch " ^ response_file) in
-  Unix.sleep 1 ;
+  Unix.sleepf 0.1 ;
   print_endline "wait_for__python" ;
   let rec loop () =
     match read_from_file response_file with
@@ -136,7 +136,7 @@ let wait_for_python_response response_file =
         else if response = "SUCCESSFUL_TRANSITION_SUCCESS" then EXPECTED_OUTPUT
         else Message response
     | None ->
-        sleep 1;  (* Wait for a while before checking again *)
+        sleepf 0.1;  (* Wait for a while before checking again *)
         loop ()
   in
   loop ()

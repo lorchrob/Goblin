@@ -94,10 +94,18 @@ let rec serialize_bytes: endianness -> sygus_ast -> bytes
 = fun endianness sygus_ast -> 
   pp_print_sygus_ast Format.std_formatter sygus_ast;
   match sygus_ast with
-  | Node (_id, subterms) -> 
-    let endianness = Big in (* Update endianness here based on _id. When you do that, remove the preceding underscore. *)
-    let bytes_list = List.map (serialize_bytes endianness) subterms in
-    List.fold_left Bytes.cat (List.hd bytes_list) (List.tl bytes_list)
+  | Node (_id, subterms) ->
+    let regex = Str.regexp "rg_id_list_con[0-9]+" in
+    (fun x -> 
+      match x with 
+      | true ->       
+        let bytes_list = List.map (serialize_bytes Little) subterms in
+        List.fold_left Bytes.cat (List.hd bytes_list) (List.tl bytes_list)
+      | false ->
+      (* then let endianness = Big in Update endianness here based on _id. When you do that, remove the preceding underscore. *)
+        let bytes_list = List.map (serialize_bytes Big) subterms in
+        List.fold_left Bytes.cat (List.hd bytes_list) (List.tl bytes_list)
+    ) (Str.string_match regex _id 0)
   | BLLeaf bits
   | BVLeaf (_, bits) -> bools_to_bytes endianness bits
   | VarLeaf _ 
