@@ -61,7 +61,7 @@ type packet = bytes
 type score = float 
 
 
-type packet_type = COMMIT | CONFIRM | ASSOCIATION_REQUEST | NOTHING
+type packet_type = COMMIT | CONFIRM | ASSOCIATION_REQUEST | NOTHING | RESET
 
 type grammar = ast
 
@@ -150,6 +150,7 @@ let map_provenance_to_string (p : provenance) : string =
   | ValidPacket COMMIT -> "COMMIT"
   | ValidPacket CONFIRM -> "CONFIRM"
   | ValidPacket ASSOCIATION_REQUEST -> "ASSOCIATION_REQUEST"
+  | ValidPacket RESET -> "RESET"
   | ValidPacket NOTHING -> failwith "unexpected symbol.."
   | RawPacket _ -> failwith "handle the raw packet case"
   
@@ -281,6 +282,7 @@ let rec applyMutation (m : mutation) (g : ast) : packet_type * grammar =
         print_endline "\n\nINJECTING ASSOCIATION REQUEST\n\n" ;
         ASSOCIATION_REQUEST, g
       | NOTHING -> failwith "unexpected symbol NOTHING"
+      | RESET -> failwith "RESET should not occur"
     )
   | None -> NOTHING, g
 and 
@@ -348,7 +350,9 @@ let sendPacket (c : child) : (provenance * output) =
   let stateTransition = first c |> first in
   let packetToSend = Result.get_ok (Pipeline.sygusGrammarToPacket (first c |> second)) in 
     sendPacketsToState stateTransition ;
-    (RawPacket packetToSend, callDriver (RawPacket packetToSend))
+    let driver_output = callDriver (RawPacket packetToSend) in
+    let _ = callDriver (ValidPacket RESET) in
+    (RawPacket packetToSend, driver_output)
   
 let executeMutatedPopulation (mutatedPopulation : population) : ((provenance list list) * population) =
   let outputList = List.map sendPacket mutatedPopulation in
