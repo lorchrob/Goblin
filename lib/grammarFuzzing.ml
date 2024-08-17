@@ -267,7 +267,6 @@ let rec applyMutation (m : mutation) (g : ast) : packet_type * grammar =
     )
     (* print_endline nt ; *)
     (* pp_print_ast Format.std_formatter (dead_rule_removal (mutate_till_success deleted_grammar g Delete) "SAE_PACKET") ; *)
-
     (* NOTHING, dead_rule_removal (mutate_till_success deleted_grammar g Delete) "SAE_PACKET" *)
 
   | Modify -> print_endline "\n\nMODIFYING\n\n" ;

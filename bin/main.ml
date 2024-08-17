@@ -216,5 +216,4 @@ let () =
     <SEND_CONFIRM_COUNTER> :: BitVector(16);
     
     
-    " 
-  in GrammarFuzzing.runFuzzer grammar
+    " in GrammarFuzzing.runFuzzer grammar
