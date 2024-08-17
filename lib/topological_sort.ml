@@ -177,6 +177,30 @@ let canonicalize (ogrammar : ast) : ast option =
     (* let rev_top_sort_nts = List.rev top_sort_nts in  *)
     Some(collect_rules top_sort_nts ogrammar [])
 
+let find_vertex g label =
+  let vertex = ref None in
+  G.iter_vertex (fun v -> if G.V.label v = label then vertex := Some v) g;
+  match !vertex with
+  | Some v -> v
+  | None -> failwith "Vertex not found"  (* This case should never happen as per the assumption *)
+    
+let dead_rule_removal (canonicalized_grammar : ast) (start_symbol : string) : ast option =
+  let g = G.create() in
+  let all_nt = get_all_nt canonicalized_grammar in 
+  let unique_nts = StringSet.of_list all_nt in 
+  let all_dependencies = get_all_dependencies_from_grammar canonicalized_grammar in 
+  let unique_dependencies = StringPairSet.of_list all_dependencies in 
+  StringSet.iter (fun s -> G.add_vertex g s) unique_nts; 
+  StringPairSet.iter (fun s-> G.add_edge g (first s) (second s)) unique_dependencies ;
+  let start = find_vertex g start_symbol in
+  let module CheckPath = Path.Check(G) in
+  let path_checker = CheckPath.create g in
+  let connected_paths = StringSet.filter (fun x -> CheckPath.check_path path_checker start (find_vertex g x)) unique_nts in
+  let dead_rule_removed_graph = collect_rules (StringSet.fold (fun x y -> x :: y) connected_paths []) canonicalized_grammar [] in
+  canonicalize dead_rule_removed_graph ;
+
+
+  
 (* 
 let buildGraph (gr : ast) =
   let g = G.create() in 

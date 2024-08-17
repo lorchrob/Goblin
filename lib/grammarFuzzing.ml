@@ -231,6 +231,12 @@ let sample_from_percentile_range (pop: population) (lower_percentile: float) (up
 
 let nonterminals = ["RG_ID_LIST"; "REJECTED_GROUPS"; "AC_TOKEN"; "AC_TOKEN_CONTAINER"; "SCALAR"; "GROUP_ID"; "ELEMENT";]
 
+let rec check_well_formed_rules (grammar : ast) : bool =
+  match grammar with
+  | [] -> true
+  | ProdRule(nt, rhsList) :: xs -> (not (List.length rhsList = 1 && isNonTerminalPresent nt rhsList)) && check_well_formed_rules xs
+  | TypeAnnotation(_,_,_) :: xs -> check_well_formed_rules xs
+    
 
 let rec applyMutation (m : mutation) (g : ast) : packet_type * grammar =
   let nt = random_element nonterminals in
@@ -238,19 +244,37 @@ let rec applyMutation (m : mutation) (g : ast) : packet_type * grammar =
     Add -> print_endline "\n\nADDING\n\n" ; 
     let added_grammar = first (mutation_add_s1 g nt) in
     pp_print_ast Format.std_formatter added_grammar ;
-    NOTHING, (mutate_till_success added_grammar g Add)
+    NOTHING, g
+    (* NOTHING, (mutate_till_success added_grammar g Add) *)
 
   | Delete -> print_endline "\n\nDELETING\n\n" ;
-    let deleted_grammar = first (mutation_delete g nt) in
-    pp_print_ast Format.std_formatter deleted_grammar ;
+    let deleted_grammar = dead_rule_removal (first (mutation_delete g nt)) "SAE_PACKET" in
+    (
+      match deleted_grammar with
+    | Some x ->
+      let well_formed_check = check_well_formed_rules x in
+      (
+        match well_formed_check with
+        | true -> NOTHING, x
+          (* let sygus_pass = (mutate_till_success deleted_grammar g Delete) in
+          (match sygus_pass with
+          | Some x -> pp_print_ast Format.std_formatter x ; NOTHING, x
+          | None -> applyMutation Delete g 
+          ) *)
+        | false -> applyMutation Delete g
+      )
+    | None -> applyMutation Delete g
+    )
+    (* print_endline nt ; *)
+    (* pp_print_ast Format.std_formatter (dead_rule_removal (mutate_till_success deleted_grammar g Delete) "SAE_PACKET") ; *)
 
-    NOTHING, (mutate_till_success deleted_grammar g Delete)
+    (* NOTHING, dead_rule_removal (mutate_till_success deleted_grammar g Delete) "SAE_PACKET" *)
 
   | Modify -> print_endline "\n\nMODIFYING\n\n" ;
     let modified_grammar = first (mutation_delete g nt) in
     pp_print_ast Format.std_formatter modified_grammar ;
-
-    NOTHING, (mutate_till_success modified_grammar g Modify)
+    NOTHING, g
+    (* NOTHING, (mutate_till_success modified_grammar g Modify) *)
 
   | CrossOver -> print_endline "\n\n\nENTERING CROSSOVER\n\n\n" ;
       let (pr1, pr2) = get_production_rules_for_crossover g in
@@ -260,13 +284,18 @@ let rec applyMutation (m : mutation) (g : ast) : packet_type * grammar =
       let crossoverPRs = mutation_crossover rhs1 rhs2 in
       let newPR = grammarUpdateAfterCrossover nt1 g rhs1 rhs2 crossoverPRs in
       let finalGrammar = grammarUpdateAfterCrossover nt2 newPR rhs1 rhs2 crossoverPRs in
-      let canonicalizedGrammar = canonicalize finalGrammar in
+      let canonicalizedGrammar = dead_rule_removal finalGrammar "SAE_PACKET" in
         (match canonicalizedGrammar with
         | Some(x) -> pp_print_ast Format.std_formatter x; 
-          NOTHING, (mutate_till_success x g CrossOver)
-        | None -> (applyMutation CrossOver g)
-        )
-      (* pp_print_ast Format.std_formatter finalGrammar ; *)
+          let well_formed_check = check_well_formed_rules x in
+          (match well_formed_check with
+          | true ->
+                (* NOTHING,  (mutate_till_success x g CrossOver) *)
+            NOTHING, x
+          | false -> applyMutation CrossOver g
+          )
+        | None -> (applyMutation CrossOver g))
+            (* pp_print_ast Format.std_formatter finalGrammar ; *)
       (* print_endline "\n\n\nEXITING CROSSOVER\n\n\n" ; *)
       (* finalGrammar *)
   | CorrectPacket -> 
@@ -285,7 +314,7 @@ let rec applyMutation (m : mutation) (g : ast) : packet_type * grammar =
       | RESET -> failwith "RESET should not occur"
     )
   | None -> NOTHING, g
-and 
+(* and 
   mutate_till_success (mutated_grammar : ast) (original_grammar : ast) (mutation_op : mutation) : ast = 
   let sygusOutput = (Pipeline.sygusGrammarToPacket mutated_grammar) in
     match sygusOutput with
@@ -300,7 +329,13 @@ and
         mutate_till_success updated_mutation original_grammar mutation_op
       | Delete -> 
         let updated_mutation = first (mutation_delete original_grammar new_nt) in
-        mutate_till_success updated_mutation original_grammar mutation_op
+        let dead_rule_removed = Topological_sort.dead_rule_removal (mutate_till_success updated_mutation original_grammar mutation_op) "SAE_PACKET" in
+        (match dead_rule_removed with
+        | Some x -> mutate_till_success x original_grammar mutation_op
+        | None -> let tupleMutation = applyMutation Delete original_grammar in
+          match tupleMutation with
+          (_, x) -> x
+        )
       | Modify ->
         let updated_mutation = first (mutation_update original_grammar new_nt) in
         mutate_till_success updated_mutation original_grammar mutation_op
@@ -312,19 +347,19 @@ and
         let crossoverPRs = mutation_crossover rhs1 rhs2 in
         let newPR = grammarUpdateAfterCrossover nt1 original_grammar rhs1 rhs2 crossoverPRs in
         let finalGrammar = grammarUpdateAfterCrossover nt2 newPR rhs1 rhs2 crossoverPRs in
-        let canonicalizedGrammar = canonicalize finalGrammar in
+        let canonicalizedGrammar = dead_rule_removal finalGrammar "SAE_PACKET" in
           (match canonicalizedGrammar with
           | Some(x) -> pp_print_ast Format.std_formatter x; 
-            mutate_till_success x original_grammar mutation_op
+            (mutate_till_success x original_grammar mutation_op)
           | None -> let tupleMutation = applyMutation CrossOver original_grammar in
             match tupleMutation with
             (_, x) -> x
           )
       | CorrectPacket -> failwith "correctpacket mutation shouldnt have been passed to this func.."
-      | None -> original_grammar
+      | None -> original_grammar *)
 
 
-let rec newMutatedSet (p:population) (m:mutationOperations) (n:int) : population = 
+let rec newMutatedSet (p : population) (m : mutationOperations) (n : int) : population = 
   match n, p, m with
   | 0, _, _ -> []
   | _, _, [] -> []
