@@ -74,9 +74,23 @@ type output = CRASH | TIMEOUT | EXPECTED_OUTPUT | UNEXPECTED_OUTPUT | Message of
 type provenance = RawPacket of packet | ValidPacket of packet_type
 
 type child = (provenance list * grammar) * score
-type population = child list
+
+(* type single_queue = ((provenance list) * (child list)) *)
+
+type queue_handle = NOTHING | CONFIRMED | ACCEPTED
+
+type population = NOTHING of child list | CONFIRMED of child list | ACCEPTED of child list
+
+type triple_queue = population * population * populution
 
 type trace = packet list
+
+let preprocess_map (f : 'a) (p : population) : population =
+  match p with
+  | NOTHING x -> NOTHING (f x)
+  | CONFIRMED x -> CONFIRMED (f x)
+  | ACCEPTED x -> ACCEPTED (f x)
+
 
 (* type iterationCount = int  *)
 
@@ -196,8 +210,8 @@ let random_element (lst: 'a list) : 'a =
   end
 
 (* Function to sample from a given percentile range *)
-let sample_from_percentile_range (pop: population) (lower_percentile: float) (upper_percentile: float) (sample_size: int) : child list =
-  let sorted_pop = List.sort (fun (_, score1) (_, score2) -> compare score2 score1) pop in
+let sample_from_percentile_range (pop : population) (lower_percentile: float) (upper_percentile: float) (sample_size: int) : child list =
+  let sorted_pop = List.sort (fun (_, _,score1) (_, _, score2) -> compare score2 score1) pop in
   let pop_len = List.length sorted_pop in
   let start_index = int_of_float (lower_percentile *. float_of_int pop_len /. 100.0) in
   let end_index = int_of_float (upper_percentile *. float_of_int pop_len /. 100.0) in
@@ -317,7 +331,7 @@ let rec applyMutation (m : mutation) (g : ast) : packet_type * grammar =
   mutate_till_success (mutated_grammar : ast) (original_grammar : ast) (mutation_op : mutation) : ast = 
   let sygusOutput = (Pipeline.sygusGrammarToPacket mutated_grammar) in
     match sygusOutput with
-    | Ok _ -> mutated_grammar
+    | Ok _ -> mutated_grammar cnf_sample 
     | Error _ -> 
       log_grammar mutated_grammar ;
       print_endline "sygus_error, retrying\n\n" ;
@@ -370,7 +384,7 @@ let rec newMutatedSet (p : population) (m : mutationOperations) (n : int) : popu
     | (y, z) -> (((first x |> first) @ [(ValidPacket y)], z), 0.0) :: (newMutatedSet xs ms (n - 1))
       (* (((first x |> first), mutated_grammar), 0.0) :: (newMutatedSet xs ms (n - 1)) *)
     )
-let rec mutationList sampleFunction (mutationOps:mutationOperations) (n:int): mutation list =
+let rec mutationList sampleFunction (mutationOps : mutationOperations) (n : int): mutation list =
   match n with
     0 -> []
   | _ -> sampleFunction mutationOps :: mutationList sampleFunction mutationOps (n - 1)
@@ -405,17 +419,73 @@ let stdDev (s:score list) : float =
   sqrt (variance /. float_of_int (List.length s))
 
 
-let cleaupPopulation (p: population) : population =
+let cleaupPopulation (q : tripleQueue) : tripleQueue =
   (* check scores for staleness, remove population that has scores with little to no SD, 
      ignore 0.0 when checking for staleness *)
-  let s = getScores p in 
-  let sd = stdDev s in
-  List.filter (fun (_, sc) -> sc = 0.0 || sc > sd) p
-(* END CLEANUP *)
+  let np = first q in
+  let cnf = second q in
+  let acc = third q in
+  match np, cnf, acc with
+  | NOTHING a, CONFIRMED b, ACCEPTED c ->
+    let s = getScores a in
+    let sd = stdDev s in
+    let newNothingList = List.filter (fun (_, sc) -> sc = 0.0 || sc > sd) a in
+    let s = getScores b in 
+    let sd = stdDev s in
+    let newConfirmedList = List.filter (fun (_, sc) -> sc = 0.0 || sc > sd) b in
+    let s = getScores c in 
+    let sd = stdDev s in
+    let newAcceptedList = List.filter (fun (_, sc) -> sc = 0.0 || sc > sd) c in
+    (NOTHING newNothingList, CONFIRMED newConfirmedList, ACCEPTED newAcceptedList)
+  | _, _, _ -> failwith "Unexpected queue pattern in cleanup"
+
+    (* END CLEANUP *)
+
+let extract_child_from_state (p : population) : child list =
+  match p with
+  | NOTHING x | CONFIRMED x | ACCEPTED x -> x
+
+let uniform_sample_from_queue (q : triple_queue) (n : int) : child list =
+  let np, cnf, acc = first q, second q, third q in
+  let np_sample = sample_from_percentile_range (extract_child_from_state np) 0.0 100.0 n in
+  let cnf_sample = sample_from_percentile_range (extract_child_from_state cnf) 0.0 100.0 n in
+  let acc_sample = sample_from_percentile_range (extract_child_from_state acc) 0.0 100.0 n in
+    np_sample @ cnf_sample @ acc_sample
+
+let population_size_across_queues (x : population) (y : population) (z : population) =
+  match x, y, z with
+  | NOTHING a, CONFIRMED b, ACCEPTED c  -> List.length a + List.length b + List.length c
+  | _, _, _ -> failwith "Queue order not maintained"
+
+let oracle (pkt : provenance) : queue_handle =
+  match pkt with
+  | RawPacket -> failwith "not implemented"
+  | ValidPacket x -> x    
+
+let map_packet_to_state (cl : child list) : population list =
+  match cl with
+  | x :: xs -> 
+    let last_packet = List.hd (List.rev (first x)) in
+    let state = oracle last_packet in
+    match state with 
+    | COMMIT -> CONFIRMED x :: map_packet_to_state xs
+    | CONFIRM -> ACCEPTED x :: map_packet_to_state xs
+    | ASSOCIATION_REQUEST -> NOTHING x :: map_packet_to_state xs
+    | NOTHING -> failwith "unreachable case.. nothing symbol unexpected in provenance"
+    | RESET -> failwith "unreachable case.. reset symbol unexpected in provenance"
+
+
+let bucket_oracle (q : triple_queue) (clist : child list) : triple_queue =
+  let np, cnf, acc = first q, second q, third q in
+  let newPopulation = map_packet_to_state clist in
+  let newNothingList = np @ List.filter (fun x -> match x with NOTHING _ -> true | _ -> false) newPopulation in
+  let newConfirmedList = cnf @ List.filter (fun x -> match x with CONFIRMED _ -> true | _ -> false) newPopulation in
+  let newAcceptedList = acc @ List.filter (fun x -> match x with ACCEPTED _ -> true | _ -> false) newPopulation in
+   (newNothingList, newConfirmedList, newAcceptedList)
 
 let rec fuzzingAlgorithm 
 (maxCurrentPopulation : int) 
-(currentPopulation : population) 
+(currentQueue : triple_queue) 
 (iTraces : provenance list list)
 (tlenBound : int) 
 (currentIteration : int) 
@@ -423,22 +493,32 @@ let rec fuzzingAlgorithm
 (cleanupIteration : int) 
 (newChildThreshold : int) 
 (mutationOperations : mutationOperations) =
+  let nothing_population = first currentQueue in
+  let confirmed_population = second currentQueue in
+  let accepted_population = third currentQueue in
+  let total_population_size = population_size_across_queues nothing_population confirmed_population accepted_population in
   if currentIteration >= terminationIteration then iTraces
   else
-    if currentIteration mod cleanupIteration = 0 || List.length currentPopulation >= maxCurrentPopulation then
-      fuzzingAlgorithm maxCurrentPopulation (cleaupPopulation currentPopulation) iTraces tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations
+    if currentIteration mod cleanupIteration = 0 || total_population_size >= maxCurrentPopulation then
+      fuzzingAlgorithm maxCurrentPopulation (cleaupPopulation currentQueue) iTraces tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations
     else
-      let currentPopulation = List.filter (fun x -> List.length (first x |> first) < 10) currentPopulation in
-      let top_sample = sample_from_percentile_range currentPopulation 0.0 10.0 1 in
+      let currentQueue = 
+        (preprocess_map (List.filter (fun x -> List.length (second x |> first) <= 10)) nothing_population),
+        (preprocess_map (List.filter (fun x -> List.length (second x |> first) <= 10)) confirmed_population),
+        (preprocess_map (List.filter (fun x -> List.length (second x |> first) <= 10)) accepted_population),
+      in
+      (* let top_sample = sample_from_percentile_range currentPopulation 0.0 10.0 1 in
       let middle_sample = sample_from_percentile_range currentPopulation 30.0 60.0 2 in
-      let bottom_sample = sample_from_percentile_range currentPopulation 80.0 100.0 1 in
-      let newPopulation = top_sample @ middle_sample @ bottom_sample in
+      let bottom_sample = sample_from_percentile_range currentPopulation 80.0 100.0 1 in *)
+      (* let newPopulation = top_sample @ middle_sample @ bottom_sample in *)
+      let newPopulation = uniform_sample_from_queue currentQueue in
       let selectedMutations = mutationList random_element mutationOperations (List.length newPopulation) in
       let mutatedPopulation = newMutatedSet newPopulation selectedMutations (List.length newPopulation) in
       let (iT, newPopulation) = executeMutatedPopulation mutatedPopulation in
-      fuzzingAlgorithm maxCurrentPopulation (List.append newPopulation currentPopulation) (List.append iTraces iT) tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations
+      let newQueue = bucket_oracle currentQueue newPopulation in 
+      fuzzingAlgorithm maxCurrentPopulation newQueue (List.append iTraces iT) tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations
 
 let runFuzzer grammar = 
   Random.self_init ();
-  let _ = fuzzingAlgorithm 1000 [(([], grammar), 0.0); (([], grammar), 0.0); (([], grammar), 0.0);] [] 100 0 1000 20 100 [Add; Delete; Modify; CrossOver;CorrectPacket;] in
+  let _ = fuzzingAlgorithm 1000 [([], [(grammar, 0.0)]); ([], [(grammar, 0.0)]); ([], (grammar, 0.0));] [] 100 0 1000 20 100 [Add; Delete; Modify; CrossOver;CorrectPacket;] in
   ()

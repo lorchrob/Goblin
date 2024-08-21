@@ -5,11 +5,15 @@ let first (tuple: ('a * 'b)) : 'a =
     (t1, _) -> t1
   ;;
   
-  let second (tuple: ('a * 'b)) : 'b =
+let second (tuple: ('a * 'b)) : 'b =
     match tuple with
     (_, t2) -> t2
-  ;;
-  
+;;
+
+let third (triple : 'a * 'b * 'c) : 'c =
+    match triple with
+    | _, _, t3 -> t3
+;;
   
 
 let random_element (lst: 'a list) : 'a =
