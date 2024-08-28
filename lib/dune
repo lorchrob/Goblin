@@ -1,6 +1,7 @@
 (library
  (name sbf)
- (libraries unix menhirLib str cmdliner ocamlgraph))
+ (libraries unix menhirLib str cmdliner ocamlgraph)
+ )
 
 (menhir
  (modules parser sygusParser))

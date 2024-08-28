@@ -191,7 +191,7 @@ let () =
     
     <RG_ID_LIST> ::= <RG_ID> | <RG_ID> <RG_ID_LIST>;
      
-    <RG_ID> :: BitVector(8);
+    <RG_ID> :: BitVector(16);
     
     <AC_TOKEN_CONTAINER> ::= <AC_ELEMENT_ID> <AC_ID_LENGTH> <AC_ELEMENT_ID_EXTENSION> 
                          <AC_TOKEN_ELEMENT>

@@ -79,9 +79,11 @@ type child = (provenance list * grammar) * score
 
 type queue_handle = NOTHING | CONFIRMED | ACCEPTED
 
+type state_child = NOTHING of child | CONFIRMED of child | ACCEPTED of child
+
 type population = NOTHING of child list | CONFIRMED of child list | ACCEPTED of child list
 
-type triple_queue = population * population * populution
+type triple_queue = population list
 
 type trace = packet list
 
@@ -181,7 +183,7 @@ let callDriver x =
     wait_for_python_response response_file
 
 
-let rec scoreFunction (pktStatus : (provenance * output) list) (mutatedPopulation : population) : ((provenance list list) * population) =
+let rec scoreFunction (pktStatus : (provenance * output) list) (mutatedPopulation : child list) : ((provenance list list) * (child list)) =
   match pktStatus, mutatedPopulation with
   | [], [] | _, [] -> [], []
   | [], p -> [], p
@@ -189,14 +191,14 @@ let rec scoreFunction (pktStatus : (provenance * output) list) (mutatedPopulatio
     match output_symbol with
     | TIMEOUT | EXPECTED_OUTPUT ->
       if output_symbol = TIMEOUT then
-        ((first (scoreFunction xs ys))), (((old_provenance @ [packet], current_grammar), score +. 0.3) :: (second (scoreFunction xs ys)))
+        ((fst (scoreFunction xs ys))), (((old_provenance @ [packet], current_grammar), score +. 0.3) :: (snd (scoreFunction xs ys)))
       else 
-        ((first (scoreFunction xs ys))), (((old_provenance @ [packet], current_grammar), score +. 0.1) :: (second (scoreFunction xs ys)))
+        ((fst (scoreFunction xs ys))), (((old_provenance @ [packet], current_grammar), score +. 0.1) :: (snd (scoreFunction xs ys)))
     | CRASH | UNEXPECTED_OUTPUT ->
       if output_symbol = CRASH then 
-        ((old_provenance @ [packet])  :: (first (scoreFunction xs ys))), (((old_provenance @ [packet], current_grammar), score +. 0.7) :: (second (scoreFunction xs ys)))
+        ((old_provenance @ [packet])  :: (fst (scoreFunction xs ys))), (((old_provenance @ [packet], current_grammar), score +. 0.7) :: (snd (scoreFunction xs ys)))
       else 
-        ((old_provenance @ [packet]) :: (first (scoreFunction xs ys))), (((old_provenance @ [packet], current_grammar), score +. 0.9) :: (second (scoreFunction xs ys)))        
+        ((old_provenance @ [packet]) :: (fst (scoreFunction xs ys))), (((old_provenance @ [packet], current_grammar), score +. 0.9) :: (snd (scoreFunction xs ys)))        
     | Message _ -> failwith "Message type should not be matched in score func.."
 
     
@@ -210,8 +212,8 @@ let random_element (lst: 'a list) : 'a =
   end
 
 (* Function to sample from a given percentile range *)
-let sample_from_percentile_range (pop : population) (lower_percentile: float) (upper_percentile: float) (sample_size: int) : child list =
-  let sorted_pop = List.sort (fun (_, _,score1) (_, _, score2) -> compare score2 score1) pop in
+let sample_from_percentile_range (pop : child list) (lower_percentile: float) (upper_percentile: float) (sample_size: int) : child list =
+  let sorted_pop = List.sort (fun ((_, _), score1) ((_, _), score2) -> compare score2 score1) pop in
   let pop_len = List.length sorted_pop in
   let start_index = int_of_float (lower_percentile *. float_of_int pop_len /. 100.0) in
   let end_index = int_of_float (upper_percentile *. float_of_int pop_len /. 100.0) in
@@ -256,13 +258,13 @@ let rec applyMutation (m : mutation) (g : ast) : packet_type * grammar =
   let nt = random_element nonterminals in
   match m with
     Add -> print_endline "\n\nADDING\n\n" ; 
-    let added_grammar = first (mutation_add_s1 g nt) in
+    let added_grammar = fst (mutation_add_s1 g nt) in
     pp_print_ast Format.std_formatter added_grammar ;
     NOTHING, g
     (* NOTHING, (mutate_till_success added_grammar g Add) *)
 
   | Delete -> print_endline "\n\nDELETING\n\n" ;
-    let deleted_grammar = dead_rule_removal (first (mutation_delete g nt)) "SAE_PACKET" in
+    let deleted_grammar = dead_rule_removal (fst (mutation_delete g nt)) "SAE_PACKET" in
     (
       match deleted_grammar with
     | Some x ->
@@ -284,7 +286,7 @@ let rec applyMutation (m : mutation) (g : ast) : packet_type * grammar =
     (* NOTHING, dead_rule_removal (mutate_till_success deleted_grammar g Delete) "SAE_PACKET" *)
 
   | Modify -> print_endline "\n\nMODIFYING\n\n" ;
-    let modified_grammar = first (mutation_delete g nt) in
+    let modified_grammar = fst (mutation_delete g nt) in
     pp_print_ast Format.std_formatter modified_grammar ;
     NOTHING, g
     (* NOTHING, (mutate_till_success modified_grammar g Modify) *)
@@ -372,16 +374,16 @@ let rec applyMutation (m : mutation) (g : ast) : packet_type * grammar =
       | None -> original_grammar *)
 
 
-let rec newMutatedSet (p : population) (m : mutationOperations) (n : int) : population = 
+let rec newMutatedSet (p : child list) (m : mutationOperations) (n : int) : child list = 
   match n, p, m with
   | 0, _, _ -> []
   | _, _, [] -> []
   | _, [], _ -> []
   | _, (x::xs), (mu::ms) ->
-    let mutated_grammar = applyMutation mu (first x |> second) in
+    let mutated_grammar = applyMutation mu (fst x |> snd) in
     (match mutated_grammar with
-    | (NOTHING, z) -> ((((first x |> first)), z), 0.0) :: (newMutatedSet xs ms (n - 1))
-    | (y, z) -> (((first x |> first) @ [(ValidPacket y)], z), 0.0) :: (newMutatedSet xs ms (n - 1))
+    | (NOTHING, z) -> ((((fst x |> fst)), z), 0.0) :: (newMutatedSet xs ms (n - 1))
+    | (y, z) -> (((fst x |> fst) @ [(ValidPacket y)], z), 0.0) :: (newMutatedSet xs ms (n - 1))
       (* (((first x |> first), mutated_grammar), 0.0) :: (newMutatedSet xs ms (n - 1)) *)
     )
 let rec mutationList sampleFunction (mutationOps : mutationOperations) (n : int): mutation list =
@@ -395,19 +397,22 @@ let rec sendPacketsToState (p : provenance list) : unit =
   | x :: xs -> let _ = callDriver x in sendPacketsToState xs
 
 let sendPacket (c : child) : (provenance * output) =
-  let stateTransition = first c |> first in
-  let packetToSend = Result.get_ok (Pipeline.sygusGrammarToPacket (first c |> second)) in 
-    sendPacketsToState stateTransition ;
-    let driver_output = callDriver (RawPacket packetToSend) in
-    let _ = callDriver (ValidPacket RESET) in
-    (RawPacket packetToSend, driver_output)
-  
-let executeMutatedPopulation (mutatedPopulation : population) : ((provenance list list) * population) =
+  let stateTransition = fst c |> fst in
+  let packetToSend_ = (Pipeline.sygusGrammarToPacket (fst c |> snd)) in 
+    match packetToSend_ with
+    | Ok packetToSend ->
+      sendPacketsToState stateTransition ;
+      let driver_output = callDriver (RawPacket packetToSend) in
+      let _ = callDriver (ValidPacket RESET) in
+      (RawPacket packetToSend, driver_output)
+    | Error _ -> (ValidPacket NOTHING, EXPECTED_OUTPUT)
+      
+let executeMutatedPopulation (mutatedPopulation : child list) : ((provenance list list) * (child list)) =
   let outputList = List.map sendPacket mutatedPopulation in
     scoreFunction outputList mutatedPopulation
 
 (* Filter population based on standard deviation *)
-let getScores (p:population) : score list = List.map second p
+let getScores (p: child list) : score list = List.map snd p
 
 let calcMean (s:score list) : float =
   let sum = List.fold_left (+.) 0.0 s in
@@ -419,12 +424,12 @@ let stdDev (s:score list) : float =
   sqrt (variance /. float_of_int (List.length s))
 
 
-let cleaupPopulation (q : tripleQueue) : tripleQueue =
+let cleaupPopulation (q : triple_queue) : triple_queue =
   (* check scores for staleness, remove population that has scores with little to no SD, 
      ignore 0.0 when checking for staleness *)
-  let np = first q in
-  let cnf = second q in
-  let acc = third q in
+  let np = List.nth q 0 in
+  let cnf = List.nth q 1 in
+  let acc = List.nth q 2 in
   match np, cnf, acc with
   | NOTHING a, CONFIRMED b, ACCEPTED c ->
     let s = getScores a in
@@ -436,7 +441,7 @@ let cleaupPopulation (q : tripleQueue) : tripleQueue =
     let s = getScores c in 
     let sd = stdDev s in
     let newAcceptedList = List.filter (fun (_, sc) -> sc = 0.0 || sc > sd) c in
-    (NOTHING newNothingList, CONFIRMED newConfirmedList, ACCEPTED newAcceptedList)
+    [NOTHING newNothingList; CONFIRMED newConfirmedList; ACCEPTED newAcceptedList]
   | _, _, _ -> failwith "Unexpected queue pattern in cleanup"
 
     (* END CLEANUP *)
@@ -446,7 +451,7 @@ let extract_child_from_state (p : population) : child list =
   | NOTHING x | CONFIRMED x | ACCEPTED x -> x
 
 let uniform_sample_from_queue (q : triple_queue) (n : int) : child list =
-  let np, cnf, acc = first q, second q, third q in
+  let np, cnf, acc = List.nth q 0, List.nth q 1, List.nth q 2 in
   let np_sample = sample_from_percentile_range (extract_child_from_state np) 0.0 100.0 n in
   let cnf_sample = sample_from_percentile_range (extract_child_from_state cnf) 0.0 100.0 n in
   let acc_sample = sample_from_percentile_range (extract_child_from_state acc) 0.0 100.0 n in
@@ -459,29 +464,45 @@ let population_size_across_queues (x : population) (y : population) (z : populat
 
 let oracle (pkt : provenance) : queue_handle =
   match pkt with
-  | RawPacket -> failwith "not implemented"
-  | ValidPacket x -> x    
+  | RawPacket _ -> NOTHING
+  | ValidPacket x ->
+    match x with
+    | COMMIT -> CONFIRMED
+    | CONFIRM -> ACCEPTED 
+    | ASSOCIATION_REQUEST -> ACCEPTED 
+    | NOTHING -> NOTHING 
+    | RESET -> NOTHING
 
-let map_packet_to_state (cl : child list) : population list =
+let rec map_packet_to_state (cl : child list) : state_child list =
   match cl with
+  | [] -> []
   | x :: xs -> 
-    let last_packet = List.hd (List.rev (first x)) in
+    let last_packet = List.hd (List.rev (fst (fst x))) in
     let state = oracle last_packet in
     match state with 
-    | COMMIT -> CONFIRMED x :: map_packet_to_state xs
-    | CONFIRM -> ACCEPTED x :: map_packet_to_state xs
-    | ASSOCIATION_REQUEST -> NOTHING x :: map_packet_to_state xs
-    | NOTHING -> failwith "unreachable case.. nothing symbol unexpected in provenance"
-    | RESET -> failwith "unreachable case.. reset symbol unexpected in provenance"
+    | NOTHING -> CONFIRMED x :: map_packet_to_state xs
+    | CONFIRMED -> ACCEPTED x :: map_packet_to_state xs
+    | ACCEPTED -> NOTHING x :: map_packet_to_state xs
+    (* | NOTHING -> failwith "unreachable case.. nothing symbol unexpected in provenance"
+    | RESET -> failwith "unreachable case.. reset symbol unexpected in provenance" *)
 
+let get_child_from_state (c : state_child) : child =
+  match c with 
+  | NOTHING x | CONFIRMED x | ACCEPTED x -> x
 
+let filter_state (qh : queue_handle) (c : state_child) : bool =
+  match c with
+  | NOTHING _ -> if qh = NOTHING then true else false
+  | CONFIRMED _ -> if qh = CONFIRMED then true else false
+  | ACCEPTED _ -> if qh = ACCEPTED then true else false
+  
 let bucket_oracle (q : triple_queue) (clist : child list) : triple_queue =
-  let np, cnf, acc = first q, second q, third q in
+  let np, cnf, acc = extract_child_from_state (List.nth q 0), extract_child_from_state (List.nth q 1), extract_child_from_state (List.nth q 2) in
   let newPopulation = map_packet_to_state clist in
-  let newNothingList = np @ List.filter (fun x -> match x with NOTHING _ -> true | _ -> false) newPopulation in
-  let newConfirmedList = cnf @ List.filter (fun x -> match x with CONFIRMED _ -> true | _ -> false) newPopulation in
-  let newAcceptedList = acc @ List.filter (fun x -> match x with ACCEPTED _ -> true | _ -> false) newPopulation in
-   (newNothingList, newConfirmedList, newAcceptedList)
+  let newNothingList = np @ List.map get_child_from_state (List.filter (filter_state NOTHING) newPopulation) in
+  let newConfirmedList = cnf @ List.map get_child_from_state (List.filter (filter_state CONFIRMED) newPopulation) in
+  let newAcceptedList = acc @ List.map get_child_from_state (List.filter (filter_state ACCEPTED) newPopulation) in
+   [NOTHING newNothingList; CONFIRMED newConfirmedList; ACCEPTED newAcceptedList]
 
 let rec fuzzingAlgorithm 
 (maxCurrentPopulation : int) 
@@ -493,9 +514,9 @@ let rec fuzzingAlgorithm
 (cleanupIteration : int) 
 (newChildThreshold : int) 
 (mutationOperations : mutationOperations) =
-  let nothing_population = first currentQueue in
-  let confirmed_population = second currentQueue in
-  let accepted_population = third currentQueue in
+  let nothing_population = List.nth currentQueue 0 in
+  let confirmed_population = List.nth currentQueue 1 in
+  let accepted_population = List.nth currentQueue 2 in
   let total_population_size = population_size_across_queues nothing_population confirmed_population accepted_population in
   if currentIteration >= terminationIteration then iTraces
   else
@@ -503,15 +524,15 @@ let rec fuzzingAlgorithm
       fuzzingAlgorithm maxCurrentPopulation (cleaupPopulation currentQueue) iTraces tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations
     else
       let currentQueue = 
-        (preprocess_map (List.filter (fun x -> List.length (second x |> first) <= 10)) nothing_population),
-        (preprocess_map (List.filter (fun x -> List.length (second x |> first) <= 10)) confirmed_population),
-        (preprocess_map (List.filter (fun x -> List.length (second x |> first) <= 10)) accepted_population),
+        [NOTHING (List.filter (fun x -> List.length (fst x |> fst) <= 10) (extract_child_from_state nothing_population));
+        CONFIRMED (List.filter (fun x -> List.length (fst x |> fst) <= 10) (extract_child_from_state confirmed_population));
+        ACCEPTED (List.filter (fun x -> List.length (fst x |> fst) <= 10) (extract_child_from_state accepted_population))]
       in
       (* let top_sample = sample_from_percentile_range currentPopulation 0.0 10.0 1 in
       let middle_sample = sample_from_percentile_range currentPopulation 30.0 60.0 2 in
       let bottom_sample = sample_from_percentile_range currentPopulation 80.0 100.0 1 in *)
       (* let newPopulation = top_sample @ middle_sample @ bottom_sample in *)
-      let newPopulation = uniform_sample_from_queue currentQueue in
+      let newPopulation = uniform_sample_from_queue currentQueue 10 in
       let selectedMutations = mutationList random_element mutationOperations (List.length newPopulation) in
       let mutatedPopulation = newMutatedSet newPopulation selectedMutations (List.length newPopulation) in
       let (iT, newPopulation) = executeMutatedPopulation mutatedPopulation in
@@ -520,5 +541,5 @@ let rec fuzzingAlgorithm
 
 let runFuzzer grammar = 
   Random.self_init ();
-  let _ = fuzzingAlgorithm 1000 [([], [(grammar, 0.0)]); ([], [(grammar, 0.0)]); ([], (grammar, 0.0));] [] 100 0 1000 20 100 [Add; Delete; Modify; CrossOver;CorrectPacket;] in
+  let _ = fuzzingAlgorithm 1000 [NOTHING([([], grammar), 0.0]); CONFIRMED([([], grammar), 0.0]); ACCEPTED([([], grammar), 0.0])] [] 100 0 1000 20 100 [Add; Delete; Modify; CrossOver;CorrectPacket;] in
   ()

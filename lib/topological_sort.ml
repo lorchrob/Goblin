@@ -58,17 +58,17 @@ let rec get_all_rhs_elements (nt : string) (prList : prod_rule_rhs list) : strin
   | [] -> []
   | Rhs(geList, _) :: xs -> (get_dependencies nt geList) @ (get_all_rhs_elements nt xs)
   | StubbedRhs(_) :: xs -> get_all_rhs_elements nt xs
-
-let first (tuple: ('a * 'b)) : 'a =
+(* 
+let fst (tuple: ('a * 'b)) : 'a =
   match tuple with
   (t1, _) -> t1
 ;;
 
-let second (tuple: ('a * 'b)) : 'b =
+let snd (tuple: ('a * 'b)) : 'b =
   match tuple with
   (_, t2) -> t2
 ;;
-  
+   *)
 let rec get_edge_pairs (nts : (string * (string list)) list): (string * string) list =
   match nts with
   | [] -> []
@@ -94,7 +94,7 @@ module Node = struct
   let compare = Stdlib.compare                                                 
   let hash = Hashtbl.hash                                                          
   let equal = (=)                                                                  
-end                                                                                 
+end
 (* 
 module Edge = struct                                                                
   type t = string                                                                  
@@ -137,7 +137,7 @@ let remove_duplicates x =
   let d_set = StringPairSet.of_list x in 
    
   StringPairSet.iter (fun s -> G.add_vertex g s) d_set ;
-  StringPairSet.iter (fun s -> G.add_edge g (first s) (second s)) edge_pairs ;  *)
+  StringPairSet.iter (fun s -> G.add_edge g (fst s) (snd s)) edge_pairs ;  *)
 (* 
   let set_rep = create_set_from_list StringPairSet.empty x in 
   StringPairSet.to_list set_rep     *)
@@ -167,7 +167,7 @@ let canonicalize (ogrammar : ast) : ast option =
   let all_dependencies = get_all_dependencies_from_grammar ogrammar in 
   let unique_dependencies = StringPairSet.of_list all_dependencies in 
   StringSet.iter (fun s -> G.add_vertex g s) unique_nts; 
-  StringPairSet.iter (fun s-> G.add_edge g (first s) (second s)) unique_dependencies ;
+  StringPairSet.iter (fun s-> G.add_edge g (fst s) (snd s)) unique_dependencies ;
   let module My_Dfs = Traverse.Dfs(G) in
   if (My_Dfs.has_cycle g) then None  
   else 
@@ -191,7 +191,7 @@ let dead_rule_removal (canonicalized_grammar : ast) (start_symbol : string) : as
   let all_dependencies = get_all_dependencies_from_grammar canonicalized_grammar in 
   let unique_dependencies = StringPairSet.of_list all_dependencies in 
   StringSet.iter (fun s -> G.add_vertex g s) unique_nts; 
-  StringPairSet.iter (fun s-> G.add_edge g (first s) (second s)) unique_dependencies ;
+  StringPairSet.iter (fun s-> G.add_edge g (fst s) (snd s)) unique_dependencies ;
   let start = find_vertex g start_symbol in
   let module CheckPath = Path.Check(G) in
   let path_checker = CheckPath.create g in
@@ -209,13 +209,13 @@ let buildGraph (gr : ast) =
   let all_dependencies = get_all_dependencies_from_grammar gr in 
   let unique_dependencies = StringPairSet.of_list all_dependencies in 
   StringSet.iter (fun s -> G.add_vertex g s) unique_nts; 
-  StringPairSet.iter (fun s-> G.add_edge g (first s) (second s)) unique_dependencies ;
+  StringPairSet.iter (fun s-> G.add_edge g (fst s) (snd s)) unique_dependencies ;
 
   G.iter_vertex (fun x->print_endline x) g; 
   Printf.printf "\n\n\n\n\n\n" ;
-  G.iter_edges_e (fun edg -> Printf.printf "(%s -> %s)\n" (first edg) (second edg)) g ; 
+  G.iter_edges_e (fun edg -> Printf.printf "(%s -> %s)\n" (fst edg) (snd edg)) g ; 
   Printf.printf "\n\n\n\n\n\n" ;
-  G.iter_edges_e (fun edg -> if G.is_directed then Printf.printf "(%s -> %s)\n" (first edg) (second edg) else Printf.printf "skipping edge (%s %s)\n" (first edg) (second edg)) g ; 
+  G.iter_edges_e (fun edg -> if G.is_directed then Printf.printf "(%s -> %s)\n" (fst edg) (snd edg) else Printf.printf "skipping edge (%s %s)\n" (fst edg) (snd edg)) g ; 
   Printf.printf "\n\n\n\n\n\n" ;
   let module My_Dfs = Traverse.Dfs(G) in 
   if (My_Dfs.has_cycle g) then Printf.printf "Graph has cycles\n" 
@@ -239,7 +239,7 @@ let buildGraph (gr : ast) =
   let edge_pairs = get_edge_pairs all_dependencies in
   print_tuple_list edge_pairs ;
   List.iter (fun s -> G.add_vertex g s) allNt ;
-  List.iter (fun s -> G.add_edge g (first s) (second s)) edge_pairs ; *)
+  List.iter (fun s -> G.add_edge g (fst s) (snd s)) edge_pairs ; *)
   (* g *)
 
 

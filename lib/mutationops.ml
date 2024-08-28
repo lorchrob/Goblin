@@ -1,16 +1,14 @@
 open Ast
 
-let first (tuple: ('a * 'b)) : 'a =
+let first (tuple : ('a * 'b * 'c)) : 'a =
     match tuple with
-    (t1, _) -> t1
-  ;;
+    | (t1, _, _) -> t1
   
-let second (tuple: ('a * 'b)) : 'b =
+let second (tuple : ('a * 'b * 'c)) : 'b =
     match tuple with
-    (_, t2) -> t2
-;;
+    | (_,t2,_) -> t2
 
-let third (triple : 'a * 'b * 'c) : 'c =
+let third (triple : ('a * 'b * 'c)) : 'c =
     match triple with
     | _, _, t3 -> t3
 ;;
@@ -218,12 +216,12 @@ let rec replace_geList b rhs1 rhs2 crossoverPRs =
     | [] -> []
     | x :: xss -> 
         if x = rhs1 
-        then (replace_Rhs b rhs1 (first crossoverPRs)) @ (replace_geList xss rhs1 rhs2 crossoverPRs)
+        then (replace_Rhs b rhs1 (fst crossoverPRs)) @ (replace_geList xss rhs1 rhs2 crossoverPRs)
         else if x = rhs2
-        then (replace_Rhs b rhs2 (second crossoverPRs)) @ (replace_geList xss rhs1 rhs2 crossoverPRs)
+        then (replace_Rhs b rhs2 (snd crossoverPRs)) @ (replace_geList xss rhs1 rhs2 crossoverPRs)
         else (replace_geList xss rhs1 rhs2 crossoverPRs)
 
-let rec grammarUpdateAfterCrossover nt g rhs1 rhs2 crossoverPRs = 
+let rec grammarUpdateAfterCrossover (nt : string) (g : ast) (rhs1 : prod_rule_rhs) (rhs2 : prod_rule_rhs) (crossoverPRs : (prod_rule_rhs * prod_rule_rhs)) : ast = 
     match g with
         | [] -> []
         | ProdRule(a, b) :: xs -> 
