@@ -44,10 +44,20 @@ let mk_fresh_stub_id id =
   k := !k + 1;
   String.uppercase_ascii id
 
+let replicate value length =
+  let rec replicate_aux value length acc =
+    if length <= 0 then
+      List.rev acc
+    else
+      replicate_aux value (length - 1) (value :: acc)
+  in
+  replicate_aux value length []
+
 let il_int_to_bitvector: int -> int -> expr 
 = fun length n ->
   if n >= (1 lsl length) then
-    failwith ("Tried to cast integer " ^ string_of_int n ^ " to BitVector of inadequate width " ^ string_of_int length)
+    (*!! If we overflow, return max value *)
+    BVConst (length, replicate true length)
   else
     let rec to_bits acc len n =
       if len = 0 then acc
