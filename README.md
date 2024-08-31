@@ -2,7 +2,11 @@
 
 Required opam packages:
 
-* Alcotest (`opam install alcotest`)
+* `opam install menhir`
+* `opam install alcotest`
+* `opam install ppx_bitstring`
+* `opam install yojson`
+* `opam install ocamlgraph`
 
 How to run the tool:
 
