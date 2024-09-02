@@ -400,7 +400,7 @@ let sendPacket (c : child) : (provenance * output) =
   let stateTransition = fst c |> fst in
   let packetToSend_ = (Pipeline.sygusGrammarToPacket (fst c |> snd)) in 
     match packetToSend_ with
-    | Ok packetToSend ->
+    | Ok (packetToSend, _metadata) ->
       sendPacketsToState stateTransition ;
       let driver_output = callDriver (RawPacket packetToSend) in
       let _ = callDriver (ValidPacket RESET) in

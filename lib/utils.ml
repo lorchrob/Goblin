@@ -92,3 +92,11 @@ let grammar_element_to_string: grammar_element -> string
 let pp_print_string_map_keys: Format.formatter -> 'a StringMap.t -> unit 
 = fun ppf map -> 
   StringMap.iter (fun k _ -> Format.pp_print_string ppf k) map
+
+let print_bytes_as_hex (b : bytes) =
+  let print_byte byte =
+    Printf.printf "%02X " (Char.code byte)
+  in
+  Bytes.iter print_byte b;
+  print_newline ()
+  
