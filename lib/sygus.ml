@@ -361,8 +361,8 @@ fun ctx dep_map ast ->
   (* Call sygus command *)
   let cvc5 = "/home/pirwani/Desktop/cvc5/build/bin/cvc5" in
   let cvc5_2 = "/home/pirwani/Desktop/cvc5-2/build/bin/cvc5" in
-  let command = Printf.sprintf "%s --lang=sygus2 %s > %s" cvc5 input_filename output_filename in
-  let command2 = Printf.sprintf "%s --lang=sygus2 %s > %s" cvc5_2 input_filename output_filename2 in
+  let command = Printf.sprintf "%s --lang=sygus2 --dag-thresh=0 %s > %s" cvc5 input_filename output_filename in
+  let command2 = Printf.sprintf "%s --lang=sygus2 --dag-thresh=0 %s > %s" cvc5_2 input_filename output_filename2 in
   (* Run two versions of sygus in parallel and use results from whichever finishes first *)
   match run_commands command command2 with 
   | Command1 -> 
