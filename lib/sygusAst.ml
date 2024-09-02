@@ -96,7 +96,7 @@ let bools_to_bytes endianness bools =
 
 type metadata = {
   var_leaf_count : int;
-  var_leaf_info : (int * int) list; (* (Length, Offset) *)
+  var_leaf_info : (int * int) list; (* (Offset, Length) *)
 }
 
 let int_to_byte n =
@@ -110,7 +110,7 @@ let encode_metadata metadata =
   let num_var_leaves = metadata.var_leaf_count in
   let metadata_bytes = ref (Bytes.of_string "") in
   metadata_bytes := int_to_byte num_var_leaves;
-  List.iter (fun (len, offset) ->
+  List.iter (fun (offset, len) ->
     metadata_bytes := Bytes.cat (int_to_byte len) !metadata_bytes ;
     metadata_bytes := Bytes.cat (int_to_byte offset) !metadata_bytes 
   ) metadata.var_leaf_info;
@@ -150,7 +150,7 @@ let serialize_bytes: endianness -> sygus_ast -> bytes * bytes
       let var_leaf_length = Bytes.length var_leaf_data in
       let new_metadata = {
         var_leaf_count = acc_metadata.var_leaf_count + 1;
-        var_leaf_info = (var_leaf_length, offset) :: acc_metadata.var_leaf_info
+        var_leaf_info = (offset, var_leaf_length) :: acc_metadata.var_leaf_info
       } in
       (var_leaf_data, new_metadata, offset + var_leaf_length)
       
