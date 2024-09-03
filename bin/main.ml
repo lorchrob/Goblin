@@ -105,14 +105,14 @@ let () =
    *)
 
 
-  let _ = Utils.parse "
+  let grammar = Utils.parse "
     <SAE_PACKET> ::= <COMMIT> | <CONFIRM> ;
     
     <COMMIT> ::= <AUTH_ALGO> <AUTH_SEQ_COMMIT> <STATUS_CODE> <GROUP_ID> <AC_TOKEN> <SCALAR> <ELEMENT> <PASSWORD_IDENTIFIER> <REJECTED_GROUPS> <AC_TOKEN_CONTAINER> 
     {
     <AUTH_ALGO> <- int_to_bitvector(16, 3);
-    int_to_bitvector(16, 18) bvlte <GROUP_ID> land 
-              <GROUP_ID> bvlte int_to_bitvector(16, 19); 
+    int_to_bitvector(16, 19) bvlte <GROUP_ID> land 
+              <GROUP_ID> bvlte int_to_bitvector(16, 20); 
     <AUTH_SEQ_COMMIT> <- int_to_bitvector(16, 1); 
     <STATUS_CODE> = int_to_bitvector(16, 0) lor 
     <STATUS_CODE> = int_to_bitvector(16, 1) lor 
@@ -218,11 +218,11 @@ let () =
     <SEND_CONFIRM_COUNTER> :: BitVector(16);
     
     
-    " in 
-    let x = Byte_parser.get_bytes_and_run "confirm-test.bin" in
+    " in GrammarFuzzing.runFuzzer grammar
+    (* let x = Byte_parser.get_bytes_and_run "confirm-test.bin" in
     match x with
     | Some y -> print_endline (Bitstring.string_of_bitstring y)
-    | None -> print_endline "Nothing.."
+    | None -> print_endline "Nothing.." *)
     
     (* GrammarFuzzing.runFuzzer grammar *)
    
