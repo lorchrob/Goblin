@@ -1,6 +1,7 @@
 open Ast
 open Mutationops
 open Topological_sort
+open Byte_parser
 
 (* DANIYAL: File with basic mutation examples
 
@@ -396,7 +397,7 @@ let rec sendPacketsToState (p : provenance list) : unit =
     [] -> ()
   | x :: xs -> let _ = callDriver x in sendPacketsToState xs
 
-let sendPacket (c : child) : (provenance * output) =
+let sendPacket (c : child) : (provenance * output) * state =
   let stateTransition = fst c |> fst in
   let packetToSend_ = (Pipeline.sygusGrammarToPacket (fst c |> snd)) in 
     match packetToSend_ with
@@ -450,19 +451,19 @@ let extract_child_from_state (p : population) : child list =
   match p with
   | NOTHING x | CONFIRMED x | ACCEPTED x -> x
 
-let uniform_sample_from_queue (q : triple_queue) (n : int) : child list =
+let uniform_sample_from_queue (q : triple_queue) (n : int) : (child list) * (state list) =
   let np, cnf, acc = List.nth q 0, List.nth q 1, List.nth q 2 in
   let np_sample = sample_from_percentile_range (extract_child_from_state np) 0.0 100.0 n in
   let cnf_sample = sample_from_percentile_range (extract_child_from_state cnf) 0.0 100.0 n in
   let acc_sample = sample_from_percentile_range (extract_child_from_state acc) 0.0 100.0 n in
-    np_sample @ cnf_sample @ acc_sample
+    (np_sample @ cnf_sample @ acc_sample), (List.map (fun x -> NOTHING) np_sample @ List.map (fun x -> CONFIRMED) cnf_sample @ List.map (fun x -> ACCEPTED) acc_sample)
 
 let population_size_across_queues (x : population) (y : population) (z : population) =
   match x, y, z with
   | NOTHING a, CONFIRMED b, ACCEPTED c  -> List.length a + List.length b + List.length c
   | _, _, _ -> failwith "Queue order not maintained"
 
-let oracle (pkt : provenance) : queue_handle =
+(* let oracle (pkt : provenance) : queue_handle =
   match pkt with
   | RawPacket _ -> NOTHING
   | ValidPacket x ->
@@ -471,18 +472,23 @@ let oracle (pkt : provenance) : queue_handle =
     | CONFIRM -> ACCEPTED 
     | ASSOCIATION_REQUEST -> ACCEPTED 
     | NOTHING -> NOTHING 
-    | RESET -> NOTHING
+    | RESET -> NOTHING *)
 
-let rec map_packet_to_state (cl : child list) : state_child list =
-  match cl with
-  | [] -> []
-  | x :: xs -> 
+let rec map_packet_to_state (cl : child list) (states : state list) : state_child list =
+  match cl, s with
+  | [], [] -> [], []
+  | x :: xs, y :: ys -> 
     let last_packet = List.hd (List.rev (fst (fst x))) in
-    let state = oracle last_packet in
-    match state with 
-    | NOTHING -> CONFIRMED x :: map_packet_to_state xs
-    | CONFIRMED -> ACCEPTED x :: map_packet_to_state xs
-    | ACCEPTED -> NOTHING x :: map_packet_to_state xs
+    let expected_state = parse_packet last_packet in
+    match expected_state with 
+    | NOTHING -> NOTHING x :: map_packet_to_state xs ys
+    | CONFIRMED -> CONFIRMED x :: map_packet_to_state xs ys
+    | ACCEPTED -> ACCEPTED x :: map_packet_to_state xs ys
+    | IGNORE -> 
+      match y with
+      | NOTHING -> NOTHING x :: map_packet_to_state xs ys
+      | CONFIRMED -> CONFIRMED x :: map_packet_to_state xs ys
+      | ACCEPTED -> ACCEPTED x :: map_packet_to_state xs ys
     (* | NOTHING -> failwith "unreachable case.. nothing symbol unexpected in provenance"
     | RESET -> failwith "unreachable case.. reset symbol unexpected in provenance" *)
 
@@ -496,9 +502,9 @@ let filter_state (qh : queue_handle) (c : state_child) : bool =
   | CONFIRMED _ -> if qh = CONFIRMED then true else false
   | ACCEPTED _ -> if qh = ACCEPTED then true else false
   
-let bucket_oracle (q : triple_queue) (clist : child list) : triple_queue =
+let bucket_oracle (q : triple_queue) (clist : child list) (states : state list) : triple_queue =
   let np, cnf, acc = extract_child_from_state (List.nth q 0), extract_child_from_state (List.nth q 1), extract_child_from_state (List.nth q 2) in
-  let newPopulation = map_packet_to_state clist in
+  let newPopulation = map_packet_to_state clist states in
   let newNothingList = np @ List.map get_child_from_state (List.filter (filter_state NOTHING) newPopulation) in
   let newConfirmedList = cnf @ List.map get_child_from_state (List.filter (filter_state CONFIRMED) newPopulation) in
   let newAcceptedList = acc @ List.map get_child_from_state (List.filter (filter_state ACCEPTED) newPopulation) in
@@ -532,11 +538,12 @@ let rec fuzzingAlgorithm
       let middle_sample = sample_from_percentile_range currentPopulation 30.0 60.0 2 in
       let bottom_sample = sample_from_percentile_range currentPopulation 80.0 100.0 1 in *)
       (* let newPopulation = top_sample @ middle_sample @ bottom_sample in *)
-      let newPopulation = uniform_sample_from_queue currentQueue 10 in
+      let newPopulation = fst (uniform_sample_from_queue currentQueue 10) in
+      let old_states = snd (uniform_sample_from_queue currentQueue 10) in
       let selectedMutations = mutationList random_element mutationOperations (List.length newPopulation) in
       let mutatedPopulation = newMutatedSet newPopulation selectedMutations (List.length newPopulation) in
       let (iT, newPopulation) = executeMutatedPopulation mutatedPopulation in
-      let newQueue = bucket_oracle currentQueue newPopulation in 
+      let newQueue = bucket_oracle currentQueue newPopulation old_states in 
       fuzzingAlgorithm maxCurrentPopulation newQueue (List.append iTraces iT) tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations
 
 let runFuzzer grammar = 

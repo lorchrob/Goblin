@@ -19,8 +19,40 @@ let load_bitstring_from_file filename =
     close_in_noerr channel;
     raise e
 
+let read_from_file filename =
+  let _ = Unix.system ("touch " ^ filename) in
+  Unix.sleepf 0.1 ;
+  print_endline "read_from_file" ;
 
-let parse_packet (packet : Bitstring.bitstring) : Bitstring.bitstring option =
+  let ic = open_in filename in
+  try
+    let line = input_line ic in
+    close_in ic;
+    Some line
+  with End_of_file ->
+    close_in ic;
+    None
+
+let wait_for_oracle_response response_file =
+  let _ = Unix.system ("touch " ^ response_file) in
+  Unix.sleepf 0.1 ;
+  print_endline "wait_for__oracle_python" ;
+  let rec loop () =
+    match read_from_file response_file with
+    | Some response ->
+        (* Clear the file after reading *)
+        clear_file response_file;
+        if response = "NOTHING" then NOTHING
+        else if response = "CONFIRMED" then CONFIRMED
+        else if response = "ACCEPTED" then ACCEPTED
+        else if response = "IGNORE" then IGNORE
+    | None ->
+        sleepf 0.1;  (* Wait for a while before checking again *)
+        loop ()
+  in
+  loop ()
+
+let parse_packet (packet : Bitstring.bitstring) : state =
   match%bitstring packet with
   | {| algo : 16 : littleendian; auth_seq : 16 : littleendian; status : 16 : littleendian ; send_confirm : 16 : littleendian ; confirm_hash : 256 : bitstring |}
     when algo = 3 && auth_seq = 2 && status = 0 ->
@@ -31,7 +63,7 @@ let parse_packet (packet : Bitstring.bitstring) : Bitstring.bitstring option =
       }
     |} (string_of_int send_confirm) (string_of_bitstring confirm_hash) in
     write_json_to_file "driver_oracle.json" json_to_driver ;
-    Some packet
+    wait_for_oracle_response "../oracle-response.txt"
     | {| algo : 16 : littleendian 
     ;auth_seq : 16 : littleendian
     ;status : 16 : littleendian  
@@ -60,7 +92,7 @@ let parse_packet (packet : Bitstring.bitstring) : Bitstring.bitstring option =
         }
       |} (string_of_int status) (string_of_bitstring scalar) (string_of_bitstring element) (string_of_bitstring ac_token) in
       write_json_to_file "driver_oracle.json" json_to_driver ;
-    Some packet
+    wait_for_oracle_response "../oracle-response.txt"
     | {| algo : 16 : littleendian 
     ;auth_seq : 16 : littleendian
     ;status : 16 : littleendian  
@@ -87,7 +119,7 @@ let parse_packet (packet : Bitstring.bitstring) : Bitstring.bitstring option =
         }
       |} (string_of_int status) (string_of_bitstring scalar) (string_of_bitstring element) (string_of_bitstring ac_token) in
       write_json_to_file "driver_oracle.json" json_to_driver ;
-      Some packet
+      wait_for_oracle_response "../oracle-response.txt"
     | {| algo : 16 : littleendian 
       ;auth_seq : 16 : littleendian
       ;status : 16 : littleendian  
@@ -114,7 +146,7 @@ let parse_packet (packet : Bitstring.bitstring) : Bitstring.bitstring option =
           }
         |} (string_of_int status) (string_of_bitstring scalar) (string_of_bitstring element) (string_of_bitstring ac_token) in
         write_json_to_file "driver_oracle.json" json_to_driver ;
-        Some packet
+        wait_for_oracle_response "../oracle-response.txt"
     | {| algo : 16 : littleendian 
         ;auth_seq : 16 : littleendian
         ;status : 16 : littleendian  
@@ -141,7 +173,7 @@ let parse_packet (packet : Bitstring.bitstring) : Bitstring.bitstring option =
           }
         |} (string_of_int status) (string_of_bitstring scalar) (string_of_bitstring element) (string_of_bitstring ac_token) in
         write_json_to_file "driver_oracle.json" json_to_driver ;
-        Some packet
+        wait_for_oracle_response "../oracle-response.txt"
     
     | {| algo : 16 : littleendian 
     ;auth_seq : 16 : littleendian
@@ -165,7 +197,7 @@ let parse_packet (packet : Bitstring.bitstring) : Bitstring.bitstring option =
         }
       |} (string_of_int status) (string_of_bitstring scalar) (string_of_bitstring element) (string_of_bitstring ac_token) in
       write_json_to_file "driver_oracle.json" json_to_driver ;
-      Some packet
+      wait_for_oracle_response "../oracle-response.txt"
     | {| algo : 16 : littleendian 
       ;auth_seq : 16 : littleendian
       ;status : 16 : littleendian  
@@ -188,7 +220,7 @@ let parse_packet (packet : Bitstring.bitstring) : Bitstring.bitstring option =
           }
         |} (string_of_int status) (string_of_bitstring scalar) (string_of_bitstring element) (string_of_bitstring ac_token) in
         write_json_to_file "driver_oracle.json" json_to_driver ;
-        Some packet
+        wait_for_oracle_response "../oracle-response.txt"
     | {| algo : 16 : littleendian 
       ;auth_seq : 16 : littleendian
       ;status : 16 : littleendian  
@@ -211,7 +243,7 @@ let parse_packet (packet : Bitstring.bitstring) : Bitstring.bitstring option =
           }
         |} (string_of_int status) (string_of_bitstring scalar) (string_of_bitstring element) (string_of_bitstring ac_token) in
           write_json_to_file "driver_oracle.json" json_to_driver ;
-          Some packet
+          wait_for_oracle_response "../oracle-response.txt"
     
     | {| algo : 16 : littleendian; 
       auth_seq : 16 : littleendian;
@@ -241,7 +273,7 @@ let parse_packet (packet : Bitstring.bitstring) : Bitstring.bitstring option =
         }
       |} (string_of_int status) (string_of_bitstring scalar) (string_of_bitstring element) in
       write_json_to_file "driver_oracle.json" json_to_driver ;
-      Some packet
+      wait_for_oracle_response "../oracle-response.txt"
     
     | {| algo : 16 : littleendian; 
       auth_seq : 16 : littleendian;
@@ -267,7 +299,7 @@ let parse_packet (packet : Bitstring.bitstring) : Bitstring.bitstring option =
           }
         |} (string_of_int status) (string_of_bitstring scalar) (string_of_bitstring element) in
         write_json_to_file "driver_oracle.json" json_to_driver ;
-      Some packet
+      wait_for_oracle_response "../oracle-response.txt"
     | {| algo : 16 : littleendian; 
           auth_seq : 16 : littleendian;
           status : 16 : littleendian ; 
@@ -292,7 +324,7 @@ let parse_packet (packet : Bitstring.bitstring) : Bitstring.bitstring option =
             }
           |} (string_of_int status) (string_of_bitstring scalar) (string_of_bitstring element) in
         write_json_to_file "driver_oracle.json" json_to_driver ;
-        Some packet
+        wait_for_oracle_response "../oracle-response.txt"
     | {| algo : 16 : littleendian; 
         auth_seq : 16 : littleendian;
         status : 16 : littleendian ; 
@@ -317,7 +349,7 @@ let parse_packet (packet : Bitstring.bitstring) : Bitstring.bitstring option =
         }
       |} (string_of_int status) (string_of_bitstring scalar) (string_of_bitstring element) in
       write_json_to_file "driver_oracle.json" json_to_driver ;
-      Some packet
+      wait_for_oracle_response "../oracle-response.txt"
   | {| algo : 16 : littleendian; 
       auth_seq : 16 : littleendian;
       status : 16 : littleendian ; 
@@ -338,7 +370,7 @@ let parse_packet (packet : Bitstring.bitstring) : Bitstring.bitstring option =
         }
       |} (string_of_int status) (string_of_bitstring scalar) (string_of_bitstring element) in
       write_json_to_file "driver_oracle.json" json_to_driver ;
-      Some packet
+      wait_for_oracle_response "../oracle-response.txt"
     | {| algo : 16 : littleendian; 
       auth_seq : 16 : littleendian;
       status : 16 : littleendian ; 
@@ -359,7 +391,7 @@ let parse_packet (packet : Bitstring.bitstring) : Bitstring.bitstring option =
       }
     |} (string_of_int status) (string_of_bitstring scalar) (string_of_bitstring element) in
     write_json_to_file "driver_oracle.json" json_to_driver ;
-    Some packet
+    wait_for_oracle_response "../oracle-response.txt"
     | {| algo : 16 : littleendian; 
       auth_seq : 16 : littleendian;
       status : 16 : littleendian ; 
@@ -380,7 +412,7 @@ let parse_packet (packet : Bitstring.bitstring) : Bitstring.bitstring option =
       }
     |} (string_of_int status) (string_of_bitstring scalar) (string_of_bitstring element) in
     write_json_to_file "driver_oracle.json" json_to_driver ;
-    Some packet
+    wait_for_oracle_response "../oracle-response.txt"
     
     | {| algo : 16 : littleendian; auth_seq : 16 : littleendian; status : 16 : littleendian ; _group_id : 16 ; ac_token : 256 : bitstring ; scalar : 256 : bitstring ; element : 512 : bitstring |}
     when algo = 3 && auth_seq = 1 && (status = 0 || status = 126) ->  
@@ -393,7 +425,7 @@ let parse_packet (packet : Bitstring.bitstring) : Bitstring.bitstring option =
       }
     |} (string_of_int status) (string_of_bitstring scalar) (string_of_bitstring element) (string_of_bitstring ac_token) in
     write_json_to_file "driver_oracle.json" json_to_driver ;
-    Some packet 
+    wait_for_oracle_response "../oracle-response.txt" 
   | {| algo : 16 : littleendian; auth_seq : 16 : littleendian; status : 16 : littleendian ; _group_id : 16 ; scalar : 256 : bitstring ; element : 512 : bitstring |}
     when algo = 3 && auth_seq = 1 && (status = 0 || status = 126) ->
       let json_to_driver = Printf.sprintf {|
@@ -404,7 +436,7 @@ let parse_packet (packet : Bitstring.bitstring) : Bitstring.bitstring option =
       }
     |} (string_of_int status) (string_of_bitstring scalar) (string_of_bitstring element) in
     write_json_to_file "driver_oracle.json" json_to_driver ;
-    Some packet
+    wait_for_oracle_response "../oracle-response.txt"
   | {| _ |} -> None
     
 
