@@ -1,13 +1,29 @@
 open Bitstring
 (* open Yojson.Basic *)
 
-type state = NOTHING | CONFIRMED | ACCEPTED | IGNORE
+type state = NOTHING_ | CONFIRMED_ | ACCEPTED_ | IGNORE_
+
+let char_to_binary c =
+  let ascii = Char.code c in
+  Printf.sprintf "%01x" ascii  (* Format the ASCII value as an 8-bit binary string *)
+
+(* Function to convert a string to a binary representation *)
+let string_to_hex s =
+  let binary_strings = List.map char_to_binary (List.init (String.length s) (fun i -> String.get s i)) in
+  String.concat "" binary_strings  (* Concatenate all binary strings *)
 
 let write_json_to_file filename json_data =
-  let oc = open_out filename in
+  let oc = open_out_bin filename in
   output_string oc json_data;
   close_out oc
 
+let clear_file filename =
+  let _ = Unix.system ("touch " ^ filename) in
+  Unix.sleepf 0.1 ;
+  print_endline "clear_file" ;
+  let oc = open_out filename in
+  close_out oc  (* Opens and immediately closes the file to clear its content *)
+  
 let load_bitstring_from_file filename =
   let channel = open_in_bin filename in
   try
@@ -42,12 +58,13 @@ let wait_for_oracle_response response_file =
     | Some response ->
         (* Clear the file after reading *)
         clear_file response_file;
-        if response = "NOTHING" then NOTHING
-        else if response = "CONFIRMED" then CONFIRMED
-        else if response = "ACCEPTED" then ACCEPTED
-        else if response = "IGNORE" then IGNORE
+        if response = "NOTHING" then NOTHING_
+        else if response = "CONFIRMED" then CONFIRMED_
+        else if response = "ACCEPTED" then ACCEPTED_
+        else if response = "IGNORE" then IGNORE_
+        else failwith "unexpected condition in oracle.."
     | None ->
-        sleepf 0.1;  (* Wait for a while before checking again *)
+        Unix.sleepf 0.1;  (* Wait for a while before checking again *)
         loop ()
   in
   loop ()
@@ -61,7 +78,7 @@ let parse_packet (packet : Bitstring.bitstring) : state =
         "send_confirm" : "%s",
         "confirm_hash" : "%s"
       }
-    |} (string_of_int send_confirm) (string_of_bitstring confirm_hash) in
+    |} (string_of_int send_confirm) (string_to_hex (string_of_bitstring confirm_hash)) in
     write_json_to_file "driver_oracle.json" json_to_driver ;
     wait_for_oracle_response "../oracle-response.txt"
     | {| algo : 16 : littleendian 
@@ -90,7 +107,7 @@ let parse_packet (packet : Bitstring.bitstring) : state =
           "element" : "%s",
           "ac_token" : "%s"
         }
-      |} (string_of_int status) (string_of_bitstring scalar) (string_of_bitstring element) (string_of_bitstring ac_token) in
+      |} (string_of_int status) (string_to_hex (string_of_bitstring scalar)) (string_to_hex (string_of_bitstring element)) (string_to_hex (string_of_bitstring ac_token)) in
       write_json_to_file "driver_oracle.json" json_to_driver ;
     wait_for_oracle_response "../oracle-response.txt"
     | {| algo : 16 : littleendian 
@@ -117,7 +134,7 @@ let parse_packet (packet : Bitstring.bitstring) : state =
           "element" : "%s",
           "ac_token" : "%s"
         }
-      |} (string_of_int status) (string_of_bitstring scalar) (string_of_bitstring element) (string_of_bitstring ac_token) in
+      |} (string_of_int status) (string_to_hex (string_of_bitstring scalar)) (string_to_hex (string_of_bitstring element)) (string_to_hex (string_of_bitstring ac_token)) in
       write_json_to_file "driver_oracle.json" json_to_driver ;
       wait_for_oracle_response "../oracle-response.txt"
     | {| algo : 16 : littleendian 
@@ -144,7 +161,7 @@ let parse_packet (packet : Bitstring.bitstring) : state =
             "element" : "%s",
             "ac_token" : "%s"
           }
-        |} (string_of_int status) (string_of_bitstring scalar) (string_of_bitstring element) (string_of_bitstring ac_token) in
+        |} (string_of_int status) (string_to_hex (string_of_bitstring scalar)) (string_to_hex (string_of_bitstring element)) (string_to_hex (string_of_bitstring ac_token)) in
         write_json_to_file "driver_oracle.json" json_to_driver ;
         wait_for_oracle_response "../oracle-response.txt"
     | {| algo : 16 : littleendian 
@@ -171,7 +188,7 @@ let parse_packet (packet : Bitstring.bitstring) : state =
             "element" : "%s",
             "ac_token" : "%s"
           }
-        |} (string_of_int status) (string_of_bitstring scalar) (string_of_bitstring element) (string_of_bitstring ac_token) in
+        |} (string_of_int status) (string_to_hex (string_of_bitstring scalar)) (string_to_hex (string_of_bitstring element)) (string_to_hex (string_of_bitstring ac_token)) in
         write_json_to_file "driver_oracle.json" json_to_driver ;
         wait_for_oracle_response "../oracle-response.txt"
     
@@ -195,7 +212,7 @@ let parse_packet (packet : Bitstring.bitstring) : state =
           "element" : "%s",
           "ac_token" : "%s"
         }
-      |} (string_of_int status) (string_of_bitstring scalar) (string_of_bitstring element) (string_of_bitstring ac_token) in
+      |} (string_of_int status) (string_to_hex (string_of_bitstring scalar)) (string_to_hex (string_of_bitstring element)) (string_to_hex (string_of_bitstring ac_token)) in
       write_json_to_file "driver_oracle.json" json_to_driver ;
       wait_for_oracle_response "../oracle-response.txt"
     | {| algo : 16 : littleendian 
@@ -218,7 +235,7 @@ let parse_packet (packet : Bitstring.bitstring) : state =
             "element" : "%s",
             "ac_token" : "%s"
           }
-        |} (string_of_int status) (string_of_bitstring scalar) (string_of_bitstring element) (string_of_bitstring ac_token) in
+        |} (string_of_int status) (string_to_hex (string_of_bitstring scalar)) (string_to_hex (string_of_bitstring element)) (string_to_hex (string_of_bitstring ac_token)) in
         write_json_to_file "driver_oracle.json" json_to_driver ;
         wait_for_oracle_response "../oracle-response.txt"
     | {| algo : 16 : littleendian 
@@ -241,7 +258,7 @@ let parse_packet (packet : Bitstring.bitstring) : state =
             "element" : "%s",
             "ac_token" : "%s"
           }
-        |} (string_of_int status) (string_of_bitstring scalar) (string_of_bitstring element) (string_of_bitstring ac_token) in
+        |} (string_of_int status) (string_to_hex (string_of_bitstring scalar)) (string_to_hex (string_of_bitstring element)) (string_to_hex (string_of_bitstring ac_token)) in
           write_json_to_file "driver_oracle.json" json_to_driver ;
           wait_for_oracle_response "../oracle-response.txt"
     
@@ -271,7 +288,7 @@ let parse_packet (packet : Bitstring.bitstring) : state =
           "scalar" : "%s",
           "element" : "%s"
         }
-      |} (string_of_int status) (string_of_bitstring scalar) (string_of_bitstring element) in
+      |} (string_of_int status) (string_to_hex (string_of_bitstring scalar)) (string_to_hex (string_of_bitstring element)) in
       write_json_to_file "driver_oracle.json" json_to_driver ;
       wait_for_oracle_response "../oracle-response.txt"
     
@@ -297,7 +314,7 @@ let parse_packet (packet : Bitstring.bitstring) : state =
             "scalar" : "%s",
             "element" : "%s"
           }
-        |} (string_of_int status) (string_of_bitstring scalar) (string_of_bitstring element) in
+        |} (string_of_int status) (string_to_hex (string_of_bitstring scalar)) (string_to_hex (string_of_bitstring element)) in
         write_json_to_file "driver_oracle.json" json_to_driver ;
       wait_for_oracle_response "../oracle-response.txt"
     | {| algo : 16 : littleendian; 
@@ -322,7 +339,7 @@ let parse_packet (packet : Bitstring.bitstring) : state =
               "scalar" : "%s",
               "element" : "%s"
             }
-          |} (string_of_int status) (string_of_bitstring scalar) (string_of_bitstring element) in
+          |} (string_of_int status) (string_to_hex (string_of_bitstring scalar)) (string_to_hex (string_of_bitstring element)) in
         write_json_to_file "driver_oracle.json" json_to_driver ;
         wait_for_oracle_response "../oracle-response.txt"
     | {| algo : 16 : littleendian; 
@@ -347,7 +364,7 @@ let parse_packet (packet : Bitstring.bitstring) : state =
           "scalar" : "%s",
           "element" : "%s"
         }
-      |} (string_of_int status) (string_of_bitstring scalar) (string_of_bitstring element) in
+      |} (string_of_int status) (string_to_hex (string_of_bitstring scalar)) (string_to_hex (string_of_bitstring element)) in
       write_json_to_file "driver_oracle.json" json_to_driver ;
       wait_for_oracle_response "../oracle-response.txt"
   | {| algo : 16 : littleendian; 
@@ -368,7 +385,7 @@ let parse_packet (packet : Bitstring.bitstring) : state =
           "scalar" : "%s",
           "element" : "%s"
         }
-      |} (string_of_int status) (string_of_bitstring scalar) (string_of_bitstring element) in
+      |} (string_of_int status) (string_to_hex (string_of_bitstring scalar)) (string_to_hex (string_of_bitstring element)) in
       write_json_to_file "driver_oracle.json" json_to_driver ;
       wait_for_oracle_response "../oracle-response.txt"
     | {| algo : 16 : littleendian; 
@@ -389,7 +406,7 @@ let parse_packet (packet : Bitstring.bitstring) : state =
         "scalar" : "%s",
         "element" : "%s"
       }
-    |} (string_of_int status) (string_of_bitstring scalar) (string_of_bitstring element) in
+    |} (string_of_int status) (string_to_hex (string_of_bitstring scalar)) (string_to_hex (string_of_bitstring element)) in
     write_json_to_file "driver_oracle.json" json_to_driver ;
     wait_for_oracle_response "../oracle-response.txt"
     | {| algo : 16 : littleendian; 
@@ -410,7 +427,7 @@ let parse_packet (packet : Bitstring.bitstring) : state =
         "scalar" : "%s",
         "element" : "%s"
       }
-    |} (string_of_int status) (string_of_bitstring scalar) (string_of_bitstring element) in
+    |} (string_of_int status) (string_to_hex (string_of_bitstring scalar)) (string_to_hex (string_of_bitstring element)) in
     write_json_to_file "driver_oracle.json" json_to_driver ;
     wait_for_oracle_response "../oracle-response.txt"
     
@@ -423,7 +440,7 @@ let parse_packet (packet : Bitstring.bitstring) : state =
         "element" : "%s",
         "ac_token" : "%s"
       }
-    |} (string_of_int status) (string_of_bitstring scalar) (string_of_bitstring element) (string_of_bitstring ac_token) in
+    |} (string_of_int status) (string_to_hex (string_of_bitstring scalar)) (string_to_hex (string_of_bitstring element)) (string_to_hex (string_of_bitstring ac_token)) in
     write_json_to_file "driver_oracle.json" json_to_driver ;
     wait_for_oracle_response "../oracle-response.txt" 
   | {| algo : 16 : littleendian; auth_seq : 16 : littleendian; status : 16 : littleendian ; _group_id : 16 ; scalar : 256 : bitstring ; element : 512 : bitstring |}
@@ -434,10 +451,10 @@ let parse_packet (packet : Bitstring.bitstring) : state =
         "scalar" : "%s",
         "element" : "%s"
       }
-    |} (string_of_int status) (string_of_bitstring scalar) (string_of_bitstring element) in
+    |} (string_of_int status) (string_to_hex (string_of_bitstring scalar)) (string_to_hex (string_of_bitstring element)) in
     write_json_to_file "driver_oracle.json" json_to_driver ;
     wait_for_oracle_response "../oracle-response.txt"
-  | {| _ |} -> None
+  | {| _ |} -> IGNORE_
     
 
 let get_bytes_and_run filename =

@@ -397,7 +397,7 @@ let rec sendPacketsToState (p : provenance list) : unit =
     [] -> ()
   | x :: xs -> let _ = callDriver x in sendPacketsToState xs
 
-let sendPacket (c : child) : (provenance * output) * state =
+let sendPacket (c : child) : (provenance * output) =
   let stateTransition = fst c |> fst in
   let packetToSend_ = (Pipeline.sygusGrammarToPacket (fst c |> snd)) in 
     match packetToSend_ with
@@ -456,7 +456,7 @@ let uniform_sample_from_queue (q : triple_queue) (n : int) : (child list) * (sta
   let np_sample = sample_from_percentile_range (extract_child_from_state np) 0.0 100.0 n in
   let cnf_sample = sample_from_percentile_range (extract_child_from_state cnf) 0.0 100.0 n in
   let acc_sample = sample_from_percentile_range (extract_child_from_state acc) 0.0 100.0 n in
-    (np_sample @ cnf_sample @ acc_sample), (List.map (fun x -> NOTHING) np_sample @ List.map (fun x -> CONFIRMED) cnf_sample @ List.map (fun x -> ACCEPTED) acc_sample)
+    (np_sample @ cnf_sample @ acc_sample), (List.map (fun _ -> NOTHING_) np_sample @ List.map (fun _ -> CONFIRMED_) cnf_sample @ List.map (fun _ -> ACCEPTED_) acc_sample)
 
 let population_size_across_queues (x : population) (y : population) (z : population) =
   match x, y, z with
@@ -475,20 +475,34 @@ let population_size_across_queues (x : population) (y : population) (z : populat
     | RESET -> NOTHING *)
 
 let rec map_packet_to_state (cl : child list) (states : state list) : state_child list =
-  match cl, s with
-  | [], [] -> [], []
+  match cl, states with
+  | [], [] -> []
+  | [], _ -> failwith "child list exhausted, state list non-empty"
+  | _, [] -> failwith "state list exhausted, child list non-empty"
   | x :: xs, y :: ys -> 
-    let last_packet = List.hd (List.rev (fst (fst x))) in
-    let expected_state = parse_packet last_packet in
-    match expected_state with 
-    | NOTHING -> NOTHING x :: map_packet_to_state xs ys
-    | CONFIRMED -> CONFIRMED x :: map_packet_to_state xs ys
-    | ACCEPTED -> ACCEPTED x :: map_packet_to_state xs ys
-    | IGNORE -> 
-      match y with
-      | NOTHING -> NOTHING x :: map_packet_to_state xs ys
-      | CONFIRMED -> CONFIRMED x :: map_packet_to_state xs ys
-      | ACCEPTED -> ACCEPTED x :: map_packet_to_state xs ys
+    let last_provenance = List.hd (List.rev (fst (fst x))) in
+    match last_provenance with
+    | RawPacket z -> 
+      let last_packet = z in
+      let expected_state = parse_packet (Bitstring.bitstring_of_string (Bytes.to_string last_packet)) in (
+      match expected_state with 
+      | NOTHING_ -> NOTHING x :: map_packet_to_state xs ys
+      | CONFIRMED_ -> CONFIRMED x :: map_packet_to_state xs ys
+      | ACCEPTED_ -> ACCEPTED x :: map_packet_to_state xs ys
+      | IGNORE_ -> 
+        match y with
+        | NOTHING_ -> NOTHING x :: map_packet_to_state xs ys
+        | CONFIRMED_ -> CONFIRMED x :: map_packet_to_state xs ys
+        | ACCEPTED_ -> ACCEPTED x :: map_packet_to_state xs ys
+        | IGNORE_ -> failwith "unexpected IGNORE_ pattern"
+      )
+    | ValidPacket z -> (
+        match z with
+        | COMMIT -> CONFIRMED x :: map_packet_to_state xs ys
+        | CONFIRM -> ACCEPTED x :: map_packet_to_state xs ys
+        | ASSOCIATION_REQUEST -> ACCEPTED x :: map_packet_to_state xs ys
+        | NOTHING | RESET -> failwith "unexpected mapping state"
+      )
     (* | NOTHING -> failwith "unreachable case.. nothing symbol unexpected in provenance"
     | RESET -> failwith "unreachable case.. reset symbol unexpected in provenance" *)
 
