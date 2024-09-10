@@ -174,7 +174,6 @@ let map_provenance_to_string (p : provenance) : string =
 let callDriver x =
   let message_file = "/home/pirwani/Desktop/message.txt" in
   let response_file = "/home/pirwani/Desktop/response.txt" in
-
   match x with 
   | ValidPacket _ -> 
     write_symbol_to_file message_file (map_provenance_to_string x);
@@ -501,7 +500,8 @@ let rec map_packet_to_state (cl : child list) (states : state list) : state_chil
         | COMMIT -> CONFIRMED x :: map_packet_to_state xs ys
         | CONFIRM -> ACCEPTED x :: map_packet_to_state xs ys
         | ASSOCIATION_REQUEST -> ACCEPTED x :: map_packet_to_state xs ys
-        | NOTHING | RESET -> failwith "unexpected mapping state"
+        | NOTHING -> NOTHING x :: map_packet_to_state xs ys 
+        | RESET -> failwith "unexpected mapping state"
       )
     (* | NOTHING -> failwith "unreachable case.. nothing symbol unexpected in provenance"
     | RESET -> failwith "unreachable case.. reset symbol unexpected in provenance" *)

@@ -105,25 +105,9 @@ let () =
    *)
 
 
-  let grammar = Utils.parse "
-    <SAE_PACKET> ::= <COMMIT> | <CONFIRM> ;
-    
-    <COMMIT> ::= <AUTH_ALGO> <AUTH_SEQ_COMMIT> <STATUS_CODE> <GROUP_ID> <AC_TOKEN> <SCALAR> <ELEMENT> <PASSWORD_IDENTIFIER> <REJECTED_GROUPS> <AC_TOKEN_CONTAINER> 
-    {
-    <AUTH_ALGO> <- int_to_bitvector(16, 3);
-    int_to_bitvector(16, 19) bvlte <GROUP_ID> land 
-              <GROUP_ID> bvlte int_to_bitvector(16, 20); 
-    <AUTH_SEQ_COMMIT> <- int_to_bitvector(16, 1); 
-    <STATUS_CODE> = int_to_bitvector(16, 0) lor 
-    <STATUS_CODE> = int_to_bitvector(16, 1) lor 
-    <STATUS_CODE> = int_to_bitvector(16, 126); 
-    length(<AC_TOKEN>) <= 2048;
-    (
-    (lnot (<STATUS_CODE> = int_to_bitvector(16, 1))) 
-    );
-    (lnot (<STATUS_CODE> = int_to_bitvector(16, 0)));
-    <STATUS_CODE> = int_to_bitvector(16, 126);
-    <GROUP_ID> = int_to_bitvector(16, 15) => 
+   
+   (* <GROUP_ID> = int_to_bitvector(16, 15) => 
+   length(<AC_TOKEN>) <= 2048;
     length(<SCALAR>) = 384 land length(<ELEMENT>) = 384;
     <GROUP_ID> = int_to_bitvector(16, 16) => 
     length(<SCALAR>) = 512 land length(<ELEMENT>) = 512;
@@ -136,7 +120,29 @@ let () =
     <GROUP_ID> = int_to_bitvector(16, 20) => 
     length(<SCALAR>) = 48 land length(<ELEMENT>) = 96;
     <GROUP_ID> = int_to_bitvector(16, 21) => 
-    length(<SCALAR>) = 64 land length(<ELEMENT>) = 128; };
+    length(<SCALAR>) = 64 land length(<ELEMENT>) = 128; *)
+
+  let grammar = Utils.parse "
+    <SAE_PACKET> ::= <COMMIT> | <CONFIRM> ;
+    
+    <COMMIT> ::= <AUTH_ALGO> <AUTH_SEQ_COMMIT> <STATUS_CODE> <GROUP_ID> <AC_TOKEN> <SCALAR> <ELEMENT> <PASSWORD_IDENTIFIER> <REJECTED_GROUPS> <AC_TOKEN_CONTAINER> 
+    {
+    <AUTH_ALGO> <- int_to_bitvector(16, 3);
+    int_to_bitvector(16, 19) bvlte <GROUP_ID> land 
+              <GROUP_ID> bvlte int_to_bitvector(16, 20); 
+    <AUTH_SEQ_COMMIT> <- int_to_bitvector(16, 1); 
+    <STATUS_CODE> = int_to_bitvector(16, 0) lor 
+    <STATUS_CODE> = int_to_bitvector(16, 1) lor 
+    <STATUS_CODE> = int_to_bitvector(16, 126); 
+    (
+    (lnot (<STATUS_CODE> = int_to_bitvector(16, 1))) 
+    );
+    (lnot (<STATUS_CODE> = int_to_bitvector(16, 0)));
+    <STATUS_CODE> = int_to_bitvector(16, 126);
+    <SCALAR> <- \"<SCALAR>\";
+    <ELEMENT> <- \"<ELEMENT>\";
+    <AC_TOKEN> <- \"<AC_TOKEN>\";
+     };
 
     <AUTH_ALGO> :: BitVector(16)
      { 
@@ -149,7 +155,9 @@ let () =
     <AUTH_ALGO> <- int_to_bitvector(16, 3);
     <AUTH_SEQ_CONFIRM> <- int_to_bitvector(16, 2); 
     <STATUS_CODE> = int_to_bitvector(16, 0) lor 
-    <STATUS_CODE> = int_to_bitvector(16, 1) ;
+    <STATUS_CODE> = int_to_bitvector(16, 1);
+    <SEND_CONFIRM_COUNTER> <- \"<SEND_CONFIRM_COUNTER>\";
+    <CONFIRM_HASH> <- \"<CONFIRM_HASH>\";
    };
 
     <GROUP_ID> :: BitVector(16);
@@ -163,7 +171,7 @@ let () =
     <STATUS_CODE> :: BitVector(16);
 
   
-    <AC_TOKEN> :: BitList; // Arbitrary length and depends on what the AP sent 
+    <AC_TOKEN> :: String; // Arbitrary length and depends on what the AP sent 
     
     <PASSWORD_IDENTIFIER> ::= <PASSWD_ELEMENT_ID> <PASSWD_ID_LENGTH> <PASSWD_ELEMENT_ID_EXTENSION> <PASSWD_ID>; 
     
@@ -209,13 +217,13 @@ let () =
     
     <AC_TOKEN_ELEMENT> :: BitList;
     
-    <SCALAR>     :: BitList;  // Arbitrary length depends on <GROUP_ID>
+    <SCALAR>     :: String;  // Arbitrary length depends on <GROUP_ID>
     
-    <ELEMENT> :: BitList; // Arbitrary length depends on <GROUP_ID> 
+    <ELEMENT> :: String; // Arbitrary length depends on <GROUP_ID> 
     
-    <CONFIRM_HASH> :: BitVector(256); // dependent on the group id and the status code of the previous commit frame. The confirm frame does not include the status code or group id to make the length determination.
+    <CONFIRM_HASH> :: String; // dependent on the group id and the status code of the previous commit frame. The confirm frame does not include the status code or group id to make the length determination.
     
-    <SEND_CONFIRM_COUNTER> :: BitVector(16);
+    <SEND_CONFIRM_COUNTER> :: String;
     
     
     " in GrammarFuzzing.runFuzzer grammar

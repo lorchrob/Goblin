@@ -114,16 +114,18 @@ let rec apply_delete_to_rule nt production_options =
     match production_options with
     | [] -> [] 
     | Rhs(geList, scList) :: xs -> 
-        let deleteFromGrammarElementList = removeFromList (Nonterminal nt) geList in
-        let deleteFromConstraintList = remove_constraints nt scList in
-        Rhs(deleteFromGrammarElementList, deleteFromConstraintList) :: xs 
+        if (List.length geList) > 1 then
+            let deleteFromGrammarElementList = removeFromList (Nonterminal nt) geList in
+            let deleteFromConstraintList = remove_constraints nt scList in
+            Rhs(deleteFromGrammarElementList, deleteFromConstraintList) :: xs 
+        else Rhs(geList, scList) :: xs
     | StubbedRhs(s)::xs -> StubbedRhs(s) :: (apply_delete_to_rule nt xs) 
 
 let rec mutation_delete g nt =
     match g with
     | [] -> ([], false)
     | ProdRule(nonTerminal, production_options) :: xs ->
-        if nonTerminal = "COMMIT" || nonTerminal = "CONFIRM"
+        if (nonTerminal = "COMMIT" || nonTerminal = "CONFIRM")
         then
             let found = isNonTerminalPresent nt production_options in
             if found then
@@ -202,7 +204,9 @@ let rec get_production_rules_for_crossover g =
     let r1 = random_element g in
     let r2 = random_element g in
     match r1, r2 with
-    | ProdRule(a, _), ProdRule(c, _) -> print_endline a ; print_endline c ; r1, r2
+    | ProdRule(a, _), ProdRule(c, _) -> 
+        if a = "SAE_PACKET" || c = "SAE_PACKET" then get_production_rules_for_crossover g
+        else r1, r2
     | _, _ -> get_production_rules_for_crossover g
 
 let rec replace_Rhs production_options rhs1 crossoverRhs = 
