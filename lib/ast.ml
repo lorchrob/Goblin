@@ -153,16 +153,16 @@ let rec pp_print_case: Format.formatter -> case -> unit
 and pp_print_expr: Format.formatter -> expr -> unit 
 = fun ppf expr -> match expr with
 | BinOp (expr1, op, expr2) -> 
-  Format.fprintf ppf "%a %a %a" 
+  Format.fprintf ppf "(%a %a %a)" 
     pp_print_expr expr1 
     pp_print_bin_op op 
     pp_print_expr expr2
 | UnOp (op, expr) -> 
-  Format.fprintf ppf "%a %a" 
+  Format.fprintf ppf "(%a %a)" 
     pp_print_unary_op op 
     pp_print_expr expr
 | CompOp (expr1, op, expr2) -> 
-  Format.fprintf ppf "%a %a %a" 
+  Format.fprintf ppf "(%a %a %a)" 
     pp_print_expr expr1 
     pp_print_comp_op op 
     pp_print_expr expr2
@@ -208,7 +208,7 @@ let pp_print_ty: Format.formatter -> il_type -> unit
 = fun ppf ty -> match ty with 
 | Bool -> Format.fprintf ppf "Bool"
 | Int -> Format.fprintf ppf "Int"
-| String -> Format.fprintf ppf "Str"
+| String -> Format.fprintf ppf "String"
 | BitList -> Format.fprintf ppf "BitList" 
 | BitVector width -> Format.fprintf ppf "BitVector(%d)" width
 | MachineInt width -> Format.fprintf ppf "MachineInt(%d)" width
