@@ -89,15 +89,15 @@ let parse_packet (packet : Bitstring.bitstring) : state =
     ;_pi_container : 8
     ;_pi_length : 8 
     ;pi_id : 8
-    ;_pi_id_list : _pi_length * 8 
+    ;pi_id_list : _pi_length * 8 
     ;_rg_container : 8 
     ;_rg_length : 8 
     ;rg_id : 8
-    ;_rg_id_list : _rg_length * 8 * 2 
+    ;rg_id_list : _rg_length * 8 * 2 
     ;_ac_container : 8 
     ;_ac_length : 8 
     ;ac_id : 8
-    ;_ac_id_list : _ac_length * 8 
+    ;ac_id_list : _ac_length * 8 
     |} 
     when algo = 3 && auth_seq = 1 && (status = 0 || status = 126) && rg_id = 92 && pi_id = 33 && ac_id = 93 ->
       let json_to_driver = Printf.sprintf {|
@@ -105,9 +105,12 @@ let parse_packet (packet : Bitstring.bitstring) : state =
         "status" : "%s",
           "scalar" : "%s",
           "element" : "%s",
-          "ac_token" : "%s"
+          "ac_token" : "%s",
+          "pi_list" : "%s",
+          "rg_list" : "%s",
+          "ac_list" : "%s"
         }
-      |} (string_of_int status) (string_to_hex (string_of_bitstring scalar)) (string_to_hex (string_of_bitstring element)) (string_to_hex (string_of_bitstring ac_token)) in
+      |} (string_of_int status) (string_to_hex (string_of_bitstring scalar)) (string_to_hex (string_of_bitstring element)) (string_to_hex (string_of_bitstring ac_token)) (string_to_hex (string_of_bitstring pi_id_list)) (string_to_hex (string_of_bitstring rg_id_list)) (string_to_hex (string_of_bitstring ac_id_list)) in
       write_json_to_file "driver_oracle.json" json_to_driver ;
     wait_for_oracle_response "../oracle-response.txt"
     | {| algo : 16 : littleendian 
@@ -120,11 +123,11 @@ let parse_packet (packet : Bitstring.bitstring) : state =
     ;_pi_container : 8  
     ;_pi_length : 8 
     ;pi_id : 8  
-    ;_pi_id_list : _pi_length * 8 
+    ;pi_id_list : _pi_length * 8 
     ;_rg_container : 8  
     ;_rg_length : 8 
     ;rg_id : 8  
-    ;_rg_id_list : _rg_length * 8 * 2 
+    ;rg_id_list : _rg_length * 8 * 2 
     |} 
     when algo = 3 && auth_seq = 1 && (status = 0 || status = 126) && rg_id = 92 && pi_id = 33 ->
       let json_to_driver = Printf.sprintf {|
@@ -132,9 +135,11 @@ let parse_packet (packet : Bitstring.bitstring) : state =
         "status" : "%s",
           "scalar" : "%s",
           "element" : "%s",
-          "ac_token" : "%s"
+          "ac_token" : "%s",
+          "pi_list" : "%s",
+          "rg_list" : "%s"
         }
-      |} (string_of_int status) (string_to_hex (string_of_bitstring scalar)) (string_to_hex (string_of_bitstring element)) (string_to_hex (string_of_bitstring ac_token)) in
+      |} (string_of_int status) (string_to_hex (string_of_bitstring scalar)) (string_to_hex (string_of_bitstring element)) (string_to_hex (string_of_bitstring ac_token)) (string_to_hex (string_of_bitstring pi_id_list)) (string_to_hex (string_of_bitstring rg_id_list)) in
       write_json_to_file "driver_oracle.json" json_to_driver ;
       wait_for_oracle_response "../oracle-response.txt"
     | {| algo : 16 : littleendian 
@@ -147,11 +152,11 @@ let parse_packet (packet : Bitstring.bitstring) : state =
       ;_rg_container : 8  
       ;_rg_length : 8 
       ;rg_id : 8  
-      ;_rg_id_list : _rg_length * 8 * 2 
+      ;rg_id_list : _rg_length * 8 * 2 
       ;_ac_container : 8  
       ;_ac_length : 8 
       ;ac_id : 8  
-      ;_ac_id_list : _ac_length * 8 
+      ;ac_id_list : _ac_length * 8 
       |} 
       when algo = 3 && auth_seq = 1 && (status = 0 || status = 126) && rg_id = 92 && ac_id = 93 ->
         let json_to_driver = Printf.sprintf {|
@@ -159,9 +164,11 @@ let parse_packet (packet : Bitstring.bitstring) : state =
           "status" : "%s",
             "scalar" : "%s",
             "element" : "%s",
-            "ac_token" : "%s"
+            "ac_token" : "%s",
+            "rg_list" : "%s",
+            "ac_list" : "%s"
           }
-        |} (string_of_int status) (string_to_hex (string_of_bitstring scalar)) (string_to_hex (string_of_bitstring element)) (string_to_hex (string_of_bitstring ac_token)) in
+        |} (string_of_int status) (string_to_hex (string_of_bitstring scalar)) (string_to_hex (string_of_bitstring element)) (string_to_hex (string_of_bitstring ac_token)) (string_to_hex (string_of_bitstring rg_id_list)) (string_to_hex (string_of_bitstring ac_id_list)) in
         write_json_to_file "driver_oracle.json" json_to_driver ;
         wait_for_oracle_response "../oracle-response.txt"
     | {| algo : 16 : littleendian 
@@ -174,11 +181,11 @@ let parse_packet (packet : Bitstring.bitstring) : state =
         ;_pi_container : 8  
         ;_pi_length : 8 
         ;pi_id : 8  
-        ;_pi_id_list : _pi_length * 8 
+        ;pi_id_list : _pi_length * 8 
         ;_ac_container : 8  
         ;_ac_length : 8 
         ;ac_id : 8  
-        ;_ac_id_list : _ac_length * 8 
+        ;ac_id_list : _ac_length * 8 
         |} 
       when algo = 3 && auth_seq = 1 && (status = 0 || status = 126) && pi_id = 33 && ac_id = 93 ->
         let json_to_driver = Printf.sprintf {|
@@ -186,9 +193,11 @@ let parse_packet (packet : Bitstring.bitstring) : state =
           "status" : "%s",
             "scalar" : "%s",
             "element" : "%s",
-            "ac_token" : "%s"
+            "ac_token" : "%s",
+            "pi_list" : "%s",
+            "ac_list" : "%s"
           }
-        |} (string_of_int status) (string_to_hex (string_of_bitstring scalar)) (string_to_hex (string_of_bitstring element)) (string_to_hex (string_of_bitstring ac_token)) in
+        |} (string_of_int status) (string_to_hex (string_of_bitstring scalar)) (string_to_hex (string_of_bitstring element)) (string_to_hex (string_of_bitstring ac_token)) (string_to_hex (string_of_bitstring pi_id_list)) (string_to_hex (string_of_bitstring ac_id_list)) in
         write_json_to_file "driver_oracle.json" json_to_driver ;
         wait_for_oracle_response "../oracle-response.txt"
     
@@ -202,7 +211,7 @@ let parse_packet (packet : Bitstring.bitstring) : state =
     ;_pi_container : 8  
     ;_pi_length : 8 
     ;pi_id : 8  
-    ;_pi_id_list : _pi_length * 8 
+    ;pi_id_list : _pi_length * 8 
     |} 
     when algo = 3 && auth_seq = 1 && (status = 0 || status = 126) && pi_id = 33 ->
       let json_to_driver = Printf.sprintf {|
@@ -210,9 +219,10 @@ let parse_packet (packet : Bitstring.bitstring) : state =
         "status" : "%s",
           "scalar" : "%s",
           "element" : "%s",
-          "ac_token" : "%s"
+          "ac_token" : "%s",
+          "pi_list" : "%s"
         }
-      |} (string_of_int status) (string_to_hex (string_of_bitstring scalar)) (string_to_hex (string_of_bitstring element)) (string_to_hex (string_of_bitstring ac_token)) in
+      |} (string_of_int status) (string_to_hex (string_of_bitstring scalar)) (string_to_hex (string_of_bitstring element)) (string_to_hex (string_of_bitstring ac_token)) (string_to_hex (string_of_bitstring pi_id_list)) in
       write_json_to_file "driver_oracle.json" json_to_driver ;
       wait_for_oracle_response "../oracle-response.txt"
     | {| algo : 16 : littleendian 
@@ -225,7 +235,7 @@ let parse_packet (packet : Bitstring.bitstring) : state =
       ;_rg_container : 8  
       ;_rg_length : 8 
       ;rg_id : 8  
-      ;_rg_id_list : _rg_length * 8 * 2 
+      ;rg_id_list : _rg_length * 8 * 2 
       |}
       when algo = 3 && auth_seq = 1 && (status = 0 || status = 126) && rg_id = 92 ->
         let json_to_driver = Printf.sprintf {|
@@ -233,9 +243,10 @@ let parse_packet (packet : Bitstring.bitstring) : state =
           "status" : "%s",
             "scalar" : "%s",
             "element" : "%s",
-            "ac_token" : "%s"
+            "ac_token" : "%s",
+            "rg_list" : "%s"
           }
-        |} (string_of_int status) (string_to_hex (string_of_bitstring scalar)) (string_to_hex (string_of_bitstring element)) (string_to_hex (string_of_bitstring ac_token)) in
+        |} (string_of_int status) (string_to_hex (string_of_bitstring scalar)) (string_to_hex (string_of_bitstring element)) (string_to_hex (string_of_bitstring ac_token)) (string_to_hex (string_of_bitstring rg_id_list)) in
         write_json_to_file "driver_oracle.json" json_to_driver ;
         wait_for_oracle_response "../oracle-response.txt"
     | {| algo : 16 : littleendian 
@@ -248,7 +259,7 @@ let parse_packet (packet : Bitstring.bitstring) : state =
       ;_ac_container : 8  
       ;_ac_length : 8 
       ;ac_id : 8  
-      ;_ac_id_list : _ac_length * 8 
+      ;ac_id_list : _ac_length * 8 
       |} 
       when algo = 3 && auth_seq = 1 && (status = 0 || status = 126) && ac_id = 93 ->
         let json_to_driver = Printf.sprintf {|
@@ -256,9 +267,10 @@ let parse_packet (packet : Bitstring.bitstring) : state =
           "status" : "%s",
             "scalar" : "%s",
             "element" : "%s",
-            "ac_token" : "%s"
+            "ac_token" : "%s",
+            "ac_list" : "%s"
           }
-        |} (string_of_int status) (string_to_hex (string_of_bitstring scalar)) (string_to_hex (string_of_bitstring element)) (string_to_hex (string_of_bitstring ac_token)) in
+        |} (string_of_int status) (string_to_hex (string_of_bitstring scalar)) (string_to_hex (string_of_bitstring element)) (string_to_hex (string_of_bitstring ac_token)) (string_to_hex (string_of_bitstring ac_id_list)) in
           write_json_to_file "driver_oracle.json" json_to_driver ;
           wait_for_oracle_response "../oracle-response.txt"
     
@@ -271,24 +283,27 @@ let parse_packet (packet : Bitstring.bitstring) : state =
       _pi_container : 8 ; 
       _pi_length : 8 ;
       pi_id : 8 ; 
-      _pi_id_list : _pi_length * 8;
+      pi_id_list : _pi_length * 8;
       _rg_container : 8 ; 
       _rg_length : 8 ;
       rg_id : 8 ; 
-      _rg_id_list : _rg_length * 8 * 2;
+      rg_id_list : _rg_length * 8 * 2;
       _ac_container : 8 ; 
       _ac_length : 8 ;
       ac_id : 8 ; 
-      _ac_id_list : _ac_length * 8 
+      ac_id_list : _ac_length * 8 
       |} 
       when algo = 3 && auth_seq = 1 && (status = 0 || status = 126) && rg_id = 92 && pi_id = 33 && ac_id = 93 ->
         let json_to_driver = Printf.sprintf {|
         {
           "status" : "%s",
           "scalar" : "%s",
-          "element" : "%s"
+          "element" : "%s",
+          "pi_list" : "%s",
+          "rg_list" : "%s",
+          "ac_list" : "%s"
         }
-      |} (string_of_int status) (string_to_hex (string_of_bitstring scalar)) (string_to_hex (string_of_bitstring element)) in
+      |} (string_of_int status) (string_to_hex (string_of_bitstring scalar)) (string_to_hex (string_of_bitstring element)) (string_to_hex (string_of_bitstring pi_id_list)) (string_to_hex (string_of_bitstring rg_id_list)) (string_to_hex (string_of_bitstring ac_id_list)) in
       write_json_to_file "driver_oracle.json" json_to_driver ;
       wait_for_oracle_response "../oracle-response.txt"
     
@@ -301,20 +316,22 @@ let parse_packet (packet : Bitstring.bitstring) : state =
       _pi_container : 8 ; 
       _pi_length : 8 ;
       pi_id : 8 ; 
-      _pi_id_list : _pi_length * 8; 
+      pi_id_list : _pi_length * 8; 
       _rg_container : 8 ; 
       _rg_length : 8 ;
       rg_id : 8 ; 
-      _rg_id_list : _rg_length * 8 * 2 
+      rg_id_list : _rg_length * 8 * 2 
       |} 
       when algo = 3 && auth_seq = 1 && (status = 0 || status = 126) && rg_id = 92 && pi_id = 33 ->
         let json_to_driver = Printf.sprintf {|
           {
             "status" : "%s",
             "scalar" : "%s",
-            "element" : "%s"
+            "element" : "%s",
+            "pi_list" : "%s",
+            "rg_list" : "%s"
           }
-        |} (string_of_int status) (string_to_hex (string_of_bitstring scalar)) (string_to_hex (string_of_bitstring element)) in
+        |} (string_of_int status) (string_to_hex (string_of_bitstring scalar)) (string_to_hex (string_of_bitstring element)) (string_to_hex (string_of_bitstring pi_id_list)) (string_to_hex (string_of_bitstring rg_id_list)) in
         write_json_to_file "driver_oracle.json" json_to_driver ;
       wait_for_oracle_response "../oracle-response.txt"
     | {| algo : 16 : littleendian; 
@@ -326,20 +343,22 @@ let parse_packet (packet : Bitstring.bitstring) : state =
           _rg_container : 8 ; 
           _rg_length : 8 ;
           rg_id : 8 ; 
-          _rg_id_list : _rg_length * 8 * 2; 
+          rg_id_list : _rg_length * 8 * 2; 
           _ac_container : 8 ; 
           _ac_length : 8 ;
           ac_id : 8 ; 
-          _ac_id_list : _ac_length * 8 
+          ac_id_list : _ac_length * 8 
           |} 
         when algo = 3 && auth_seq = 1 && (status = 0 || status = 126) && rg_id = 92 && ac_id = 93 ->
           let json_to_driver = Printf.sprintf {|
             {
             "status" : "%s",
               "scalar" : "%s",
-              "element" : "%s"
+              "element" : "%s",
+              "rg_list" : "%s",
+              "ac_list" : "%s"
             }
-          |} (string_of_int status) (string_to_hex (string_of_bitstring scalar)) (string_to_hex (string_of_bitstring element)) in
+          |} (string_of_int status) (string_to_hex (string_of_bitstring scalar)) (string_to_hex (string_of_bitstring element)) (string_to_hex (string_of_bitstring rg_id_list)) (string_to_hex (string_of_bitstring ac_id_list)) in
         write_json_to_file "driver_oracle.json" json_to_driver ;
         wait_for_oracle_response "../oracle-response.txt"
     | {| algo : 16 : littleendian; 
@@ -351,20 +370,22 @@ let parse_packet (packet : Bitstring.bitstring) : state =
         _pi_container : 8 ; 
         _pi_length : 8 ;
         pi_id : 8 ; 
-        _pi_id_list : _pi_length * 8; 
+        pi_id_list : _pi_length * 8; 
         _ac_container : 8 ; 
         _ac_length : 8 ;
         ac_id : 8 ; 
-        _ac_id_list : _ac_length * 8 
+        ac_id_list : _ac_length * 8 
         |} 
       when algo = 3 && auth_seq = 1 && (status = 0 || status = 126) && pi_id = 33 && ac_id = 93 ->
         let json_to_driver = Printf.sprintf {|
         {
           "status" : "%s",
           "scalar" : "%s",
-          "element" : "%s"
+          "element" : "%s",
+          "pi_list" : "%s",
+          "ac_list" : "%s"
         }
-      |} (string_of_int status) (string_to_hex (string_of_bitstring scalar)) (string_to_hex (string_of_bitstring element)) in
+      |} (string_of_int status) (string_to_hex (string_of_bitstring scalar)) (string_to_hex (string_of_bitstring element)) (string_to_hex (string_of_bitstring pi_id_list)) (string_to_hex (string_of_bitstring ac_id_list)) in
       write_json_to_file "driver_oracle.json" json_to_driver ;
       wait_for_oracle_response "../oracle-response.txt"
   | {| algo : 16 : littleendian; 
@@ -376,16 +397,17 @@ let parse_packet (packet : Bitstring.bitstring) : state =
       _pi_container : 8 ; 
       _pi_length : 8 ;
       pi_id : 8 ; 
-      _pi_id_list : _pi_length * 8 
+      pi_id_list : _pi_length * 8 
       |} 
     when algo = 3 && auth_seq = 1 && (status = 0 || status = 126) && pi_id = 33 ->
       let json_to_driver = Printf.sprintf {|
         {
           "status" : "%s",
           "scalar" : "%s",
-          "element" : "%s"
+          "element" : "%s",
+          "pi_list" : "%s"
         }
-      |} (string_of_int status) (string_to_hex (string_of_bitstring scalar)) (string_to_hex (string_of_bitstring element)) in
+      |} (string_of_int status) (string_to_hex (string_of_bitstring scalar)) (string_to_hex (string_of_bitstring element)) (string_to_hex (string_of_bitstring pi_id_list)) in
       write_json_to_file "driver_oracle.json" json_to_driver ;
       wait_for_oracle_response "../oracle-response.txt"
     | {| algo : 16 : littleendian; 
@@ -397,16 +419,17 @@ let parse_packet (packet : Bitstring.bitstring) : state =
       _rg_container : 8 ; 
       _rg_length : 8 ;
       rg_id : 8 ; 
-      _rg_id_list : _rg_length * 8 * 2 
+      rg_id_list : _rg_length * 8 * 2 
       |}
     when algo = 3 && auth_seq = 1 && (status = 0 || status = 126) && rg_id = 92 ->
       let json_to_driver = Printf.sprintf {|
       {
         "status" : "%s",
         "scalar" : "%s",
-        "element" : "%s"
+        "element" : "%s",
+        "rg_list" : "%s"
       }
-    |} (string_of_int status) (string_to_hex (string_of_bitstring scalar)) (string_to_hex (string_of_bitstring element)) in
+    |} (string_of_int status) (string_to_hex (string_of_bitstring scalar)) (string_to_hex (string_of_bitstring element)) (string_to_hex (string_of_bitstring rg_id_list)) in
     write_json_to_file "driver_oracle.json" json_to_driver ;
     wait_for_oracle_response "../oracle-response.txt"
     | {| algo : 16 : littleendian; 
@@ -418,16 +441,17 @@ let parse_packet (packet : Bitstring.bitstring) : state =
       _ac_container : 8 ; 
       _ac_length : 8 ;
       ac_id : 8 ; 
-      _ac_id_list : _ac_length * 8 
+      ac_id_list : _ac_length * 8 
       |} 
     when algo = 3 && auth_seq = 1 && (status = 0 || status = 126) && ac_id = 93 ->
       let json_to_driver = Printf.sprintf {|
       {
         "status" : "%s",
         "scalar" : "%s",
-        "element" : "%s"
+        "element" : "%s",
+        "ac_list" : "%s"
       }
-    |} (string_of_int status) (string_to_hex (string_of_bitstring scalar)) (string_to_hex (string_of_bitstring element)) in
+    |} (string_of_int status) (string_to_hex (string_of_bitstring scalar)) (string_to_hex (string_of_bitstring element)) (string_to_hex (string_of_bitstring ac_id_list)) in
     write_json_to_file "driver_oracle.json" json_to_driver ;
     wait_for_oracle_response "../oracle-response.txt"
     

@@ -102,7 +102,7 @@ let preprocess_map (f : 'a) (p : population) : population =
 let read_from_file filename =
   let _ = Unix.system ("touch " ^ filename) in
   Unix.sleepf 0.1 ;
-  print_endline "read_from_file" ;
+  (* print_endline "read_from_file" ; *)
 
   let ic = open_in filename in
   try
@@ -398,6 +398,8 @@ let rec sendPacketsToState (p : provenance list) : unit =
 
 let sendPacket (c : child) : (provenance * output) =
   let stateTransition = fst c |> fst in
+  print_endline "\n\n\nGRAMMAR TO SYGUS:" ;
+  pp_print_ast Format.std_formatter (fst c |> snd) ;
   let packetToSend_ = (Pipeline.sygusGrammarToPacket (fst c |> snd)) in 
     match packetToSend_ with
     | Ok (packetToSend, _metadata) ->
