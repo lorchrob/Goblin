@@ -89,15 +89,15 @@ let parse_packet (packet : Bitstring.bitstring) : state =
     ;_pi_container : 8
     ;_pi_length : 8 
     ;pi_id : 8
-    ;pi_id_list : _pi_length * 8 
+    ;pi_id_list : _pi_length * 8 : bitstring
     ;_rg_container : 8 
     ;_rg_length : 8 
     ;rg_id : 8
-    ;rg_id_list : _rg_length * 8 * 2 
+    ;rg_id_list : _rg_length * 8 * 2 : bitstring
     ;_ac_container : 8 
     ;_ac_length : 8 
     ;ac_id : 8
-    ;ac_id_list : _ac_length * 8 
+    ;ac_id_list : _ac_length * 8 : bitstring
     |} 
     when algo = 3 && auth_seq = 1 && (status = 0 || status = 126) && rg_id = 92 && pi_id = 33 && ac_id = 93 ->
       let json_to_driver = Printf.sprintf {|
@@ -123,11 +123,11 @@ let parse_packet (packet : Bitstring.bitstring) : state =
     ;_pi_container : 8  
     ;_pi_length : 8 
     ;pi_id : 8  
-    ;pi_id_list : _pi_length * 8 
+    ;pi_id_list : _pi_length * 8 : bitstring 
     ;_rg_container : 8  
     ;_rg_length : 8 
     ;rg_id : 8  
-    ;rg_id_list : _rg_length * 8 * 2 
+    ;rg_id_list : _rg_length * 8 * 2 : bitstring 
     |} 
     when algo = 3 && auth_seq = 1 && (status = 0 || status = 126) && rg_id = 92 && pi_id = 33 ->
       let json_to_driver = Printf.sprintf {|
@@ -152,11 +152,11 @@ let parse_packet (packet : Bitstring.bitstring) : state =
       ;_rg_container : 8  
       ;_rg_length : 8 
       ;rg_id : 8  
-      ;rg_id_list : _rg_length * 8 * 2 
+      ;rg_id_list : _rg_length * 8 * 2 : bitstring 
       ;_ac_container : 8  
       ;_ac_length : 8 
       ;ac_id : 8  
-      ;ac_id_list : _ac_length * 8 
+      ;ac_id_list : _ac_length * 8 : bitstring 
       |} 
       when algo = 3 && auth_seq = 1 && (status = 0 || status = 126) && rg_id = 92 && ac_id = 93 ->
         let json_to_driver = Printf.sprintf {|
@@ -181,11 +181,11 @@ let parse_packet (packet : Bitstring.bitstring) : state =
         ;_pi_container : 8  
         ;_pi_length : 8 
         ;pi_id : 8  
-        ;pi_id_list : _pi_length * 8 
+        ;pi_id_list : _pi_length * 8 : bitstring 
         ;_ac_container : 8  
         ;_ac_length : 8 
         ;ac_id : 8  
-        ;ac_id_list : _ac_length * 8 
+        ;ac_id_list : _ac_length * 8 : bitstring 
         |} 
       when algo = 3 && auth_seq = 1 && (status = 0 || status = 126) && pi_id = 33 && ac_id = 93 ->
         let json_to_driver = Printf.sprintf {|
@@ -211,7 +211,7 @@ let parse_packet (packet : Bitstring.bitstring) : state =
     ;_pi_container : 8  
     ;_pi_length : 8 
     ;pi_id : 8  
-    ;pi_id_list : _pi_length * 8 
+    ;pi_id_list : _pi_length * 8 : bitstring 
     |} 
     when algo = 3 && auth_seq = 1 && (status = 0 || status = 126) && pi_id = 33 ->
       let json_to_driver = Printf.sprintf {|
@@ -235,7 +235,7 @@ let parse_packet (packet : Bitstring.bitstring) : state =
       ;_rg_container : 8  
       ;_rg_length : 8 
       ;rg_id : 8  
-      ;rg_id_list : _rg_length * 8 * 2 
+      ;rg_id_list : _rg_length * 8 * 2 : bitstring 
       |}
       when algo = 3 && auth_seq = 1 && (status = 0 || status = 126) && rg_id = 92 ->
         let json_to_driver = Printf.sprintf {|
@@ -259,7 +259,7 @@ let parse_packet (packet : Bitstring.bitstring) : state =
       ;_ac_container : 8  
       ;_ac_length : 8 
       ;ac_id : 8  
-      ;ac_id_list : _ac_length * 8 
+      ;ac_id_list : _ac_length * 8 : bitstring 
       |} 
       when algo = 3 && auth_seq = 1 && (status = 0 || status = 126) && ac_id = 93 ->
         let json_to_driver = Printf.sprintf {|
@@ -283,15 +283,15 @@ let parse_packet (packet : Bitstring.bitstring) : state =
       _pi_container : 8 ; 
       _pi_length : 8 ;
       pi_id : 8 ; 
-      pi_id_list : _pi_length * 8;
+      pi_id_list : _pi_length * 8 : bitstring;
       _rg_container : 8 ; 
       _rg_length : 8 ;
       rg_id : 8 ; 
-      rg_id_list : _rg_length * 8 * 2;
+      rg_id_list : _rg_length * 8 * 2 : bitstring;
       _ac_container : 8 ; 
       _ac_length : 8 ;
       ac_id : 8 ; 
-      ac_id_list : _ac_length * 8 
+      ac_id_list : _ac_length * 8 : bitstring 
       |} 
       when algo = 3 && auth_seq = 1 && (status = 0 || status = 126) && rg_id = 92 && pi_id = 33 && ac_id = 93 ->
         let json_to_driver = Printf.sprintf {|
@@ -316,11 +316,11 @@ let parse_packet (packet : Bitstring.bitstring) : state =
       _pi_container : 8 ; 
       _pi_length : 8 ;
       pi_id : 8 ; 
-      pi_id_list : _pi_length * 8; 
+      pi_id_list : _pi_length * 8 : bitstring; 
       _rg_container : 8 ; 
       _rg_length : 8 ;
       rg_id : 8 ; 
-      rg_id_list : _rg_length * 8 * 2 
+      rg_id_list : _rg_length * 8 * 2 : bitstring 
       |} 
       when algo = 3 && auth_seq = 1 && (status = 0 || status = 126) && rg_id = 92 && pi_id = 33 ->
         let json_to_driver = Printf.sprintf {|
@@ -343,11 +343,11 @@ let parse_packet (packet : Bitstring.bitstring) : state =
           _rg_container : 8 ; 
           _rg_length : 8 ;
           rg_id : 8 ; 
-          rg_id_list : _rg_length * 8 * 2; 
+          rg_id_list : _rg_length * 8 * 2 : bitstring; 
           _ac_container : 8 ; 
           _ac_length : 8 ;
           ac_id : 8 ; 
-          ac_id_list : _ac_length * 8 
+          ac_id_list : _ac_length * 8 : bitstring 
           |} 
         when algo = 3 && auth_seq = 1 && (status = 0 || status = 126) && rg_id = 92 && ac_id = 93 ->
           let json_to_driver = Printf.sprintf {|
@@ -370,11 +370,11 @@ let parse_packet (packet : Bitstring.bitstring) : state =
         _pi_container : 8 ; 
         _pi_length : 8 ;
         pi_id : 8 ; 
-        pi_id_list : _pi_length * 8; 
+        pi_id_list : _pi_length * 8 : bitstring; 
         _ac_container : 8 ; 
         _ac_length : 8 ;
         ac_id : 8 ; 
-        ac_id_list : _ac_length * 8 
+        ac_id_list : _ac_length * 8 : bitstring 
         |} 
       when algo = 3 && auth_seq = 1 && (status = 0 || status = 126) && pi_id = 33 && ac_id = 93 ->
         let json_to_driver = Printf.sprintf {|
@@ -397,7 +397,7 @@ let parse_packet (packet : Bitstring.bitstring) : state =
       _pi_container : 8 ; 
       _pi_length : 8 ;
       pi_id : 8 ; 
-      pi_id_list : _pi_length * 8 
+      pi_id_list : _pi_length * 8 : bitstring 
       |} 
     when algo = 3 && auth_seq = 1 && (status = 0 || status = 126) && pi_id = 33 ->
       let json_to_driver = Printf.sprintf {|
@@ -419,7 +419,7 @@ let parse_packet (packet : Bitstring.bitstring) : state =
       _rg_container : 8 ; 
       _rg_length : 8 ;
       rg_id : 8 ; 
-      rg_id_list : _rg_length * 8 * 2 
+      rg_id_list : _rg_length * 8 * 2 : bitstring 
       |}
     when algo = 3 && auth_seq = 1 && (status = 0 || status = 126) && rg_id = 92 ->
       let json_to_driver = Printf.sprintf {|
@@ -441,7 +441,7 @@ let parse_packet (packet : Bitstring.bitstring) : state =
       _ac_container : 8 ; 
       _ac_length : 8 ;
       ac_id : 8 ; 
-      ac_id_list : _ac_length * 8 
+      ac_id_list : _ac_length * 8 : bitstring 
       |} 
     when algo = 3 && auth_seq = 1 && (status = 0 || status = 126) && ac_id = 93 ->
       let json_to_driver = Printf.sprintf {|

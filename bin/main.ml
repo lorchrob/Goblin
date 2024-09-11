@@ -139,9 +139,6 @@ let () =
     );
     (lnot (<STATUS_CODE> = int_to_bitvector(16, 0)));
     <STATUS_CODE> = int_to_bitvector(16, 126);
-    <SCALAR> <- \"<SCALAR>\";
-    <ELEMENT> <- \"<ELEMENT>\";
-    <AC_TOKEN> <- \"<AC_TOKEN>\";
      };
 
     <AUTH_ALGO> :: BitVector(16)
@@ -156,10 +153,8 @@ let () =
     <AUTH_SEQ_CONFIRM> <- int_to_bitvector(16, 2); 
     <STATUS_CODE> = int_to_bitvector(16, 0) lor 
     <STATUS_CODE> = int_to_bitvector(16, 1);
-    <SEND_CONFIRM_COUNTER> <- \"<SEND_CONFIRM_COUNTER>\";
-    <CONFIRM_HASH> <- \"<CONFIRM_HASH>\";
-   };
-
+    };
+    
     <GROUP_ID> :: BitVector(16);
     
     <AUTH_SEQ_COMMIT> :: BitVector(16)   
@@ -169,9 +164,10 @@ let () =
     { <AUTH_SEQ_CONFIRM> <- 0b0000000000000010; };
     
     <STATUS_CODE> :: BitVector(16);
-
-  
-    <AC_TOKEN> :: String; // Arbitrary length and depends on what the AP sent 
+    
+    
+    <AC_TOKEN> :: String // Arbitrary length and depends on what the AP sent 
+    { <AC_TOKEN> <- \"<AC_TOKEN>\"; };
     
     <PASSWORD_IDENTIFIER> ::= <PASSWD_ELEMENT_ID> <PASSWD_ID_LENGTH> <PASSWD_ELEMENT_ID_EXTENSION> <PASSWD_ID>; 
     
@@ -200,11 +196,11 @@ let () =
     { <RG_ELEMENT_ID_EXTENSION> <- int_to_bitvector(8, 92); };
     
     <RG_ID_LIST> ::= <RG_ID> | <RG_ID> <RG_ID_LIST>;
-     
+    
     <RG_ID> :: BitVector(16);
     
     <AC_TOKEN_CONTAINER> ::= <AC_ELEMENT_ID> <AC_ID_LENGTH> <AC_ELEMENT_ID_EXTENSION> 
-                         <AC_TOKEN_ELEMENT>
+    <AC_TOKEN_ELEMENT>
     { <AC_ID_LENGTH> <- int_to_bitvector(8, length(<AC_TOKEN_ELEMENT>)); };
     
     <AC_ELEMENT_ID> :: BitVector(8) 
@@ -217,13 +213,17 @@ let () =
     
     <AC_TOKEN_ELEMENT> :: BitList;
     
-    <SCALAR>     :: String;  // Arbitrary length depends on <GROUP_ID>
+    <SCALAR>     :: String  // Arbitrary length depends on <GROUP_ID>
+    { <SCALAR> <- \"<SCALAR>\"; };
     
-    <ELEMENT> :: String; // Arbitrary length depends on <GROUP_ID> 
+    <ELEMENT> :: String // Arbitrary length depends on <GROUP_ID> 
+    {<ELEMENT> <- \"<ELEMENT>\"; };
     
-    <CONFIRM_HASH> :: String; // dependent on the group id and the status code of the previous commit frame. The confirm frame does not include the status code or group id to make the length determination.
+    <CONFIRM_HASH> :: String // dependent on the group id and the status code of the previous commit frame. The confirm frame does not include the status code or group id to make the length determination.
+    { <CONFIRM_HASH> <- \"<CONFIRM_HASH>\"; };
     
-    <SEND_CONFIRM_COUNTER> :: String;
+    <SEND_CONFIRM_COUNTER> :: String
+    { <SEND_CONFIRM_COUNTER> <- \"<SEND_CONFIRM_COUNTER>\"; };
     
     
     " in GrammarFuzzing.runFuzzer grammar
@@ -233,4 +233,4 @@ let () =
     | None -> print_endline "Nothing.." *)
     
     (* GrammarFuzzing.runFuzzer grammar *)
-   
+    

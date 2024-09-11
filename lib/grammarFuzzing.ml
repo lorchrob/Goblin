@@ -144,6 +144,7 @@ let wait_for_python_response response_file =
   let rec loop () =
     match read_from_file response_file with
     | Some response ->
+        Printf.printf "\nREADING RESPONSE FILE:%s\n" response ;
         (* Clear the file after reading *)
         clear_file response_file;
         if response = "CRASH" then CRASH
