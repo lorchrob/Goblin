@@ -169,22 +169,23 @@ let () =
     <AC_TOKEN> :: String // Arbitrary length and depends on what the AP sent 
     { <AC_TOKEN> <- \"<AC_TOKEN>\"; };
     
-    <PASSWORD_IDENTIFIER> ::= <PASSWD_ELEMENT_ID> <PASSWD_ID_LENGTH> <PASSWD_ELEMENT_ID_EXTENSION> <PASSWD_ID>; 
+    <PASSWORD_IDENTIFIER> ::= <PASSWD_ELEMENT_ID> <PASSWD_ID_LENGTH> <PASSWD_ELEMENT_ID_EXTENSION> <PASSWD_ID> 
+    { <PASSWD_ID_LENGTH> <- int_to_bitvector(8, (length(<PASSWD_ID>)/8)+1); };
     
     <PASSWD_ELEMENT_ID> :: BitVector(8) 
     { <PASSWD_ELEMENT_ID> <- int_to_bitvector(8, 255); };
     
-    <PASSWD_ID_LENGTH> :: BitVector(8)
-    { <PASSWD_ID_LENGTH> <- int_to_bitvector(8, 2); };
+    
+    <PASSWD_ID_LENGTH> :: BitVector(8);
     
     <PASSWD_ELEMENT_ID_EXTENSION> :: BitVector(8)
     { <PASSWD_ELEMENT_ID_EXTENSION> <- int_to_bitvector(8, 33); };
     
-    
     <PASSWD_ID> :: BitVector(8);
     
+    
     <REJECTED_GROUPS> ::= <RG_ELEMENT_ID> <RG_ID_LENGTH> <RG_ELEMENT_ID_EXTENSION> <RG_ID_LIST>
-    { <RG_ID_LENGTH> <- int_to_bitvector(8, 2) ;
+    { <RG_ID_LENGTH> <- int_to_bitvector(8, (length(<RG_ID_LIST>)/8)+1) ;
     };
     
     <RG_ELEMENT_ID> :: BitVector(8) 
@@ -197,11 +198,12 @@ let () =
     
     <RG_ID_LIST> ::= <RG_ID> | <RG_ID> <RG_ID_LIST>;
     
-    <RG_ID> :: BitVector(16);
+    <RG_ID> :: BitVector(16)
+    {<RG_ID> <- int_to_bitvector(16, 5);};
     
     <AC_TOKEN_CONTAINER> ::= <AC_ELEMENT_ID> <AC_ID_LENGTH> <AC_ELEMENT_ID_EXTENSION> 
     <AC_TOKEN_ELEMENT>
-    { <AC_ID_LENGTH> <- int_to_bitvector(8, length(<AC_TOKEN_ELEMENT>)); };
+    { <AC_ID_LENGTH> <- int_to_bitvector(8, (length(<AC_TOKEN_ELEMENT>)/8)+1); };
     
     <AC_ELEMENT_ID> :: BitVector(8) 
     { <AC_ELEMENT_ID> <- int_to_bitvector(8, 255); };

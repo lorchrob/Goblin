@@ -113,6 +113,18 @@ let read_from_file filename =
     close_in ic;
     None
 
+let read_binary_file filename =
+  let ic = open_in_bin filename in
+  try
+    let file_length = in_channel_length ic in
+    let buffer = Bytes.create file_length in
+    really_input ic buffer 0 file_length;
+    close_in ic;
+    Some buffer
+  with End_of_file ->
+    close_in ic ;
+    None
+
 let write_symbol_to_file filename msg =
   let _ = Unix.system ("touch " ^ filename) in
   Unix.sleepf 0.1 ;
@@ -158,6 +170,20 @@ let wait_for_python_response response_file =
         loop ()
   in
   loop ()
+
+let wait_for_python_bin_response response_file =
+  let _ = Unix.system ("touch " ^ response_file) in
+  Unix.sleepf 0.1 ;
+  let rec loop () =
+    match read_binary_file response_file with
+    | Some response ->
+        response
+    | None ->
+        sleepf 0.1;  (* Wait for a while before checking again *)
+        loop ()
+  in
+  loop ()
+
 let get_message message = 
   match message with
   | Message message -> message
@@ -175,14 +201,16 @@ let map_provenance_to_string (p : provenance) : string =
 let callDriver x =
   let message_file = "/home/pirwani/Desktop/message.txt" in
   let response_file = "/home/pirwani/Desktop/response.txt" in
+  let placeholder_replaced_file = "/home/pirwani/Desktop/placeholders-replace.pkt" in
   match x with 
   | ValidPacket _ -> 
-    write_symbol_to_file message_file (map_provenance_to_string x);
-    wait_for_python_response response_file
+    write_symbol_to_file message_file (map_provenance_to_string x) ;
+    (wait_for_python_response response_file, IGNORE_)
   | RawPacket y -> 
     write_to_file message_file y;
-    wait_for_python_response response_file
-
+    let bin_placeholders = wait_for_python_bin_response placeholder_replaced_file in
+    let oracle_result = parse_packet ((Bitstring.bitstring_of_string (Bytes.to_string bin_placeholders))) in
+    ((wait_for_python_response response_file), oracle_result)
 
 let rec scoreFunction (pktStatus : (provenance * output) list) (mutatedPopulation : child list) : ((provenance list list) * (child list)) =
   match pktStatus, mutatedPopulation with
@@ -397,7 +425,7 @@ let rec sendPacketsToState (p : provenance list) : unit =
     [] -> ()
   | x :: xs -> let _ = callDriver x in sendPacketsToState xs
 
-let sendPacket (c : child) : (provenance * output) =
+let sendPacket (c : child) : (provenance * output) * state =
   let stateTransition = fst c |> fst in
   print_endline "\n\n\nGRAMMAR TO SYGUS:" ;
   pp_print_ast Format.std_formatter (fst c |> snd) ;
@@ -407,12 +435,14 @@ let sendPacket (c : child) : (provenance * output) =
       sendPacketsToState stateTransition ;
       let driver_output = callDriver (RawPacket packetToSend) in
       let _ = callDriver (ValidPacket RESET) in
-      (RawPacket packetToSend, driver_output)
-    | Error _ -> (ValidPacket NOTHING, EXPECTED_OUTPUT)
+      (RawPacket packetToSend, (fst driver_output)), (snd driver_output)
+    | Error _ -> ((ValidPacket NOTHING, EXPECTED_OUTPUT), IGNORE_)
       
-let executeMutatedPopulation (mutatedPopulation : child list) : ((provenance list list) * (child list)) =
-  let outputList = List.map sendPacket mutatedPopulation in
-    scoreFunction outputList mutatedPopulation
+let executeMutatedPopulation (mutatedPopulation : child list) : ((provenance list list) * (child list)) * (state list) =
+  let _outputList = List.map sendPacket mutatedPopulation in
+  let outputList = List.map (fun x -> fst x) _outputList in
+  let oracle_results = List.map (fun x -> snd x) _outputList in
+    ((scoreFunction outputList mutatedPopulation), oracle_results)
 
 (* Filter population based on standard deviation *)
 let getScores (p: child list) : score list = List.map snd p
@@ -476,36 +506,25 @@ let population_size_across_queues (x : population) (y : population) (z : populat
     | NOTHING -> NOTHING 
     | RESET -> NOTHING *)
 
-let rec map_packet_to_state (cl : child list) (states : state list) : state_child list =
-  match cl, states with
-  | [], [] -> []
-  | [], _ -> failwith "child list exhausted, state list non-empty"
-  | _, [] -> failwith "state list exhausted, child list non-empty"
-  | x :: xs, y :: ys -> 
-    let last_provenance = List.hd (List.rev (fst (fst x))) in
-    match last_provenance with
-    | RawPacket z -> 
-      let last_packet = z in
-      let expected_state = parse_packet (Bitstring.bitstring_of_string (Bytes.to_string last_packet)) in (
-      match expected_state with 
-      | NOTHING_ -> NOTHING x :: map_packet_to_state xs ys
-      | CONFIRMED_ -> CONFIRMED x :: map_packet_to_state xs ys
-      | ACCEPTED_ -> ACCEPTED x :: map_packet_to_state xs ys
+let rec map_packet_to_state (cl : child list) (old_states : state list) (new_states : state list) : state_child list =
+  match cl, old_states, new_states with
+  | [], [], [] -> []
+  | [], _, _ -> failwith "child list exhausted, state list non-empty"
+  | _, [], _ -> failwith "state list exhausted, child list non-empty"
+  | _, _, [] -> failwith "state list exhausted, child list non-empty"
+  
+  | x :: xs, y :: ys, z :: zs -> 
+    match z with 
+      | NOTHING_ -> NOTHING x :: map_packet_to_state xs ys zs
+      | CONFIRMED_ -> CONFIRMED x :: map_packet_to_state xs ys zs
+      | ACCEPTED_ -> ACCEPTED x :: map_packet_to_state xs ys zs
       | IGNORE_ -> 
         match y with
-        | NOTHING_ -> NOTHING x :: map_packet_to_state xs ys
-        | CONFIRMED_ -> CONFIRMED x :: map_packet_to_state xs ys
-        | ACCEPTED_ -> ACCEPTED x :: map_packet_to_state xs ys
+        | NOTHING_ -> NOTHING x :: map_packet_to_state xs ys zs
+        | CONFIRMED_ -> CONFIRMED x :: map_packet_to_state xs ys zs
+        | ACCEPTED_ -> ACCEPTED x :: map_packet_to_state xs ys zs
         | IGNORE_ -> failwith "unexpected IGNORE_ pattern"
-      )
-    | ValidPacket z -> (
-        match z with
-        | COMMIT -> CONFIRMED x :: map_packet_to_state xs ys
-        | CONFIRM -> ACCEPTED x :: map_packet_to_state xs ys
-        | ASSOCIATION_REQUEST -> ACCEPTED x :: map_packet_to_state xs ys
-        | NOTHING -> NOTHING x :: map_packet_to_state xs ys 
-        | RESET -> failwith "unexpected mapping state"
-      )
+      
     (* | NOTHING -> failwith "unreachable case.. nothing symbol unexpected in provenance"
     | RESET -> failwith "unreachable case.. reset symbol unexpected in provenance" *)
 
@@ -519,9 +538,9 @@ let filter_state (qh : queue_handle) (c : state_child) : bool =
   | CONFIRMED _ -> if qh = CONFIRMED then true else false
   | ACCEPTED _ -> if qh = ACCEPTED then true else false
   
-let bucket_oracle (q : triple_queue) (clist : child list) (states : state list) : triple_queue =
+let bucket_oracle (q : triple_queue) (clist : child list) (old_states : state list) (new_states : state list) : triple_queue =
   let np, cnf, acc = extract_child_from_state (List.nth q 0), extract_child_from_state (List.nth q 1), extract_child_from_state (List.nth q 2) in
-  let newPopulation = map_packet_to_state clist states in
+  let newPopulation = map_packet_to_state clist old_states new_states in
   let newNothingList = np @ List.map get_child_from_state (List.filter (filter_state NOTHING) newPopulation) in
   let newConfirmedList = cnf @ List.map get_child_from_state (List.filter (filter_state CONFIRMED) newPopulation) in
   let newAcceptedList = acc @ List.map get_child_from_state (List.filter (filter_state ACCEPTED) newPopulation) in
@@ -559,8 +578,9 @@ let rec fuzzingAlgorithm
       let old_states = snd (uniform_sample_from_queue currentQueue 10) in
       let selectedMutations = mutationList random_element mutationOperations (List.length newPopulation) in
       let mutatedPopulation = newMutatedSet newPopulation selectedMutations (List.length newPopulation) in
-      let (iT, newPopulation) = executeMutatedPopulation mutatedPopulation in
-      let newQueue = bucket_oracle currentQueue newPopulation old_states in 
+      let score_and_oracle = executeMutatedPopulation mutatedPopulation in
+      let (iT, newPopulation) = fst score_and_oracle in
+      let newQueue = bucket_oracle currentQueue newPopulation old_states (snd score_and_oracle) in 
       fuzzingAlgorithm maxCurrentPopulation newQueue (List.append iTraces iT) tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations
 
 let runFuzzer grammar = 
