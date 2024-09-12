@@ -99,6 +99,17 @@ let preprocess_map (f : 'a) (p : population) : population =
 
 (* type childSet = child list *)
 
+let read_grammar filename =
+  let ic = open_in filename in
+  try
+    let length = in_channel_length ic in
+    let content = really_input_string ic length in
+    close_in ic ;
+    content
+  with e ->
+    close_in_noerr ic ;
+    raise e
+
 let read_from_file filename =
   let _ = Unix.system ("touch " ^ filename) in
   Unix.sleepf 0.1 ;
@@ -112,6 +123,11 @@ let read_from_file filename =
   with End_of_file ->
     close_in ic;
     None
+
+let append_to_file filename msg =
+  let oc = open_out_gen [Open_wronly; Open_append; Open_creat] 0o666 filename in
+  output_string oc msg ;
+  close_out oc 
 
 let read_binary_file filename =
   let ic = open_in_bin filename in
@@ -128,7 +144,7 @@ let read_binary_file filename =
 let write_symbol_to_file filename msg =
   let _ = Unix.system ("touch " ^ filename) in
   Unix.sleepf 0.1 ;
-  print_endline "write_to_file" ;
+  print_endline "write_symbol_to_file" ;
   let oc = open_out filename in
   output_string oc msg;
   close_out oc
@@ -206,8 +222,9 @@ let callDriver x =
   | ValidPacket _ -> 
     write_symbol_to_file message_file (map_provenance_to_string x) ;
     (wait_for_python_response response_file, IGNORE_)
-  | RawPacket y -> 
+  | RawPacket y ->
     write_to_file message_file y;
+    print_endline "write to file successful.." ;
     let bin_placeholders = wait_for_python_bin_response placeholder_replaced_file in
     let oracle_result = parse_packet ((Bitstring.bitstring_of_string (Bytes.to_string bin_placeholders))) in
     ((wait_for_python_response response_file), oracle_result)
@@ -546,6 +563,29 @@ let bucket_oracle (q : triple_queue) (clist : child list) (old_states : state li
   let newAcceptedList = acc @ List.map get_child_from_state (List.filter (filter_state ACCEPTED) newPopulation) in
    [NOTHING newNothingList; CONFIRMED newConfirmedList; ACCEPTED newAcceptedList]
 
+let dump_single_trace (trace : provenance list) : string =
+  let trace_string = List.map (fun x -> 
+    match x with
+    | RawPacket z -> (Bytes.to_string z)
+    | ValidPacket z -> ( 
+      match z with
+      | COMMIT -> "COMMIT"
+      | CONFIRM -> "CONFIRM"
+      | ASSOCIATION_REQUEST -> "ASSOCIATION_REQUEST"
+      | NOTHING | RESET -> failwith "unexpected provenance element.."
+    ) 
+    ) trace in
+  let result = ref "" in
+  (List.iter (fun x -> result := !result ^ x ^ ", ") trace_string) ;
+  !result ^ "\n"
+
+let dump_all_traces (traces : provenance list list) =
+  let trace_string_lists = List.map dump_single_trace traces in
+  let result = ref "" in
+  (List.iter (fun x -> result := !result ^ x ) trace_string_lists) ;
+  append_to_file "../interesting_traces.txt" !result
+
+
 let rec fuzzingAlgorithm 
 (maxCurrentPopulation : int) 
 (currentQueue : triple_queue) 
@@ -580,10 +620,18 @@ let rec fuzzingAlgorithm
       let mutatedPopulation = newMutatedSet newPopulation selectedMutations (List.length newPopulation) in
       let score_and_oracle = executeMutatedPopulation mutatedPopulation in
       let (iT, newPopulation) = fst score_and_oracle in
+      dump_all_traces iT ;
       let newQueue = bucket_oracle currentQueue newPopulation old_states (snd score_and_oracle) in 
       fuzzingAlgorithm maxCurrentPopulation newQueue (List.append iTraces iT) tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations
 
-let runFuzzer grammar = 
+let runFuzzer grammar_list = 
   Random.self_init ();
-  let _ = fuzzingAlgorithm 1000 [NOTHING([([], grammar), 0.0]); CONFIRMED([([], grammar), 0.0]); ACCEPTED([([], grammar), 0.0])] [] 100 0 1000 20 100 [Add; Delete; Modify; CrossOver;CorrectPacket;] in
+  let commit_grammar = List.nth grammar_list 0 in
+  let confirm_grammar = List.nth grammar_list 1 in
+  let commit_confirm_grammar = List.nth grammar_list 2 in
+  let nothing_queue = NOTHING([([], commit_grammar), 0.0; ([], confirm_grammar), 0.0; ([], commit_confirm_grammar), 0.0;]) in
+  let confirmed_queue = CONFIRMED([([ValidPacket COMMIT], commit_grammar), 0.0; ([ValidPacket COMMIT], confirm_grammar), 0.0; ([ValidPacket COMMIT], commit_confirm_grammar), 0.0;]) in
+  let accepted_queue = ACCEPTED([([ValidPacket COMMIT; ValidPacket CONFIRM], commit_grammar), 0.0; ([ValidPacket COMMIT; ValidPacket CONFIRM], confirm_grammar), 0.0; ([ValidPacket COMMIT; ValidPacket CONFIRM], commit_confirm_grammar), 0.0;]) in
+
+  let _ = fuzzingAlgorithm 1000 [nothing_queue; confirmed_queue; accepted_queue] [] 100 0 1000 20 100 [Add; Delete; Modify; CrossOver;CorrectPacket;] in
   ()

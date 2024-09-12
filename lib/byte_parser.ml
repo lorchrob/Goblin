@@ -13,6 +13,7 @@ let string_to_hex s =
   String.concat "" binary_strings  (* Concatenate all binary strings *)
 
 let bitstring_to_hex bitstr =
+  print_endline (Bitstring.string_of_bitstring bitstr) ;
   let rec to_hex acc bitstr =
     if Bitstring.bitstring_length bitstr = 0 then
       acc  (* Stop when there are no more bits *)
