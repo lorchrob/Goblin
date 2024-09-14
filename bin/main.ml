@@ -126,10 +126,15 @@ let () =
   let confirm_grammar = Utils.parse (GrammarFuzzing.read_grammar "/home/pirwani/Desktop/WiFiPacketGen/bin/confirm.txt") in
   let commit_confirm_grammar = Utils.parse (GrammarFuzzing.read_grammar "/home/pirwani/Desktop/WiFiPacketGen/bin/commit-confirm.txt") in
   GrammarFuzzing.runFuzzer [commit_grammar; confirm_grammar; commit_confirm_grammar;]
-    (* let x = Byte_parser.get_bytes_and_run "confirm-test.bin" in
-    match x with
-    | Some y -> print_endline (Bitstring.string_of_bitstring y)
-    | None -> print_endline "Nothing.." *)
     
-    (* GrammarFuzzing.runFuzzer grammar *)
-    
+  (* let grammar = Utils.parse "
+  <A> ::= <X> | <B> <Y> ;
+  <Y> ::= <C> | <X>;
+  <X> ::= <C> ;
+  <C> ::= <A> ;
+  <B> :: BitVector(8) ;
+  " in
+  let pkt = Topological_sort.canonicalize grammar in
+  match pkt with
+  | Some x -> Ast.pp_print_ast Format.std_formatter x ;
+  | None -> print_endline "fail" *)
