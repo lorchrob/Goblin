@@ -122,115 +122,19 @@ let () =
     <GROUP_ID> = int_to_bitvector(16, 21) => 
     length(<SCALAR>) = 64 land length(<ELEMENT>) = 128; *)
 
-  let grammar = Utils.parse "
-    <SAE_PACKET> ::= <COMMIT> | <CONFIRM> ;
+  let commit_grammar = Utils.parse (GrammarFuzzing.read_grammar "/home/pirwani/Desktop/WiFiPacketGen/bin/commit.txt") in
+  let confirm_grammar = Utils.parse (GrammarFuzzing.read_grammar "/home/pirwani/Desktop/WiFiPacketGen/bin/confirm.txt") in
+  let commit_confirm_grammar = Utils.parse (GrammarFuzzing.read_grammar "/home/pirwani/Desktop/WiFiPacketGen/bin/commit-confirm.txt") in
+  GrammarFuzzing.runFuzzer [commit_grammar; confirm_grammar; commit_confirm_grammar;]
     
-    <COMMIT> ::= <AUTH_ALGO> <AUTH_SEQ_COMMIT> <STATUS_CODE> <GROUP_ID> <AC_TOKEN> <SCALAR> <ELEMENT> <PASSWORD_IDENTIFIER> <REJECTED_GROUPS> <AC_TOKEN_CONTAINER> 
-    {
-    <AUTH_ALGO> <- int_to_bitvector(16, 3);
-    int_to_bitvector(16, 19) bvlte <GROUP_ID> land 
-              <GROUP_ID> bvlte int_to_bitvector(16, 20); 
-    <AUTH_SEQ_COMMIT> <- int_to_bitvector(16, 1); 
-    <STATUS_CODE> = int_to_bitvector(16, 0) lor 
-    <STATUS_CODE> = int_to_bitvector(16, 1) lor 
-    <STATUS_CODE> = int_to_bitvector(16, 126); 
-    (
-    (lnot (<STATUS_CODE> = int_to_bitvector(16, 1))) 
-    );
-    (lnot (<STATUS_CODE> = int_to_bitvector(16, 0)));
-    <STATUS_CODE> = int_to_bitvector(16, 126);
-    <SCALAR> <- \"<SCALAR>\";
-    <ELEMENT> <- \"<ELEMENT>\";
-    <AC_TOKEN> <- \"<AC_TOKEN>\";
-     };
-
-    <AUTH_ALGO> :: BitVector(16)
-     { 
-    <AUTH_ALGO> = int_to_bitvector(16, 0) lor 
-    <AUTH_ALGO> = int_to_bitvector(16, 3); 
-    };
-
-   <CONFIRM> ::= <AUTH_ALGO> <AUTH_SEQ_CONFIRM> <STATUS_CODE> <SEND_CONFIRM_COUNTER> <CONFIRM_HASH>
-   {
-    <AUTH_ALGO> <- int_to_bitvector(16, 3);
-    <AUTH_SEQ_CONFIRM> <- int_to_bitvector(16, 2); 
-    <STATUS_CODE> = int_to_bitvector(16, 0) lor 
-    <STATUS_CODE> = int_to_bitvector(16, 1);
-    <SEND_CONFIRM_COUNTER> <- \"<SEND_CONFIRM_COUNTER>\";
-    <CONFIRM_HASH> <- \"<CONFIRM_HASH>\";
-   };
-
-    <GROUP_ID> :: BitVector(16);
-    
-    <AUTH_SEQ_COMMIT> :: BitVector(16)   
-    { <AUTH_SEQ_COMMIT> <- 0b0000000000000001; }; 
-    
-    <AUTH_SEQ_CONFIRM> :: BitVector(16) 
-    { <AUTH_SEQ_CONFIRM> <- 0b0000000000000010; };
-    
-    <STATUS_CODE> :: BitVector(16);
-
-  
-    <AC_TOKEN> :: String; // Arbitrary length and depends on what the AP sent 
-    
-    <PASSWORD_IDENTIFIER> ::= <PASSWD_ELEMENT_ID> <PASSWD_ID_LENGTH> <PASSWD_ELEMENT_ID_EXTENSION> <PASSWD_ID>; 
-    
-    <PASSWD_ELEMENT_ID> :: BitVector(8) 
-    { <PASSWD_ELEMENT_ID> <- int_to_bitvector(8, 255); };
-    
-    <PASSWD_ID_LENGTH> :: BitVector(8)
-    { <PASSWD_ID_LENGTH> <- int_to_bitvector(8, 2); };
-    
-    <PASSWD_ELEMENT_ID_EXTENSION> :: BitVector(8)
-    { <PASSWD_ELEMENT_ID_EXTENSION> <- int_to_bitvector(8, 33); };
-    
-    
-    <PASSWD_ID> :: BitVector(8);
-    
-    <REJECTED_GROUPS> ::= <RG_ELEMENT_ID> <RG_ID_LENGTH> <RG_ELEMENT_ID_EXTENSION> <RG_ID_LIST>
-    { <RG_ID_LENGTH> <- int_to_bitvector(8, 2) ;
-    };
-    
-    <RG_ELEMENT_ID> :: BitVector(8) 
-    { <RG_ELEMENT_ID> <- int_to_bitvector(8, 255); };
-    
-    <RG_ID_LENGTH>   :: BitVector(8); 
-    
-    <RG_ELEMENT_ID_EXTENSION> :: BitVector(8) 
-    { <RG_ELEMENT_ID_EXTENSION> <- int_to_bitvector(8, 92); };
-    
-    <RG_ID_LIST> ::= <RG_ID> | <RG_ID> <RG_ID_LIST>;
-     
-    <RG_ID> :: BitVector(16);
-    
-    <AC_TOKEN_CONTAINER> ::= <AC_ELEMENT_ID> <AC_ID_LENGTH> <AC_ELEMENT_ID_EXTENSION> 
-                         <AC_TOKEN_ELEMENT>
-    { <AC_ID_LENGTH> <- int_to_bitvector(8, length(<AC_TOKEN_ELEMENT>)); };
-    
-    <AC_ELEMENT_ID> :: BitVector(8) 
-    { <AC_ELEMENT_ID> <- int_to_bitvector(8, 255); };
-    
-    <AC_ID_LENGTH> :: BitVector(8);
-    
-    <AC_ELEMENT_ID_EXTENSION> :: BitVector(8)
-    { <AC_ELEMENT_ID_EXTENSION> <- int_to_bitvector(8, 93); };
-    
-    <AC_TOKEN_ELEMENT> :: BitList;
-    
-    <SCALAR>     :: String;  // Arbitrary length depends on <GROUP_ID>
-    
-    <ELEMENT> :: String; // Arbitrary length depends on <GROUP_ID> 
-    
-    <CONFIRM_HASH> :: String; // dependent on the group id and the status code of the previous commit frame. The confirm frame does not include the status code or group id to make the length determination.
-    
-    <SEND_CONFIRM_COUNTER> :: String;
-    
-    
-    " in GrammarFuzzing.runFuzzer grammar
-    (* let x = Byte_parser.get_bytes_and_run "confirm-test.bin" in
-    match x with
-    | Some y -> print_endline (Bitstring.string_of_bitstring y)
-    | None -> print_endline "Nothing.." *)
-    
-    (* GrammarFuzzing.runFuzzer grammar *)
-   
+  (* let grammar = Utils.parse "
+  <A> ::= <X> | <B> <Y> ;
+  <Y> ::= <C> | <X>;
+  <X> ::= <C> ;
+  <C> ::= <A> ;
+  <B> :: BitVector(8) ;
+  " in
+  let pkt = Topological_sort.canonicalize grammar in
+  match pkt with
+  | Some x -> Ast.pp_print_ast Format.std_formatter x ;
+  | None -> print_endline "fail" *)

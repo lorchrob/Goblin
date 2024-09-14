@@ -125,7 +125,7 @@ let rec mutation_delete g nt =
     match g with
     | [] -> ([], false)
     | ProdRule(nonTerminal, production_options) :: xs ->
-        if (nonTerminal = "COMMIT" || nonTerminal = "CONFIRM")
+        if (nonTerminal = "SAE_PACKET")
         then
             let found = isNonTerminalPresent nt production_options in
             if found then

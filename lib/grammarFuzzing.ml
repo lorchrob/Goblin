@@ -99,10 +99,21 @@ let preprocess_map (f : 'a) (p : population) : population =
 
 (* type childSet = child list *)
 
+let read_grammar filename =
+  let ic = open_in filename in
+  try
+    let length = in_channel_length ic in
+    let content = really_input_string ic length in
+    close_in ic ;
+    content
+  with e ->
+    close_in_noerr ic ;
+    raise e
+
 let read_from_file filename =
   let _ = Unix.system ("touch " ^ filename) in
   Unix.sleepf 0.1 ;
-  print_endline "read_from_file" ;
+  (* print_endline "read_from_file" ; *)
 
   let ic = open_in filename in
   try
@@ -113,10 +124,27 @@ let read_from_file filename =
     close_in ic;
     None
 
+let append_to_file filename msg =
+  let oc = open_out_gen [Open_wronly; Open_append; Open_creat] 0o666 filename in
+  output_string oc msg ;
+  close_out oc 
+
+let read_binary_file filename =
+  let ic = open_in_bin filename in
+  try
+    let file_length = in_channel_length ic in
+    let buffer = Bytes.create file_length in
+    really_input ic buffer 0 file_length;
+    close_in ic;
+    Some buffer
+  with End_of_file ->
+    close_in ic ;
+    None
+
 let write_symbol_to_file filename msg =
   let _ = Unix.system ("touch " ^ filename) in
   Unix.sleepf 0.1 ;
-  print_endline "write_to_file" ;
+  print_endline "write_symbol_to_file" ;
   let oc = open_out filename in
   output_string oc msg;
   close_out oc
@@ -144,6 +172,7 @@ let wait_for_python_response response_file =
   let rec loop () =
     match read_from_file response_file with
     | Some response ->
+        Printf.printf "\nREADING RESPONSE FILE:%s\n" response ;
         (* Clear the file after reading *)
         clear_file response_file;
         if response = "CRASH" then CRASH
@@ -157,6 +186,20 @@ let wait_for_python_response response_file =
         loop ()
   in
   loop ()
+
+let wait_for_python_bin_response response_file =
+  let _ = Unix.system ("touch " ^ response_file) in
+  Unix.sleepf 0.1 ;
+  let rec loop () =
+    match read_binary_file response_file with
+    | Some response ->
+        response
+    | None ->
+        sleepf 0.1;  (* Wait for a while before checking again *)
+        loop ()
+  in
+  loop ()
+
 let get_message message = 
   match message with
   | Message message -> message
@@ -174,14 +217,17 @@ let map_provenance_to_string (p : provenance) : string =
 let callDriver x =
   let message_file = "/home/pirwani/Desktop/message.txt" in
   let response_file = "/home/pirwani/Desktop/response.txt" in
+  let placeholder_replaced_file = "/home/pirwani/Desktop/placeholders-replace.pkt" in
   match x with 
   | ValidPacket _ -> 
-    write_symbol_to_file message_file (map_provenance_to_string x);
-    wait_for_python_response response_file
-  | RawPacket y -> 
+    write_symbol_to_file message_file (map_provenance_to_string x) ;
+    (wait_for_python_response response_file, IGNORE_)
+  | RawPacket y ->
     write_to_file message_file y;
-    wait_for_python_response response_file
-
+    print_endline "write to file successful.." ;
+    let bin_placeholders = wait_for_python_bin_response placeholder_replaced_file in
+    let oracle_result = parse_packet ((Bitstring.bitstring_of_string (Bytes.to_string bin_placeholders))) in
+    ((wait_for_python_response response_file), oracle_result)
 
 let rec scoreFunction (pktStatus : (provenance * output) list) (mutatedPopulation : child list) : ((provenance list list) * (child list)) =
   match pktStatus, mutatedPopulation with
@@ -213,37 +259,39 @@ let random_element (lst: 'a list) : 'a =
 
 (* Function to sample from a given percentile range *)
 let sample_from_percentile_range (pop : child list) (lower_percentile: float) (upper_percentile: float) (sample_size: int) : child list =
-  let sorted_pop = List.sort (fun ((_, _), score1) ((_, _), score2) -> compare score2 score1) pop in
-  let pop_len = List.length sorted_pop in
-  let start_index = int_of_float (lower_percentile *. float_of_int pop_len /. 100.0) in
-  let end_index = int_of_float (upper_percentile *. float_of_int pop_len /. 100.0) in
+  if sample_size = 0 then pop
+  else
+    let sorted_pop = List.sort (fun ((_, _), score1) ((_, _), score2) -> compare score2 score1) pop in
+    let pop_len = List.length sorted_pop in
+    let start_index = int_of_float (lower_percentile *. float_of_int pop_len /. 100.0) in
+    let end_index = int_of_float (upper_percentile *. float_of_int pop_len /. 100.0) in
 
-  (* Helper function to slice a list *)
-  let rec slice start count lst =
-    match lst with
-    | [] -> []
-    | hd :: tl ->
-        if start > 0 then slice (start - 1) count tl
-        else if count > 0 then hd :: slice 0 (count - 1) tl
-        else []
-  in
+    (* Helper function to slice a list *)
+    let rec slice start count lst =
+      match lst with
+      | [] -> []
+      | hd :: tl ->
+          if start > 0 then slice (start - 1) count tl
+          else if count > 0 then hd :: slice 0 (count - 1) tl
+          else []
+    in
 
-  (* Slice the list to get the segment *)
-  let segment =
-    let segment_start = max start_index 0 in
-    let segment_length = min (end_index - start_index + 1) (pop_len - segment_start) in
-    slice segment_start segment_length sorted_pop
-  in
+    (* Slice the list to get the segment *)
+    let segment =
+      let segment_start = max start_index 0 in
+      let segment_length = min (end_index - start_index + 1) (pop_len - segment_start) in
+      slice segment_start segment_length sorted_pop
+    in
 
-  (* Randomly sample from the segment *)
-  let rec sample acc remaining size =
-    if size <= 0 || remaining = [] then acc
-    else
-      let elem = random_element remaining in
-      sample (elem :: acc) (List.filter ((<>) elem) remaining) (size - 1)
-  in
+    (* Randomly sample from the segment *)
+    let rec sample acc remaining size =
+      if size <= 0 || remaining = [] then acc
+      else
+        let elem = random_element remaining in
+        sample (elem :: acc) (List.filter ((<>) elem) remaining) (size - 1)
+    in
 
-  sample [] segment sample_size
+    sample [] segment sample_size
 
 let nonterminals = ["RG_ID_LIST"; "REJECTED_GROUPS"; "AC_TOKEN"; "AC_TOKEN_CONTAINER"; "SCALAR"; "GROUP_ID"; "ELEMENT";]
 
@@ -261,7 +309,6 @@ let rec applyMutation (m : mutation) (g : ast) : packet_type * grammar =
     let added_grammar = fst (mutation_add_s1 g nt) in
     pp_print_ast Format.std_formatter added_grammar ;
     NOTHING, g
-    (* NOTHING, (mutate_till_success added_grammar g Add) *)
 
   | Delete -> print_endline "\n\nDELETING\n\n" ;
     let deleted_grammar = dead_rule_removal (fst (mutation_delete g nt)) "SAE_PACKET" in
@@ -272,24 +319,15 @@ let rec applyMutation (m : mutation) (g : ast) : packet_type * grammar =
       (
         match well_formed_check with
         | true -> NOTHING, x
-          (* let sygus_pass = (mutate_till_success deleted_grammar g Delete) in
-          (match sygus_pass with
-          | Some x -> pp_print_ast Format.std_formatter x ; NOTHING, x
-          | None -> applyMutation Delete g 
-          ) *)
         | false -> applyMutation Delete g
       )
     | None -> applyMutation Delete g
     )
-    (* print_endline nt ; *)
-    (* pp_print_ast Format.std_formatter (dead_rule_removal (mutate_till_success deleted_grammar g Delete) "SAE_PACKET") ; *)
-    (* NOTHING, dead_rule_removal (mutate_till_success deleted_grammar g Delete) "SAE_PACKET" *)
 
   | Modify -> print_endline "\n\nMODIFYING\n\n" ;
     let modified_grammar = fst (mutation_delete g nt) in
     pp_print_ast Format.std_formatter modified_grammar ;
     NOTHING, g
-    (* NOTHING, (mutate_till_success modified_grammar g Modify) *)
 
   | CrossOver -> print_endline "\n\n\nENTERING CROSSOVER\n\n\n" ;
       let (pr1, pr2) = get_production_rules_for_crossover g in
@@ -305,14 +343,10 @@ let rec applyMutation (m : mutation) (g : ast) : packet_type * grammar =
           let well_formed_check = check_well_formed_rules x in
           (match well_formed_check with
           | true ->
-                (* NOTHING,  (mutate_till_success x g CrossOver) *)
             NOTHING, x
           | false -> applyMutation CrossOver g
           )
         | None -> (applyMutation CrossOver g))
-            (* pp_print_ast Format.std_formatter finalGrammar ; *)
-      (* print_endline "\n\n\nEXITING CROSSOVER\n\n\n" ; *)
-      (* finalGrammar *)
   | CorrectPacket -> 
     let x = random_element [COMMIT; CONFIRM; ASSOCIATION_REQUEST] in (
       match x with 
@@ -329,49 +363,6 @@ let rec applyMutation (m : mutation) (g : ast) : packet_type * grammar =
       | RESET -> failwith "RESET should not occur"
     )
   | None -> NOTHING, g
-(* and 
-  mutate_till_success (mutated_grammar : ast) (original_grammar : ast) (mutation_op : mutation) : ast = 
-  let sygusOutput = (Pipeline.sygusGrammarToPacket mutated_grammar) in
-    match sygusOutput with
-    | Ok _ -> mutated_grammar cnf_sample 
-    | Error _ -> 
-      log_grammar mutated_grammar ;
-      print_endline "sygus_error, retrying\n\n" ;
-      let new_nt = random_element nonterminals in
-      match mutation_op with
-      | Add ->
-        let updated_mutation = first (mutation_add_s1 original_grammar new_nt) in
-        mutate_till_success updated_mutation original_grammar mutation_op
-      | Delete -> 
-        let updated_mutation = first (mutation_delete original_grammar new_nt) in
-        let dead_rule_removed = Topological_sort.dead_rule_removal (mutate_till_success updated_mutation original_grammar mutation_op) "SAE_PACKET" in
-        (match dead_rule_removed with
-        | Some x -> mutate_till_success x original_grammar mutation_op
-        | None -> let tupleMutation = applyMutation Delete original_grammar in
-          match tupleMutation with
-          (_, x) -> x
-        )
-      | Modify ->
-        let updated_mutation = first (mutation_update original_grammar new_nt) in
-        mutate_till_success updated_mutation original_grammar mutation_op
-      | CrossOver ->
-        let (pr1, pr2) = get_production_rules_for_crossover original_grammar in
-        let nt1, nt2, po1, po2 = extract_nt_po pr1 pr2 in
-        let rhs1 = random_element po1 in
-        let rhs2 = random_element po2 in
-        let crossoverPRs = mutation_crossover rhs1 rhs2 in
-        let newPR = grammarUpdateAfterCrossover nt1 original_grammar rhs1 rhs2 crossoverPRs in
-        let finalGrammar = grammarUpdateAfterCrossover nt2 newPR rhs1 rhs2 crossoverPRs in
-        let canonicalizedGrammar = dead_rule_removal finalGrammar "SAE_PACKET" in
-          (match canonicalizedGrammar with
-          | Some(x) -> pp_print_ast Format.std_formatter x; 
-            (mutate_till_success x original_grammar mutation_op)
-          | None -> let tupleMutation = applyMutation CrossOver original_grammar in
-            match tupleMutation with
-            (_, x) -> x
-          )
-      | CorrectPacket -> failwith "correctpacket mutation shouldnt have been passed to this func.."
-      | None -> original_grammar *)
 
 
 let rec newMutatedSet (p : child list) (m : mutationOperations) (n : int) : child list = 
@@ -382,9 +373,8 @@ let rec newMutatedSet (p : child list) (m : mutationOperations) (n : int) : chil
   | _, (x::xs), (mu::ms) ->
     let mutated_grammar = applyMutation mu (fst x |> snd) in
     (match mutated_grammar with
-    | (NOTHING, z) -> ((((fst x |> fst)), z), 0.0) :: (newMutatedSet xs ms (n - 1))
-    | (y, z) -> (((fst x |> fst) @ [(ValidPacket y)], z), 0.0) :: (newMutatedSet xs ms (n - 1))
-      (* (((first x |> first), mutated_grammar), 0.0) :: (newMutatedSet xs ms (n - 1)) *)
+    | (NOTHING, z) -> ((((fst x |> fst)), z), (snd x)) :: (newMutatedSet xs ms (n - 1))
+    | (y, z) -> (((fst x |> fst) @ [(ValidPacket y)], z), (snd x)) :: (newMutatedSet xs ms (n - 1))
     )
 let rec mutationList sampleFunction (mutationOps : mutationOperations) (n : int): mutation list =
   match n with
@@ -396,20 +386,25 @@ let rec sendPacketsToState (p : provenance list) : unit =
     [] -> ()
   | x :: xs -> let _ = callDriver x in sendPacketsToState xs
 
-let sendPacket (c : child) : (provenance * output) =
+let sendPacket (c : child) : (provenance * output) * state =
   let stateTransition = fst c |> fst in
+  print_endline "\n\n\nGRAMMAR TO SYGUS:" ;
+  pp_print_ast Format.std_formatter (fst c |> snd) ;
   let packetToSend_ = (Pipeline.sygusGrammarToPacket (fst c |> snd)) in 
     match packetToSend_ with
     | Ok (packetToSend, _metadata) ->
       sendPacketsToState stateTransition ;
       let driver_output = callDriver (RawPacket packetToSend) in
       let _ = callDriver (ValidPacket RESET) in
-      (RawPacket packetToSend, driver_output)
-    | Error _ -> (ValidPacket NOTHING, EXPECTED_OUTPUT)
+      (RawPacket packetToSend, (fst driver_output)), (snd driver_output)
+    | Error _ -> ((ValidPacket NOTHING, EXPECTED_OUTPUT), IGNORE_)
       
-let executeMutatedPopulation (mutatedPopulation : child list) : ((provenance list list) * (child list)) =
-  let outputList = List.map sendPacket mutatedPopulation in
-    scoreFunction outputList mutatedPopulation
+let executeMutatedPopulation (mutatedPopulation : child list) : ((provenance list list) * (child list)) * (state list) =
+  let _outputList = List.map sendPacket mutatedPopulation in
+  let removed_sygus_errors = List.filter (fun x -> (fst x |> fst) <> (ValidPacket NOTHING)) _outputList in
+  let outputList = List.map (fun x -> fst x) removed_sygus_errors in
+  let oracle_results = List.map (fun x -> snd x) removed_sygus_errors in
+    ((scoreFunction outputList mutatedPopulation), oracle_results)
 
 (* Filter population based on standard deviation *)
 let getScores (p: child list) : score list = List.map snd p
@@ -450,12 +445,15 @@ let extract_child_from_state (p : population) : child list =
   match p with
   | NOTHING x | CONFIRMED x | ACCEPTED x -> x
 
-let uniform_sample_from_queue (q : triple_queue) (n : int) : (child list) * (state list) =
+let uniform_sample_from_queue (q : triple_queue) : (child list) * (state list) =
   let np, cnf, acc = List.nth q 0, List.nth q 1, List.nth q 2 in
-  let np_sample = sample_from_percentile_range (extract_child_from_state np) 0.0 100.0 n in
-  let cnf_sample = sample_from_percentile_range (extract_child_from_state cnf) 0.0 100.0 n in
-  let acc_sample = sample_from_percentile_range (extract_child_from_state acc) 0.0 100.0 n in
-    (np_sample @ cnf_sample @ acc_sample), (List.map (fun _ -> NOTHING_) np_sample @ List.map (fun _ -> CONFIRMED_) cnf_sample @ List.map (fun _ -> ACCEPTED_) acc_sample)
+  let np_top_sample = sample_from_percentile_range (extract_child_from_state np) 0.0 25.0 ((List.length (extract_child_from_state np)) / 4) in
+  let cnf_top_sample = sample_from_percentile_range (extract_child_from_state cnf) 0.0 25.0 ((List.length (extract_child_from_state cnf)) /4) in
+  let acc_top_sample = sample_from_percentile_range (extract_child_from_state acc) 0.0 25.0 ((List.length (extract_child_from_state acc)) / 4) in
+  let np_bottom_sample = sample_from_percentile_range (extract_child_from_state np) 50.0 100.0 ((List.length (extract_child_from_state np)) / 4) in
+  let cnf_bottom_sample = sample_from_percentile_range (extract_child_from_state cnf) 50.0 100.0 ((List.length (extract_child_from_state cnf)) / 4) in
+  let acc_bottom_sample = sample_from_percentile_range (extract_child_from_state acc) 50.0 100.0 ((List.length (extract_child_from_state acc)) / 4) in
+    (np_top_sample @ np_bottom_sample @ cnf_top_sample @ cnf_bottom_sample @ acc_top_sample @ acc_bottom_sample), (List.map (fun _ -> NOTHING_) np_top_sample @ List.map (fun _ -> NOTHING_) np_bottom_sample @ List.map (fun _ -> CONFIRMED_) cnf_top_sample @ List.map (fun _ -> CONFIRMED_) cnf_bottom_sample @ List.map (fun _ -> ACCEPTED_) acc_top_sample @ List.map (fun _ -> ACCEPTED_) acc_top_sample)
 
 let population_size_across_queues (x : population) (y : population) (z : population) =
   match x, y, z with
@@ -473,36 +471,25 @@ let population_size_across_queues (x : population) (y : population) (z : populat
     | NOTHING -> NOTHING 
     | RESET -> NOTHING *)
 
-let rec map_packet_to_state (cl : child list) (states : state list) : state_child list =
-  match cl, states with
-  | [], [] -> []
-  | [], _ -> failwith "child list exhausted, state list non-empty"
-  | _, [] -> failwith "state list exhausted, child list non-empty"
-  | x :: xs, y :: ys -> 
-    let last_provenance = List.hd (List.rev (fst (fst x))) in
-    match last_provenance with
-    | RawPacket z -> 
-      let last_packet = z in
-      let expected_state = parse_packet (Bitstring.bitstring_of_string (Bytes.to_string last_packet)) in (
-      match expected_state with 
-      | NOTHING_ -> NOTHING x :: map_packet_to_state xs ys
-      | CONFIRMED_ -> CONFIRMED x :: map_packet_to_state xs ys
-      | ACCEPTED_ -> ACCEPTED x :: map_packet_to_state xs ys
+let rec map_packet_to_state (cl : child list) (old_states : state list) (new_states : state list) : state_child list =
+  match cl, old_states, new_states with
+  | [], [], [] -> []
+  | [], _, _ -> failwith "child list exhausted, state list non-empty"
+  | _, [], _ -> failwith "state list exhausted, child list non-empty"
+  | _, _, [] -> failwith "state list exhausted, child list non-empty"
+  
+  | x :: xs, y :: ys, z :: zs -> 
+    match z with 
+      | NOTHING_ -> NOTHING x :: map_packet_to_state xs ys zs
+      | CONFIRMED_ -> CONFIRMED x :: map_packet_to_state xs ys zs
+      | ACCEPTED_ -> ACCEPTED x :: map_packet_to_state xs ys zs
       | IGNORE_ -> 
         match y with
-        | NOTHING_ -> NOTHING x :: map_packet_to_state xs ys
-        | CONFIRMED_ -> CONFIRMED x :: map_packet_to_state xs ys
-        | ACCEPTED_ -> ACCEPTED x :: map_packet_to_state xs ys
+        | NOTHING_ -> NOTHING x :: map_packet_to_state xs ys zs
+        | CONFIRMED_ -> CONFIRMED x :: map_packet_to_state xs ys zs
+        | ACCEPTED_ -> ACCEPTED x :: map_packet_to_state xs ys zs
         | IGNORE_ -> failwith "unexpected IGNORE_ pattern"
-      )
-    | ValidPacket z -> (
-        match z with
-        | COMMIT -> CONFIRMED x :: map_packet_to_state xs ys
-        | CONFIRM -> ACCEPTED x :: map_packet_to_state xs ys
-        | ASSOCIATION_REQUEST -> ACCEPTED x :: map_packet_to_state xs ys
-        | NOTHING -> NOTHING x :: map_packet_to_state xs ys 
-        | RESET -> failwith "unexpected mapping state"
-      )
+      
     (* | NOTHING -> failwith "unreachable case.. nothing symbol unexpected in provenance"
     | RESET -> failwith "unreachable case.. reset symbol unexpected in provenance" *)
 
@@ -516,13 +503,36 @@ let filter_state (qh : queue_handle) (c : state_child) : bool =
   | CONFIRMED _ -> if qh = CONFIRMED then true else false
   | ACCEPTED _ -> if qh = ACCEPTED then true else false
   
-let bucket_oracle (q : triple_queue) (clist : child list) (states : state list) : triple_queue =
+let bucket_oracle (q : triple_queue) (clist : child list) (old_states : state list) (new_states : state list) : triple_queue =
   let np, cnf, acc = extract_child_from_state (List.nth q 0), extract_child_from_state (List.nth q 1), extract_child_from_state (List.nth q 2) in
-  let newPopulation = map_packet_to_state clist states in
+  let newPopulation = map_packet_to_state clist old_states new_states in
   let newNothingList = np @ List.map get_child_from_state (List.filter (filter_state NOTHING) newPopulation) in
   let newConfirmedList = cnf @ List.map get_child_from_state (List.filter (filter_state CONFIRMED) newPopulation) in
   let newAcceptedList = acc @ List.map get_child_from_state (List.filter (filter_state ACCEPTED) newPopulation) in
    [NOTHING newNothingList; CONFIRMED newConfirmedList; ACCEPTED newAcceptedList]
+
+let dump_single_trace (trace : provenance list) : string =
+  let trace_string = List.map (fun x -> 
+    match x with
+    | RawPacket z -> (Bytes.to_string z)
+    | ValidPacket z -> ( 
+      match z with
+      | COMMIT -> "COMMIT"
+      | CONFIRM -> "CONFIRM"
+      | ASSOCIATION_REQUEST -> "ASSOCIATION_REQUEST"
+      | NOTHING | RESET -> failwith "unexpected provenance element.."
+    ) 
+  ) trace in
+  let result = ref "" in
+  (List.iter (fun x -> result := !result ^ x ^ ", ") trace_string) ;
+  !result ^ "\n"
+
+let dump_all_traces (traces : provenance list list) =
+  let trace_string_lists = List.map dump_single_trace traces in
+  let result = ref "" in
+  (List.iter (fun x -> result := !result ^ x ) trace_string_lists) ;
+  append_to_file "../interesting_traces.txt" !result
+
 
 let rec fuzzingAlgorithm 
 (maxCurrentPopulation : int) 
@@ -548,19 +558,24 @@ let rec fuzzingAlgorithm
         CONFIRMED (List.filter (fun x -> List.length (fst x |> fst) <= 10) (extract_child_from_state confirmed_population));
         ACCEPTED (List.filter (fun x -> List.length (fst x |> fst) <= 10) (extract_child_from_state accepted_population))]
       in
-      (* let top_sample = sample_from_percentile_range currentPopulation 0.0 10.0 1 in
-      let middle_sample = sample_from_percentile_range currentPopulation 30.0 60.0 2 in
-      let bottom_sample = sample_from_percentile_range currentPopulation 80.0 100.0 1 in *)
-      (* let newPopulation = top_sample @ middle_sample @ bottom_sample in *)
-      let newPopulation = fst (uniform_sample_from_queue currentQueue 10) in
-      let old_states = snd (uniform_sample_from_queue currentQueue 10) in
+      let newPopulation = fst (uniform_sample_from_queue currentQueue) in
+      let old_states = snd (uniform_sample_from_queue currentQueue) in
       let selectedMutations = mutationList random_element mutationOperations (List.length newPopulation) in
       let mutatedPopulation = newMutatedSet newPopulation selectedMutations (List.length newPopulation) in
-      let (iT, newPopulation) = executeMutatedPopulation mutatedPopulation in
-      let newQueue = bucket_oracle currentQueue newPopulation old_states in 
+      let score_and_oracle = executeMutatedPopulation mutatedPopulation in
+      let (iT, newPopulation) = fst score_and_oracle in
+      dump_all_traces iT ;
+      let newQueue = bucket_oracle currentQueue newPopulation old_states (snd score_and_oracle) in 
       fuzzingAlgorithm maxCurrentPopulation newQueue (List.append iTraces iT) tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations
 
-let runFuzzer grammar = 
+let runFuzzer grammar_list = 
   Random.self_init ();
-  let _ = fuzzingAlgorithm 1000 [NOTHING([([], grammar), 0.0]); CONFIRMED([([], grammar), 0.0]); ACCEPTED([([], grammar), 0.0])] [] 100 0 1000 20 100 [Add; Delete; Modify; CrossOver;CorrectPacket;] in
+  let commit_grammar = List.nth grammar_list 0 in
+  let confirm_grammar = List.nth grammar_list 1 in
+  let commit_confirm_grammar = List.nth grammar_list 2 in
+  let nothing_queue = NOTHING([([], commit_grammar), 0.0; ([], confirm_grammar), 0.0; ([], commit_confirm_grammar), 0.0;]) in
+  let confirmed_queue = CONFIRMED([([ValidPacket COMMIT], commit_grammar), 0.0; ([ValidPacket COMMIT], confirm_grammar), 0.0; ([ValidPacket COMMIT], commit_confirm_grammar), 0.0;]) in
+  let accepted_queue = ACCEPTED([([ValidPacket COMMIT; ValidPacket CONFIRM], commit_grammar), 0.0; ([ValidPacket COMMIT; ValidPacket CONFIRM], confirm_grammar), 0.0; ([ValidPacket COMMIT; ValidPacket CONFIRM], commit_confirm_grammar), 0.0;]) in
+
+  let _ = fuzzingAlgorithm 1000 [nothing_queue; confirmed_queue; accepted_queue] [] 100 0 1000 20 100 [Add; Delete; Modify; CrossOver;CorrectPacket;] in
   ()
