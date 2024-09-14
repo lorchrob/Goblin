@@ -57,7 +57,10 @@ let rec mutate_concrete_packet: sygus_ast -> sygus_ast
     ) ast *)
     
 open Unix
-    
+open Lwt.Infix
+
+type state = Byte_parser.state
+
 type packet = bytes 
 type score = float 
 
@@ -386,11 +389,23 @@ let rec sendPacketsToState (p : provenance list) : unit =
     [] -> ()
   | x :: xs -> let _ = callDriver x in sendPacketsToState xs
 
+let timeout_wrapper timeout f =
+  let timeout_task = Lwt_unix.sleep timeout >|= fun () -> Error "timeout" in
+  let function_task = 
+    Lwt.try_bind
+    (fun () -> Lwt.return (f ()))
+    (function
+    | Ok result -> Lwt.return (Ok result)
+    | Error e -> Lwt.return (Error e)
+    )
+    (fun ex -> Lwt.return (Error (Printexc.to_string ex))) in
+  Lwt.pick [timeout_task; function_task]
+
 let sendPacket (c : child) : (provenance * output) * state =
   let stateTransition = fst c |> fst in
   print_endline "\n\n\nGRAMMAR TO SYGUS:" ;
   pp_print_ast Format.std_formatter (fst c |> snd) ;
-  let packetToSend_ = (Pipeline.sygusGrammarToPacket (fst c |> snd)) in 
+  let packetToSend_ = Lwt_main.run (timeout_wrapper 5.0 (fun () -> (Pipeline.sygusGrammarToPacket (fst c |> snd)))) in
     match packetToSend_ with
     | Ok (packetToSend, _metadata) ->
       sendPacketsToState stateTransition ;
@@ -398,7 +413,7 @@ let sendPacket (c : child) : (provenance * output) * state =
       let _ = callDriver (ValidPacket RESET) in
       (RawPacket packetToSend, (fst driver_output)), (snd driver_output)
     | Error _ -> ((ValidPacket NOTHING, EXPECTED_OUTPUT), IGNORE_)
-      
+
 let executeMutatedPopulation (mutatedPopulation : child list) : ((provenance list list) * (child list)) * (state list) =
   let _outputList = List.map sendPacket mutatedPopulation in
   let removed_sygus_errors = List.filter (fun x -> (fst x |> fst) <> (ValidPacket NOTHING)) _outputList in
