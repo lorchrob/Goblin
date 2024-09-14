@@ -42,14 +42,14 @@ let main_pipeline input_string =
   Debug.debug_print Lib.pp_print_newline ppf ();
   let sygus_outputs = List.map (Sygus.call_sygus ctx dep_map) asts in
   List.iter (Debug.debug_print Format.pp_print_string ppf) sygus_outputs;
-
+  
   (* Step 8: Parse SyGuS output *)
   Debug.debug_print Format.pp_print_string ppf "\nParsing SyGuS output:\n";
   let sygus_asts = List.map2 Utils.parse_sygus sygus_outputs asts in
   let sygus_asts = List.map Result.get_ok sygus_asts in
   Debug.debug_print Format.pp_print_string ppf "\nSyGuS ASTs:\n";
   List.iter (Debug.debug_print SygusAst.pp_print_sygus_ast ppf) sygus_asts;
-  
+
   (* Step 9: Recombine to single AST *)
   Debug.debug_print Format.pp_print_string ppf "\nRecombining to single AST:\n";
   let sygus_ast = Recombine.recombine sygus_asts in 
@@ -66,20 +66,6 @@ let main_pipeline input_string =
   Format.pp_print_string ppf output; 
   Lib.pp_print_newline ppf (); 
   output
-
-(* Should be input grammar AST -> bytes; currently outputs a string *)
-(*!! TODO: Make sure this actually outputs bytes, not string *)
-(* 0x01 -> 00000001 *)
-(* Call this function *)
-
-(* let rec sortAst ast =
-  match ast with
-  | [] -> []
-  | Ast.ProdRule(a, b) :: TypeAnnotation(x,y,z) :: xs -> ProdRule(a, b) :: (sortAst xs) :: TypeAnnotation(x,y,z)
-  | TypeAnnotation(x,y,z) :: ProdRule(a, b) :: xs -> ProdRule(a, b) :: (sortAst xs) :: TypeAnnotation(x,y,z)
-  | ProdRule(a, b) :: ProdRule(x,y) :: xs -> ProdRule(a, b) :: ProdRule(x,y) :: (sortAst xs)
-  | TypeAnnotation(x,y,z) :: TypeAnnotation(a,b,c) :: xs -> (sortAst xs) :: TypeAnnotation(x,y,z) :: TypeAnnotation(a,b,c)
-  | a :: [] -> a *)
 
 let rec collect_results results =
   match results with

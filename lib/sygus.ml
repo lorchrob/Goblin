@@ -18,7 +18,7 @@ let pp_print_ty: Format.formatter -> il_type -> unit
 = fun ppf ty -> match ty with 
 | Int -> Format.fprintf ppf "Int"
 | Bool -> Format.fprintf ppf "Bool"
-(* Strings should only be present for dependency computations. 
+(*!! Strings should only be present for dependency computations. 
    If it's here, it is a grammar element that would be pruned anyway. *)
 | String -> Format.fprintf ppf "Int"
 | BitVector len -> Format.fprintf ppf "(_ BitVec %d)" len
@@ -345,8 +345,7 @@ fun ctx dep_map ast ->
   | TypeAnnotation (nt, _, _) :: _ -> nt
   | _ -> assert false
   in
-  (* ignore (Unix.system "mkdir sygus_debug > /dev/null"); *)
-  (* ignore (Unix.system "mkdir sygus_debug > /dev/null"); *)
+  ignore (Unix.system "mkdir sygus_debug 2> /dev/null");
   let input_filename = "./sygus_debug/" ^ top_nt ^ ".smt2" in
   let output_filename = "./sygus_debug/" ^ top_nt ^ "_out.smt2" in
   let output_filename2 = "./sygus_debug/" ^ top_nt ^ "_out2.smt2" in
