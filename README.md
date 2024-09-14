@@ -6,6 +6,7 @@ Required opam packages:
 
 Other dependencies:
 
+* macOs: `brew install coreutils` (TODO: `timeout` vs `gtimeout` based on OS)
 * `cvc5`! (TODO: Make it so you don't have to manually update file path)
 
 How to run the tool:
