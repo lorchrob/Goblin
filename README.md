@@ -2,11 +2,11 @@
 
 Required opam packages:
 
-* `opam install menhir`
-* `opam install alcotest`
-* `opam install ppx_bitstring`
-* `opam install yojson`
-* `opam install ocamlgraph`
+* `opam install menhir alcotest ppx_bitstring yojson ocamlgraph lwt lwt_ppx`
+
+Other dependencies:
+
+* `cvc5`! (TODO: Make it so you don't have to manually update file path)
 
 How to run the tool:
 
