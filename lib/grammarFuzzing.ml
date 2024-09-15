@@ -229,7 +229,12 @@ let callDriver x =
     write_to_file message_file y;
     print_endline "write to file successful.." ;
     let bin_placeholders = wait_for_python_bin_response placeholder_replaced_file in
-    let oracle_result = parse_packet ((Bitstring.bitstring_of_string (Bytes.to_string bin_placeholders))) in
+    print_endline "possible fail place.." ;
+    let string_to_send = ((Bitstring.bitstring_of_string (Bytes.to_string bin_placeholders))) in
+    print_endline "string_to_send success.." ;
+    print_endline (Bytes.to_string bin_placeholders) ;
+    let oracle_result = parse_packet string_to_send in
+    print_endline "oracle result success" ;
     ((wait_for_python_response response_file), oracle_result)
 
 let rec scoreFunction (pktStatus : (provenance * output) list) (mutatedPopulation : child list) : ((provenance list list) * (child list)) =
@@ -414,12 +419,15 @@ let sendPacket (c : child) : (provenance * output) * state =
       (RawPacket packetToSend, (fst driver_output)), (snd driver_output)
     | Error _ -> ((ValidPacket NOTHING, EXPECTED_OUTPUT), IGNORE_)
 
-let executeMutatedPopulation (mutatedPopulation : child list) : ((provenance list list) * (child list)) * (state list) =
+let executeMutatedPopulation (mutatedPopulation : child list) (old_states : state list) : (((provenance list list) * (child list)) * (state list)) * (state list) =
   let _outputList = List.map sendPacket mutatedPopulation in
-  let removed_sygus_errors = List.filter (fun x -> (fst x |> fst) <> (ValidPacket NOTHING)) _outputList in
+  let old_new_states = List.map2 (fun x y -> (x, y)) _outputList old_states in
+  let _removed_sygus_errors = List.filter (fun x -> (fst x |> fst |> fst) <> (ValidPacket NOTHING)) old_new_states in
+  let old_states = List.map (fun x -> snd x) _removed_sygus_errors in
+  let removed_sygus_errors = List.map (fun x -> fst x) _removed_sygus_errors in
   let outputList = List.map (fun x -> fst x) removed_sygus_errors in
   let oracle_results = List.map (fun x -> snd x) removed_sygus_errors in
-    ((scoreFunction outputList mutatedPopulation), oracle_results)
+    (((scoreFunction outputList mutatedPopulation), oracle_results), old_states)
 
 (* Filter population based on standard deviation *)
 let getScores (p: child list) : score list = List.map snd p
@@ -577,7 +585,9 @@ let rec fuzzingAlgorithm
       let old_states = snd (uniform_sample_from_queue currentQueue) in
       let selectedMutations = mutationList random_element mutationOperations (List.length newPopulation) in
       let mutatedPopulation = newMutatedSet newPopulation selectedMutations (List.length newPopulation) in
-      let score_and_oracle = executeMutatedPopulation mutatedPopulation in
+      let score_and_oracle_old_states = executeMutatedPopulation mutatedPopulation old_states in
+      let old_states = snd score_and_oracle_old_states in
+      let score_and_oracle = fst score_and_oracle_old_states in
       let (iT, newPopulation) = fst score_and_oracle in
       dump_all_traces iT ;
       let newQueue = bucket_oracle currentQueue newPopulation old_states (snd score_and_oracle) in 

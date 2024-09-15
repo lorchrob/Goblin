@@ -12,7 +12,7 @@ let string_to_hex s =
   let binary_strings = List.map char_to_binary (List.init (String.length s) (fun i -> String.get s i)) in
   String.concat "" binary_strings  (* Concatenate all binary strings *)
 
-let bitstring_to_hex bitstr =
+let bitstring_to_hex (bitstr : Bitstring.bitstring) : string =
   print_endline (Bitstring.string_of_bitstring bitstr) ;
   let rec to_hex acc bitstr =
     if Bitstring.bitstring_length bitstr = 0 then
@@ -491,9 +491,14 @@ let parse_packet (packet : Bitstring.bitstring) : state =
     |} (string_of_int status) (bitstring_to_hex scalar) (bitstring_to_hex element) in
     write_json_to_file "driver_oracle.json" json_to_driver ;
     wait_for_oracle_response "../oracle-response.txt"
-  | {| _ |} -> 
-    print_endline "\n\n\n\nfailed..\n\n\n\n"; 
-    IGNORE_
+  | {| _ |} ->
+    let json_to_driver = Printf.sprintf {|
+      {
+        "failed" : "True"
+      }
+    |} in
+    write_json_to_file "driver_oracle.json" json_to_driver ;
+    wait_for_oracle_response "..oracle-response.txt"
     
 
 let get_bytes_and_run filename =
