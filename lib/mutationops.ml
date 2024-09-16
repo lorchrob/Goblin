@@ -61,21 +61,20 @@ let rec mutation_add_s1 g nt =
     match g with 
     | [] -> ([], false) 
     | ProdRule(nonTerminal, production_options):: xs -> 
-        if nonTerminal = "COMMIT" || nonTerminal = "CONFIRM"
-        then
+        (* if nonTerminal = "COMMIT" || nonTerminal = "CONFIRM"
+        then *)
             let found = isNonTerminalPresent nt production_options in 
             if found then  
                 let po = apply_add_s1_to_rule production_options nt in 
                     (ProdRule(nonTerminal, po)::xs, true) 
+            (* else 
+                (ProdRule(nonTerminal, production_options)::xs, false)        *)
             else 
-                (ProdRule(nonTerminal, production_options)::xs, false)       
-        else 
-            let (gg, r) = mutation_add_s1 xs nt
-                    in 
-            (ProdRule(nonTerminal, production_options)::gg, r)   
+                let (gg, r) = mutation_add_s1 xs nt in 
+                (ProdRule(nonTerminal, production_options)::gg, r)   
     | TypeAnnotation(v, w, x) :: ys -> 
-        let (gg, r) = mutation_add_s1 ys nt
-                in (TypeAnnotation(v, w, x)::gg, r)
+        let (gg, r) = mutation_add_s1 ys nt in
+        (TypeAnnotation(v, w, x)::gg, r)
 
 
 let rec isPresentInCaseList (nt:string) (caselist : case list) : bool = 
@@ -125,21 +124,23 @@ let rec mutation_delete g nt =
     match g with
     | [] -> ([], false)
     | ProdRule(nonTerminal, production_options) :: xs ->
-        if (nonTerminal = "SAE_PACKET")
-        then
+        (* if (nonTerminal = "SAE_PACKET")
+        then *)
             let found = isNonTerminalPresent nt production_options in
             if found then
                 let po = apply_delete_to_rule nt production_options in
                     (ProdRule(nonTerminal, po) :: xs, true)
-                else 
-                    (ProdRule(nonTerminal, production_options)::xs, false)       
             else 
+                let (gg, r) = mutation_delete xs nt in
+                (ProdRule(nonTerminal, production_options) :: gg, r) 
+                (* (ProdRule(nonTerminal, production_options)::xs, false)        *)
+            (* else 
                 let (gg, r) = mutation_delete xs nt
                         in 
-                (ProdRule(nonTerminal, production_options)::gg, r)   
-        | TypeAnnotation(v, w, x) :: ys -> 
-            let (gg, r) = mutation_delete ys nt 
-                    in (TypeAnnotation(v, w, x)::gg, r)
+                (ProdRule(nonTerminal, production_options) :: gg, r)    *)
+    | TypeAnnotation(v, w, x) :: ys -> 
+        let (gg, r) = mutation_delete ys nt 
+                in (TypeAnnotation(v, w, x)::gg, r)
 
 let update_constraint (nt : string) (cList : semantic_constraint list) : semantic_constraint list =
     match cList with 
@@ -223,17 +224,17 @@ let rec replace_geList b rhs1 rhs2 crossoverPRs =
         then (replace_Rhs b rhs1 (fst crossoverPRs)) @ (replace_geList xss rhs1 rhs2 crossoverPRs)
         else if x = rhs2
         then (replace_Rhs b rhs2 (snd crossoverPRs)) @ (replace_geList xss rhs1 rhs2 crossoverPRs)
-        else (replace_geList xss rhs1 rhs2 crossoverPRs)
+        else x :: (replace_geList xss rhs1 rhs2 crossoverPRs)
 
 let rec grammarUpdateAfterCrossover (nt : string) (g : ast) (rhs1 : prod_rule_rhs) (rhs2 : prod_rule_rhs) (crossoverPRs : (prod_rule_rhs * prod_rule_rhs)) : ast = 
     match g with
-        | [] -> []
-        | ProdRule(a, b) :: xs -> 
-        if a = nt then  
-            let newPR = replace_geList b rhs1 rhs2 crossoverPRs in
-            ProdRule(a, newPR) :: (grammarUpdateAfterCrossover nt xs rhs1 rhs2 crossoverPRs)
-        else ProdRule(a, b) :: (grammarUpdateAfterCrossover nt xs rhs1 rhs2 crossoverPRs)
-        | TypeAnnotation(x,y,z) :: xs -> TypeAnnotation(x,y,z) :: (grammarUpdateAfterCrossover nt xs rhs1 rhs2 crossoverPRs)
+    | [] -> []
+    | ProdRule(a, b) :: xs -> 
+    if a = nt then  
+        let newPR = replace_geList b rhs1 rhs2 crossoverPRs in
+        ProdRule(a, newPR) :: (grammarUpdateAfterCrossover nt xs rhs1 rhs2 crossoverPRs)
+    else ProdRule(a, b) :: (grammarUpdateAfterCrossover nt xs rhs1 rhs2 crossoverPRs)
+    | TypeAnnotation(x,y,z) :: xs -> TypeAnnotation(x,y,z) :: (grammarUpdateAfterCrossover nt xs rhs1 rhs2 crossoverPRs)
 
 let extract_nt_po pr1 pr2 =
 match pr1, pr2 with
