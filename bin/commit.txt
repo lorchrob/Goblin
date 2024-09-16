@@ -13,7 +13,6 @@ int_to_bitvector(16, 19) bvlte <GROUP_ID> land
 (lnot (<STATUS_CODE> = int_to_bitvector(16, 1))) 
 );
 (lnot (<STATUS_CODE> = int_to_bitvector(16, 0)));
-<STATUS_CODE> = int_to_bitvector(16, 126);
     };
 
 <AUTH_ALGO> :: BitVector(16)

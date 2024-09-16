@@ -324,7 +324,7 @@ let sample_from_percentile_range (pop : child list) (lower_percentile: float) (u
 
     sample [] segment sample_size
 
-let nonterminals = ["RG_ID_LIST"; "REJECTED_GROUPS"; "AC_TOKEN"; "AUTH_SEQ_CONFIRM";"AC_TOKEN_CONTAINER"; "CONFIRM_HASH"; "AUTH_ALGO"; "AUTH_SEQ_COMMIT";"SCALAR"; "GROUP_ID"; "ELEMENT"; "SEND_CONFIRM_COUNTER";]
+let nonterminals = ["RG_ID_LIST"; "REJECTED_GROUPS"; "AC_TOKEN"; "COMMIT"; "CONFIRM";"AUTH_SEQ_CONFIRM";"AC_TOKEN_CONTAINER"; "CONFIRM_HASH"; "AUTH_ALGO"; "AUTH_SEQ_COMMIT";"SCALAR"; "GROUP_ID"; "ELEMENT"; "SEND_CONFIRM_COUNTER";]
 
 let rec check_well_formed_rules (grammar : ast) : bool =
   match grammar with
@@ -349,7 +349,7 @@ let rec applyMutation (m : mutation) (g : ast) : packet_type * grammar =
     let delete_attempt = (mutation_delete g nt) in
     if snd delete_attempt = false then applyMutation Delete g
     else
-      let deleted_grammar = dead_rule_removal (fst delete_attempt) "SAE_PACKET" in
+      let deleted_grammar = canonicalize (fst delete_attempt) in
       (
         match deleted_grammar with
       | Some x ->
@@ -375,7 +375,7 @@ let rec applyMutation (m : mutation) (g : ast) : packet_type * grammar =
       let crossoverPRs = mutation_crossover rhs1 rhs2 in
       let newPR = grammarUpdateAfterCrossover nt1 g rhs1 rhs2 crossoverPRs in
       let finalGrammar = grammarUpdateAfterCrossover nt2 newPR rhs1 rhs2 crossoverPRs in
-      let canonicalizedGrammar = dead_rule_removal finalGrammar "SAE_PACKET" in
+      let canonicalizedGrammar = canonicalize finalGrammar in
         (match canonicalizedGrammar with
         | Some(x) -> pp_print_ast Format.std_formatter x; 
           let well_formed_check = check_well_formed_rules x in
@@ -429,14 +429,19 @@ let sendPacket (c : child) : (provenance * output) * state =
   let stateTransition = fst c |> fst in
   print_endline "\n\n\nGRAMMAR TO SYGUS:" ;
   pp_print_ast Format.std_formatter (fst c |> snd) ;
-  let packetToSend_ = Lwt_main.run (timeout_wrapper 5.0 (fun () -> (Pipeline.sygusGrammarToPacket (fst c |> snd)))) in
-    match packetToSend_ with
-    | Ok (packetToSend, _metadata) ->
-      sendPacketsToState stateTransition ;
-      let driver_output = callDriver (RawPacket packetToSend) in
-      let _ = callDriver (ValidPacket RESET) in
-      (RawPacket packetToSend, (fst driver_output)), (snd driver_output)
-    | Error _ -> ((ValidPacket NOTHING, EXPECTED_OUTPUT), IGNORE_)
+  let removed_dead_rules_for_sygus = dead_rule_removal (fst c |> snd) "SAE_PACKET" in
+  match removed_dead_rules_for_sygus with
+  | Some grammar_to_sygus ->
+    let packetToSend_ = Lwt_main.run (timeout_wrapper 5.0 (fun () -> (Pipeline.sygusGrammarToPacket grammar_to_sygus))) in (
+      match packetToSend_ with
+      | Ok (packetToSend, _metadata) ->
+        sendPacketsToState stateTransition ;
+        let driver_output = callDriver (RawPacket packetToSend) in
+        let _ = callDriver (ValidPacket RESET) in
+        (RawPacket packetToSend, (fst driver_output)), (snd driver_output)
+      | Error _ -> ((ValidPacket NOTHING, EXPECTED_OUTPUT), IGNORE_)
+    )
+  | None -> ((ValidPacket NOTHING, EXPECTED_OUTPUT), IGNORE_)
 
 let executeMutatedPopulation (mutatedPopulation : child list) (old_states : state list) : (((provenance list list) * (child list)) * (state list)) * (state list) =
   print_endline "EXECUTING MUTATED POPULATION.." ;
