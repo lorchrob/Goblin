@@ -476,21 +476,13 @@ let cleaupPopulation (q : triple_queue) : triple_queue =
      ignore 0.0 when checking for staleness *)
   print_endline "CLEANING UP QUEUES..." ;
   let np = List.nth q 0 in
-  let cnf = List.nth q 1 in
-  let acc = List.nth q 2 in
   match np, cnf, acc with
   | NOTHING a, CONFIRMED b, ACCEPTED c ->
     let s = getScores a in
     let sd = stdDev s in
     let newNothingList = List.filter (fun (_, sc) -> sc = 0.0 || sc > sd) a in
-    let s = getScores b in 
-    let sd = stdDev s in
-    let newConfirmedList = List.filter (fun (_, sc) -> sc = 0.0 || sc > sd) b in
-    let s = getScores c in 
-    let sd = stdDev s in
-    let newAcceptedList = List.filter (fun (_, sc) -> sc = 0.0 || sc > sd) c in
     print_endline "RETURNING CLEANED POPULATION.." ;
-    [NOTHING newNothingList; CONFIRMED newConfirmedList; ACCEPTED newAcceptedList]
+    [NOTHING newNothingList]
   | _, _, _ -> failwith "Unexpected queue pattern in cleanup"
 
     (* END CLEANUP *)
@@ -501,20 +493,16 @@ let extract_child_from_state (p : population) : child list =
 
 let uniform_sample_from_queue (q : triple_queue) : (child list) * (state list) =
   print_endline "SAMPLING NEW POPULATION FOR MUTATION.." ;
-  let np, cnf, acc = List.nth q 0, List.nth q 1, List.nth q 2 in
+  let np = List.nth q 0 in
   let np_top_sample = sample_from_percentile_range (extract_child_from_state np) 0.0 25.0 ((List.length (extract_child_from_state np)) / 4) in
-  let cnf_top_sample = sample_from_percentile_range (extract_child_from_state cnf) 0.0 25.0 ((List.length (extract_child_from_state cnf)) /4) in
-  let acc_top_sample = sample_from_percentile_range (extract_child_from_state acc) 0.0 25.0 ((List.length (extract_child_from_state acc)) / 4) in
   let np_bottom_sample = sample_from_percentile_range (extract_child_from_state np) 50.0 100.0 ((List.length (extract_child_from_state np)) / 4) in
-  let cnf_bottom_sample = sample_from_percentile_range (extract_child_from_state cnf) 50.0 100.0 ((List.length (extract_child_from_state cnf)) / 4) in
-  let acc_bottom_sample = sample_from_percentile_range (extract_child_from_state acc) 50.0 100.0 ((List.length (extract_child_from_state acc)) / 4) in
   print_endline "RETURNING NEW POPULATION FOR MUTATION.." ;
     (np_top_sample @ np_bottom_sample @ cnf_top_sample @ cnf_bottom_sample @ acc_top_sample @ acc_bottom_sample), (List.map (fun _ -> NOTHING_) np_top_sample @ List.map (fun _ -> NOTHING_) np_bottom_sample @ List.map (fun _ -> CONFIRMED_) cnf_top_sample @ List.map (fun _ -> CONFIRMED_) cnf_bottom_sample @ List.map (fun _ -> ACCEPTED_) acc_top_sample @ List.map (fun _ -> ACCEPTED_) acc_top_sample)
 
-let population_size_across_queues (x : population) (y : population) (z : population) =
-  match x, y, z with
-  | NOTHING a, CONFIRMED b, ACCEPTED c  -> List.length a + List.length b + List.length c
-  | _, _, _ -> failwith "Queue order not maintained"
+let population_size_across_queues (x : population) =
+  match x with
+  | NOTHING a -> List.length a
+  | _ -> failwith "Queue order not maintained"
 
 (* let oracle (pkt : provenance) : queue_handle =
   match pkt with
@@ -561,13 +549,11 @@ let filter_state (qh : queue_handle) (c : state_child) : bool =
   
 let bucket_oracle (q : triple_queue) (clist : child list) (old_states : state list) (new_states : state list) : triple_queue =
   print_endline "NEW QUEUES GENERATING.." ;
-  let np, cnf, acc = extract_child_from_state (List.nth q 0), extract_child_from_state (List.nth q 1), extract_child_from_state (List.nth q 2) in
+  let np = extract_child_from_state (List.nth q 0) in
   let newPopulation = map_packet_to_state clist old_states new_states in
   let newNothingList = np @ List.map get_child_from_state (List.filter (filter_state NOTHING) newPopulation) in
-  let newConfirmedList = cnf @ List.map get_child_from_state (List.filter (filter_state CONFIRMED) newPopulation) in
-  let newAcceptedList = acc @ List.map get_child_from_state (List.filter (filter_state ACCEPTED) newPopulation) in
   print_endline "NEW QUEUES GENERATED -- RETURNING.." ;
-   [NOTHING newNothingList; CONFIRMED newConfirmedList; ACCEPTED newAcceptedList]
+   [NOTHING newNothingList]
 
 let dump_single_trace (trace : provenance list) : string =
   let trace_string = List.map (fun x -> 
@@ -603,18 +589,14 @@ let rec fuzzingAlgorithm
 (newChildThreshold : int) 
 (mutationOperations : mutationOperations) =
   let nothing_population = List.nth currentQueue 0 in
-  let confirmed_population = List.nth currentQueue 1 in
-  let accepted_population = List.nth currentQueue 2 in
-  let total_population_size = population_size_across_queues nothing_population confirmed_population accepted_population in
+  let total_population_size = population_size_across_queues in
   if currentIteration >= terminationIteration then iTraces
   else
     if currentIteration mod cleanupIteration = 0 || total_population_size >= maxCurrentPopulation then
       fuzzingAlgorithm maxCurrentPopulation (cleaupPopulation currentQueue) iTraces tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations
     else
       let currentQueue = 
-        [NOTHING (List.filter (fun x -> List.length (fst x |> fst) <= 10) (extract_child_from_state nothing_population));
-        CONFIRMED (List.filter (fun x -> List.length (fst x |> fst) <= 10) (extract_child_from_state confirmed_population));
-        ACCEPTED (List.filter (fun x -> List.length (fst x |> fst) <= 10) (extract_child_from_state accepted_population))]
+        [NOTHING (List.filter (fun x -> List.length (fst x |> fst) <= 10) (extract_child_from_state nothing_population))]
       in
       let newPopulation = fst (uniform_sample_from_queue currentQueue) in
       let old_states_ = snd (uniform_sample_from_queue currentQueue) in
@@ -634,8 +616,6 @@ let runFuzzer grammar_list =
   let confirm_grammar = List.nth grammar_list 1 in
   let commit_confirm_grammar = List.nth grammar_list 2 in
   let nothing_queue = NOTHING([([], commit_grammar), 0.0; ([], confirm_grammar), 0.0; ([], commit_confirm_grammar), 0.0;]) in
-  let confirmed_queue = CONFIRMED([([ValidPacket COMMIT], commit_grammar), 0.0; ([ValidPacket COMMIT], confirm_grammar), 0.0; ([ValidPacket COMMIT], commit_confirm_grammar), 0.0;]) in
-  let accepted_queue = ACCEPTED([([ValidPacket COMMIT; ValidPacket CONFIRM], commit_grammar), 0.0; ([ValidPacket COMMIT; ValidPacket CONFIRM], confirm_grammar), 0.0; ([ValidPacket COMMIT; ValidPacket CONFIRM], commit_confirm_grammar), 0.0;]) in
-
-  let _ = fuzzingAlgorithm 1000 [nothing_queue; confirmed_queue; accepted_queue] [] 100 0 1000 20 100 [Add; Delete; Modify; CrossOver;CorrectPacket;] in
+  
+  let _ = fuzzingAlgorithm 1000 [nothing_queue] [] 100 0 1000 20 100 [Add; Delete; Modify; CrossOver;CorrectPacket;] in
   ()
