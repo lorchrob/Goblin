@@ -324,7 +324,7 @@ let sample_from_percentile_range (pop : child list) (lower_percentile: float) (u
 
     sample [] segment sample_size
 
-let nonterminals = ["RG_ID_LIST"; "REJECTED_GROUPS"; "AC_TOKEN"; "COMMIT"; "CONFIRM";"AUTH_SEQ_CONFIRM";"AC_TOKEN_CONTAINER"; "CONFIRM_HASH"; "AUTH_ALGO"; "AUTH_SEQ_COMMIT";"SCALAR"; "GROUP_ID"; "ELEMENT"; "SEND_CONFIRM_COUNTER";]
+let nonterminals = ["RG_ID_LIST"; "REJECTED_GROUPS"; "PASSWORD_IDENTIFIER"; "PASSWD_ELEMENT_ID" ; "RG_ELEMENT_ID"; "PASSWD_ID"; "AC_ELEMENT_ID"; "AC_TOKEN_ELEMENT"; "AC_TOKEN"; "COMMIT"; "CONFIRM"; "AUTH_SEQ_CONFIRM"; "AC_TOKEN_CONTAINER"; "CONFIRM_HASH"; "AUTH_ALGO"; "AUTH_SEQ_COMMIT"; "SCALAR"; "GROUP_ID"; "ELEMENT"; "SEND_CONFIRM_COUNTER";]
 
 let rec check_well_formed_rules (grammar : ast) : bool =
   match grammar with
