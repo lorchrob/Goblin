@@ -476,14 +476,14 @@ let cleaupPopulation (q : triple_queue) : triple_queue =
      ignore 0.0 when checking for staleness *)
   print_endline "CLEANING UP QUEUES..." ;
   let np = List.nth q 0 in
-  match np, cnf, acc with
-  | NOTHING a, CONFIRMED b, ACCEPTED c ->
+  match np with
+  | NOTHING a ->
     let s = getScores a in
     let sd = stdDev s in
     let newNothingList = List.filter (fun (_, sc) -> sc = 0.0 || sc > sd) a in
     print_endline "RETURNING CLEANED POPULATION.." ;
     [NOTHING newNothingList]
-  | _, _, _ -> failwith "Unexpected queue pattern in cleanup"
+  | _ -> failwith "Unexpected queue pattern in cleanup"
 
     (* END CLEANUP *)
 
@@ -497,7 +497,7 @@ let uniform_sample_from_queue (q : triple_queue) : (child list) * (state list) =
   let np_top_sample = sample_from_percentile_range (extract_child_from_state np) 0.0 25.0 ((List.length (extract_child_from_state np)) / 4) in
   let np_bottom_sample = sample_from_percentile_range (extract_child_from_state np) 50.0 100.0 ((List.length (extract_child_from_state np)) / 4) in
   print_endline "RETURNING NEW POPULATION FOR MUTATION.." ;
-    (np_top_sample @ np_bottom_sample @ cnf_top_sample @ cnf_bottom_sample @ acc_top_sample @ acc_bottom_sample), (List.map (fun _ -> NOTHING_) np_top_sample @ List.map (fun _ -> NOTHING_) np_bottom_sample @ List.map (fun _ -> CONFIRMED_) cnf_top_sample @ List.map (fun _ -> CONFIRMED_) cnf_bottom_sample @ List.map (fun _ -> ACCEPTED_) acc_top_sample @ List.map (fun _ -> ACCEPTED_) acc_top_sample)
+    (np_top_sample @ np_bottom_sample ), (List.map (fun _ -> NOTHING_) np_top_sample @ List.map (fun _ -> NOTHING_) np_bottom_sample)
 
 let population_size_across_queues (x : population) =
   match x with
@@ -589,7 +589,7 @@ let rec fuzzingAlgorithm
 (newChildThreshold : int) 
 (mutationOperations : mutationOperations) =
   let nothing_population = List.nth currentQueue 0 in
-  let total_population_size = population_size_across_queues in
+  let total_population_size = population_size_across_queues nothing_population in
   if currentIteration >= terminationIteration then iTraces
   else
     if currentIteration mod cleanupIteration = 0 || total_population_size >= maxCurrentPopulation then
