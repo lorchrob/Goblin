@@ -539,9 +539,13 @@ let stdDev (s:score list) : float =
   let variance = List.fold_left (fun a x -> a +. (x -. m) ** 2.0) 0.0 s in
   sqrt (variance /. float_of_int (List.length s))
 
+let extract_child_from_state (p : population) : child list =
+  match p with
+  | NOTHING x | CONFIRMED x | ACCEPTED x -> x
+
 let sample_population (p : population) : population =
   let population_c = extract_child_from_state p in
-  let population_proportion = (float_of_int (List.length state_population)) /. 10000.0 in
+  let population_proportion = (float_of_int (List.length population_c)) /. 10000.0 in
   let population_choice = 2000.0 *. population_proportion in
   let new_population_top = sample_from_percentile_range population_c 0.0 50.0 (int_of_float (population_choice /. 0.8)) in
   let new_population_random = sample_from_percentile_range population_c 0.0 100.0 (int_of_float (population_choice /. 0.2)) in
@@ -553,9 +557,6 @@ let sample_population (p : population) : population =
 
 let cleanup (q : triple_queue) : population list = [sample_population (List.nth q 0); sample_population (List.nth q 1); sample_population (List.nth q 2)]
 
-let extract_child_from_state (p : population) : child list =
-  match p with
-  | NOTHING x | CONFIRMED x | ACCEPTED x -> x
 
 let dump_queue_info a b c =
   let _ = Unix.system ("touch " ^ "temporal-info/sample-info.txt") in
@@ -697,12 +698,12 @@ let merge_queues (q1 : triple_queue) (q2 : triple_queue) : triple_queue = [
     ACCEPTED ((extract_child_from_state (List.nth q1 2)) @ (extract_child_from_state (List.nth q2 2)))
   ]
 
-let save_updated_queue_sizes a b c =
+let save_updated_queue_sizes a b =
   let _ = Unix.system ("touch " ^ "temporal-info/queue-size-updates.txt") in
   Unix.sleepf 0.1 ;
   print_endline "write_queue_sizes" ;
   let oc = open_out "temporal-info/queue-size-updates.txt" in
-  output_string oc (Printf.sprintf "Old queue size: %d -- New queue size: %d -- Merged queue size: %d\n" a b c);
+  output_string oc (Printf.sprintf "Old queue size: %d -- New queue size: %d\n" a b);
   close_out oc
 
 let rec fuzzingAlgorithm 
@@ -745,11 +746,8 @@ let rec fuzzingAlgorithm
       let newQueue = normalize_scores (bucket_oracle currentQueue newPopulation_ old_states (snd score_and_oracle)) in
       let old_queue_size = population_size_across_queues (List.nth currentQueue 0) (List.nth currentQueue 1) (List.nth currentQueue 2) in
       let new_queue_size = population_size_across_queues (List.nth newQueue 0) (List.nth newQueue 1) (List.nth newQueue 2) in      
-      let newMergedQueue = merge_queues newQueue currentQueue in
-      let mergedQueueSize = population_size_across_queues (List.nth newMergedQueue 0) (List.nth newMergedQueue 1) (List.nth newMergedQueue 2) in
-      save_queue_info newMergedQueue;
-      save_updated_queue_sizes old_queue_size new_queue_size mergedQueueSize;
-      fuzzingAlgorithm maxCurrentPopulation newMergedQueue (List.append iTraces iT) tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations seed
+      save_updated_queue_sizes old_queue_size new_queue_size ;
+      fuzzingAlgorithm maxCurrentPopulation newQueue (List.append iTraces iT) tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations seed
 
 let initialize_files =
   initialize_clear_file "temporal-info/NOTHING-queue-info.txt";
