@@ -435,6 +435,7 @@ let rec newMutatedSet (p : child list) (m : mutationOperations) (n : int) : chil
     | (NOTHING, z) -> ((((fst x |> fst)), z), (snd x)) :: (newMutatedSet xs ms (n - 1))
     | (y, z) -> (((fst x |> fst) @ [(ValidPacket y)], z), (snd x)) :: (newMutatedSet xs ms (n - 1))
     )
+
 let rec mutationList sampleFunction (mutationOps : mutationOperations) (n : int): mutation list =
   match n with
     0 -> []
@@ -508,16 +509,15 @@ let executeMutatedPopulation (mutatedPopulation : child list) (old_states : stat
   print_endline "EXECUTING MUTATED POPULATION.." ;
 
   let _outputList = List.map sendPacket mutatedPopulation in
-  let cat_mutated_population = List.map2 (fun x y -> (x, fst y |> fst)) mutatedPopulation _outputList in 
-  let old_new_states = List.map2 (fun x y -> (x, y)) _outputList old_states in
-  let _removed_sygus_errors = List.filter (fun x -> (fst x |> fst |> fst) <> (ValidPacket NOTHING)) old_new_states in
-  let filtered_mutated_population = List.map (fun x -> fst x) (List.filter (fun x -> snd x <> (ValidPacket NOTHING)) cat_mutated_population) in
-  let old_states = List.map (fun x -> snd x) _removed_sygus_errors in
-  let removed_sygus_errors = List.map (fun x -> fst x) _removed_sygus_errors in
-  let outputList = List.map (fun x -> fst x) removed_sygus_errors in
-  let oracle_results = List.map (fun x -> snd x) removed_sygus_errors in
+  let cat_mutated_population = List.map2 (fun x y -> (x, y)) mutatedPopulation _outputList in 
+  let old_new_states = List.map2 (fun x y -> (x, y)) cat_mutated_population old_states in
+  let removed_sygus_errors = List.filter (fun x -> (fst x |> snd |> fst |> fst) <> (ValidPacket NOTHING)) old_new_states in
+  let filtered_mutated_population = List.map (fun x -> fst x |> fst) removed_sygus_errors in
+  let old_states_ = List.map (fun x -> snd x) removed_sygus_errors in
+  let outputList = List.map (fun x -> fst x |> snd |> fst) removed_sygus_errors in
+  let expected_states = List.map (fun x -> fst x |> snd |> snd) removed_sygus_errors in
   print_endline "EXECUTED.. SENDING FOR SCORING.." ;
-    (((scoreFunction outputList filtered_mutated_population), oracle_results), old_states)
+    (((scoreFunction outputList filtered_mutated_population), expected_states), old_states_)
 
 (* Filter population based on standard deviation *)
 let getScores (p: child list) : score list = List.map snd p
@@ -594,6 +594,10 @@ let uniform_sample_from_queue (q : triple_queue) : (child list) * (state list) =
   dump_queue_info nothing_log_info confirmed_log_info accepted_log_info ;
   let state_concatenated = (List.map (fun _ -> NOTHING_) np_top_sample @ List.map (fun _ -> NOTHING_) np_bottom_sample @ List.map (fun _ -> CONFIRMED_) cnf_top_sample @ List.map (fun _ -> CONFIRMED_) cnf_bottom_sample @ List.map (fun _ -> ACCEPTED_) acc_top_sample @ List.map (fun _ -> ACCEPTED_) acc_bottom_sample) in
   let population_concatenated = (np_top_sample @ np_bottom_sample @ cnf_top_sample @ cnf_bottom_sample @ acc_top_sample @ acc_bottom_sample) in
+  let num_states = List.length (state_concatenated) in
+  let num_pop = List.length (population_concatenated) in
+  let outString = Printf.sprintf "%d -- %d\n" num_states num_pop in
+  print_endline outString ;
   let filter_all = List.map2 (fun x y -> (x, y)) population_concatenated state_concatenated in
   let removed_duplicates = remove_duplicates filter_all in
   let samples = List.map (fun x -> fst x) removed_duplicates in
@@ -730,8 +734,9 @@ let rec fuzzingAlgorithm
         CONFIRMED (List.filter (fun x -> List.length (fst x |> fst) <= 10) (extract_child_from_state confirmed_population));
         ACCEPTED (List.filter (fun x -> List.length (fst x |> fst) <= 10) (extract_child_from_state accepted_population))]
       in
-      let newPopulation = fst (uniform_sample_from_queue currentQueue) in
-      let old_states_ = snd (uniform_sample_from_queue currentQueue) in
+      let sampled_pop = uniform_sample_from_queue currentQueue in
+      let newPopulation = fst sampled_pop in
+      let old_states_ = snd sampled_pop in
       let selectedMutations = mutationList random_element mutationOperations (List.length newPopulation) in
       let mutatedPopulation = newMutatedSet newPopulation selectedMutations (List.length newPopulation) in
       let score_and_oracle_old_states = executeMutatedPopulation mutatedPopulation old_states_ in
@@ -757,5 +762,5 @@ let runFuzzer grammar_list =
   let confirmed_queue = CONFIRMED([([ValidPacket COMMIT], commit_grammar), 0.0; ([ValidPacket COMMIT], confirm_grammar), 0.0; ([ValidPacket COMMIT], commit_confirm_grammar), 0.0;]) in
   let accepted_queue = ACCEPTED([([ValidPacket COMMIT; ValidPacket CONFIRM], commit_grammar), 0.0; ([ValidPacket COMMIT; ValidPacket CONFIRM], confirm_grammar), 0.0; ([ValidPacket COMMIT; ValidPacket CONFIRM], commit_confirm_grammar), 0.0;]) in
 
-  let _ = fuzzingAlgorithm 1000 [nothing_queue; confirmed_queue; accepted_queue] [] 100 0 1150 500 100 [Add; Delete; Modify; CrossOver;CorrectPacket;] [nothing_queue; confirmed_queue; accepted_queue] in
+  let _ = fuzzingAlgorithm 10000 [nothing_queue; confirmed_queue; accepted_queue] [] 100 0 1150 500 100 [Add; Delete; Modify; CrossOver;CorrectPacket;] [nothing_queue; confirmed_queue; accepted_queue] in
   ()

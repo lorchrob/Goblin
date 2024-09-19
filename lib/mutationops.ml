@@ -179,21 +179,23 @@ let rec mutation_update g nt =
     match g with
     | [] -> ([], false)
     | ProdRule(nonTerminal, production_options) :: xs ->
-        if nonTerminal = "COMMIT" || nonTerminal = "CONFIRM"
-        then
-            let found = isNonTerminalPresent nt production_options in
+        let found = isNonTerminalPresent nt production_options in
             if found then
                 let po = apply_update_to_rule nt production_options in
                     (ProdRule(nonTerminal, po) :: xs, true)
             else 
-                (ProdRule(nonTerminal, production_options)::xs, false)       
-        else 
-            let (gg, r) = mutation_update xs nt 
+                let (gg, r) = mutation_update xs nt 
                     in 
-            (ProdRule(nonTerminal, production_options)::gg, r)
+            (ProdRule(nonTerminal, production_options) :: gg, r)
     | TypeAnnotation(v, w, x) :: ys -> 
-        let (gg, r) = mutation_update ys nt
-                in (TypeAnnotation(v, w, x)::gg, r)
+        let found = isNonTerminalPresent nt x in
+        if found then
+            let po = update_constraint nt x in
+                (TypeAnnotation(v, w, po) :: xs, true)
+        else
+            let (gg, r) = mutation_update ys nt 
+                in 
+                (TypeAnnotation(v, w, x)::gg, r)
 
 let rec replace_element geList nt1 nt2 =
     match geList with
