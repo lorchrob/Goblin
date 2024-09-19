@@ -174,7 +174,6 @@ let rec apply_update_to_rule nt production_options =
         Rhs(geList, updated_constraints) :: xs
     | StubbedRhs(s) :: xs -> StubbedRhs(s) :: (apply_update_to_rule nt xs)
 
-
 let rec mutation_update g nt =
     match g with
     | [] -> ([], false)
@@ -188,10 +187,9 @@ let rec mutation_update g nt =
                     in 
             (ProdRule(nonTerminal, production_options) :: gg, r)
     | TypeAnnotation(v, w, x) :: ys -> 
-        let found = isNonTerminalPresent nt x in
-        if found then
+        if v = nt then
             let po = update_constraint nt x in
-                (TypeAnnotation(v, w, po) :: xs, true)
+                (TypeAnnotation(v, w, po) :: ys, true)
         else
             let (gg, r) = mutation_update ys nt 
                 in 

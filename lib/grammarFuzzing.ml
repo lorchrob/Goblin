@@ -188,6 +188,14 @@ let timeout_wrapper timeout f =
     (fun ex -> Lwt.return (Error (Printexc.to_string ex))) in
   Lwt.pick [timeout_task; function_task]
 
+  let initialize_clear_file filename =
+    let _ = Unix.system ("touch " ^ filename) in
+    Unix.sleepf 0.1 ;
+    print_endline "clear_file" ;
+    let oc = open_out filename in
+    close_out oc 
+  
+
 let clear_file filename =
   let _ = Unix.system ("touch " ^ filename) in
   Unix.sleepf 0.1 ;
@@ -248,8 +256,8 @@ let map_provenance_to_string (p : provenance) : string =
   | RawPacket _ -> failwith "handle the raw packet case"
   
 let callDriver x =
-  let message_file = "/home/pirwani/Desktop/message.txt" in
-  let response_file = "/home/pirwani/Desktop/response.txt" in
+  let message_file = "sync/message.txt" in
+  let response_file = "sync/response.txt" in
   let placeholder_replaced_file = "/home/pirwani/Desktop/placeholders-replace.pkt" in
   match x with 
   | ValidPacket y -> 
@@ -470,13 +478,13 @@ let save_population_info filename population =
 let rec save_queue_info queues =
   match queues with
   | NOTHING population :: xs -> 
-    save_population_info "../../NOTHING-queue-info.txt" population ;
+    save_population_info "temporal-info/NOTHING-queue-info.txt" population ;
     save_queue_info xs
   | CONFIRMED population :: xs -> 
-    save_population_info "../../CONFIRMED-queue-info.txt" population ;
+    save_population_info "temporal-info/CONFIRMED-queue-info.txt" population ;
     save_queue_info xs
   | ACCEPTED population  :: xs -> 
-    save_population_info "../../ACCEPTED-queue-info.txt" population ;
+    save_population_info "temporal-info/ACCEPTED-queue-info.txt" population ;
     save_queue_info xs
   | [] -> ()
     
@@ -496,7 +504,7 @@ let sendPacket (c : child) : (provenance * output) * state =
         sendPacketsToState stateTransition ;
         let driver_output = callDriver (RawPacket packetToSend) in
         let _ = callDriver (ValidPacket RESET) in
-        save_time_info "../../OCaml-time-info.csv" (1 + (List.length (stateTransition))) ;
+        save_time_info "temporal-info/OCaml-time-info.csv" (1 + (List.length (stateTransition))) ;
         (RawPacket packetToSend, (fst driver_output)), (snd driver_output)
       | Error _ -> 
         sygus_fail_execution_time := ((Unix.gettimeofday ()) -. sygus_start_time) ;
@@ -561,11 +569,11 @@ let extract_child_from_state (p : population) : child list =
   | NOTHING x | CONFIRMED x | ACCEPTED x -> x
 
 let dump_queue_info a b c =
-  let _ = Unix.system ("touch " ^ "../../sample-info.txt") in
+  let _ = Unix.system ("touch " ^ "temporal-info/sample-info.txt") in
   Unix.sleepf 0.1 ;
   print_endline "saving population info.." ;
   let string_to_save = Printf.sprintf "NOTHING SAMPLE %d, CONFIRMED SAMPLE %d, ACCEPTED SAMPLE %d\n" a b c in
-  append_to_file "../../sample-info.txt" string_to_save
+  append_to_file "temporal-info/sample-info.txt" string_to_save
 
 let rec exists elem lst =
   match lst with
@@ -682,7 +690,7 @@ let dump_all_traces (traces : provenance list list) =
   let trace_string_lists = List.map dump_single_trace traces in
   let result = ref "" in
   (List.iter (fun x -> result := !result ^ x ) trace_string_lists) ;
-  append_to_file "../interesting_traces.txt" !result
+  append_to_file "results/interesting_traces.txt" !result
 
 let normalize_scores (q : triple_queue) : triple_queue =
   let np, cnf, acc = List.nth q 0, List.nth q 1, List.nth q 2 in
@@ -701,10 +709,10 @@ let merge_queues (q1 : triple_queue) (q2 : triple_queue) : triple_queue = [
   ]
 
 let save_updated_queue_sizes a b c =
-  let _ = Unix.system ("touch " ^ "../../queue-size-updates.txt") in
+  let _ = Unix.system ("touch " ^ "temporal-info/queue-size-updates.txt") in
   Unix.sleepf 0.1 ;
   print_endline "write_queue_sizes" ;
-  let oc = open_out "../../queue-size-updates.txt" in
+  let oc = open_out "temporal-info/queue-size-updates.txt" in
   output_string oc (Printf.sprintf "Old queue size: %d -- New queue size: %d -- Merged queue size: %d\n" a b c);
   close_out oc
 
@@ -753,8 +761,24 @@ let rec fuzzingAlgorithm
       save_updated_queue_sizes old_queue_size new_queue_size mergedQueueSize;
       fuzzingAlgorithm maxCurrentPopulation newMergedQueue (List.append iTraces iT) tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations seed
 
+let initialize_files =
+  initialize_clear_file "temporal-info/NOTHING-queue-info.txt";
+  initialize_clear_file "temporal-info/CONFIRMED-queue-info.txt";
+  initialize_clear_file "temporal-info/ACCEPTED-queue-info.txt";
+  initialize_clear_file "temporal-info/queue-size-updates.txt";
+  initialize_clear_file "temporal-info/OCaml-time-info.csv";
+  initialize_clear_file "temporal-info/sample-info.txt";
+  initialize_clear_file "results/interesting_traces.txt";
+  initialize_clear_file "sync/driver_oracle.json";
+  initialize_clear_file "sync/oracle-response.txt";
+  initialize_clear_file "sync/placeholders_replace.pkt";
+  initialize_clear_file "sync/message.txt";
+  initialize_clear_file "sync/response.txt";
+  ()
+
 let runFuzzer grammar_list = 
   Random.self_init ();
+  initialize_files ;
   let commit_grammar = List.nth grammar_list 0 in
   let confirm_grammar = List.nth grammar_list 1 in
   let commit_confirm_grammar = List.nth grammar_list 2 in
