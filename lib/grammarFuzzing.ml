@@ -594,7 +594,6 @@ let uniform_sample_from_queue (q : triple_queue) : (child list) * (state list) =
   dump_queue_info nothing_log_info confirmed_log_info accepted_log_info ;
   let state_concatenated = (List.map (fun _ -> NOTHING_) np_top_sample @ List.map (fun _ -> NOTHING_) np_bottom_sample @ List.map (fun _ -> CONFIRMED_) cnf_top_sample @ List.map (fun _ -> CONFIRMED_) cnf_bottom_sample @ List.map (fun _ -> ACCEPTED_) acc_top_sample @ List.map (fun _ -> ACCEPTED_) acc_bottom_sample) in
   let population_concatenated = (np_top_sample @ np_bottom_sample @ cnf_top_sample @ cnf_bottom_sample @ acc_top_sample @ acc_bottom_sample) in
-  let ss = Printf.sprintf "%d, %d" (List.length state_concatenated) (List.length population_concatenated) in
   let filter_all = List.map2 (fun x y -> (x, y)) population_concatenated state_concatenated in
   let removed_duplicates = remove_duplicates filter_all in
   let samples = List.map (fun x -> fst x) removed_duplicates in
