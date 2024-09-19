@@ -539,30 +539,19 @@ let stdDev (s:score list) : float =
   let variance = List.fold_left (fun a x -> a +. (x -. m) ** 2.0) 0.0 s in
   sqrt (variance /. float_of_int (List.length s))
 
+let sample_population (p : population) : population =
+  let population_c = extract_child_from_state p in
+  let population_proportion = (float_of_int (List.length state_population)) /. 10000.0 in
+  let population_choice = 2000.0 *. population_proportion in
+  let new_population_top = sample_from_percentile_range population_c 0.0 50.0 (int_of_float (population_choice /. 0.8)) in
+  let new_population_random = sample_from_percentile_range population_c 0.0 100.0 (int_of_float (population_choice /. 0.2)) in
+  let new_population = new_population_top @ new_population_random in
+  match p with
+  | NOTHING _ -> NOTHING new_population
+  | CONFIRMED _ -> CONFIRMED new_population
+  | ACCEPTED _ -> ACCEPTED new_population
 
-let cleaupPopulation (q : triple_queue) : triple_queue =
-  (* check scores for staleness, remove population that has scores with little to no SD, 
-     ignore 0.0 when checking for staleness *)
-  print_endline "CLEANING UP QUEUES..." ;
-  let np = List.nth q 0 in
-  let cnf = List.nth q 1 in
-  let acc = List.nth q 2 in
-  match np, cnf, acc with
-  | NOTHING a, CONFIRMED b, ACCEPTED c ->
-    let s = getScores a in
-    let sd = stdDev s in
-    let newNothingList = List.filter (fun (_, sc) -> sc = 0.0 || sc > sd) a in
-    let s = getScores b in 
-    let sd = stdDev s in
-    let newConfirmedList = List.filter (fun (_, sc) -> sc = 0.0 || sc > sd) b in
-    let s = getScores c in 
-    let sd = stdDev s in
-    let newAcceptedList = List.filter (fun (_, sc) -> sc = 0.0 || sc > sd) c in
-    print_endline "RETURNING CLEANED POPULATION.." ;
-    [NOTHING newNothingList; CONFIRMED newConfirmedList; ACCEPTED newAcceptedList]
-  | _, _, _ -> failwith "Unexpected queue pattern in cleanup"
-
-    (* END CLEANUP *)
+let cleanup (q : triple_queue) : population list = [sample_population (List.nth q 0); sample_population (List.nth q 1); sample_population (List.nth q 2)]
 
 let extract_child_from_state (p : population) : child list =
   match p with
@@ -733,9 +722,10 @@ let rec fuzzingAlgorithm
   let total_population_size = population_size_across_queues nothing_population confirmed_population accepted_population in
   if currentIteration >= terminationIteration then iTraces
   else
-    if currentIteration mod cleanupIteration = 0 || total_population_size >= maxCurrentPopulation then
-      (* fuzzingAlgorithm maxCurrentPopulation (cleaupPopulation currentQueue) iTraces tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations seed *)
+    if currentIteration mod cleanupIteration = 0 then
       fuzzingAlgorithm maxCurrentPopulation seed iTraces tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations seed
+    else if total_population_size >= maxCurrentPopulation then
+      fuzzingAlgorithm maxCurrentPopulation (cleanup currentQueue) iTraces tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations seed
     else
       let currentQueue = 
         [NOTHING (List.filter (fun x -> List.length (fst x |> fst) <= 10) (extract_child_from_state nothing_population));
