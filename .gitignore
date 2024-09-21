@@ -46,3 +46,10 @@ travis_key.pub
 
 # Temp files
 sygus_debug
+
+# Byte parser temp result file
+driver_oracle.json
+results/*
+temporal-info/*
+sync/*
+

@@ -91,6 +91,21 @@ type triple_queue = population list
 
 type trace = packet list
 
+let sygus_success_execution_time = ref 0.0
+let sygus_fail_execution_time = ref 0.0
+
+let oracle_time = ref 0.0
+let oracle_calls = ref 0
+
+let sygus_success_calls = ref 0
+let sygus_fail_calls = ref 0
+
+let total_execution_time = ref 0.0
+let total_execution_calls = ref 0
+
+let driver_call_time = ref 0.0
+let driver_calls = ref 0
+
 let preprocess_map (f : 'a) (p : population) : population =
   match p with
   | NOTHING x -> NOTHING (f x)
@@ -173,6 +188,14 @@ let timeout_wrapper timeout f =
     (fun ex -> Lwt.return (Error (Printexc.to_string ex))) in
   Lwt.pick [timeout_task; function_task]
 
+  let initialize_clear_file filename =
+    let _ = Unix.system ("touch " ^ filename) in
+    Unix.sleepf 0.1 ;
+    print_endline "clear_file" ;
+    let oc = open_out filename in
+    close_out oc 
+  
+
 let clear_file filename =
   let _ = Unix.system ("touch " ^ filename) in
   Unix.sleepf 0.1 ;
@@ -233,8 +256,8 @@ let map_provenance_to_string (p : provenance) : string =
   | RawPacket _ -> failwith "handle the raw packet case"
   
 let callDriver x =
-  let message_file = "/home/pirwani/Desktop/message.txt" in
-  let response_file = "/home/pirwani/Desktop/response.txt" in
+  let message_file = "sync/message.txt" in
+  let response_file = "sync/response.txt" in
   let placeholder_replaced_file = "/home/pirwani/Desktop/placeholders-replace.pkt" in
   match x with 
   | ValidPacket y -> 
@@ -254,9 +277,15 @@ let callDriver x =
     let string_to_send = ((Bitstring.bitstring_of_string (Bytes.to_string bin_placeholders))) in
     print_endline "string_to_send success.." ;
     print_endline (Bytes.to_string bin_placeholders) ;
+    let oracle_start_time = Unix.gettimeofday () in
     let oracle_result = parse_packet string_to_send in
+    oracle_time := ((Unix.gettimeofday ()) -. oracle_start_time) ;
     print_endline "oracle result success" ;
-    ((wait_for_python_response response_file), oracle_result)
+    let driver_start_time = Unix.gettimeofday () in
+    let driver_result = wait_for_python_response response_file in
+    driver_call_time := ((Unix.gettimeofday ()) -. driver_start_time) ;
+    driver_calls := !driver_calls + 1 ;
+    (driver_result, oracle_result)
 
 let rec scoreFunction (pktStatus : (provenance * output) list) (mutatedPopulation : child list) : ((provenance list list) * (child list)) =
   print_endline "SCORING FUNCTION -- SCORING POPULATION" ;
@@ -273,9 +302,9 @@ let rec scoreFunction (pktStatus : (provenance * output) list) (mutatedPopulatio
         ((fst future_provenance_and_population)), (((old_provenance @ [packet], current_grammar), score +. 0.1) :: (snd future_provenance_and_population))
     | CRASH | UNEXPECTED_OUTPUT ->
       if output_symbol = CRASH then 
-        ((old_provenance @ [packet])  :: (fst future_provenance_and_population)), (((old_provenance @ [packet], current_grammar), score +. 0.7) :: (snd future_provenance_and_population))
+        ((old_provenance @ [packet])  :: (fst future_provenance_and_population)), (((old_provenance @ [packet], current_grammar), score +. 0.5) :: (snd future_provenance_and_population))
       else 
-        ((old_provenance @ [packet]) :: (fst future_provenance_and_population)), (((old_provenance @ [packet], current_grammar), score +. 0.9) :: (snd future_provenance_and_population))        
+        ((old_provenance @ [packet]) :: (fst future_provenance_and_population)), (((old_provenance @ [packet], current_grammar), score +. 0.7) :: (snd future_provenance_and_population))        
     | Message _ -> failwith "Message type should not be matched in score func.."
 
     
@@ -324,7 +353,7 @@ let sample_from_percentile_range (pop : child list) (lower_percentile: float) (u
 
     sample [] segment sample_size
 
-let nonterminals = ["RG_ID_LIST"; "REJECTED_GROUPS"; "AC_TOKEN"; "AUTH_SEQ_CONFIRM";"AC_TOKEN_CONTAINER"; "CONFIRM_HASH"; "AUTH_ALGO"; "AUTH_SEQ_COMMIT";"SCALAR"; "GROUP_ID"; "ELEMENT"; "SEND_CONFIRM_COUNTER";]
+let nonterminals = ["RG_ID_LIST"; "REJECTED_GROUPS"; "PASSWORD_IDENTIFIER"; "PASSWD_ELEMENT_ID" ; "RG_ELEMENT_ID"; "PASSWD_ID"; "AC_ELEMENT_ID"; "AC_TOKEN_ELEMENT"; "AC_TOKEN"; "COMMIT"; "CONFIRM"; "AUTH_SEQ_CONFIRM"; "AC_TOKEN_CONTAINER"; "CONFIRM_HASH"; "AUTH_ALGO"; "AUTH_SEQ_COMMIT"; "SCALAR"; "GROUP_ID"; "ELEMENT"; "SEND_CONFIRM_COUNTER";]
 
 let rec check_well_formed_rules (grammar : ast) : bool =
   match grammar with
@@ -349,7 +378,7 @@ let rec applyMutation (m : mutation) (g : ast) : packet_type * grammar =
     let delete_attempt = (mutation_delete g nt) in
     if snd delete_attempt = false then applyMutation Delete g
     else
-      let deleted_grammar = dead_rule_removal (fst delete_attempt) "SAE_PACKET" in
+      let deleted_grammar = canonicalize (fst delete_attempt) in
       (
         match deleted_grammar with
       | Some x ->
@@ -375,7 +404,7 @@ let rec applyMutation (m : mutation) (g : ast) : packet_type * grammar =
       let crossoverPRs = mutation_crossover rhs1 rhs2 in
       let newPR = grammarUpdateAfterCrossover nt1 g rhs1 rhs2 crossoverPRs in
       let finalGrammar = grammarUpdateAfterCrossover nt2 newPR rhs1 rhs2 crossoverPRs in
-      let canonicalizedGrammar = dead_rule_removal finalGrammar "SAE_PACKET" in
+      let canonicalizedGrammar = canonicalize finalGrammar in
         (match canonicalizedGrammar with
         | Some(x) -> pp_print_ast Format.std_formatter x; 
           let well_formed_check = check_well_formed_rules x in
@@ -414,6 +443,7 @@ let rec newMutatedSet (p : child list) (m : mutationOperations) (n : int) : chil
     | (NOTHING, z) -> ((((fst x |> fst)), z), (snd x)) :: (newMutatedSet xs ms (n - 1))
     | (y, z) -> (((fst x |> fst) @ [(ValidPacket y)], z), (snd x)) :: (newMutatedSet xs ms (n - 1))
     )
+
 let rec mutationList sampleFunction (mutationOps : mutationOperations) (n : int): mutation list =
   match n with
     0 -> []
@@ -424,34 +454,78 @@ let rec sendPacketsToState (p : provenance list) : unit =
     [] -> ()
   | x :: xs -> let _ = callDriver x in sendPacketsToState xs
 
+let save_time_info filename trace_length =
+  let _ = Unix.system ("touch " ^ filename) in
+  Unix.sleepf 0.1 ;
+  print_endline "saving time info.." ;
+  let oc = open_out_gen [Open_creat; Open_append] 0o666 filename in
+  output_string oc (Printf.sprintf "%d,%d,%.8f,%d,%.8f,%d,%.8f,%d,%.8f\n" trace_length !sygus_success_calls !sygus_success_execution_time !sygus_fail_calls !sygus_fail_execution_time !oracle_calls !oracle_time !driver_calls !driver_call_time);
+  close_out oc
 
+let save_population_info filename population =
+  let _ = Unix.system ("touch " ^ filename) in
+  Unix.sleepf 0.1 ;
+  print_endline "saving population info.." ;
+  let oc = open_out_gen [Open_creat; Open_append] 0o666 filename in
+  let scores = List.map (fun x -> snd x) population in
+  let provenance_lengths = List.map (fun x -> List.length (fst x |> fst)) population in
+  let concatenated_lengths_scores = List.map2 (fun x y -> Printf.sprintf "Length of trace %d -> Score %.6f\n" x y) provenance_lengths scores in
+  let string_to_save = List.fold_left (fun acc x -> acc ^ x) "" concatenated_lengths_scores in
+  output_string oc string_to_save ;
+  close_out oc
+
+
+let rec save_queue_info queues =
+  match queues with
+  | NOTHING population :: xs -> 
+    save_population_info "temporal-info/NOTHING-queue-info.txt" population ;
+    save_queue_info xs
+  | CONFIRMED population :: xs -> 
+    save_population_info "temporal-info/CONFIRMED-queue-info.txt" population ;
+    save_queue_info xs
+  | ACCEPTED population  :: xs -> 
+    save_population_info "temporal-info/ACCEPTED-queue-info.txt" population ;
+    save_queue_info xs
+  | [] -> ()
+    
 let sendPacket (c : child) : (provenance * output) * state =
   let stateTransition = fst c |> fst in
   print_endline "\n\n\nGRAMMAR TO SYGUS:" ;
   pp_print_ast Format.std_formatter (fst c |> snd) ;
-  let packetToSend_ = Lwt_main.run (timeout_wrapper 5.0 (fun () -> (Pipeline.sygusGrammarToPacket (fst c |> snd)))) in
-    match packetToSend_ with
-    | Ok (packetToSend, _metadata) ->
-      sendPacketsToState stateTransition ;
-      let driver_output = callDriver (RawPacket packetToSend) in
-      let _ = callDriver (ValidPacket RESET) in
-      (RawPacket packetToSend, (fst driver_output)), (snd driver_output)
-    | Error _ -> ((ValidPacket NOTHING, EXPECTED_OUTPUT), IGNORE_)
+  let sygus_start_time = Unix.gettimeofday () in
+  let removed_dead_rules_for_sygus = dead_rule_removal (fst c |> snd) "SAE_PACKET" in
+  match removed_dead_rules_for_sygus with
+  | Some grammar_to_sygus ->
+    sygus_success_execution_time := ((Unix.gettimeofday ()) -. sygus_start_time) ;
+    sygus_success_calls := !sygus_success_calls + 1 ;
+    let packetToSend_ = Lwt_main.run (timeout_wrapper 5.0 (fun () -> (Pipeline.sygusGrammarToPacket grammar_to_sygus))) in (
+      match packetToSend_ with
+      | Ok (packetToSend, _metadata) ->
+        sendPacketsToState stateTransition ;
+        let driver_output = callDriver (RawPacket packetToSend) in
+        let _ = callDriver (ValidPacket RESET) in
+        save_time_info "temporal-info/OCaml-time-info.csv" (1 + (List.length (stateTransition))) ;
+        (RawPacket packetToSend, (fst driver_output)), (snd driver_output)
+      | Error _ -> 
+        sygus_fail_execution_time := ((Unix.gettimeofday ()) -. sygus_start_time) ;
+        sygus_fail_calls := !sygus_fail_calls + 1 ;
+        ((ValidPacket NOTHING, EXPECTED_OUTPUT), IGNORE_)
+    )
+  | None -> ((ValidPacket NOTHING, EXPECTED_OUTPUT), IGNORE_)
 
 let executeMutatedPopulation (mutatedPopulation : child list) (old_states : state list) : (((provenance list list) * (child list)) * (state list)) * (state list) =
   print_endline "EXECUTING MUTATED POPULATION.." ;
 
   let _outputList = List.map sendPacket mutatedPopulation in
-  let cat_mutated_population = List.map2 (fun x y -> (x, fst y |> fst)) mutatedPopulation _outputList in 
-  let old_new_states = List.map2 (fun x y -> (x, y)) _outputList old_states in
-  let _removed_sygus_errors = List.filter (fun x -> (fst x |> fst |> fst) <> (ValidPacket NOTHING)) old_new_states in
-  let filtered_mutated_population = List.map (fun x -> fst x) (List.filter (fun x -> snd x <> (ValidPacket NOTHING)) cat_mutated_population) in
-  let old_states = List.map (fun x -> snd x) _removed_sygus_errors in
-  let removed_sygus_errors = List.map (fun x -> fst x) _removed_sygus_errors in
-  let outputList = List.map (fun x -> fst x) removed_sygus_errors in
-  let oracle_results = List.map (fun x -> snd x) removed_sygus_errors in
+  let cat_mutated_population = List.map2 (fun x y -> (x, y)) mutatedPopulation _outputList in 
+  let old_new_states = List.map2 (fun x y -> (x, y)) cat_mutated_population old_states in
+  let removed_sygus_errors = List.filter (fun x -> (fst x |> snd |> fst |> fst) <> (ValidPacket NOTHING)) old_new_states in
+  let filtered_mutated_population = List.map (fun x -> fst x |> fst) removed_sygus_errors in
+  let old_states_ = List.map (fun x -> snd x) removed_sygus_errors in
+  let outputList = List.map (fun x -> fst x |> snd |> fst) removed_sygus_errors in
+  let expected_states = List.map (fun x -> fst x |> snd |> snd) removed_sygus_errors in
   print_endline "EXECUTED.. SENDING FOR SCORING.." ;
-    (((scoreFunction outputList filtered_mutated_population), oracle_results), old_states)
+    (((scoreFunction outputList filtered_mutated_population), expected_states), old_states_)
 
 (* Filter population based on standard deviation *)
 let getScores (p: child list) : score list = List.map snd p
@@ -465,46 +539,68 @@ let stdDev (s:score list) : float =
   let variance = List.fold_left (fun a x -> a +. (x -. m) ** 2.0) 0.0 s in
   sqrt (variance /. float_of_int (List.length s))
 
-
-let cleaupPopulation (q : triple_queue) : triple_queue =
-  (* check scores for staleness, remove population that has scores with little to no SD, 
-     ignore 0.0 when checking for staleness *)
-  print_endline "CLEANING UP QUEUES..." ;
-  let np = List.nth q 0 in
-  let cnf = List.nth q 1 in
-  let acc = List.nth q 2 in
-  match np, cnf, acc with
-  | NOTHING a, CONFIRMED b, ACCEPTED c ->
-    let s = getScores a in
-    let sd = stdDev s in
-    let newNothingList = List.filter (fun (_, sc) -> sc = 0.0 || sc > sd) a in
-    let s = getScores b in 
-    let sd = stdDev s in
-    let newConfirmedList = List.filter (fun (_, sc) -> sc = 0.0 || sc > sd) b in
-    let s = getScores c in 
-    let sd = stdDev s in
-    let newAcceptedList = List.filter (fun (_, sc) -> sc = 0.0 || sc > sd) c in
-    print_endline "RETURNING CLEANED POPULATION.." ;
-    [NOTHING newNothingList; CONFIRMED newConfirmedList; ACCEPTED newAcceptedList]
-  | _, _, _ -> failwith "Unexpected queue pattern in cleanup"
-
-    (* END CLEANUP *)
-
 let extract_child_from_state (p : population) : child list =
   match p with
   | NOTHING x | CONFIRMED x | ACCEPTED x -> x
 
+let sample_population (p : population) : population =
+  let population_c = extract_child_from_state p in
+  let population_proportion = (float_of_int (List.length population_c)) /. 10000.0 in
+  let population_choice = 2000.0 *. population_proportion in
+  let new_population_top = sample_from_percentile_range population_c 0.0 50.0 (int_of_float (population_choice /. 0.8)) in
+  let new_population_random = sample_from_percentile_range population_c 0.0 100.0 (int_of_float (population_choice /. 0.2)) in
+  let new_population = new_population_top @ new_population_random in
+  match p with
+  | NOTHING _ -> NOTHING new_population
+  | CONFIRMED _ -> CONFIRMED new_population
+  | ACCEPTED _ -> ACCEPTED new_population
+
+let cleanup (q : triple_queue) : population list = [sample_population (List.nth q 0); sample_population (List.nth q 1); sample_population (List.nth q 2)]
+
+
+let dump_queue_info a b c =
+  let _ = Unix.system ("touch " ^ "temporal-info/sample-info.txt") in
+  Unix.sleepf 0.1 ;
+  print_endline "saving population info.." ;
+  let string_to_save = Printf.sprintf "NOTHING SAMPLE %d, CONFIRMED SAMPLE %d, ACCEPTED SAMPLE %d\n" a b c in
+  append_to_file "temporal-info/sample-info.txt" string_to_save
+
+let rec exists elem lst =
+  match lst with
+  | [] -> false
+  | x :: xs -> if x = elem then true else exists elem xs
+
+let rec remove_duplicates lst =
+  match lst with
+  | [] -> []
+  | x :: xs -> if exists x xs then remove_duplicates xs else x :: remove_duplicates xs
+  
+
 let uniform_sample_from_queue (q : triple_queue) : (child list) * (state list) =
   print_endline "SAMPLING NEW POPULATION FOR MUTATION.." ;
   let np, cnf, acc = List.nth q 0, List.nth q 1, List.nth q 2 in
-  let np_top_sample = sample_from_percentile_range (extract_child_from_state np) 0.0 25.0 ((List.length (extract_child_from_state np)) / 4) in
-  let cnf_top_sample = sample_from_percentile_range (extract_child_from_state cnf) 0.0 25.0 ((List.length (extract_child_from_state cnf)) /4) in
-  let acc_top_sample = sample_from_percentile_range (extract_child_from_state acc) 0.0 25.0 ((List.length (extract_child_from_state acc)) / 4) in
-  let np_bottom_sample = sample_from_percentile_range (extract_child_from_state np) 50.0 100.0 ((List.length (extract_child_from_state np)) / 4) in
-  let cnf_bottom_sample = sample_from_percentile_range (extract_child_from_state cnf) 50.0 100.0 ((List.length (extract_child_from_state cnf)) / 4) in
-  let acc_bottom_sample = sample_from_percentile_range (extract_child_from_state acc) 50.0 100.0 ((List.length (extract_child_from_state acc)) / 4) in
+  let np_top_sample = sample_from_percentile_range (extract_child_from_state np) 0.0 50.0 10 in
+  let cnf_top_sample = sample_from_percentile_range (extract_child_from_state cnf) 0.0 50.0 10 in
+  let acc_top_sample = sample_from_percentile_range (extract_child_from_state acc) 0.0 50.0 10 in
+  let np_bottom_sample = sample_from_percentile_range (extract_child_from_state np) 0.0 100.0 5 in
+  let cnf_bottom_sample = sample_from_percentile_range (extract_child_from_state cnf) 0.0 100.0 5 in
+  let acc_bottom_sample = sample_from_percentile_range (extract_child_from_state acc) 0.0 100.0 5 in
   print_endline "RETURNING NEW POPULATION FOR MUTATION.." ;
-    (np_top_sample @ np_bottom_sample @ cnf_top_sample @ cnf_bottom_sample @ acc_top_sample @ acc_bottom_sample), (List.map (fun _ -> NOTHING_) np_top_sample @ List.map (fun _ -> NOTHING_) np_bottom_sample @ List.map (fun _ -> CONFIRMED_) cnf_top_sample @ List.map (fun _ -> CONFIRMED_) cnf_bottom_sample @ List.map (fun _ -> ACCEPTED_) acc_top_sample @ List.map (fun _ -> ACCEPTED_) acc_top_sample)
+  let nothing_log_info = List.length (np_top_sample @ np_bottom_sample) in
+  let confirmed_log_info = List.length (cnf_top_sample @ cnf_bottom_sample) in
+  let accepted_log_info = List.length (acc_top_sample @ acc_bottom_sample) in
+  dump_queue_info nothing_log_info confirmed_log_info accepted_log_info ;
+  let state_concatenated = (List.map (fun _ -> NOTHING_) np_top_sample @ List.map (fun _ -> NOTHING_) np_bottom_sample @ List.map (fun _ -> CONFIRMED_) cnf_top_sample @ List.map (fun _ -> CONFIRMED_) cnf_bottom_sample @ List.map (fun _ -> ACCEPTED_) acc_top_sample @ List.map (fun _ -> ACCEPTED_) acc_bottom_sample) in
+  let population_concatenated = (np_top_sample @ np_bottom_sample @ cnf_top_sample @ cnf_bottom_sample @ acc_top_sample @ acc_bottom_sample) in
+  let num_states = List.length (state_concatenated) in
+  let num_pop = List.length (population_concatenated) in
+  let outString = Printf.sprintf "%d -- %d\n" num_states num_pop in
+  print_endline outString ;
+  let filter_all = List.map2 (fun x y -> (x, y)) population_concatenated state_concatenated in
+  let removed_duplicates = remove_duplicates filter_all in
+  let samples = List.map (fun x -> fst x) removed_duplicates in
+  let states = List.map (fun x -> snd x) removed_duplicates in
+  (samples, states)
 
 let population_size_across_queues (x : population) (y : population) (z : population) =
   match x, y, z with
@@ -584,8 +680,31 @@ let dump_all_traces (traces : provenance list list) =
   let trace_string_lists = List.map dump_single_trace traces in
   let result = ref "" in
   (List.iter (fun x -> result := !result ^ x ) trace_string_lists) ;
-  append_to_file "../interesting_traces.txt" !result
+  append_to_file "results/interesting_traces.txt" !result
 
+let normalize_scores (q : triple_queue) : triple_queue =
+  let np, cnf, acc = List.nth q 0, List.nth q 1, List.nth q 2 in
+  match np, cnf, acc with
+  | NOTHING x, CONFIRMED y, ACCEPTED z -> [
+    NOTHING (List.map (fun i -> (fst i), (snd i /. (float_of_int (List.length (fst i |> fst))))) x);
+    CONFIRMED (List.map (fun i -> (fst i), (snd i /. (float_of_int (List.length (fst i |> fst))))) y);
+    ACCEPTED (List.map (fun i -> (fst i), (snd i /. (float_of_int (List.length (fst i |> fst))))) z)
+    ]
+    | _, _, _ -> failwith "unexpected queue handle"
+
+let merge_queues (q1 : triple_queue) (q2 : triple_queue) : triple_queue = [
+    NOTHING ((extract_child_from_state (List.nth q1 0)) @ (extract_child_from_state (List.nth q2 0))); 
+    CONFIRMED ((extract_child_from_state (List.nth q1 1)) @ (extract_child_from_state (List.nth q2 1))); 
+    ACCEPTED ((extract_child_from_state (List.nth q1 2)) @ (extract_child_from_state (List.nth q2 2)))
+  ]
+
+let save_updated_queue_sizes a b =
+  let _ = Unix.system ("touch " ^ "temporal-info/queue-size-updates.txt") in
+  Unix.sleepf 0.1 ;
+  print_endline "write_queue_sizes" ;
+  let oc = open_out "temporal-info/queue-size-updates.txt" in
+  output_string oc (Printf.sprintf "Old queue size: %d -- New queue size: %d\n" a b);
+  close_out oc
 
 let rec fuzzingAlgorithm 
 (maxCurrentPopulation : int) 
@@ -596,23 +715,27 @@ let rec fuzzingAlgorithm
 (terminationIteration:int) 
 (cleanupIteration : int) 
 (newChildThreshold : int) 
-(mutationOperations : mutationOperations) =
+(mutationOperations : mutationOperations)
+(seed : triple_queue) =
   let nothing_population = List.nth currentQueue 0 in
   let confirmed_population = List.nth currentQueue 1 in
   let accepted_population = List.nth currentQueue 2 in
   let total_population_size = population_size_across_queues nothing_population confirmed_population accepted_population in
   if currentIteration >= terminationIteration then iTraces
   else
-    if currentIteration mod cleanupIteration = 0 || total_population_size >= maxCurrentPopulation then
-      fuzzingAlgorithm maxCurrentPopulation (cleaupPopulation currentQueue) iTraces tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations
+    if currentIteration mod cleanupIteration = 0 then
+      fuzzingAlgorithm maxCurrentPopulation seed iTraces tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations seed
+    else if total_population_size >= maxCurrentPopulation then
+      fuzzingAlgorithm maxCurrentPopulation (cleanup currentQueue) iTraces tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations seed
     else
       let currentQueue = 
         [NOTHING (List.filter (fun x -> List.length (fst x |> fst) <= 10) (extract_child_from_state nothing_population));
         CONFIRMED (List.filter (fun x -> List.length (fst x |> fst) <= 10) (extract_child_from_state confirmed_population));
         ACCEPTED (List.filter (fun x -> List.length (fst x |> fst) <= 10) (extract_child_from_state accepted_population))]
       in
-      let newPopulation = fst (uniform_sample_from_queue currentQueue) in
-      let old_states_ = snd (uniform_sample_from_queue currentQueue) in
+      let sampled_pop = uniform_sample_from_queue currentQueue in
+      let newPopulation = fst sampled_pop in
+      let old_states_ = snd sampled_pop in
       let selectedMutations = mutationList random_element mutationOperations (List.length newPopulation) in
       let mutatedPopulation = newMutatedSet newPopulation selectedMutations (List.length newPopulation) in
       let score_and_oracle_old_states = executeMutatedPopulation mutatedPopulation old_states_ in
@@ -620,11 +743,30 @@ let rec fuzzingAlgorithm
       let score_and_oracle = fst score_and_oracle_old_states in
       let (iT, newPopulation_) = fst score_and_oracle in
       dump_all_traces iT ;
-      let newQueue = bucket_oracle currentQueue newPopulation_ old_states (snd score_and_oracle) in 
-      fuzzingAlgorithm maxCurrentPopulation newQueue (List.append iTraces iT) tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations
+      let newQueue = normalize_scores (bucket_oracle currentQueue newPopulation_ old_states (snd score_and_oracle)) in
+      let old_queue_size = population_size_across_queues (List.nth currentQueue 0) (List.nth currentQueue 1) (List.nth currentQueue 2) in
+      let new_queue_size = population_size_across_queues (List.nth newQueue 0) (List.nth newQueue 1) (List.nth newQueue 2) in      
+      save_updated_queue_sizes old_queue_size new_queue_size ;
+      fuzzingAlgorithm maxCurrentPopulation newQueue (List.append iTraces iT) tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations seed
+
+let initialize_files =
+  initialize_clear_file "temporal-info/NOTHING-queue-info.txt";
+  initialize_clear_file "temporal-info/CONFIRMED-queue-info.txt";
+  initialize_clear_file "temporal-info/ACCEPTED-queue-info.txt";
+  initialize_clear_file "temporal-info/queue-size-updates.txt";
+  initialize_clear_file "temporal-info/OCaml-time-info.csv";
+  initialize_clear_file "temporal-info/sample-info.txt";
+  initialize_clear_file "results/interesting_traces.txt";
+  initialize_clear_file "sync/driver_oracle.json";
+  initialize_clear_file "sync/oracle-response.txt";
+  initialize_clear_file "sync/placeholders_replace.pkt";
+  initialize_clear_file "sync/message.txt";
+  initialize_clear_file "sync/response.txt";
+  ()
 
 let runFuzzer grammar_list = 
   Random.self_init ();
+  initialize_files ;
   let commit_grammar = List.nth grammar_list 0 in
   let confirm_grammar = List.nth grammar_list 1 in
   let commit_confirm_grammar = List.nth grammar_list 2 in
@@ -632,5 +774,5 @@ let runFuzzer grammar_list =
   let confirmed_queue = CONFIRMED([([ValidPacket COMMIT], commit_grammar), 0.0; ([ValidPacket COMMIT], confirm_grammar), 0.0; ([ValidPacket COMMIT], commit_confirm_grammar), 0.0;]) in
   let accepted_queue = ACCEPTED([([ValidPacket COMMIT; ValidPacket CONFIRM], commit_grammar), 0.0; ([ValidPacket COMMIT; ValidPacket CONFIRM], confirm_grammar), 0.0; ([ValidPacket COMMIT; ValidPacket CONFIRM], commit_confirm_grammar), 0.0;]) in
 
-  let _ = fuzzingAlgorithm 1000 [nothing_queue; confirmed_queue; accepted_queue] [] 100 0 1000 20 100 [Add; Delete; Modify; CrossOver;CorrectPacket;] in
+  let _ = fuzzingAlgorithm 10000 [nothing_queue; confirmed_queue; accepted_queue] [] 100 0 1150 500 100 [Add; Delete; Modify; CrossOver;CorrectPacket;] [nothing_queue; confirmed_queue; accepted_queue] in
   ()
