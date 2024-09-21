@@ -60,7 +60,12 @@ let main_pipeline input_string =
   let sygus_ast = ComputeDeps.compute_deps dep_map ast sygus_ast in 
   Debug.debug_print SygusAst.pp_print_sygus_ast ppf sygus_ast;
 
-  (* Step 11: Serialize! *)
+  (* Step 11: Bit flip mutations for BitList terms *)
+  Debug.debug_print Format.pp_print_string ppf "\nBit flip mutations:\n";
+  let sygus_ast = BitFlips.flip_bits sygus_ast in 
+  Debug.debug_print SygusAst.pp_print_sygus_ast ppf sygus_ast;
+
+  (* Step 12: Serialize! *)
   Debug.debug_print Format.pp_print_string ppf "\nSerializing:\n";
   let output = Utils.capture_output SygusAst.serialize sygus_ast in 
   Format.pp_print_string ppf output; 
@@ -111,6 +116,9 @@ let sygusGrammarToPacket ast =
     (* Step 9: Compute dependencies *)
     let sygus_ast = ComputeDeps.compute_deps dep_map ast sygus_ast in 
 
-    (* Step 10: Serialize! *)
+    (* Step 10: Bit flip mutations *)
+    let sygus_ast = BitFlips.flip_bits sygus_ast in
+
+    (* Step 11: Serialize! *)
     let output = SygusAst.serialize_bytes SygusAst.Big sygus_ast in 
     Ok output
