@@ -248,6 +248,7 @@ close_out oc;
 ()
 
 let mutation_crossover (rhs1 : prod_rule_rhs) (rhs2 : prod_rule_rhs) : (prod_rule_rhs * prod_rule_rhs) =
+    Random.self_init () ;
     match rhs1, rhs2 with
     | Rhs([],[]), Rhs([],[]) -> Rhs([],[]), Rhs([],[])
     | Rhs(geList1, scList1), Rhs (geList2, scList2) -> 

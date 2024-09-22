@@ -319,6 +319,7 @@ let random_element (lst: 'a list) : 'a =
 
 (* Function to sample from a given percentile range *)
 let sample_from_percentile_range (pop : child list) (lower_percentile: float) (upper_percentile: float) (sample_size: int) : child list =
+  Random.self_init () ;
   if sample_size = 0 then pop
   else
     let sorted_pop = List.sort (fun ((_, _), score1) ((_, _), score2) -> compare score2 score1) pop in
@@ -363,6 +364,7 @@ let rec check_well_formed_rules (grammar : ast) : bool =
     
 
 let rec applyMutation (m : mutation) (g : ast) : packet_type * grammar =
+  Random.self_init () ;
   let nt = random_element nonterminals in
   match m with
     Add -> print_endline "\n\nADDING\n\n" ; 
@@ -576,15 +578,22 @@ let rec remove_duplicates lst =
   | x :: xs -> if exists x xs then remove_duplicates xs else x :: remove_duplicates xs
   
 
+let get_percentile (p : child list) : float =
+  if List.length p <= 100 then 50.0
+  else if List.length p <= 1000 then 25.0
+  else if List.length p <= 5000 then 10.0
+  else 5.0
+
 let uniform_sample_from_queue (q : triple_queue) : (child list) * (state list) =
   print_endline "SAMPLING NEW POPULATION FOR MUTATION.." ;
   let np, cnf, acc = List.nth q 0, List.nth q 1, List.nth q 2 in
-  let np_top_sample = sample_from_percentile_range (extract_child_from_state np) 0.0 50.0 10 in
-  let cnf_top_sample = sample_from_percentile_range (extract_child_from_state cnf) 0.0 50.0 10 in
-  let acc_top_sample = sample_from_percentile_range (extract_child_from_state acc) 0.0 50.0 10 in
-  let np_bottom_sample = sample_from_percentile_range (extract_child_from_state np) 0.0 100.0 5 in
-  let cnf_bottom_sample = sample_from_percentile_range (extract_child_from_state cnf) 0.0 100.0 5 in
-  let acc_bottom_sample = sample_from_percentile_range (extract_child_from_state acc) 0.0 100.0 5 in
+   
+  let np_top_sample = sample_from_percentile_range (extract_child_from_state np) 0.0 (get_percentile ((extract_child_from_state np))) 25 in
+  let cnf_top_sample = sample_from_percentile_range (extract_child_from_state cnf) 0.0 (get_percentile ((extract_child_from_state cnf))) 25 in
+  let acc_top_sample = sample_from_percentile_range (extract_child_from_state acc) 0.0 (get_percentile ((extract_child_from_state acc))) 25 in
+  let np_bottom_sample = sample_from_percentile_range (extract_child_from_state np) 0.0 100.0 7 in
+  let cnf_bottom_sample = sample_from_percentile_range (extract_child_from_state cnf) 0.0 100.0 7 in
+  let acc_bottom_sample = sample_from_percentile_range (extract_child_from_state acc) 0.0 100.0 7 in
   print_endline "RETURNING NEW POPULATION FOR MUTATION.." ;
   let nothing_log_info = List.length (np_top_sample @ np_bottom_sample) in
   let confirmed_log_info = List.length (cnf_top_sample @ cnf_bottom_sample) in
@@ -747,6 +756,7 @@ let rec fuzzingAlgorithm
       let old_queue_size = population_size_across_queues (List.nth currentQueue 0) (List.nth currentQueue 1) (List.nth currentQueue 2) in
       let new_queue_size = population_size_across_queues (List.nth newQueue 0) (List.nth newQueue 1) (List.nth newQueue 2) in      
       save_updated_queue_sizes old_queue_size new_queue_size ;
+      save_queue_info newQueue ;
       fuzzingAlgorithm maxCurrentPopulation newQueue (List.append iTraces iT) tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations seed
 
 let initialize_files =
