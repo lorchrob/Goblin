@@ -2,7 +2,7 @@ open Ast
 open Mutationops
 open Topological_sort
 open Byte_parser
-
+(* open Execute_trace *)
 (* DANIYAL: File with basic mutation examples
 
 open Ast
@@ -99,6 +99,8 @@ let oracle_calls = ref 0
 
 let sygus_success_calls = ref 0
 let sygus_fail_calls = ref 0
+
+let trace_time = ref 0.0
 
 let total_execution_time = ref 0.0
 let total_execution_calls = ref 0
@@ -234,6 +236,7 @@ let wait_for_python_bin_response response_file =
   let rec loop () =
     match read_binary_file response_file with
     | Some response ->
+        Unix.truncate response_file 0;
         response
     | None ->
         sleepf 0.1;  (* Wait for a while before checking again *)
@@ -297,9 +300,9 @@ let rec scoreFunction (pktStatus : (provenance * output) list) (mutatedPopulatio
     match output_symbol with
     | TIMEOUT | EXPECTED_OUTPUT ->
       if output_symbol = TIMEOUT then
-        ((fst future_provenance_and_population)), (((old_provenance @ [packet], current_grammar), score +. 0.3) :: (snd future_provenance_and_population))
-      else 
         ((fst future_provenance_and_population)), (((old_provenance @ [packet], current_grammar), score +. 0.1) :: (snd future_provenance_and_population))
+      else 
+        ((fst future_provenance_and_population)), (((old_provenance @ [packet], current_grammar), score +. 0.3) :: (snd future_provenance_and_population))
     | CRASH | UNEXPECTED_OUTPUT ->
       if output_symbol = CRASH then 
         ((old_provenance @ [packet])  :: (fst future_provenance_and_population)), (((old_provenance @ [packet], current_grammar), score +. 0.5) :: (snd future_provenance_and_population))
@@ -461,7 +464,7 @@ let save_time_info filename trace_length =
   Unix.sleepf 0.1 ;
   print_endline "saving time info.." ;
   let oc = open_out_gen [Open_creat; Open_append] 0o666 filename in
-  output_string oc (Printf.sprintf "%d,%d,%.8f,%d,%.8f,%d,%.8f,%d,%.8f\n" trace_length !sygus_success_calls !sygus_success_execution_time !sygus_fail_calls !sygus_fail_execution_time !oracle_calls !oracle_time !driver_calls !driver_call_time);
+  output_string oc (Printf.sprintf "%d,%.8f,%d,%.8f,%d,%.8f,%d,%.8f,%d,%.8f\n" trace_length (!trace_time /. (float_of_int trace_length)) !sygus_success_calls !sygus_success_execution_time !sygus_fail_calls !sygus_fail_execution_time !oracle_calls !oracle_time !driver_calls !driver_call_time);
   close_out oc
 
 let save_population_info filename population =
@@ -515,10 +518,95 @@ let sendPacket (c : child) : (provenance * output) * state =
     )
   | None -> ((ValidPacket NOTHING, EXPECTED_OUTPUT), IGNORE_)
 
+
+let run_trace (trace : provenance list) : string list =
+  List.map (fun x -> 
+    match x with
+    | RawPacket z -> (Bytes.to_string z)
+    | ValidPacket z -> ( 
+      match z with
+      | COMMIT -> "COMMIT"
+      | CONFIRM -> "CONFIRM"
+      | ASSOCIATION_REQUEST -> "ASSOCIATION_REQUEST"
+      | NOTHING | RESET -> failwith "unexpected provenance element.."
+    ) 
+  ) trace
+  
+
+let rec write_traces_to_files p_list i n =
+  match n, p_list with
+  | 0, _ -> ()
+  | _, [] -> ()
+  | _, x :: xs -> 
+    write_symbol_to_file (Printf.sprintf "sync/message_%d.txt" i) x ;
+    write_traces_to_files xs (i + 1) (n - 1)
+
+let callDriver_new packets packet =
+  (* let message_file = "sync/message.txt" in *)
+  let response_file = "sync/response.txt" in
+  let placeholder_replaced_file = "/home/pirwani/Desktop/placeholders-replace.pkt" in
+  match packet with 
+  | ValidPacket y -> 
+    write_symbol_to_file "sync/trace-length.txt" (Printf.sprintf "%d" ((List.length packets) + 1)) ; 
+    write_traces_to_files (packets @ [(map_provenance_to_string packet)]) 0 ((List.length packets) + 1) ;
+    (* write_symbol_to_file message_file (packets ^ (map_provenance_to_string packet) ^ ", ") ; ( *)
+    (match y with
+    | COMMIT -> (wait_for_python_response response_file, CONFIRMED_) 
+    | CONFIRM -> (wait_for_python_response response_file, ACCEPTED_)
+    | ASSOCIATION_REQUEST -> (wait_for_python_response response_file, NOTHING_)
+    | RESET -> (wait_for_python_response response_file, NOTHING_)
+    | NOTHING -> failwith "unexpected symbol.."
+  )
+  | RawPacket y ->
+    write_symbol_to_file "sync/trace-length.txt" (Printf.sprintf "%d" ((List.length packets) + 1)) ; 
+    write_traces_to_files (packets @ [(Bytes.to_string y)]) 0 ((List.length packets) + 1) ;
+    (* write_symbol_to_file message_file (packets ^ (Bytes.to_string y) ^ ", "); *)
+    print_endline "write to file successful.." ;
+    let bin_placeholders = wait_for_python_bin_response placeholder_replaced_file in
+    print_endline "possible fail place.." ;
+    let string_to_send = ((Bitstring.bitstring_of_string (Bytes.to_string bin_placeholders))) in
+    print_endline "string_to_send success.." ;
+    print_endline (Bytes.to_string bin_placeholders) ;
+    let oracle_start_time = Unix.gettimeofday () in
+    let oracle_result = parse_packet string_to_send in
+    oracle_time := ((Unix.gettimeofday ()) -. oracle_start_time) ;
+    print_endline "oracle result success" ;
+    let driver_start_time = Unix.gettimeofday () in
+    let driver_result = wait_for_python_response response_file in
+    driver_call_time := ((Unix.gettimeofday ()) -. driver_start_time) ;
+    driver_calls := !driver_calls + 1 ;
+    (driver_result, oracle_result)
+    
+let run_sequence (c : child) : (provenance * output) * state =
+  let stateTransition = fst c |> fst in
+  print_endline "\n\n\nGRAMMAR TO SYGUS:" ;
+  pp_print_ast Format.std_formatter (fst c |> snd) ;
+  let sygus_start_time = Unix.gettimeofday () in
+  let removed_dead_rules_for_sygus = dead_rule_removal (fst c |> snd) "SAE_PACKET" in
+  match removed_dead_rules_for_sygus with
+  | Some grammar_to_sygus ->
+    sygus_success_execution_time := ((Unix.gettimeofday ()) -. sygus_start_time) ;
+    sygus_success_calls := !sygus_success_calls + 1 ;
+    let packetToSend_ = Lwt_main.run (timeout_wrapper 5.0 (fun () -> (Pipeline.sygusGrammarToPacket grammar_to_sygus))) in (
+      match packetToSend_ with
+      | Ok (packetToSend, _metadata) ->
+        let trace_start_time = Unix.gettimeofday () in
+        let driver_output = callDriver_new (run_trace stateTransition) (RawPacket packetToSend) in
+        trace_time := trace_start_time -. trace_start_time in
+        save_time_info "temporal-info/OCaml-time-info.csv" (1 + (List.length (stateTransition))) ;
+        (RawPacket packetToSend, (fst driver_output)), (snd driver_output)
+      | Error _ -> 
+        sygus_fail_execution_time := ((Unix.gettimeofday ()) -. sygus_start_time) ;
+        sygus_fail_calls := !sygus_fail_calls + 1 ;
+        ((ValidPacket NOTHING, EXPECTED_OUTPUT), IGNORE_)
+    )
+  | None -> ((ValidPacket NOTHING, EXPECTED_OUTPUT), IGNORE_)
+  
+
 let executeMutatedPopulation (mutatedPopulation : child list) (old_states : state list) : (((provenance list list) * (child list)) * (state list)) * (state list) =
   print_endline "EXECUTING MUTATED POPULATION.." ;
 
-  let _outputList = List.map sendPacket mutatedPopulation in
+  let _outputList = List.map run_sequence mutatedPopulation in
   let cat_mutated_population = List.map2 (fun x y -> (x, y)) mutatedPopulation _outputList in 
   let old_new_states = List.map2 (fun x y -> (x, y)) cat_mutated_population old_states in
   let removed_sygus_errors = List.filter (fun x -> (fst x |> snd |> fst |> fst) <> (ValidPacket NOTHING)) old_new_states in
@@ -715,6 +803,11 @@ let save_updated_queue_sizes a b =
   output_string oc (Printf.sprintf "Old queue size: %d -- New queue size: %d\n" a b);
   close_out oc
 
+let save_iteration_time (iteration : int) (iteration_timer : float) : unit =
+  let time_string = Printf.sprintf "Iteration: %d --> Time taken: %.3f\n" iteration iteration_timer in
+  append_to_file "temporal-info/iteration-times.txt" time_string ;
+  ()
+
 let rec fuzzingAlgorithm 
 (maxCurrentPopulation : int) 
 (currentQueue : triple_queue) 
@@ -737,6 +830,7 @@ let rec fuzzingAlgorithm
     else if total_population_size >= maxCurrentPopulation then
       fuzzingAlgorithm maxCurrentPopulation (cleanup currentQueue) iTraces tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations seed
     else
+      let start_time = Unix.gettimeofday () in
       let currentQueue = 
         [NOTHING (List.filter (fun x -> List.length (fst x |> fst) <= 10) (extract_child_from_state nothing_population));
         CONFIRMED (List.filter (fun x -> List.length (fst x |> fst) <= 10) (extract_child_from_state confirmed_population));
@@ -757,6 +851,8 @@ let rec fuzzingAlgorithm
       let new_queue_size = population_size_across_queues (List.nth newQueue 0) (List.nth newQueue 1) (List.nth newQueue 2) in      
       save_updated_queue_sizes old_queue_size new_queue_size ;
       save_queue_info newQueue ;
+      let iteration_timer = Unix.gettimeofday () -. start_time in
+      save_iteration_time (currentIteration + 1) iteration_timer ;
       fuzzingAlgorithm maxCurrentPopulation newQueue (List.append iTraces iT) tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations seed
 
 let initialize_files =
@@ -769,7 +865,7 @@ let initialize_files =
   initialize_clear_file "results/interesting_traces.txt";
   initialize_clear_file "sync/driver_oracle.json";
   initialize_clear_file "sync/oracle-response.txt";
-  initialize_clear_file "sync/placeholders_replace.pkt";
+  initialize_clear_file "sync/placeholders-replace.pkt";
   initialize_clear_file "sync/message.txt";
   initialize_clear_file "sync/response.txt";
   ()
@@ -784,5 +880,5 @@ let runFuzzer grammar_list =
   let confirmed_queue = CONFIRMED([([ValidPacket COMMIT], commit_grammar), 0.0; ([ValidPacket COMMIT], confirm_grammar), 0.0; ([ValidPacket COMMIT], commit_confirm_grammar), 0.0;]) in
   let accepted_queue = ACCEPTED([([ValidPacket COMMIT; ValidPacket CONFIRM], commit_grammar), 0.0; ([ValidPacket COMMIT; ValidPacket CONFIRM], confirm_grammar), 0.0; ([ValidPacket COMMIT; ValidPacket CONFIRM], commit_confirm_grammar), 0.0;]) in
 
-  let _ = fuzzingAlgorithm 10000 [nothing_queue; confirmed_queue; accepted_queue] [] 100 0 1150 500 100 [Add; Delete; Modify; CrossOver;CorrectPacket;] [nothing_queue; confirmed_queue; accepted_queue] in
+  let _ = fuzzingAlgorithm 10000 [nothing_queue; confirmed_queue; accepted_queue] [] 100 0 1150 100 100 [Add; Delete; Modify; CrossOver;CorrectPacket;] [nothing_queue; confirmed_queue; accepted_queue] in
   ()
