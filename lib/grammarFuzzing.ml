@@ -653,12 +653,12 @@ let uniform_sample_from_queue (q : triple_queue) : (child list) * (state list) =
   print_endline "SAMPLING NEW POPULATION FOR MUTATION.." ;
   let np, cnf, acc = List.nth q 0, List.nth q 1, List.nth q 2 in
    
-  let np_top_sample = sample_from_percentile_range (extract_child_from_state np) 0.0 (get_percentile ((extract_child_from_state np))) 25 in
-  let cnf_top_sample = sample_from_percentile_range (extract_child_from_state cnf) 0.0 (get_percentile ((extract_child_from_state cnf))) 25 in
-  let acc_top_sample = sample_from_percentile_range (extract_child_from_state acc) 0.0 (get_percentile ((extract_child_from_state acc))) 25 in
-  let np_bottom_sample = sample_from_percentile_range (extract_child_from_state np) 0.0 100.0 7 in
-  let cnf_bottom_sample = sample_from_percentile_range (extract_child_from_state cnf) 0.0 100.0 7 in
-  let acc_bottom_sample = sample_from_percentile_range (extract_child_from_state acc) 0.0 100.0 7 in
+  let np_top_sample = sample_from_percentile_range (extract_child_from_state np) 0.0 (get_percentile ((extract_child_from_state np))) 15 in
+  let cnf_top_sample = sample_from_percentile_range (extract_child_from_state cnf) 0.0 (get_percentile ((extract_child_from_state cnf))) 15 in
+  let acc_top_sample = sample_from_percentile_range (extract_child_from_state acc) 0.0 (get_percentile ((extract_child_from_state acc))) 15 in
+  let np_bottom_sample = sample_from_percentile_range (extract_child_from_state np) 0.0 100.0 5 in
+  let cnf_bottom_sample = sample_from_percentile_range (extract_child_from_state cnf) 0.0 100.0 5 in
+  let acc_bottom_sample = sample_from_percentile_range (extract_child_from_state acc) 0.0 100.0 5 in
   print_endline "RETURNING NEW POPULATION FOR MUTATION.." ;
   let nothing_log_info = List.length (np_top_sample @ np_bottom_sample) in
   let confirmed_log_info = List.length (cnf_top_sample @ cnf_bottom_sample) in
