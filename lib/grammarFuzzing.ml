@@ -2,60 +2,6 @@ open Ast
 open Mutationops
 open Topological_sort
 open Byte_parser
-(* open Execute_trace *)
-(* DANIYAL: File with basic mutation examples
-
-open Ast
-open SygusAst
-
-(*  <S> ::= <A> <B> <C> 
-    <A> ::= <B> <C>
-    <C> ::= <D>
-    ---> 
-    <S> ::= <B> <A> <C>
-    <A> ::= <C> <B>
-    <C> ::= 
-*)
-(* Mutating the grammar, but without a concrete packet. *)
-let mutate_grammar: ast -> ast 
-= fun ast -> List.map (fun element -> match element with
-  | ProdRule (nt, Rhs (ge1 :: ge2 :: ges, scs) :: rules) -> ProdRule (nt, Rhs (ge2 :: ge1 :: ges, scs) :: rules)
-  | ProdRule (nt, _) -> ProdRule (nt, [])
-  | TypeAnnotation _ -> element
-  ) ast
-
-let has_rgid_length_with_value_2 _ = assert false 
-
-let has_rgid_list_with_length_n _ = assert false 
-
-let mutate _ = assert false
-
-(* Mutating a concrete packet *)
-let rec mutate_concrete_packet: sygus_ast -> sygus_ast
-= fun sygus_ast -> match sygus_ast with 
-| Node (constructor, children) -> 
-  if constructor = "REJECTED_GROUPS" && 
-     has_rgid_length_with_value_2 children && 
-     has_rgid_list_with_length_n children 
-  then mutate sygus_ast  
-  else Node (constructor, List.map mutate_concrete_packet children)
-| _ -> sygus_ast *)
-
-
-(* Deletes the first grammar element from every production rule 
-   of the grammar *)
-(* let delete: ast -> ast 
-(* Apply the mutation to every production rule in the ast *)
-= fun ast -> List.map (fun element -> match element with
-  (* Remove the first element of the first Rhs of each production rule *)
-  | ProdRule (nt, Rhs (_ :: ges, scs) :: rules) -> 
-    ProdRule (nt, Rhs (ges, scs) :: rules)
-    (* If the production rule does not have an Rhs with at least one element, ignore it *)
-    | ProdRule _ -> element
-    (* Ignore type annotations *)
-    | TypeAnnotation _ -> element
-    ) ast *)
-    
 open Unix
 open Lwt.Infix
 
@@ -114,6 +60,38 @@ let preprocess_map (f : 'a) (p : population) : population =
   | CONFIRMED x -> CONFIRMED (f x)
   | ACCEPTED x -> ACCEPTED (f x)
 
+let rec compare_provenance_list (x : provenance list) (y : provenance list) =
+  match x, y with
+  | [], [] -> 0
+  | _, [] -> 1
+  | [], _ -> -1
+  | xx :: xs, yy :: ys -> 
+    match xx, yy with
+    | RawPacket x1, RawPacket y1 -> 
+      let c = Bytes.compare x1 y1 in
+      if c = 0 then compare_provenance_list xs ys else c
+    | ValidPacket x1, ValidPacket y1 ->
+      (match x1, y1 with
+      | COMMIT, COMMIT | CONFIRM, CONFIRM | ASSOCIATION_REQUEST, ASSOCIATION_REQUEST -> 
+        compare_provenance_list xs ys
+      | _, _ -> -1)
+    | _, _ -> -1
+
+
+
+let compare_grammar g1 g2 =
+  let s1 = Utils.capture_output pp_print_ast g1 in
+  let s2 = Utils.capture_output pp_print_ast g2 in
+  Stdlib.compare s1 s2
+  
+module PopulationSet = Set.Make(
+  struct type t = child 
+  let compare ((p1, g1), _) ((p2, g2), _) = 
+  match compare_provenance_list p1 p2 with 
+  | 0 -> compare_grammar g1 g2 
+  | c -> c 
+end
+) 
 
 (* type iterationCount = int  *)
 
@@ -533,22 +511,21 @@ let run_trace (trace : provenance list) : string list =
   ) trace
   
 
-let rec write_traces_to_files p_list i n =
-  match n, p_list with
-  | 0, _ -> ()
-  | _, [] -> ()
-  | _, x :: xs -> 
+let rec write_traces_to_files p_list i =
+  match p_list with
+  | [] -> ()
+  | x :: xs -> 
     write_symbol_to_file (Printf.sprintf "sync/message_%d.txt" i) x ;
-    write_traces_to_files xs (i + 1) (n - 1)
+    write_traces_to_files xs (i + 1)
 
 let callDriver_new packets packet =
   (* let message_file = "sync/message.txt" in *)
   let response_file = "sync/response.txt" in
-  let placeholder_replaced_file = "/home/pirwani/Desktop/placeholders-replace.pkt" in
+  let placeholder_replaced_file = "sync/placeholders-replace.pkt" in
   match packet with 
-  | ValidPacket y -> 
-    write_symbol_to_file "sync/trace-length.txt" (Printf.sprintf "%d" ((List.length packets) + 1)) ; 
-    write_traces_to_files (packets @ [(map_provenance_to_string packet)]) 0 ((List.length packets) + 1) ;
+  | ValidPacket _ -> failwith "unexpected sygus output ADT.."
+    (* write_symbol_to_file "sync/trace-length.txt" (Printf.sprintf "%d" ((List.length packets) + 1)) ; 
+    write_traces_to_files (packets @ [(map_provenance_to_string packet)]) 0 ;
     (* write_symbol_to_file message_file (packets ^ (map_provenance_to_string packet) ^ ", ") ; ( *)
     (match y with
     | COMMIT -> (wait_for_python_response response_file, CONFIRMED_) 
@@ -556,10 +533,10 @@ let callDriver_new packets packet =
     | ASSOCIATION_REQUEST -> (wait_for_python_response response_file, NOTHING_)
     | RESET -> (wait_for_python_response response_file, NOTHING_)
     | NOTHING -> failwith "unexpected symbol.."
-  )
+  ) *)
   | RawPacket y ->
     write_symbol_to_file "sync/trace-length.txt" (Printf.sprintf "%d" ((List.length packets) + 1)) ; 
-    write_traces_to_files (packets @ [(Bytes.to_string y)]) 0 ((List.length packets) + 1) ;
+    write_traces_to_files (packets @ [(Bytes.to_string y)]) 0 ;
     (* write_symbol_to_file message_file (packets ^ (Bytes.to_string y) ^ ", "); *)
     print_endline "write to file successful.." ;
     let bin_placeholders = wait_for_python_bin_response placeholder_replaced_file in
@@ -592,7 +569,7 @@ let run_sequence (c : child) : (provenance * output) * state =
       | Ok (packetToSend, _metadata) ->
         let trace_start_time = Unix.gettimeofday () in
         let driver_output = callDriver_new (run_trace stateTransition) (RawPacket packetToSend) in
-        trace_time := trace_start_time -. trace_start_time in
+        trace_time := Unix.gettimeofday () -. trace_start_time ;
         save_time_info "temporal-info/OCaml-time-info.csv" (1 + (List.length (stateTransition))) ;
         (RawPacket packetToSend, (fst driver_output)), (snd driver_output)
       | Error _ -> 
@@ -746,14 +723,18 @@ let filter_state (qh : queue_handle) (c : state_child) : bool =
   | NOTHING _ -> if qh = NOTHING then true else false
   | CONFIRMED _ -> if qh = CONFIRMED then true else false
   | ACCEPTED _ -> if qh = ACCEPTED then true else false
+
+let removeDuplicates (currentList : child list) : child list = 
+  let s = PopulationSet.of_list currentList in 
+  PopulationSet.elements s  
   
 let bucket_oracle (q : triple_queue) (clist : child list) (old_states : state list) (new_states : state list) : triple_queue =
   print_endline "NEW QUEUES GENERATING.." ;
   let np, cnf, acc = extract_child_from_state (List.nth q 0), extract_child_from_state (List.nth q 1), extract_child_from_state (List.nth q 2) in
   let newPopulation = map_packet_to_state clist old_states new_states in
-  let newNothingList = np @ List.map get_child_from_state (List.filter (filter_state NOTHING) newPopulation) in
-  let newConfirmedList = cnf @ List.map get_child_from_state (List.filter (filter_state CONFIRMED) newPopulation) in
-  let newAcceptedList = acc @ List.map get_child_from_state (List.filter (filter_state ACCEPTED) newPopulation) in
+  let newNothingList = removeDuplicates (np @ List.map get_child_from_state (List.filter (filter_state NOTHING) newPopulation)) in
+  let newConfirmedList = removeDuplicates (cnf @ List.map get_child_from_state (List.filter (filter_state CONFIRMED) newPopulation)) in
+  let newAcceptedList = removeDuplicates (acc @ List.map get_child_from_state (List.filter (filter_state ACCEPTED) newPopulation)) in
   print_endline "NEW QUEUES GENERATED -- RETURNING.." ;
    [NOTHING newNothingList; CONFIRMED newConfirmedList; ACCEPTED newAcceptedList]
 
