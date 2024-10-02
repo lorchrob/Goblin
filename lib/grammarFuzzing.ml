@@ -239,7 +239,7 @@ let map_provenance_to_string (p : provenance) : string =
 let callDriver x =
   let message_file = "sync/message.txt" in
   let response_file = "sync/response.txt" in
-  let placeholder_replaced_file = "/home/pirwani/Desktop/placeholders-replace.pkt" in
+  let placeholder_replaced_file = "sync/placeholders-replace.pkt" in
   match x with 
   | ValidPacket y -> 
     write_symbol_to_file message_file (map_provenance_to_string x) ; (
