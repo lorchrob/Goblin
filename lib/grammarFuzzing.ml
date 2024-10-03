@@ -496,11 +496,21 @@ let sendPacket (c : child) : (provenance * output) * state =
     )
   | None -> ((ValidPacket NOTHING, EXPECTED_OUTPUT), IGNORE_)
 
+let bytes_to_hex (b: bytes) : string =
+  let hex_of_byte byte =
+    Printf.sprintf "%02x" (int_of_char byte)
+  in
+  let len = Bytes.length b in
+  let rec loop i acc =
+    if i >= len then acc
+    else loop (i + 1) (acc ^ hex_of_byte (Bytes.get b i))
+  in
+  loop 0 ""
 
 let run_trace (trace : provenance list) : string list =
   List.map (fun x -> 
     match x with
-    | RawPacket z -> (Bytes.to_string z)
+    | RawPacket z -> (bytes_to_hex z)
     | ValidPacket z -> ( 
       match z with
       | COMMIT -> "COMMIT"
@@ -517,6 +527,12 @@ let rec write_traces_to_files p_list i =
   | x :: xs -> 
     write_symbol_to_file (Printf.sprintf "sync/message_%d.txt" i) x ;
     write_traces_to_files xs (i + 1)
+
+let write_trace_to_file p_list = 
+  let merged_trace = List.fold_left (fun acc x -> acc ^ ", " ^ x) "" p_list in
+  write_symbol_to_file "sync/message.txt" merged_trace ;
+  ()
+
 
 let callDriver_new packets packet =
   (* let message_file = "sync/message.txt" in *)
@@ -535,8 +551,8 @@ let callDriver_new packets packet =
     | NOTHING -> failwith "unexpected symbol.."
   ) *)
   | RawPacket y ->
-    write_symbol_to_file "sync/trace-length.txt" (Printf.sprintf "%d" ((List.length packets) + 1)) ; 
-    write_traces_to_files (packets @ [(Bytes.to_string y)]) 0 ;
+    (* write_symbol_to_file "sync/trace-length.txt" (Printf.sprintf "%d" ((List.length packets) + 1)) ;  *)
+    write_trace_to_file (packets @ [(bytes_to_hex y)]);
     (* write_symbol_to_file message_file (packets ^ (Bytes.to_string y) ^ ", "); *)
     print_endline "write to file successful.." ;
     let bin_placeholders = wait_for_python_bin_response placeholder_replaced_file in
@@ -738,16 +754,6 @@ let bucket_oracle (q : triple_queue) (clist : child list) (old_states : state li
   print_endline "NEW QUEUES GENERATED -- RETURNING.." ;
   [NOTHING newNothingList; CONFIRMED newConfirmedList; ACCEPTED newAcceptedList]
 
-let bytes_to_hex (b: bytes) : string =
-  let hex_of_byte byte =
-    Printf.sprintf "%02x" (int_of_char byte)
-  in
-  let len = Bytes.length b in
-  let rec loop i acc =
-    if i >= len then acc
-    else loop (i + 1) (acc ^ hex_of_byte (Bytes.get b i))
-  in
-  loop 0 ""
 
 let dump_single_trace (trace : provenance list) : string =
   let trace_string = List.map (fun x -> 
