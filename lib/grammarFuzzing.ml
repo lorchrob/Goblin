@@ -335,7 +335,7 @@ let sample_from_percentile_range (pop : child list) (lower_percentile: float) (u
 
     sample [] segment sample_size
 
-let nonterminals = ["RG_ID_LIST"; "REJECTED_GROUPS"; "PASSWORD_IDENTIFIER"; "PASSWD_ELEMENT_ID" ; "RG_ELEMENT_ID"; "PASSWD_ID"; "AC_ELEMENT_ID"; "AC_TOKEN_ELEMENT"; "AC_TOKEN"; "COMMIT"; "CONFIRM"; "AUTH_SEQ_CONFIRM"; "AC_TOKEN_CONTAINER"; "CONFIRM_HASH"; "AUTH_ALGO"; "AUTH_SEQ_COMMIT"; "SCALAR"; "GROUP_ID"; "ELEMENT"; "SEND_CONFIRM_COUNTER";]
+let nonterminals = ["AC_TOKEN" ; "RG_ID"; "RG_ID_LIST"; "REJECTED_GROUPS"; "RG_ID_LENGTH"; "PASSWD_ELEMENT_ID_EXTENSION"; "AC_ID_LENGTH"; "STATUS_CODE"; "RG_ELEMENT_ID_EXTENSION" ;"PASSWD_ID_LENGTH";"PASSWORD_IDENTIFIER"; "PASSWD_ELEMENT_ID" ; "RG_ELEMENT_ID"; "PASSWD_ID"; "AC_ELEMENT_ID"; "AC_TOKEN_ELEMENT"; "AC_TOKEN"; "COMMIT"; "CONFIRM"; "AUTH_SEQ_CONFIRM"; "AC_TOKEN_CONTAINER"; "CONFIRM_HASH"; "AUTH_ALGO"; "AUTH_SEQ_COMMIT"; "CONFIRM_HASH"; "SCALAR"; "GROUP_ID"; "ELEMENT"; "SEND_CONFIRM_COUNTER";]
 
 let rec check_well_formed_rules (grammar : ast) : bool =
   match grammar with
@@ -378,7 +378,6 @@ let rec applyMutation (m : mutation) (g : ast) : packet_type * grammar =
     let operation = random_element [Plus; Minus] in
     let (modified_grammar, success_code) = mutation_update g nt operation in
     if success_code then 
-      pp_print_ast Format.std_formatter modified_grammar ;
       NOTHING, modified_grammar
     else applyMutation Modify g  
 
