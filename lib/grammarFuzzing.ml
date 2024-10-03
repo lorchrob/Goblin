@@ -375,9 +375,12 @@ let rec applyMutation (m : mutation) (g : ast) : packet_type * grammar =
       )
 
   | Modify -> print_endline "\n\nMODIFYING\n\n" ;
-    let modified_grammar = fst (mutation_delete g nt) in
-    pp_print_ast Format.std_formatter modified_grammar ;
-    NOTHING, modified_grammar
+    let operation = random_element [Plus; Minus] in
+    let (modified_grammar, success_code) = mutation_update g nt operation in
+    if success_code then 
+      pp_print_ast Format.std_formatter modified_grammar ;
+      NOTHING, modified_grammar
+    else applyMutation Modify g  
 
   | CrossOver -> print_endline "\n\n\nENTERING CROSSOVER\n\n\n" ;
       let (pr1, pr2) = get_production_rules_for_crossover g in

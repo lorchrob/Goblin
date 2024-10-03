@@ -142,20 +142,17 @@ let rec mutation_delete g nt =
         let (gg, r) = mutation_delete ys nt 
                 in (TypeAnnotation(v, w, x)::gg, r)
 
-let update_constraint (nt : string) (cList : semantic_constraint list) : semantic_constraint list =
+let update_constraint (nt : string) (cList : semantic_constraint list) (operation : bin_operator) : semantic_constraint list =
     match cList with 
     | [] -> []
     | x :: xs ->
         match x with
-        | Dependency(nonTerminal, (UnOp(LNot, e))) -> 
-            if nonTerminal = nt
-                then Dependency(nonTerminal, e) :: xs
-            else
-                Dependency(nonTerminal, (UnOp(LNot, e))) :: xs
-        | Dependency(nonTerminal, e) -> 
-            if nonTerminal = nt 
-                then Dependency(nonTerminal, (UnOp(LNot, e))) :: xs
-            else Dependency(nonTerminal, e) :: xs
+        | Dependency(nonTerminal, (BVCast(i, expr))) -> 
+            if operation = Plus then
+                Dependency(nonTerminal, BVCast(i, BinOp(expr, Plus, IntConst 1))) :: xs
+            else if operation = Minus then
+                Dependency(nonTerminal, BVCast(i, BinOp(expr, Minus, IntConst 1))) :: xs
+            else Dependency(nonTerminal, BVCast(i, expr)) :: xs
         | SyGuSExpr(UnOp(LNot, e)) -> 
             if isPresentInExpr nt e 
                 then SyGuSExpr(e) :: xs
@@ -164,36 +161,37 @@ let update_constraint (nt : string) (cList : semantic_constraint list) : semanti
             if isPresentInExpr nt e 
                 then SyGuSExpr(UnOp(LNot, e)) :: xs
             else SyGuSExpr(e) :: xs
+        | anything -> anything :: xs
 
 
-let rec apply_update_to_rule nt production_options =
+let rec apply_update_to_rule nt production_options operation =
     match production_options with
     | [] -> []
     | Rhs(geList, scList) :: xs -> 
-        let updated_constraints = update_constraint nt scList in
+        let updated_constraints = update_constraint nt scList operation in
         Rhs(geList, updated_constraints) :: xs
-    | StubbedRhs(s) :: xs -> StubbedRhs(s) :: (apply_update_to_rule nt xs)
+    | StubbedRhs(s) :: xs -> StubbedRhs(s) :: (apply_update_to_rule nt xs operation)
 
-let rec mutation_update g nt =
+let rec mutation_update g nt operation =
     match g with
     | [] -> ([], false)
     | ProdRule(nonTerminal, production_options) :: xs ->
         let found = isNonTerminalPresent nt production_options in
             if found then
-                let po = apply_update_to_rule nt production_options in
+                let po = apply_update_to_rule nt production_options operation in
                     (ProdRule(nonTerminal, po) :: xs, true)
             else 
-                let (gg, r) = mutation_update xs nt 
+                let (gg, r) = mutation_update xs nt operation
                     in 
             (ProdRule(nonTerminal, production_options) :: gg, r)
     | TypeAnnotation(v, w, x) :: ys -> 
         if v = nt then
-            let po = update_constraint nt x in
+            let po = update_constraint nt x operation in
                 (TypeAnnotation(v, w, po) :: ys, true)
         else
-            let (gg, r) = mutation_update ys nt 
+            let (gg, r) = mutation_update ys nt operation
                 in 
-                (TypeAnnotation(v, w, x)::gg, r)
+                (TypeAnnotation(v, w, x) :: gg , r)
 
 let rec replace_element geList nt1 nt2 =
     match geList with
