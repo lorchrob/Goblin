@@ -736,12 +736,23 @@ let bucket_oracle (q : triple_queue) (clist : child list) (old_states : state li
   let newConfirmedList = removeDuplicates (cnf @ List.map get_child_from_state (List.filter (filter_state CONFIRMED) newPopulation)) in
   let newAcceptedList = removeDuplicates (acc @ List.map get_child_from_state (List.filter (filter_state ACCEPTED) newPopulation)) in
   print_endline "NEW QUEUES GENERATED -- RETURNING.." ;
-   [NOTHING newNothingList; CONFIRMED newConfirmedList; ACCEPTED newAcceptedList]
+  [NOTHING newNothingList; CONFIRMED newConfirmedList; ACCEPTED newAcceptedList]
+
+let bytes_to_hex (b: bytes) : string =
+  let hex_of_byte byte =
+    Printf.sprintf "%02x" (int_of_char byte)
+  in
+  let len = Bytes.length b in
+  let rec loop i acc =
+    if i >= len then acc
+    else loop (i + 1) (acc ^ hex_of_byte (Bytes.get b i))
+  in
+  loop 0 ""
 
 let dump_single_trace (trace : provenance list) : string =
   let trace_string = List.map (fun x -> 
     match x with
-    | RawPacket z -> (Bytes.to_string z)
+    | RawPacket z -> (bytes_to_hex z)
     | ValidPacket z -> ( 
       match z with
       | COMMIT -> "COMMIT"
@@ -753,6 +764,7 @@ let dump_single_trace (trace : provenance list) : string =
   let result = ref "" in
   (List.iter (fun x -> result := !result ^ x ^ ", ") trace_string) ;
   !result ^ "\n"
+  
 
 let dump_all_traces (traces : provenance list list) =
   let trace_string_lists = List.map dump_single_trace traces in
