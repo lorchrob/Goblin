@@ -586,7 +586,7 @@ let run_sequence (c : child) : (provenance * output) * state =
       match packetToSend_ with
       | Ok (packetToSend, _metadata) ->
         let trace_start_time = Unix.gettimeofday () in
-        let driver_output = callDriver_new (run_trace stateTransition) (RawPacket packetToSend) in
+        let driver_output = callDriver_new (run_trace stateTransition) (RawPacket (afl_mutate packetToSend (Random.int 10 + 1))) in
         trace_time := Unix.gettimeofday () -. trace_start_time ;
         save_time_info "temporal-info/OCaml-time-info.csv" (1 + (List.length (stateTransition))) ;
         (RawPacket packetToSend, (fst driver_output)), (snd driver_output)
@@ -840,8 +840,8 @@ let rec fuzzingAlgorithm
       let sampled_pop = uniform_sample_from_queue currentQueue in
       let newPopulation = fst sampled_pop in
       let old_states_ = snd sampled_pop in
-      let selectedMutations = mutationList random_element mutationOperations (List.length newPopulation) in
-      let mutatedPopulation = newMutatedSet newPopulation selectedMutations (List.length newPopulation) in
+      (* let selectedMutations = mutationList random_element mutationOperations (List.length newPopulation) in *)
+      (* let mutatedPopulation = newMutatedSet newPopulation selectedMutations (List.length newPopulation) in *)
       let score_and_oracle_old_states = executeMutatedPopulation mutatedPopulation old_states_ in
       let old_states = snd score_and_oracle_old_states in
       let score_and_oracle = fst score_and_oracle_old_states in

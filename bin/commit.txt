@@ -18,7 +18,7 @@ int_to_bitvector(16, 19) bvlte <GROUP_ID> land
 <AUTH_ALGO> :: BitVector(16)
     { 
 <AUTH_ALGO> = int_to_bitvector(16, 0) lor 
-<AUTH_ALGO> = int_to_bitvector(16, 3); 
+<AUTH_ALGO> = int_to_bitvector(16, 3);
 };
 
 <CONFIRM> ::= <AUTH_ALGO> <AUTH_SEQ_CONFIRM> <STATUS_CODE> <SEND_CONFIRM_COUNTER> <CONFIRM_HASH>
@@ -40,8 +40,7 @@ int_to_bitvector(16, 19) bvlte <GROUP_ID> land
 <STATUS_CODE> :: BitVector(16);
 
 
-<AC_TOKEN> :: String 
-{ <AC_TOKEN> <- "<AC_TOKEN>"; };
+<AC_TOKEN> :: BitVector(32) ; 
 
 <PASSWORD_IDENTIFIER> ::= <PASSWD_ELEMENT_ID> <PASSWD_ID_LENGTH> <PASSWD_ELEMENT_ID_EXTENSION> <PASSWD_ID> 
 { <PASSWD_ID_LENGTH> <- int_to_bitvector(8, (length(<PASSWD_ID>)/8)+1); };
@@ -96,14 +95,10 @@ int_to_bitvector(16, 19) bvlte <GROUP_ID> land
 
 <AC_TOKEN_ELEMENT> :: BitList;
 
-<SCALAR>     :: String  
-{ <SCALAR> <- "<SCALAR>"; };
+<SCALAR>     :: BitVector(256) ;  
 
-<ELEMENT> :: String 
-{<ELEMENT> <- "<ELEMENT>"; };
+<ELEMENT> :: BitVector(512) ;
 
-<CONFIRM_HASH> :: String 
-{ <CONFIRM_HASH> <- "<CONFIRM_HASH>"; };
+<CONFIRM_HASH> :: BitVector(256) ;
 
-<SEND_CONFIRM_COUNTER> :: String
-{ <SEND_CONFIRM_COUNTER> <- "<SEND_CONFIRM_COUNTER>"; };
+<SEND_CONFIRM_COUNTER> :: BitVector(16) ;
