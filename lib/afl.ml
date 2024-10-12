@@ -1,4 +1,10 @@
 
+(* Seed the random number generator with current time *)
+let () = Random.self_init ()
+
+(* Ensure the byte value is within the valid range 0-255 *)
+let valid_byte n = (n + 256) mod 256
+
 (* Function to flip a bit at a specific position in a byte *)
 let flip_bit byte n =
   byte lxor (1 lsl n)
@@ -11,8 +17,8 @@ let flip_bits (data: bytes) (flip_count: int) : bytes =
     let byte_index = Random.int len in
     let bit_index = Random.int 8 in
     let byte = Bytes.get result byte_index |> Char.code in
-    let flipped_byte = (flip_bit byte bit_index) mod 256 in
-    Bytes.set result byte_index (Char.chr flipped_byte)
+    let flipped_byte = flip_bit byte bit_index in
+    Bytes.set result byte_index (Char.chr (valid_byte flipped_byte))
   done;
   result
 
@@ -34,7 +40,7 @@ let arithmetic_mutation (data: bytes) : bytes =
   let byte_index = Random.int len in
   let byte = Bytes.get result byte_index |> Char.code in
   let delta = if Random.bool () then 1 else -1 in
-  let new_byte = (byte + delta) mod 256 in
+  let new_byte = valid_byte (byte + delta) in
   Bytes.set result byte_index (Char.chr new_byte);
   result
 
@@ -78,12 +84,15 @@ let havoc (data: bytes) (num_mutations: int) : bytes =
 
 (* Main AFL-like mutation loop *)
 (* let afl_mutate (data: bytes) (iterations: int) : unit =
-  Random.self_init () ;
   for _ = 1 to iterations do
     let num_mutations = Random.int 10 + 1 in
     let mutated_data = havoc data num_mutations in
     (* Here you would test the mutated data on the target program *)
     (* For example: test_program mutated_data *)
-    mutated_data  (* Just printing for now *)
+    print_endline (Bytes.to_string mutated_data)  (* Just printing for now *)
   done *)
-
+(* 
+(* Example usage *)
+let () =
+  let initial_data = Bytes.of_string "fuzzing_input" in
+  afl_mutate initial_data 10 *)
