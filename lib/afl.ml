@@ -1,4 +1,3 @@
-open Random
 
 (* Function to flip a bit at a specific position in a byte *)
 let flip_bit byte n =
@@ -78,13 +77,13 @@ let havoc (data: bytes) (num_mutations: int) : bytes =
   !result
 
 (* Main AFL-like mutation loop *)
-let afl_mutate (data: bytes) (iterations: int) : unit =
+(* let afl_mutate (data: bytes) (iterations: int) : unit =
   Random.self_init () ;
   for _ = 1 to iterations do
     let num_mutations = Random.int 10 + 1 in
     let mutated_data = havoc data num_mutations in
     (* Here you would test the mutated data on the target program *)
     (* For example: test_program mutated_data *)
-    print_endline (Bytes.to_string mutated_data)  (* Just printing for now *)
-  done
+    mutated_data  (* Just printing for now *)
+  done *)
 
