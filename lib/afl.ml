@@ -11,7 +11,7 @@ let flip_bits (data: bytes) (flip_count: int) : bytes =
     let byte_index = Random.int len in
     let bit_index = Random.int 8 in
     let byte = Bytes.get result byte_index |> Char.code in
-    let flipped_byte = flip_bit byte bit_index in
+    let flipped_byte = (flip_bit byte bit_index) mod 256 in
     Bytes.set result byte_index (Char.chr flipped_byte)
   done;
   result
