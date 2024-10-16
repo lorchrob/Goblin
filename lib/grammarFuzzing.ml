@@ -559,9 +559,11 @@ let callDriver_new packets packet =
     print_endline "write to file successful.." ;
     let bin_placeholders = wait_for_python_bin_response placeholder_replaced_file in
     print_endline "possible fail place.." ;
-    let string_to_send = ((Bitstring.bitstring_of_string (Bytes.to_string bin_placeholders))) in
+    let afl_havoc = Afl.havoc bin_placeholders ((Random.int 10 + 1) in
+    write_to_file "sync/afl-kt.txt" afl_havoc ;
+    let string_to_send = ((Bitstring.bitstring_of_string (Bytes.to_string afl_havoc))) in
     print_endline "string_to_send success.." ;
-    print_endline (Bytes.to_string bin_placeholders) ;
+    print_endline (Bytes.to_string afl_havoc) ;
     let oracle_start_time = Unix.gettimeofday () in
     let oracle_result = parse_packet string_to_send in
     oracle_time := ((Unix.gettimeofday ()) -. oracle_start_time) ;
@@ -586,7 +588,7 @@ let run_sequence (c : child) : (provenance * output) * state =
       match packetToSend_ with
       | Ok (packetToSend, _metadata) ->
         let trace_start_time = Unix.gettimeofday () in
-        let driver_output = callDriver_new (run_trace stateTransition) (RawPacket (Afl.havoc packetToSend (Random.int 10 + 1))) in
+        let driver_output = callDriver_new (run_trace stateTransition) (RawPacket packetToSend) in
         trace_time := Unix.gettimeofday () -. trace_start_time ;
         save_time_info "temporal-info/OCaml-time-info.csv" (1 + (List.length (stateTransition))) ;
         (RawPacket packetToSend, (fst driver_output)), (snd driver_output)
