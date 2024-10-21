@@ -134,7 +134,7 @@ let read_binary_file filename =
     let buffer = Bytes.create file_length in
     really_input ic buffer 0 file_length;
     close_in ic;
-    Some buffer
+    if file_length > 0 then Some buffer else None
   with End_of_file ->
     close_in ic ;
     None
