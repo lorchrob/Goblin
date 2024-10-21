@@ -134,7 +134,7 @@ let read_binary_file filename =
     let buffer = Bytes.create file_length in
     really_input ic buffer 0 file_length;
     close_in ic;
-    Some buffer
+    if file_length > 0 then Some buffer else None
   with End_of_file ->
     close_in ic ;
     None
@@ -558,9 +558,12 @@ let callDriver_new packets packet =
     (* write_symbol_to_file message_file (packets ^ (Bytes.to_string y) ^ ", "); *)
     print_endline "write to file successful.." ;
     let bin_placeholders = wait_for_python_bin_response placeholder_replaced_file in
+    initialize_clear_file placeholder_replaced_file ;
     print_endline "possible fail place.." ;
-    let afl_havoc = Afl.havoc bin_placeholders ((Random.int 10 + 1) in
-    write_to_file "sync/afl-kt.txt" afl_havoc ;
+    print_endline (Bytes.to_string bin_placeholders) ;
+    let afl_havoc = Afl.havoc bin_placeholders (Random.int 10 + 1) in
+    print_endline "success" ;
+    write_to_file "sync/afl-pkt.txt" afl_havoc ;
     let string_to_send = ((Bitstring.bitstring_of_string (Bytes.to_string afl_havoc))) in
     print_endline "string_to_send success.." ;
     print_endline (Bytes.to_string afl_havoc) ;
@@ -871,6 +874,7 @@ let initialize_files =
   initialize_clear_file "sync/placeholders-replace.pkt";
   initialize_clear_file "sync/message.txt";
   initialize_clear_file "sync/response.txt";
+  initialize_clear_file "sync/afl-pkt.txt";
   ()
 
 let runFuzzer grammar_list = 
