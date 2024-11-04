@@ -358,8 +358,8 @@ fun ctx dep_map ast ->
   close_out oc;
 
   (* Call sygus command *)
-  let cvc5 = "/home/pirwani/Desktop/cvc5/build/bin/cvc5" in
-  let cvc5_2 = "/home/pirwani/Desktop/cvc5-2/build/bin/cvc5" in
+  let cvc5 = "/home/kalok/Desktop/cvc5/build/bin/cvc5" in
+  let cvc5_2 = "/home/kalok/Desktop/cvc5-2/build/bin/cvc5" in
   let command = Printf.sprintf "timeout 3 %s --lang=sygus2 --dag-thresh=0 %s > %s" cvc5 input_filename output_filename in
   let command2 = Printf.sprintf "timeout 3 %s --lang=sygus2 --dag-thresh=0 %s > %s" cvc5_2 input_filename output_filename2 in
   (* Run two versions of sygus in parallel and use results from whichever finishes first *)
