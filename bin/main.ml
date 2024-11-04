@@ -122,9 +122,9 @@ let () =
     <GROUP_ID> = int_to_bitvector(16, 21) => 
     length(<SCALAR>) = 64 land length(<ELEMENT>) = 128; *)
 
-  let commit_grammar = Utils.parse (GrammarFuzzing.read_grammar "/home/pirwani/Desktop/WiFiPacketGen/bin/commit.txt") in
-  let confirm_grammar = Utils.parse (GrammarFuzzing.read_grammar "/home/pirwani/Desktop/WiFiPacketGen/bin/confirm.txt") in
-  let commit_confirm_grammar = Utils.parse (GrammarFuzzing.read_grammar "/home/pirwani/Desktop/WiFiPacketGen/bin/commit-confirm.txt") in
+  let commit_grammar = Utils.parse (GrammarFuzzing.read_grammar "bin/commit.txt") in
+  let confirm_grammar = Utils.parse (GrammarFuzzing.read_grammar "bin/confirm.txt") in
+  let commit_confirm_grammar = Utils.parse (GrammarFuzzing.read_grammar "bin/commit-confirm.txt") in
   GrammarFuzzing.runFuzzer [commit_grammar; confirm_grammar; commit_confirm_grammar;]
     
   (* let grammar = Utils.parse "

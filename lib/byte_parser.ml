@@ -118,8 +118,8 @@ let parse_packet (packet : Bitstring.bitstring) : state =
           "ac_list" : "%s"
         }
       |} (string_of_int status) (bitstring_to_hex scalar) (bitstring_to_hex element) (bitstring_to_hex ac_token) (bitstring_to_hex pi_id_list) (bitstring_to_hex rg_id_list) (bitstring_to_hex ac_id_list) in
-      write_json_to_file "driver_oracle.json" json_to_driver ;
-    wait_for_oracle_response "/home/pirwani/Desktop/oracle-response.txt"
+      write_json_to_file "sync/driver_oracle.json" json_to_driver ;
+    wait_for_oracle_response "sync/oracle-response.txt"
     | {| algo : 16 : littleendian 
     ;auth_seq : 16 : littleendian
     ;status : 16 : littleendian  
@@ -147,8 +147,8 @@ let parse_packet (packet : Bitstring.bitstring) : state =
           "rg_list" : "%s"
         }
       |} (string_of_int status) (bitstring_to_hex scalar) (bitstring_to_hex element) (bitstring_to_hex ac_token) (bitstring_to_hex pi_id_list) (bitstring_to_hex rg_id_list) in
-      write_json_to_file "driver_oracle.json" json_to_driver ;
-      wait_for_oracle_response "/home/pirwani/Desktop/oracle-response.txt"
+      write_json_to_file "sync/driver_oracle.json" json_to_driver ;
+      wait_for_oracle_response "sync/oracle-response.txt"
     | {| algo : 16 : littleendian 
       ;auth_seq : 16 : littleendian
       ;status : 16 : littleendian  
@@ -176,8 +176,8 @@ let parse_packet (packet : Bitstring.bitstring) : state =
             "ac_list" : "%s"
           }
         |} (string_of_int status) (bitstring_to_hex scalar) (bitstring_to_hex element) (bitstring_to_hex ac_token) (bitstring_to_hex rg_id_list) (bitstring_to_hex ac_id_list) in
-        write_json_to_file "driver_oracle.json" json_to_driver ;
-        wait_for_oracle_response "/home/pirwani/Desktop/oracle-response.txt"
+        write_json_to_file "sync/driver_oracle.json" json_to_driver ;
+        wait_for_oracle_response "sync/oracle-response.txt"
     | {| algo : 16 : littleendian 
         ;auth_seq : 16 : littleendian
         ;status : 16 : littleendian  
@@ -205,8 +205,8 @@ let parse_packet (packet : Bitstring.bitstring) : state =
             "ac_list" : "%s"
           }
         |} (string_of_int status) (bitstring_to_hex scalar) (bitstring_to_hex element) (bitstring_to_hex ac_token) (bitstring_to_hex pi_id_list) (bitstring_to_hex ac_id_list) in
-        write_json_to_file "driver_oracle.json" json_to_driver ;
-        wait_for_oracle_response "/home/pirwani/Desktop/oracle-response.txt"
+        write_json_to_file "sync/driver_oracle.json" json_to_driver ;
+        wait_for_oracle_response "sync/oracle-response.txt"
     
     | {| algo : 16 : littleendian 
     ;auth_seq : 16 : littleendian
@@ -230,8 +230,8 @@ let parse_packet (packet : Bitstring.bitstring) : state =
           "pi_list" : "%s"
         }
       |} (string_of_int status) (bitstring_to_hex scalar) (bitstring_to_hex element) (bitstring_to_hex ac_token) (bitstring_to_hex pi_id_list) in
-      write_json_to_file "driver_oracle.json" json_to_driver ;
-      wait_for_oracle_response "/home/pirwani/Desktop/oracle-response.txt"
+      write_json_to_file "sync/driver_oracle.json" json_to_driver ;
+      wait_for_oracle_response "sync/oracle-response.txt"
     | {| algo : 16 : littleendian 
       ;auth_seq : 16 : littleendian
       ;status : 16 : littleendian  
@@ -254,8 +254,8 @@ let parse_packet (packet : Bitstring.bitstring) : state =
             "rg_list" : "%s"
           }
         |} (string_of_int status) (bitstring_to_hex scalar) (bitstring_to_hex element) (bitstring_to_hex ac_token) (bitstring_to_hex rg_id_list) in
-        write_json_to_file "driver_oracle.json" json_to_driver ;
-        wait_for_oracle_response "/home/pirwani/Desktop/oracle-response.txt"
+        write_json_to_file "sync/driver_oracle.json" json_to_driver ;
+        wait_for_oracle_response "sync/oracle-response.txt"
     | {| algo : 16 : littleendian 
       ;auth_seq : 16 : littleendian
       ;status : 16 : littleendian  
@@ -278,8 +278,8 @@ let parse_packet (packet : Bitstring.bitstring) : state =
             "ac_list" : "%s"
           }
         |} (string_of_int status) (bitstring_to_hex scalar) (bitstring_to_hex element) (bitstring_to_hex ac_token) (bitstring_to_hex ac_id_list) in
-          write_json_to_file "driver_oracle.json" json_to_driver ;
-          wait_for_oracle_response "/home/pirwani/Desktop/oracle-response.txt"
+          write_json_to_file "sync/driver_oracle.json" json_to_driver ;
+          wait_for_oracle_response "sync/oracle-response.txt"
     
     | {| algo : 16 : littleendian; 
       auth_seq : 16 : littleendian;
@@ -311,8 +311,8 @@ let parse_packet (packet : Bitstring.bitstring) : state =
           "ac_list" : "%s"
         }
       |} (string_of_int status) (bitstring_to_hex scalar) (bitstring_to_hex element) (bitstring_to_hex pi_id_list) (bitstring_to_hex rg_id_list) (bitstring_to_hex ac_id_list) in
-      write_json_to_file "driver_oracle.json" json_to_driver ;
-      wait_for_oracle_response "/home/pirwani/Desktop/oracle-response.txt"
+      write_json_to_file "sync/driver_oracle.json" json_to_driver ;
+      wait_for_oracle_response "sync/oracle-response.txt"
     
     | {| algo : 16 : littleendian; 
       auth_seq : 16 : littleendian;
@@ -339,8 +339,8 @@ let parse_packet (packet : Bitstring.bitstring) : state =
             "rg_list" : "%s"
           }
         |} (string_of_int status) (bitstring_to_hex scalar) (bitstring_to_hex element) (bitstring_to_hex pi_id_list) (bitstring_to_hex rg_id_list) in
-        write_json_to_file "driver_oracle.json" json_to_driver ;
-      wait_for_oracle_response "/home/pirwani/Desktop/oracle-response.txt"
+        write_json_to_file "sync/driver_oracle.json" json_to_driver ;
+      wait_for_oracle_response "sync/oracle-response.txt"
     | {| algo : 16 : littleendian; 
           auth_seq : 16 : littleendian;
           status : 16 : littleendian ; 
@@ -366,8 +366,8 @@ let parse_packet (packet : Bitstring.bitstring) : state =
               "ac_list" : "%s"
             }
           |} (string_of_int status) (bitstring_to_hex scalar) (bitstring_to_hex element) (bitstring_to_hex rg_id_list) (bitstring_to_hex ac_id_list) in
-        write_json_to_file "driver_oracle.json" json_to_driver ;
-        wait_for_oracle_response "/home/pirwani/Desktop/oracle-response.txt"
+        write_json_to_file "sync/driver_oracle.json" json_to_driver ;
+        wait_for_oracle_response "sync/oracle-response.txt"
     | {| algo : 16 : littleendian; 
         auth_seq : 16 : littleendian;
         status : 16 : littleendian ; 
@@ -393,8 +393,8 @@ let parse_packet (packet : Bitstring.bitstring) : state =
           "ac_list" : "%s"
         }
       |} (string_of_int status) (bitstring_to_hex scalar) (bitstring_to_hex element) (bitstring_to_hex pi_id_list) (bitstring_to_hex ac_id_list) in
-      write_json_to_file "driver_oracle.json" json_to_driver ;
-      wait_for_oracle_response "/home/pirwani/Desktop/oracle-response.txt"
+      write_json_to_file "sync/driver_oracle.json" json_to_driver ;
+      wait_for_oracle_response "sync/oracle-response.txt"
   | {| algo : 16 : littleendian; 
       auth_seq : 16 : littleendian;
       status : 16 : littleendian ; 
@@ -415,8 +415,8 @@ let parse_packet (packet : Bitstring.bitstring) : state =
           "pi_list" : "%s"
         }
       |} (string_of_int status) (bitstring_to_hex scalar) (bitstring_to_hex element) (bitstring_to_hex pi_id_list) in
-      write_json_to_file "driver_oracle.json" json_to_driver ;
-      wait_for_oracle_response "/home/pirwani/Desktop/oracle-response.txt"
+      write_json_to_file "sync/driver_oracle.json" json_to_driver ;
+      wait_for_oracle_response "sync/oracle-response.txt"
     | {| algo : 16 : littleendian; 
       auth_seq : 16 : littleendian;
       status : 16 : littleendian ; 
@@ -437,8 +437,8 @@ let parse_packet (packet : Bitstring.bitstring) : state =
         "rg_list" : "%s"
       }
     |} (string_of_int status) (bitstring_to_hex scalar) (bitstring_to_hex element) (bitstring_to_hex rg_id_list) in
-    write_json_to_file "driver_oracle.json" json_to_driver ;
-    wait_for_oracle_response "/home/pirwani/Desktop/oracle-response.txt"
+    write_json_to_file "sync/driver_oracle.json" json_to_driver ;
+    wait_for_oracle_response "sync/oracle-response.txt"
     | {| algo : 16 : littleendian; 
       auth_seq : 16 : littleendian;
       status : 16 : littleendian ; 
@@ -459,8 +459,8 @@ let parse_packet (packet : Bitstring.bitstring) : state =
         "ac_list" : "%s"
       }
     |} (string_of_int status) (bitstring_to_hex scalar) (bitstring_to_hex element) (bitstring_to_hex ac_id_list) in
-    write_json_to_file "driver_oracle.json" json_to_driver ;
-    wait_for_oracle_response "/home/pirwani/Desktop/oracle-response.txt"
+    write_json_to_file "sync/driver_oracle.json" json_to_driver ;
+    wait_for_oracle_response "sync/oracle-response.txt"
     | {| algo : 16 : littleendian; auth_seq : 16 : littleendian; status : 16 : littleendian ; _group_id : 16 ; ac_token : 256 : bitstring ; scalar : 256 : bitstring ; element : 512 : bitstring |}
     when algo = 3 && auth_seq = 1 && (status = 0 || status = 126) ->  
       let json_to_driver = Printf.sprintf {|
@@ -471,8 +471,8 @@ let parse_packet (packet : Bitstring.bitstring) : state =
         "ac_token" : "%s"
       }
     |} (string_of_int status) (bitstring_to_hex scalar) (bitstring_to_hex element) (bitstring_to_hex ac_token) in
-    write_json_to_file "driver_oracle.json" json_to_driver ;
-    wait_for_oracle_response "/home/pirwani/Desktop/oracle-response.txt" 
+    write_json_to_file "sync/driver_oracle.json" json_to_driver ;
+    wait_for_oracle_response "sync/oracle-response.txt" 
   | {| algo : 16 : littleendian; auth_seq : 16 : littleendian; status : 16 : littleendian ; _group_id : 16 ; scalar : 256 : bitstring ; element : 512 : bitstring |}
     when algo = 3 && auth_seq = 1 && (status = 0 || status = 126) ->
       let json_to_driver = Printf.sprintf {|
@@ -482,8 +482,8 @@ let parse_packet (packet : Bitstring.bitstring) : state =
         "element" : "%s"
       }
     |} (string_of_int status) (bitstring_to_hex scalar) (bitstring_to_hex element) in
-    write_json_to_file "driver_oracle.json" json_to_driver ;
-    wait_for_oracle_response "/home/pirwani/Desktop/oracle-response.txt"
+    write_json_to_file "sync/driver_oracle.json" json_to_driver ;
+    wait_for_oracle_response "sync/oracle-response.txt"
     | {| algo : 16 : littleendian; auth_seq : 16 : littleendian; status : 16 : littleendian ; send_confirm : 16 : littleendian ; confirm_hash : 256 : bitstring |}
     when algo = 3 && auth_seq = 2 && status = 0 ->
       let json_to_driver = Printf.sprintf {|
@@ -492,16 +492,16 @@ let parse_packet (packet : Bitstring.bitstring) : state =
         "confirm_hash" : "%s"
       }
     |} (string_of_int send_confirm) (bitstring_to_hex confirm_hash) in
-    write_json_to_file "driver_oracle.json" json_to_driver ;
-    wait_for_oracle_response "/home/pirwani/Desktop/oracle-response.txt"
+    write_json_to_file "sync/driver_oracle.json" json_to_driver ;
+    wait_for_oracle_response "sync/oracle-response.txt"
   | {| _ |} ->
     let json_to_driver = Printf.sprintf {|
       {
         "failed" : "True"
       }
     |} in
-    write_json_to_file "driver_oracle.json" json_to_driver ;
-    wait_for_oracle_response "/home/pirwani/Desktop/oracle-response.txt"
+    write_json_to_file "sync/driver_oracle.json" json_to_driver ;
+    wait_for_oracle_response "sync/oracle-response.txt"
     
 
 let get_bytes_and_run filename =
