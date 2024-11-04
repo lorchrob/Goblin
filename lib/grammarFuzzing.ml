@@ -576,7 +576,7 @@ let run_sequence (c : child) : (provenance * output) * float =
         let driver_output = callDriver_new (run_trace stateTransition) (RawPacket packetToSend) in
         trace_time := Unix.gettimeofday () -. trace_start_time ;
         save_time_info "temporal-info/OCaml-time-info.csv" (1 + (List.length (stateTransition))) ;
-        (RawPacket packetToSend, (fst driver_output)), (trace_time ./ (1 + List.length stateTransition))
+        (RawPacket packetToSend, (fst driver_output)), (!trace_time /. (float_of_int (1 + List.length stateTransition)))
       | Error _ -> 
         sygus_fail_execution_time := ((Unix.gettimeofday ()) -. sygus_start_time) ;
         sygus_fail_calls := !sygus_fail_calls + 1 ;
@@ -720,11 +720,10 @@ let removeDuplicates (currentList : child list) : child list =
   let s = PopulationSet.of_list currentList in 
   PopulationSet.elements s  
   
-let bucket_oracle (q : triple_queue) (clist : child list) (old_states : state list) (new_states : state list) : triple_queue =
+let bucket_oracle (q : triple_queue) (clist : child list) : triple_queue =
   print_endline "NEW QUEUES GENERATING.." ;
   let np = extract_child_from_state (List.nth q 0) in
-  let newPopulation = map_packet_to_state clist old_states new_states in
-  let newNothingList = removeDuplicates (np @ (List.map get_child_from_state newPopulation)) in
+  let newNothingList = removeDuplicates (np @ clist) in
   print_endline "NEW QUEUES GENERATED -- RETURNING.." ;
   [NOTHING newNothingList;]
 
@@ -802,12 +801,12 @@ let rec fuzzingAlgorithm
       let newPopulation = fst sampled_pop in
       let selectedMutations = mutationList random_element mutationOperations (List.length newPopulation) in
       let mutatedPopulation = newMutatedSet newPopulation selectedMutations (List.length newPopulation) in
-      let score_and_oracle_old_states = executeMutatedPopulation mutatedPopulation in
-      let old_states = snd score_and_oracle_old_states in
-      let score_and_oracle = fst score_and_oracle_old_states in
-      let (iT, newPopulation_) = fst score_and_oracle in
+      let score_and_oracle = executeMutatedPopulation mutatedPopulation in
+      (* let old_states = snd score_and_oracle_old_states in
+      let score_and_oracle = fst score_and_oracle_old_states in *)
+      let (iT, newPopulation_) = score_and_oracle in
       dump_all_traces iT ;
-      let newQueue = normalize_scores (bucket_oracle currentQueue newPopulation_ old_states (snd score_and_oracle)) in
+      let newQueue = normalize_scores (bucket_oracle currentQueue newPopulation_) in
       let old_queue_size = population_size_across_queues (List.nth currentQueue 0) in
       let new_queue_size = population_size_across_queues (List.nth newQueue 0) in      
       save_updated_queue_sizes old_queue_size new_queue_size ;
