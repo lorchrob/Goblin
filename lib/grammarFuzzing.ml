@@ -4,6 +4,7 @@ open Topological_sort
 open Byte_parser
 open Unix
 open Lwt.Infix
+open AflGrammarMutator
 
 type state = Byte_parser.state
 
@@ -592,7 +593,7 @@ let run_sequence (c : child) : (provenance * output) * state =
 
 let executeMutatedPopulation (mutatedPopulation : child list) (old_states : state list) : (((provenance list list) * (child list)) * (state list)) * (state list) =
   print_endline "EXECUTING MUTATED POPULATION.." ;
-
+  let mutatedPopulation_ = List.map (fun x -> (fst x |> fst, mutate_ast (fst x |> snd)), snd x) mutatedPopulation in
   let _outputList = List.map run_sequence mutatedPopulation in
   let cat_mutated_population = List.map2 (fun x y -> (x, y)) mutatedPopulation _outputList in 
   let old_new_states = List.map2 (fun x y -> (x, y)) cat_mutated_population old_states in
@@ -809,9 +810,7 @@ let rec fuzzingAlgorithm
       let sampled_pop = uniform_sample_from_queue currentQueue in
       let newPopulation = fst sampled_pop in
       let old_states_ = snd sampled_pop in
-      let selectedMutations = mutationList random_element mutationOperations (List.length newPopulation) in
-      let mutatedPopulation = newMutatedSet newPopulation selectedMutations (List.length newPopulation) in
-      let score_and_oracle_old_states = executeMutatedPopulation mutatedPopulation old_states_ in
+      let score_and_oracle_old_states = executeMutatedPopulation newPopulation old_states_ in
       let old_states = snd score_and_oracle_old_states in
       let score_and_oracle = fst score_and_oracle_old_states in
       let (iT, newPopulation_) = fst score_and_oracle in
