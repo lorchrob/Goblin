@@ -1,7 +1,9 @@
 # Log files.
 *.log
 *.err
-
+results/*
+sync/*
+temporal-info/*
 # macOs generated files.
 .DS_Store
 
