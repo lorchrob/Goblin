@@ -594,7 +594,7 @@ let run_sequence (c : child) : (provenance * output) * state =
 let executeMutatedPopulation (mutatedPopulation : child list) (old_states : state list) : (((provenance list list) * (child list)) * (state list)) * (state list) =
   print_endline "EXECUTING MUTATED POPULATION.." ;
   let mutatedPopulation_ = List.map (fun x -> (fst x |> fst, mutate_ast (fst x |> snd)), snd x) mutatedPopulation in
-  let _outputList = List.map run_sequence mutatedPopulation in
+  let _outputList = List.map run_sequence mutatedPopulation_ in
   let cat_mutated_population = List.map2 (fun x y -> (x, y)) mutatedPopulation _outputList in 
   let old_new_states = List.map2 (fun x y -> (x, y)) cat_mutated_population old_states in
   let removed_sygus_errors = List.filter (fun x -> (fst x |> snd |> fst |> fst) <> (ValidPacket NOTHING)) old_new_states in
