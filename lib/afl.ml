@@ -1,5 +1,3 @@
-open Random
-
 (* Function to flip a bit at a specific position in a byte *)
 let flip_bit byte n =
   byte lxor (1 lsl n)

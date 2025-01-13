@@ -1,11 +1,9 @@
 open Ast
-open Mutationops
-open Topological_sort
-open Byte_parser
+open MutationOps
+open TopologicalSort
+open ByteParser
 open Unix
 open Lwt.Infix
-
-type state = Byte_parser.state
 
 type packet = bytes 
 type score = float 

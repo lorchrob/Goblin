@@ -151,8 +151,38 @@ let check_syntax_prod_rule: prod_rule_map -> Utils.StringSet.t -> prod_rule_rhs 
   Rhs (ges, scs)
 | StubbedRhs _ -> assert false
 
+let rhss_contains_nt nt rhss = 
+  List.iter (fun rhs -> match rhs with 
+  | Rhs (ges, _) -> List.iter (fun ge -> match ge with 
+    | Nonterminal nt2
+    | NamedNonterminal (nt2, _)
+    | StubbedNonterminal (nt2, _) -> 
+      if nt = nt2 then failwith "Recursive grammars are not supported"
+      else ()
+  ) ges
+  | StubbedRhs _ -> ()
+  ) rhss
+
+let check_if_recursive: ast -> ast 
+= fun ast -> 
+  match TopologicalSort.canonicalize ast with 
+  | Some ast -> List.map (fun element -> match element with
+    | ProdRule (nt, rhss) -> 
+      let _ = rhss_contains_nt nt rhss in
+      ProdRule (nt, rhss)
+    | _ -> element
+  ) ast 
+  | None -> failwith "Recursive grammars are not supported"
+
+let check_vacuity: ast -> ast 
+= fun ast -> 
+  if ast = [] then failwith "Grammar is empty after dead rule removal"
+  else ast
+
 let check_syntax: prod_rule_map -> Utils.StringSet.t -> ast -> ast 
 = fun prm nt_set ast -> 
+  let ast = check_if_recursive ast in
+  let ast = check_vacuity ast in
   let ast = List.map (fun element -> match element with 
   | ProdRule (nt, rhss) -> 
     let rhss = List.map (check_syntax_prod_rule prm nt_set) rhss in

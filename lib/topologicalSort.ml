@@ -161,7 +161,7 @@ let rec collect_rules (non_term_list : string list ) (ogrammar : ast) (cgrammar 
     collect_rules xs ogrammar (cgrammar @ cntr)  
 
 let canonicalize (ogrammar : ast) : ast option = 
-  let g = G.create() in 
+  let g = G.create () in 
   let all_nt = get_all_nt ogrammar in 
   let unique_nts = StringSet.of_list all_nt in 
   let all_dependencies = get_all_dependencies_from_grammar ogrammar in 
@@ -175,7 +175,7 @@ let canonicalize (ogrammar : ast) : ast option =
     TopSort.iter (fun x -> Printf.printf "%s " x) g;   Printf.printf "\n\n"; 
     let top_sort_nts = TopSort.fold (fun x y -> y @ [x]) g [] in 
     (* let rev_top_sort_nts = List.rev top_sort_nts in  *)
-    Some(collect_rules top_sort_nts ogrammar [])
+    Some (collect_rules top_sort_nts ogrammar [])
 
 let find_vertex g label =
   let vertex = ref None in

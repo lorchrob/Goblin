@@ -29,11 +29,9 @@ open Sbf
 let () = 
   Debug.parse_args ();
 
-  (* ignore (Pipeline.main_pipeline 
+  ignore (Pipeline.main_pipeline 
   "
-  <S> ::= <A> { <A> > 0; };
-  <A> :: Int { <A> < 100; }; 
-  "); *)
+");
 
   (* let input = 
     "
@@ -122,13 +120,13 @@ let () =
     <GROUP_ID> = int_to_bitvector(16, 21) => 
     length(<SCALAR>) = 64 land length(<ELEMENT>) = 128; *)
 
-  let commit_grammar = Utils.parse (GrammarFuzzing.read_grammar "bin/commit.txt") in
+  (* let commit_grammar = Utils.parse (GrammarFuzzing.read_grammar "bin/commit.txt") in
   let confirm_grammar = Utils.parse (GrammarFuzzing.read_grammar "bin/confirm.txt") in
   let commit_confirm_grammar = Utils.parse (GrammarFuzzing.read_grammar "bin/commit-confirm.txt") in
-  GrammarFuzzing.runFuzzer [commit_grammar; confirm_grammar; commit_confirm_grammar;]
+  GrammarFuzzing.runFuzzer [commit_grammar; confirm_grammar; commit_confirm_grammar;] *)
     
   (* let commit_confirm_grammar = Utils.parse (GrammarFuzzing.read_grammar "/home/pirwani/Desktop/WiFiPacketGen/bin/commit-confirm.txt") in
-  let pkt = Mutationops. in
+  let pkt = MutationOps. in
   match pkt with
   | Some x -> Ast.pp_print_ast Format.std_formatter x ;
   | None -> print_endline "fail" *)

@@ -12,6 +12,7 @@ let main_pipeline input_string =
   let nt_set = SyntaxChecker.build_nt_set ast in
   let ast = SyntaxChecker.check_syntax prm nt_set ast in 
   Debug.debug_print Format.pp_print_string ppf "\nSyntactic checks complete\n";
+  Debug.debug_print Ast.pp_print_ast ppf ast;
 
   (* Step 2: Type checking *)
   let ast, ctx = TypeChecker.build_context ast in
