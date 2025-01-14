@@ -157,7 +157,8 @@ let rhss_contains_nt nt rhss =
     | Nonterminal nt2
     | NamedNonterminal (nt2, _)
     | StubbedNonterminal (nt2, _) -> 
-      if nt = nt2 then failwith "Recursive grammars are not supported"
+      if nt = nt2 then 
+        print_endline "Warning: Grammar is recursive. Constraints on recursive production rules may not be respected."
       else ()
   ) ges
   | StubbedRhs _ -> ()

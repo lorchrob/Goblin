@@ -338,6 +338,22 @@ let run_commands cmd1 cmd2 =
 
   wait_for_first pid1 pid2
 
+let find_command_in_path cmd =
+  match Sys.getenv_opt "PATH" with
+  | None -> failwith "$PATH is not set"
+  | Some path ->
+      let paths = String.split_on_char ':' path in
+      let rec find_in_paths = function
+        | [] -> failwith (cmd ^ " not found in $PATH")
+        | dir :: rest ->
+            let full_path = Filename.concat dir cmd in
+            if Sys.file_exists full_path && Sys.is_directory full_path = false then
+              full_path
+            else
+              find_in_paths rest
+      in
+      find_in_paths paths
+
 let call_sygus : TC.context -> Ast.semantic_constraint Utils.StringMap.t -> ast -> string =
 fun ctx dep_map ast ->
   let top_nt = match ast with
@@ -358,8 +374,11 @@ fun ctx dep_map ast ->
   close_out oc;
 
   (* Call sygus command *)
-  let cvc5 = "/home/pirwani/Desktop/cvc5/build/bin/cvc5" in
-  let cvc5_2 = "/home/pirwani/Desktop/cvc5-2/build/bin/cvc5" in
+  let cvc5 = find_command_in_path "cvc5" in
+  let cvc5_2 = match Sys.getenv_opt "PATH_TO_SECOND_CVC5" with 
+  | Some path -> path 
+  | None -> print_endline "Proceeding without a second cvc5 config"; cvc5 
+  in
   let command = Printf.sprintf "timeout 3 %s --lang=sygus2 --dag-thresh=0 %s > %s" cvc5 input_filename output_filename in
   let command2 = Printf.sprintf "timeout 3 %s --lang=sygus2 --dag-thresh=0 %s > %s" cvc5_2 input_filename output_filename2 in
   (* Run two versions of sygus in parallel and use results from whichever finishes first *)

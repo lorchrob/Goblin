@@ -7,18 +7,15 @@ Required opam packages:
 Other dependencies:
 
 * macOs: `brew install coreutils` (TODO: `timeout` vs `gtimeout` based on OS)
-* `cvc5`! (TODO: Make it so you don't have to manually update file path)
+* `cvc5`
+  * You must add `cvc5` to `$PATH`
+  * If you want to run a portfolio with a second version of `cvc5`, optionally set `$PATH_TO_SECOND_CVC5` to the path to the second `cvc5` executable (including "`cvc5`", not just the folder containing the binary).
 
 How to run the tool:
 
 * To build, run `dune build`
 * To (build and) execute, run `dune exec sbf` (SBF stands for SyGuS-based fuzzing)
 * To run tests, run `dune test`
-
-Other prerequisites to running:
-
-* There are currently a few ugly hard-coded file paths that only work on Daniyal's machine (e.g., paths to cvc5 executables).
-  So those need to be manually updated to work on your machine. One way to find them is by doing a project-wide search for "pirwani".
 
 Command-line args:
 * All command-line args are passed as such: `dune exec sbf -- <args here>`
