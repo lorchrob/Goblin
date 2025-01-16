@@ -31,10 +31,11 @@ let () =
 
   let out = (Pipeline.main_pipeline 
     "
-    <S> ::= <A> <B> 
+    <S> ::= <A> <B> <C>
       { <A> <- <B>; };
     <B> :: Int;
     <A> :: Int;
+    <C> :: Int;
   ") in 
   print_endline out;
 

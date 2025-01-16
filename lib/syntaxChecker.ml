@@ -9,6 +9,12 @@
 
 open Ast
 
+module StringSet = Set.Make(
+  struct type t = string 
+  let compare = Stdlib.compare 
+  end
+)
+
 type prod_rule_map = (Utils.StringSet.t) Utils.StringMap.t
 
 (* Build production rule map, which is a map from each grammar nonterminal 
@@ -197,10 +203,35 @@ let check_for_circular_deps: ast -> unit
       ) rhss
   ) ast
 
+let check_scs_for_dep_terms: semantic_constraint list -> unit 
+= fun scs -> 
+  let dep_terms = List.fold_left (fun acc sc -> match sc with 
+  | Dependency (nt, _) -> StringSet.add nt acc 
+  | _ -> acc
+  ) StringSet.empty scs in
+  List.iter (fun sc -> match sc with 
+  | Dependency _ -> ()
+  | SyGuSExpr expr -> 
+    let nts = Ast.get_nts_from_expr expr |> StringSet.of_list in 
+    if StringSet.is_empty (StringSet.inter dep_terms nts) then ()
+    else failwith "Dependent term found in SyGuSExpr"
+  ) scs
+
+let check_sygus_exprs_for_dep_terms: ast -> unit 
+= fun ast -> 
+  List.iter (fun element -> match element with 
+  | TypeAnnotation (_, _, scs) -> check_scs_for_dep_terms scs
+  | ProdRule (_, rhss) -> List.iter (fun rhs -> match rhs with
+    | Rhs (_, scs) -> check_scs_for_dep_terms scs
+    | StubbedRhs _ -> ()
+    ) rhss
+  ) ast
+
 let check_syntax: prod_rule_map -> Utils.StringSet.t -> ast -> ast 
 = fun prm nt_set ast -> 
   let ast = check_if_recursive ast in
   let _ = check_for_circular_deps ast in
+  let _ = check_sygus_exprs_for_dep_terms ast in
   let ast = check_vacuity ast in
   let ast = List.map (fun element -> match element with 
   | ProdRule (nt, rhss) -> 
