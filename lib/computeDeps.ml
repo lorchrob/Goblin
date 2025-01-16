@@ -102,7 +102,7 @@ and evaluate: A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -> A.eleme
       | _ -> false
       ) ges 
     with Not_found ->
-      failwith ("Dangling identifier " ^ id^ " in semantic constraint"))
+      failwith ("Dangling identifier " ^ id ^ " in semantic constraint"))
   | A.ProdRule _ -> assert false
   in (
   match sygus_ast with 

@@ -180,9 +180,27 @@ let check_vacuity: ast -> ast
   if ast = [] then failwith "Grammar is empty after dead rule removal"
   else ast
 
+let check_for_circular_deps: ast -> unit 
+= fun ast -> 
+  List.iter (fun element -> match element with
+    | TypeAnnotation _ -> () 
+    | ProdRule (_, rhss) -> List.iter (fun rhs -> match rhs with
+        | StubbedRhs _ -> () 
+        | Rhs (_, scs) -> let scs = List.filter (fun sc -> match sc with
+          | SyGuSExpr _ -> false 
+          | Dependency _ -> true
+          ) scs in 
+          print_endline "got here";
+          match TopologicalSort.canonicalize_scs scs with 
+          | Some _ -> ()
+          | None -> failwith "Circular dependency detected"
+      ) rhss
+  ) ast
+
 let check_syntax: prod_rule_map -> Utils.StringSet.t -> ast -> ast 
 = fun prm nt_set ast -> 
   let ast = check_if_recursive ast in
+  let _ = check_for_circular_deps ast in
   let ast = check_vacuity ast in
   let ast = List.map (fun element -> match element with 
   | ProdRule (nt, rhss) -> 

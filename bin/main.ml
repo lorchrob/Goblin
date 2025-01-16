@@ -29,13 +29,14 @@ open Sbf
 let () = 
   Debug.parse_args ();
 
-  ignore (Pipeline.main_pipeline 
-  "
-  <SAE_PACKET> ::= <AUTH_ALGO> <STATUS_CODE>;
-    <STATUS_CODE> ::= <BV> { <BV> = 0b0000000000000000; };
-    <AUTH_ALGO> ::= <BV> { <BV> = 0b0000000000000001; };
-    <BV> :: BitVector(16);
-");
+  let out = (Pipeline.main_pipeline 
+    "
+    <S> ::= <A> <B> 
+      { <A> <- <B>; };
+    <B> :: Int;
+    <A> :: Int;
+  ") in 
+  print_endline out;
 
   (* let input = 
     "

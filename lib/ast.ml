@@ -100,6 +100,27 @@ let rec substitute: expr -> string -> expr -> expr
   | StrConst _
   | IntConst _ -> e1
 
+let rec get_nts_from_expr: expr -> string list 
+= fun expr -> 
+  let r = get_nts_from_expr in
+  match expr with 
+  | NTExpr (nts, _) -> nts 
+  | CaseExpr _ -> failwith "CaseExpr not yet supported"
+  | BinOp (expr1, _, expr2) -> 
+    r expr1 @ r expr2
+  | UnOp (_, expr) -> 
+    r expr
+  | CompOp (expr1, _, expr2) -> 
+    r expr1 @ r expr2
+  | Length expr -> 
+    r expr
+  | BVConst _ 
+  | BLConst _ 
+  | BConst _ 
+  | BVCast _  
+  | StrConst _
+  | IntConst _ -> []
+
 
 let pp_print_nonterminal: Format.formatter -> string -> unit 
 = fun ppf nt -> 

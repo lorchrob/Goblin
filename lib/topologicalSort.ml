@@ -1,14 +1,12 @@
 open Ast
 open Graph
 
-
 let rec from_ge_list_to_string_list (ge_list : grammar_element list) : string list = 
   match ge_list with
   | [] -> []  
   | Nonterminal(x)::xs -> x :: from_ge_list_to_string_list xs 
   | NamedNonterminal(x,y)::xs -> x :: y :: from_ge_list_to_string_list xs 
   | StubbedNonterminal(x,y)::xs -> x :: y :: from_ge_list_to_string_list xs 
-
 
 let rec get_all_nt_from_rhs (rvalue : prod_rule_rhs list) : string list = 
   match rvalue with 
@@ -30,19 +28,19 @@ let rec get_nt_from_geList geList =
   match geList with
   | [] -> []
   | Nonterminal(x) :: xs -> x :: (get_nt_from_geList xs)
-  | NamedNonterminal(_,_) :: xs | StubbedNonterminal(_,_) :: xs -> (get_nt_from_geList xs)
+  | NamedNonterminal _:: xs | StubbedNonterminal _ :: xs -> (get_nt_from_geList xs)
  
 let rec get_nt_from_rhs rhs =
   match rhs with
   | [] -> []
-  | Rhs(geList, _) :: xs -> (get_nt_from_geList geList) @ (get_nt_from_rhs xs)
-  | StubbedRhs(_) :: xs -> (get_nt_from_rhs xs)
+  | Rhs (geList, _) :: xs -> (get_nt_from_geList geList) @ (get_nt_from_rhs xs)
+  | StubbedRhs _ :: xs -> (get_nt_from_rhs xs)
 
 let rec get_all_nt (g : ast) : string list =
   match g with
   | [] -> []
-  | ProdRule(nt, rhs) :: xs -> nt :: (get_nt_from_rhs rhs)  @ (get_all_nt xs)
-  | TypeAnnotation(_, _, _) :: xs -> get_all_nt xs
+  | ProdRule (nt, rhs) :: xs -> nt :: (get_nt_from_rhs rhs)  @ (get_all_nt xs)
+  | TypeAnnotation (_, _, _) :: xs -> get_all_nt xs
 
 let rec get_dependencies (nt : string) (geList : grammar_element list) : string list =
   match geList with
@@ -56,19 +54,9 @@ let rec get_dependencies (nt : string) (geList : grammar_element list) : string 
 let rec get_all_rhs_elements (nt : string) (prList : prod_rule_rhs list) : string list =
   match prList with
   | [] -> []
-  | Rhs(geList, _) :: xs -> (get_dependencies nt geList) @ (get_all_rhs_elements nt xs)
-  | StubbedRhs(_) :: xs -> get_all_rhs_elements nt xs
-(* 
-let fst (tuple: ('a * 'b)) : 'a =
-  match tuple with
-  (t1, _) -> t1
-;;
+  | Rhs (geList, _) :: xs -> (get_dependencies nt geList) @ (get_all_rhs_elements nt xs)
+  | StubbedRhs (_) :: xs -> get_all_rhs_elements nt xs
 
-let snd (tuple: ('a * 'b)) : 'b =
-  match tuple with
-  (_, t2) -> t2
-;;
-   *)
 let rec get_edge_pairs (nts : (string * (string list)) list): (string * string) list =
   match nts with
   | [] -> []
@@ -77,12 +65,12 @@ let rec get_edge_pairs (nts : (string * (string list)) list): (string * string) 
 let rec get_all_rules (nt : string) (g : ast) : prod_rule_rhs list =
   match g with
   | [] -> []
-  | ProdRule(a, prod_rule_lst) :: xs ->
+  | ProdRule (a, prod_rule_lst) :: xs ->
     if a = nt
       then prod_rule_lst @ (get_all_rules nt xs)
     else
       get_all_rules nt xs
-  | TypeAnnotation(_, _, _) :: xs -> (get_all_rules nt xs)
+  | TypeAnnotation (_, _, _) :: xs -> (get_all_rules nt xs)
 
 let rec get_nt_dependency_pairs (nts : string list) (g : ast) : (string * (string list)) list =
   match nts with
@@ -176,6 +164,34 @@ let canonicalize (ogrammar : ast) : ast option =
     let top_sort_nts = TopSort.fold (fun x y -> y @ [x]) g [] in 
     (* let rev_top_sort_nts = List.rev top_sort_nts in  *)
     Some (collect_rules top_sort_nts ogrammar [])
+
+let get_all_nt_scs scs = 
+  List.fold_left (fun acc sc -> match sc with 
+  | Dependency (nt, _) -> nt :: acc
+  | SyGuSExpr _ -> acc
+  ) [] scs
+
+let get_all_dependencies_from_scs scs = 
+  List.fold_left (fun acc sc -> match sc with 
+  | SyGuSExpr _ -> acc
+  | Dependency (nt1, expr) -> 
+    let nts = Ast.get_nts_from_expr expr in 
+    acc @ List.map (fun nt2 -> (nt1, nt2)) nts
+  ) [] scs
+
+let canonicalize_scs (scs : semantic_constraint list) : semantic_constraint list option = 
+  let g = G.create () in 
+  let all_nt = get_all_nt_scs scs in 
+  let unique_nts = StringSet.of_list all_nt in 
+  let all_dependencies = get_all_dependencies_from_scs scs in 
+  List.iter (fun (s1, s2) -> Format.fprintf Format.std_formatter "%s <- %s\n" s1 s2) all_dependencies;
+  Format.pp_print_flush Format.std_formatter ();
+  let unique_dependencies = StringPairSet.of_list all_dependencies in 
+  StringSet.iter (fun s -> G.add_vertex g s) unique_nts; 
+  StringPairSet.iter (fun s-> G.add_edge g (fst s) (snd s)) unique_dependencies ;
+  let module My_Dfs = Traverse.Dfs(G) in
+  if (My_Dfs.has_cycle g) then None  
+  else Some scs
 
 let find_vertex g label =
   let vertex = ref None in
