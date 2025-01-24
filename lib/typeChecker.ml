@@ -14,7 +14,15 @@ let type_checker_error mode error_msg = match mode with
 let build_context: ast -> ast * context
 = fun ast -> 
   let ctx = List.fold_left (fun acc element -> match element with 
-  | ProdRule _ -> acc 
+  | ProdRule (nt, rhss) -> 
+    let options = List.map (fun rhs -> match rhs with
+      | Rhs (ges, _) -> List.fold_left (fun acc ge -> match ge with 
+        | Nonterminal nt 
+        | StubbedNonterminal (nt, _) -> nt :: acc
+      ) [] ges |> List.rev
+      | StubbedRhs _ -> []
+    ) rhss in
+    Utils.StringMap.add nt (ADT options) acc 
   | TypeAnnotation (nt, ty, _) -> Utils.StringMap.add nt ty acc
   ) Utils.StringMap.empty ast in 
   ast, ctx
@@ -23,7 +31,7 @@ let last lst = lst |> List.rev |> List.hd
 
 let rec infer_type_expr: context -> mode -> expr -> il_type option
 = fun ctx mode expr -> match expr with 
-| NTExpr (nt_expr, _) -> (
+| NTExpr nt_expr -> (
   match Utils.StringMap.find_opt (last nt_expr) ctx with 
   | Some ty -> Some ty 
   | None -> 
@@ -155,8 +163,8 @@ let rec infer_type_expr: context -> mode -> expr -> il_type option
     else Some Bool
   | _ -> None
   )
-| CaseExpr (nt_expr, cases) -> 
-  let inf_ty = Utils.StringMap.find (last nt_expr) ctx in  
+| Match _ -> assert false
+  (* let inf_ty = Utils.StringMap.find (last nt_expr) ctx in  
   if not (inf_ty = Bool) 
     then
       let expr_str = Utils.capture_output Ast.pp_print_expr expr in
@@ -171,7 +179,7 @@ let rec infer_type_expr: context -> mode -> expr -> il_type option
       let expr_str = Utils.capture_output Ast.pp_print_expr expr in
       let error_message = "Type checking error: case expression " ^ expr_str ^ " has cases of differing types" in
       failwith error_message
-    else List.hd inf_tys
+    else List.hd inf_tys *)
 | Length expr -> (
   let inf_ty = infer_type_expr ctx mode expr in
   match inf_ty with 

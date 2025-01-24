@@ -14,8 +14,8 @@
     "int_to_bitvector", INTTOBITVECTOR ;
     "BitList", BITLIST ; 
     "MachineInt", MACHINEINT ;
-    "case", CASE ;
-    "of", OF ;
+    (* "case", CASE ; *)
+    (* "of", OF ; *)
     "length", LENGTH ;
     "land", LAND ;
     "lor", LOR ;
@@ -59,7 +59,7 @@ rule read =
   | "{" { LCURLY }
   | "}" { RCURLY }
   | "<-" { ASSIGN }
-  | "->" { ARROW }
+  (* | "->" { ARROW } *)
   | "+" { PLUS }
   | "-" { MINUS }
   | "*" { TIMES }

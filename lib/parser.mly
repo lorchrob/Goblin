@@ -9,8 +9,8 @@ open Ast
 %token INTTOBITVECTOR
 %token BITLIST
 %token MACHINEINT
-%token CASE
-%token OF
+// %token CASE
+// %token OF
 %token LENGTH
 %token LAND
 %token LOR
@@ -31,7 +31,7 @@ open Ast
 %token LCURLY
 %token RCURLY
 %token ASSIGN
-%token ARROW
+// %token ARROW
 %token PLUS
 %token MINUS
 %token TIMES
@@ -57,8 +57,8 @@ open Ast
 %token EOF
 
 (* Priorities and associativity of operators, lowest first *)
-%nonassoc OPTION
-%nonassoc ARROW
+// %nonassoc OPTION
+// %nonassoc ARROW
 %right LIMPLIES
 %left BVOR BVXOR LOR LXOR
 %left LAND BVAND
@@ -114,7 +114,6 @@ semantic_constraint_list:
 
 grammar_element:
 | nt = nonterminal { Nonterminal(nt) }
-| i = ID; EQ; nt = nonterminal; { NamedNonterminal (i, nt) }
 
 semantic_constraint:
 | nt = nonterminal; ASSIGN; e = expr { Dependency (nt, e) }
@@ -160,18 +159,18 @@ expr:
   LPAREN; width = INTEGER; COMMA; e = expr; RPAREN; { BVCast (width, e) }
 | LENGTH; LPAREN; e = expr; RPAREN; { Length (e) }
 (* Case expressions *)
-| CASE; e = nt_expr; OF; cs = case_list { CaseExpr (e, cs) }
+// | CASE; e = nt_expr; OF; cs = case_list { Match (e, cs) }
 (* Variables *)
-| e = nt_expr; index = option(index); { NTExpr (e, index) }
+| e = nt_expr; (* _ = option(index); *) { NTExpr e }
 (* Arbitrary parens *)
 | LPAREN; e = expr; RPAREN; { e }
 
-case_list:
-| OPTION; e1 = nt_expr; ARROW; e2 = expr; { [(e1, e2)] }
-| OPTION; e1 = nt_expr; ARROW; e2 = expr; cs = case_list { (e1, e2) :: cs }
+// case_list:
+// | OPTION; e1 = nt_expr; ARROW; e2 = expr; { [(e1, e2)] }
+// | OPTION; e1 = nt_expr; ARROW; e2 = expr; cs = case_list { (e1, e2) :: cs }
 
-index:
-| LPAREN; index = INTEGER; RPAREN; { index }
+// index:
+// | LPAREN; index = INTEGER; RPAREN; { index }
 
 nt_expr: 
 | nt = nonterminal { [nt] }

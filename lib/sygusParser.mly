@@ -60,6 +60,8 @@ lisp_term:
   { BLLeaf bits }
 | i = INTEGER; 
   { IntLeaf i }
+| LPAREN; HYPHEN; i = INTEGER; RPAREN; 
+  { IntLeaf (-i) }
 
 bit_list:
 | LPAREN; AS; SEQ; DOT; EMPTY; LPAREN; CAPSEQ; BOOL; RPAREN; RPAREN; 

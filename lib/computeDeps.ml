@@ -91,7 +91,7 @@ and evaluate: A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -> A.eleme
 = fun dep_map sygus_ast element expr -> 
   let call = evaluate dep_map sygus_ast element in
   match expr with 
-| NTExpr ([id], None) ->
+| NTExpr ([id]) ->
   let child_index = match element with 
   | A.TypeAnnotation _ -> assert false 
   | A.ProdRule (_, (Rhs (ges, _)) :: _) ->
@@ -99,7 +99,6 @@ and evaluate: A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -> A.eleme
       Utils.find_index (fun ge -> match ge with 
       | A.Nonterminal nt -> id = nt 
       | StubbedNonterminal (nt, _) -> id = nt;
-      | _ -> false
       ) ges 
     with Not_found ->
       failwith ("Dangling identifier " ^ id ^ " in semantic constraint"))
@@ -309,7 +308,7 @@ and evaluate: A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -> A.eleme
  )
 | BVConst _ | BLConst _ | IntConst _ | BConst _ | StrConst _ -> [expr]
 | NTExpr _ -> failwith "Internal error: Complicated NTExprs not yet supported"
-| CaseExpr _ -> failwith "Internal error: CaseExpr not yet supported"
+| Match _ -> failwith "Internal error: Match not yet supported"
 
 
 let rec compute_deps: A.semantic_constraint Utils.StringMap.t -> A.ast -> SA.sygus_ast -> SA.sygus_ast 

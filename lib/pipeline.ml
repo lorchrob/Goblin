@@ -19,6 +19,9 @@ let main_pipeline input_string =
   let ast = TypeChecker.check_types ctx ast in
   Debug.debug_print Format.pp_print_string ppf "\nType checking complete\n";
 
+  (* Step 2.5: Convert NTExprs to Match expressions *)
+  let ast = NtExprToMatch.convert_nt_exprs_to_matches ctx ast in
+
   (* Step 3: Abstract away dependent terms in the grammar *)
   Debug.debug_print Format.pp_print_string ppf "\nDependent term abstraction:\n";
   let dep_map, ast, ctx = AbstractDeps.abstract_dependencies ctx ast in 
@@ -37,6 +40,8 @@ let main_pipeline input_string =
   Debug.debug_print Format.pp_print_string ppf "\nSyGuS translation:\n";
   List.iter (fun ast -> Debug.debug_print Sygus.pp_print_ast ppf (ctx, dep_map, ast); Debug.debug_print Lib.pp_print_newline ppf ()) asts;
   Debug.debug_print Lib.pp_print_newline ppf ();
+
+  Format.pp_print_flush Format.std_formatter ();
   
   (* Step 7: Call sygus engine *)
   Debug.debug_print Format.pp_print_string ppf "Calling SyGuS:";
@@ -51,10 +56,14 @@ let main_pipeline input_string =
   Debug.debug_print Format.pp_print_string ppf "\nSyGuS ASTs:\n";
   List.iter (Debug.debug_print SygusAst.pp_print_sygus_ast ppf) sygus_asts;
 
+  Format.pp_print_flush Format.std_formatter ();
+
   (* Step 9: Recombine to single AST *)
   Debug.debug_print Format.pp_print_string ppf "\nRecombining to single AST:\n";
   let sygus_ast = Recombine.recombine sygus_asts in 
   Debug.debug_print SygusAst.pp_print_sygus_ast ppf sygus_ast;
+
+  Format.pp_print_flush Format.std_formatter ();
 
   (* Step 10: Compute dependencies *)
   Debug.debug_print Format.pp_print_string ppf "\nComputing dependencies:\n";
@@ -93,6 +102,9 @@ let sygusGrammarToPacket ast =
   (* Step 2: Type checking *)
   let ast, ctx = TypeChecker.build_context ast in
   let ast = TypeChecker.check_types ctx ast in
+
+  (* Step 2.5: Convert NTExprs to Match expressions *)
+  let ast = NtExprToMatch.convert_nt_exprs_to_matches ctx ast in
 
   (* Step 3: Abstract away dependent terms in the grammar *)
   let dep_map, ast, ctx = AbstractDeps.abstract_dependencies ctx ast in 

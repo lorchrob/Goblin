@@ -11,7 +11,7 @@ let rec calculate_casts: expr -> expr
 | UnOp (op, expr) -> UnOp (op, calculate_casts expr) 
 | CompOp (expr1, op, expr2) -> CompOp (calculate_casts expr1, op, calculate_casts expr2) 
 | Length expr -> Length (calculate_casts expr) 
-| CaseExpr (nt_expr, cases) -> CaseExpr (nt_expr, cases) 
+| Match (nt_expr, cases) -> Match (nt_expr, cases) 
 | NTExpr _ 
 | BVConst _ 
 | BLConst _ 
@@ -19,7 +19,7 @@ let rec calculate_casts: expr -> expr
 | IntConst _ 
 | StrConst _ -> expr
 
-let stub_grammar_element: Utils.context -> semantic_constraint list -> grammar_element -> semantic_constraint option * grammar_element * Utils.context
+let stub_grammar_element: TypeChecker.context -> semantic_constraint list -> grammar_element -> semantic_constraint option * grammar_element * TypeChecker.context
 = fun ctx scs ge -> match ge with 
 | StubbedNonterminal _ -> None, ge, ctx 
 | Nonterminal nt -> (
@@ -33,7 +33,6 @@ let stub_grammar_element: Utils.context -> semantic_constraint list -> grammar_e
     Some dep, StubbedNonterminal (nt, stub_id), ctx  
   | None -> None, ge, ctx
   )
-| NamedNonterminal _ -> failwith "Named nonterminals not yet supported"
 
 let stub_ty_annot
 = fun ctx nt ty scs -> 
@@ -48,7 +47,7 @@ let stub_ty_annot
   | None -> Utils.StringMap.empty, TypeAnnotation (nt, ty, scs), ctx
 
 
-let simp_rhss: Utils.context -> prod_rule_rhs -> semantic_constraint Utils.StringMap.t * prod_rule_rhs * Utils.context 
+let simp_rhss: TypeChecker.context -> prod_rule_rhs -> semantic_constraint Utils.StringMap.t * prod_rule_rhs * TypeChecker.context 
 = fun ctx rhss -> match rhss with 
 | Rhs (ges, scs) ->
   let scs = List.map (fun sc -> match sc with 
@@ -72,7 +71,7 @@ let simp_rhss: Utils.context -> prod_rule_rhs -> semantic_constraint Utils.Strin
 
 (*     let dep_map = List.fold_left (Utils.StringMap.merge Lib.union_keys) acc_dep_map dep_maps in *)
 
-let simp_ast: Utils.context -> ast -> (semantic_constraint Utils.StringMap.t * ast * Utils.context) 
+let simp_ast: TypeChecker.context -> ast -> (semantic_constraint Utils.StringMap.t * ast * TypeChecker.context) 
 = fun ctx ast -> 
   let dep_map, ast, ctx = List.fold_left (fun (acc_dep_map, acc_elements, acc_ctx) element -> match element with 
   | ProdRule (nt, rhss) -> 
@@ -94,5 +93,5 @@ let simp_ast: Utils.context -> ast -> (semantic_constraint Utils.StringMap.t * a
   ) (Utils.StringMap.empty, [], ctx) ast  in 
   dep_map, List.rev ast, ctx
 
-let abstract_dependencies: Utils.context -> ast -> (semantic_constraint Utils.StringMap.t * ast * Utils.context)  
+let abstract_dependencies: TypeChecker.context -> ast -> (semantic_constraint Utils.StringMap.t * ast * TypeChecker.context)  
 = fun ctx ast -> simp_ast ctx ast

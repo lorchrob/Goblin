@@ -1,6 +1,6 @@
-open Ast
-
+module A = Ast
 module TC = TypeChecker
+module StringMap = Utils.StringMap
 
 let fresh_destructor: unit -> string 
 = fun () ->
@@ -14,7 +14,7 @@ let fresh_constraint: unit -> string
   Utils.k := !Utils.k + 1;
   id
 
-let pp_print_ty: Format.formatter -> il_type -> unit 
+let pp_print_ty: Format.formatter -> A.il_type -> unit 
 = fun ppf ty -> match ty with 
 | Int -> Format.fprintf ppf "Int"
 | Bool -> Format.fprintf ppf "Bool"
@@ -24,11 +24,11 @@ let pp_print_ty: Format.formatter -> il_type -> unit
 | BitVector len -> Format.fprintf ppf "(_ BitVec %d)" len
 | BitList -> Format.fprintf ppf "(Seq Bool)"
 | MachineInt width -> Format.fprintf ppf "(_ BitVec %d)" (Lib.pow 2 width)
+| ADT _ -> failwith "Internal error: sygus.ml (pp_print_ty)"
 
-let pp_print_constructor: TC.context -> Ast.semantic_constraint Utils.StringMap.t -> Ast.ast ->  Format.formatter -> grammar_element -> unit 
+let pp_print_constructor: TC.context -> Ast.semantic_constraint Utils.StringMap.t -> Ast.ast ->  Format.formatter -> A.grammar_element -> unit 
 = fun ctx dep_map ast ppf ge -> match ge with 
-| Nonterminal nt 
-| NamedNonterminal (_, nt) -> 
+| A.Nonterminal nt ->
   let d_str = fresh_destructor () in 
   let ty_str = 
   match Utils.StringMap.find_opt nt dep_map,
@@ -37,7 +37,7 @@ let pp_print_constructor: TC.context -> Ast.semantic_constraint Utils.StringMap.
   | Some _, _ -> String.uppercase_ascii nt
   | _, Some ty -> 
     let type_annot = List.find_opt (fun element -> match element with 
-    | ProdRule _ -> false 
+    | A.ProdRule _ -> false 
     | TypeAnnotation (nt2, _, _) -> nt = nt2 
     ) ast
     in (
@@ -57,7 +57,7 @@ let pp_print_constructor: TC.context -> Ast.semantic_constraint Utils.StringMap.
 
 let pp_print_datatype_rhs 
 = fun ctx dep_map nt ast ppf (rhs, idx) -> match rhs with 
-| Rhs (ges, _) -> 
+| A.Rhs (ges, _) -> 
   Format.fprintf ppf "\n\t(%s %a)"
     ((String.lowercase_ascii nt) ^ "_con" ^ (string_of_int idx))
     (Lib.pp_print_list (pp_print_constructor ctx dep_map ast) " ") ges
@@ -65,45 +65,33 @@ let pp_print_datatype_rhs
   Format.fprintf ppf "\n\t(%s)"
   ((String.lowercase_ascii stub_id) ^ "_con" ^ (string_of_int idx))
 
-let pp_print_datatypes: Format.formatter -> TC.context -> Ast.semantic_constraint Utils.StringMap.t -> ast -> unit 
+let pp_print_datatypes: Format.formatter -> TC.context -> Ast.semantic_constraint Utils.StringMap.t -> A.ast -> unit 
 = fun ppf ctx dep_map ast -> 
   Utils.StringMap.iter (fun stub_id dep -> match dep with 
-  | Dependency _ -> 
+  | A.Dependency _ -> 
     Format.fprintf ppf "(declare-datatype %s (\n\t(%s)\n))\n"
       (String.uppercase_ascii stub_id)
       ((String.lowercase_ascii stub_id) ^ "_con")
   | SyGuSExpr _ -> failwith "Internal error: dependency map contains a SyGuSExpr"
   ) dep_map;
   List.iter (fun element -> match element with 
-  | TypeAnnotation _ -> ()
+  | A.TypeAnnotation _ -> ()
   | ProdRule (nt, rhss) -> 
     Format.fprintf ppf "(declare-datatype %s (%a\n))\n"
       (String.uppercase_ascii nt)
       (Lib.pp_print_list (pp_print_datatype_rhs ctx dep_map nt ast) " ") (List.mapi (fun i rhs -> (rhs, i)) rhss);
   ) ast 
 
-let pp_print_nt_decs: Ast.semantic_constraint Utils.StringMap.t -> Format.formatter -> ast -> unit 
-= fun dep_map ppf ast -> List.iter (fun element -> match element with 
-| ProdRule (nt, _) ->
-  Format.fprintf ppf "\t(%s %s)\n"
-  (String.lowercase_ascii nt)
-  (String.uppercase_ascii nt) 
-| TypeAnnotation (nt, ty, _) -> 
-  Format.fprintf ppf "\t(%s %a)\n"
-  (String.lowercase_ascii nt) 
-  pp_print_ty ty
-) ast;
-Utils.StringMap.iter (fun stub_id dep -> match dep with 
-| Dependency _ -> 
-  Format.fprintf ppf "\t(%s %s)"
-  (String.lowercase_ascii stub_id) 
-  (String.uppercase_ascii stub_id) 
-| SyGuSExpr _ -> failwith "Internal error: dependency map contains a SyGuSExpr"
-) dep_map
-
-let pp_print_binop: Format.formatter -> bin_operator -> unit 
+let pp_print_unop: Format.formatter -> A.unary_operator -> unit 
 = fun ppf op -> match op with 
-| BVAnd -> Format.fprintf ppf "bvand"
+| A.UPlus -> ()
+| UMinus -> Format.fprintf ppf "-"
+| LNot -> Format.fprintf ppf "not"
+| BVNot -> Format.fprintf ppf "bvnot"
+
+let pp_print_binop: Format.formatter -> A.bin_operator -> unit 
+= fun ppf op -> match op with 
+| A.BVAnd -> Format.fprintf ppf "bvand"
 | BVOr -> Format.fprintf ppf "bvor"
 | BVXor -> failwith "BitVector xor is not supported"
 | LAnd -> Format.fprintf ppf "and"
@@ -115,62 +103,100 @@ let pp_print_binop: Format.formatter -> bin_operator -> unit
 | Times -> Format.fprintf ppf "*"
 | Div -> Format.fprintf ppf "/"
 
-let pp_print_compop: Format.formatter -> comp_operator -> unit 
+let pp_print_compop: Format.formatter -> A.comp_operator -> unit 
 = fun ppf op -> match op with 
-| Lt -> Format.fprintf ppf "<"
+| A.Lt -> Format.fprintf ppf "<"
 | Lte -> Format.fprintf ppf "<="
 | Gt -> Format.fprintf ppf ">"
 | Gte -> Format.fprintf ppf ">="
 | Eq -> Format.fprintf ppf "="
 | _ -> assert false
 
-let pp_print_unop: Format.formatter -> unary_operator -> unit 
-= fun ppf op -> match op with 
-| UPlus -> ()
-| UMinus -> Format.fprintf ppf "-"
-| LNot -> Format.fprintf ppf "not"
-| BVNot -> Format.fprintf ppf "bvnot"
+let pp_print_nt_decs: Ast.semantic_constraint Utils.StringMap.t -> Format.formatter -> A.ast -> unit 
+= fun dep_map ppf ast -> List.iter (fun element -> match element with 
+| A.ProdRule (nt, _) ->
+  Format.fprintf ppf "\t(%s %s)\n"
+  (String.lowercase_ascii nt)
+  (String.uppercase_ascii nt) 
+| TypeAnnotation (nt, ty, _) -> 
+  Format.fprintf ppf "\t(%s %a)\n"
+  (String.lowercase_ascii nt) 
+  pp_print_ty ty
+) ast;
+Utils.StringMap.iter (fun stub_id dep -> match dep with 
+| A.Dependency _ -> 
+  Format.fprintf ppf "\t(%s %s)"
+  (String.lowercase_ascii stub_id) 
+  (String.uppercase_ascii stub_id) 
+| SyGuSExpr _ -> failwith "Internal error: dependency map contains a SyGuSExpr"
+) dep_map
 
-let rec pp_print_expr: Format.formatter -> expr -> unit 
-= fun ppf expr -> match expr with 
-| NTExpr ([nt], None) -> Format.pp_print_string ppf (String.lowercase_ascii nt)
+let rec pp_print_match: Format.formatter -> TC.context -> string -> A.case list -> unit 
+= fun ppf ctx nt cases ->
+  let _options, exprs = List.split cases in
+  let rules = match StringMap.find nt ctx with 
+  | ADT rules -> rules 
+  | _ -> failwith "Internal error: sygus.ml (pp_print_match)" 
+  in
+  let rules = List.mapi (fun i rule -> (i, rule)) rules in
+  let rules = List.combine rules exprs in
+  Format.fprintf ppf "(match %s (
+    %a
+  ))"
+  (String.lowercase_ascii nt)
+  (Lib.pp_print_list (fun ppf -> Format.fprintf ppf "(%a)" (pp_print_option ctx nt)) " ") rules
+
+and pp_print_option: TC.context -> string -> Format.formatter -> ((int * (string list)) * A.expr) -> unit 
+= fun ctx nt ppf ((i, options), expr) -> 
+  let options = List.map String.lowercase_ascii options in
+  Format.fprintf ppf "(%s_con%d %a) %a"
+  (String.lowercase_ascii nt)
+  i
+  (Lib.pp_print_list Format.pp_print_string " ") options
+  (pp_print_expr ctx) expr
+
+and pp_print_expr: TC.context -> Format.formatter -> A.expr -> unit 
+= fun ctx ppf expr -> match expr with 
+| NTExpr [nt] -> Format.pp_print_string ppf (String.lowercase_ascii nt)
+| A.Match (nt, cases)  -> pp_print_match ppf ctx nt cases
+| NTExpr _ -> assert false (* pp_print_match ppf ctx nts *)
 | BinOp (expr1, op, expr2) -> 
   Format.fprintf ppf "(%a %a %a)"
     pp_print_binop op 
-    pp_print_expr expr1 
-    pp_print_expr expr2
+    (pp_print_expr ctx) expr1 
+    (pp_print_expr ctx) expr2
 | CompOp (expr1, BVLt, expr2) -> 
   Format.fprintf ppf "(bvult %a %a)"
-    pp_print_expr expr1 
-    pp_print_expr expr2
+    (pp_print_expr ctx) expr1 
+    (pp_print_expr ctx) expr2
 | CompOp (expr1, BVLte, expr2) -> 
   Format.fprintf ppf "(or (bvult %a %a) (= %a %a))"
-    pp_print_expr expr1 
-    pp_print_expr expr2
-    pp_print_expr expr1 
-    pp_print_expr expr2
+    (pp_print_expr ctx) expr1 
+    (pp_print_expr ctx) expr2
+    (pp_print_expr ctx) expr1 
+    (pp_print_expr ctx) expr2
 | CompOp (expr1, BVGt, expr2) -> 
   Format.fprintf ppf "(bvult %a %a)"
-    pp_print_expr expr2
-    pp_print_expr expr1 
+    (pp_print_expr ctx) expr2
+    (pp_print_expr ctx) expr1 
 | CompOp (expr1, BVGte, expr2) -> 
   Format.fprintf ppf "(or (bvult %a %a) (= %a %a))"
-    pp_print_expr expr2
-    pp_print_expr expr1 
-    pp_print_expr expr2
-    pp_print_expr expr1 
+    (pp_print_expr ctx) expr2
+    (pp_print_expr ctx) expr1 
+    (pp_print_expr ctx) expr2
+    (pp_print_expr ctx) expr1 
 | CompOp (expr1, op, expr2) -> 
   Format.fprintf ppf "(%a %a %a)"
     pp_print_compop op 
-    pp_print_expr expr1 
-    pp_print_expr expr2
+    (pp_print_expr ctx) expr1 
+    (pp_print_expr ctx) expr2
 | UnOp (op, expr) -> 
   Format.fprintf ppf "(%a %a)"
     pp_print_unop op 
-    pp_print_expr expr
+    (pp_print_expr ctx) expr
 | Length expr -> 
   Format.fprintf ppf "(seq.len %a)"
-    pp_print_expr expr
+    (pp_print_expr ctx) expr
 | BVConst (_, bits) -> 
   let bits = List.map Bool.to_int bits in
   Format.fprintf ppf "#b%a"
@@ -178,52 +204,50 @@ let rec pp_print_expr: Format.formatter -> expr -> unit
 | BConst b ->  Format.fprintf ppf "%b" b
 | IntConst i -> Format.fprintf ppf "%d" i
 | StrConst _ -> failwith "Error: String constants can only be in dependencies (of the form 'nonterminal <- string_literal')"
-| CaseExpr _  -> failwith "Case expressions not yet fully supported"
-| NTExpr _ -> failwith "Nonterminal expressions with either dot notation or indexing are not yet fully supported" 
 | BLConst _ -> failwith "BitList literals not yet fully supported"
 | BVCast _ -> failwith "Integer to bitvector casts in semantic constraints that aren't preprocessable are not supported"
 
-let pp_print_semantic_constraint_ty_annot: Format.formatter -> string -> il_type -> semantic_constraint -> unit 
-= fun ppf nt ty sc -> match sc with 
-| Dependency _ -> () 
+let pp_print_semantic_constraint_ty_annot: TC.context -> Format.formatter -> string -> A.il_type -> A.semantic_constraint -> unit 
+= fun ctx ppf nt ty sc -> match sc with 
+| A.Dependency _ -> () 
 | SyGuSExpr expr -> 
   let constraint_id = fresh_constraint () in 
   Format.fprintf ppf "(define-fun %s ((%s %a)) Bool \n\t%a\n)\n"
     constraint_id
     (String.lowercase_ascii nt) 
     pp_print_ty ty
-    pp_print_expr expr;
+    (pp_print_expr ctx) expr;
   Format.fprintf ppf "(constraint (%s top))"
     constraint_id
 
-let pp_print_constraints_rhs: string -> Format.formatter -> prod_rule_rhs * int -> unit
-= fun nt ppf (rhs, idx) -> match rhs with 
+let pp_print_constraints_rhs: TC.context -> string -> Format.formatter -> A.prod_rule_rhs * int -> unit
+= fun ctx nt ppf (rhs, idx) -> match rhs with 
 | StubbedRhs _ -> Format.fprintf ppf "2STUB\n"
 | Rhs (ges, scs) ->
   let 
     ges = List.map Utils.grammar_element_to_string ges |> List.map String.lowercase_ascii 
   in  
   let exprs = List.filter_map (fun sc -> match sc with 
-  | SyGuSExpr expr -> Some expr 
+  | A.SyGuSExpr expr -> Some expr 
   | _ -> None
   ) scs in
   if List.length exprs > 1 then
     Format.fprintf ppf "((%s %a)\n\t\t (and %a))"
     ((String.lowercase_ascii nt) ^ "_con" ^ (string_of_int idx)) 
       (Lib.pp_print_list Format.pp_print_string " ") ges
-      (Lib.pp_print_list pp_print_expr " ") exprs
+      (Lib.pp_print_list (pp_print_expr ctx) " ") exprs
   else if List.length exprs = 1 then 
     Format.fprintf ppf "((%s %a)\n\t\t %a)"
     ((String.lowercase_ascii nt) ^ "_con" ^ (string_of_int idx)) 
       (Lib.pp_print_list Format.pp_print_string " ") ges
-      (Lib.pp_print_list pp_print_expr " ") exprs 
+      (Lib.pp_print_list (pp_print_expr ctx) " ") exprs 
   else 
     Format.fprintf ppf "((%s %a)\n\t\t true)"
     ((String.lowercase_ascii nt) ^ "_con" ^ (string_of_int idx)) 
       (Lib.pp_print_list Format.pp_print_string " ") ges
   
 let pp_print_semantic_constraints_prod_rule
-= fun ppf nt rhss ->
+= fun ctx ppf nt rhss ->
   let constraint_id = fresh_constraint () in 
 
   Format.fprintf ppf "(define-fun %s ((%s %s)) Bool \n\t(match %s (\n\t\t%a\n\t))\n)\n"
@@ -231,23 +255,23 @@ let pp_print_semantic_constraints_prod_rule
     (String.lowercase_ascii nt) 
     (String.uppercase_ascii nt) 
     (String.lowercase_ascii nt)
-    (Lib.pp_print_list (pp_print_constraints_rhs nt) "\n") rhss;
+    (Lib.pp_print_list (pp_print_constraints_rhs ctx nt) "\n") rhss;
   Format.fprintf ppf "(constraint (%s top))"
     constraint_id
 
-let pp_print_constraints: Format.formatter -> ast -> unit 
-= fun ppf ast -> match ast with 
+let pp_print_constraints: TC.context -> Format.formatter -> A.ast -> unit 
+= fun ctx ppf ast -> match ast with 
 | [] -> failwith "Input grammar must have at least one production rule or type annotation"
-| ProdRule (nt, rhss) :: _ -> 
-  if List.exists (fun rhs -> match rhs with | Rhs (_, _ :: _) -> true | _ -> false) rhss then
+| A.ProdRule (nt, rhss) :: _ -> 
+  if List.exists (fun rhs -> match rhs with | A.Rhs (_, _ :: _) -> true | _ -> false) rhss then
   let rhss = List.mapi (fun i rhs -> (rhs, i)) rhss in
-  pp_print_semantic_constraints_prod_rule ppf nt rhss
+  pp_print_semantic_constraints_prod_rule ctx ppf nt rhss
 | TypeAnnotation (nt, ty, scs) :: _ -> 
-  List.iter (pp_print_semantic_constraint_ty_annot ppf nt ty) scs
+  List.iter (pp_print_semantic_constraint_ty_annot ctx ppf nt ty) scs
 
-let pp_print_rhs: string -> Format.formatter -> prod_rule_rhs * int -> unit
+let pp_print_rhs: string -> Format.formatter -> A.prod_rule_rhs * int -> unit
 = fun nt ppf (rhs, idx) -> match rhs with 
-| Rhs (ges, _) ->
+| A.Rhs (ges, _) ->
   let ges = List.map Utils.grammar_element_to_string ges in 
   let ges = List.map String.lowercase_ascii ges in
   Format.fprintf ppf "(%s %a)"
@@ -257,10 +281,10 @@ let pp_print_rhs: string -> Format.formatter -> prod_rule_rhs * int -> unit
   Format.fprintf ppf "%s"
     ((String.lowercase_ascii stub_id) ^ "_con" ^ (string_of_int idx))
 
-let pp_print_rules: Ast.semantic_constraint Utils.StringMap.t -> Format.formatter -> ast -> unit 
+let pp_print_rules: Ast.semantic_constraint Utils.StringMap.t -> Format.formatter -> A.ast -> unit 
 = fun dep_map ppf ast -> 
   List.iter (fun element -> match element with 
-  | ProdRule (nt, rhss) -> 
+  | A.ProdRule (nt, rhss) -> 
     Format.fprintf ppf "\t(%s %s (%a))\n"
       (String.lowercase_ascii nt) 
       (String.uppercase_ascii nt) 
@@ -272,7 +296,7 @@ let pp_print_rules: Ast.semantic_constraint Utils.StringMap.t -> Format.formatte
       pp_print_ty ty
   ) ast;
   Utils.StringMap.iter (fun stub_id dep -> match dep with 
-  | Dependency _ -> 
+  | A.Dependency _ -> 
     Format.fprintf ppf "\t(%s %s (%s))"
       (String.lowercase_ascii stub_id) 
       (String.uppercase_ascii stub_id) 
@@ -280,10 +304,10 @@ let pp_print_rules: Ast.semantic_constraint Utils.StringMap.t -> Format.formatte
   | SyGuSExpr _ -> failwith "Internal error: dependency map contains a SyGuSExpr"
   ) dep_map
 
-let pp_print_grammar: Format.formatter -> Ast.semantic_constraint Utils.StringMap.t -> ast -> unit 
+let pp_print_grammar: Format.formatter -> Ast.semantic_constraint Utils.StringMap.t -> A.ast -> unit 
 = fun ppf dep_map ast -> 
   let top_datatype_str = match List.hd ast with 
-  | ProdRule (nt, _) -> String.uppercase_ascii nt
+  | A.ProdRule (nt, _) -> String.uppercase_ascii nt
   | TypeAnnotation (_, ty, _) -> 
     Utils.capture_output pp_print_ty ty
   in
@@ -293,7 +317,7 @@ let pp_print_grammar: Format.formatter -> Ast.semantic_constraint Utils.StringMa
     (pp_print_nt_decs dep_map) ast 
     (pp_print_rules dep_map) ast
 
-let pp_print_ast: Format.formatter -> (TC.context * Ast.semantic_constraint Utils.StringMap.t * ast) -> unit 
+let pp_print_ast: Format.formatter -> (TC.context * Ast.semantic_constraint Utils.StringMap.t * A.ast) -> unit 
 = fun ppf (ctx, dep_map, ast) -> 
   Format.fprintf ppf "(set-logic BVSLIA)\n\n";
 
@@ -306,7 +330,7 @@ let pp_print_ast: Format.formatter -> (TC.context * Ast.semantic_constraint Util
   Lib.pp_print_newline ppf ();
   Lib.pp_print_newline ppf ();
 
-  pp_print_constraints ppf ast;
+  pp_print_constraints ctx ppf ast;
 
   Lib.pp_print_newline ppf ();
   Lib.pp_print_newline ppf ();
@@ -354,7 +378,7 @@ let find_command_in_path cmd =
       in
       find_in_paths paths
 
-let call_sygus : TC.context -> Ast.semantic_constraint Utils.StringMap.t -> ast -> string =
+let call_sygus : TC.context -> Ast.semantic_constraint Utils.StringMap.t -> A.ast -> string =
 fun ctx dep_map ast ->
   let top_nt = match ast with
   | ProdRule (nt, _) :: _ -> nt

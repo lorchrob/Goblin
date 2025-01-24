@@ -1,5 +1,3 @@
-type nt_expr = string list
-
 type unary_operator = 
 | UPlus 
 | UMinus
@@ -30,7 +28,7 @@ type bin_operator =
 | Times 
 | Div
 
-type case = nt_expr * expr 
+type case = string list * expr 
 and
 expr = 
 | BinOp of expr * bin_operator * expr 
@@ -38,8 +36,8 @@ expr =
 | CompOp of expr * comp_operator * expr 
 | Length of expr
 | BVCast of int * expr
-| CaseExpr of nt_expr * case list
-| NTExpr of nt_expr * int option 
+| Match of string * case list
+| NTExpr of string list
 | BVConst of int * bool list
 | BLConst of bool list
 | BConst of bool
@@ -57,10 +55,10 @@ type il_type =
 | BitVector of int 
 | BitList
 | MachineInt of int
+| ADT of string list list
 
 type grammar_element = 
 | Nonterminal of string 
-| NamedNonterminal of string * string (* Ignore *)
 | StubbedNonterminal of string * string (* Ignore *)
 
 type prod_rule_rhs = 
@@ -85,10 +83,10 @@ type btree =
 let rec substitute: expr -> string -> expr -> expr 
 = fun e1 var e2 -> 
   match e1 with 
-  | NTExpr ([id], None) -> 
+  | NTExpr ([id]) -> 
     if id = var then e2 else e1 
   | NTExpr _ -> failwith "Nested or indexed NTExprs not yet supported"
-  | CaseExpr _ -> failwith "CaseExpr not yet supported"
+  | Match _ -> failwith "Match not yet supported"
   | BinOp (expr1, op, expr2) -> BinOp (substitute expr1 var e2, op, substitute expr2 var e2) 
   | UnOp (op, expr) -> UnOp (op, substitute expr var e2) 
   | CompOp (expr1, op, expr2) -> CompOp (substitute expr1 var e2, op, substitute expr2 var e2) 
@@ -104,8 +102,8 @@ let rec get_nts_from_expr: expr -> string list
 = fun expr -> 
   let r = get_nts_from_expr in
   match expr with 
-  | NTExpr (nts, _) -> nts 
-  | CaseExpr _ -> failwith "CaseExpr not yet supported"
+  | NTExpr nts -> nts 
+  | Match _ -> failwith "Match not yet supported"
   | BinOp (expr1, _, expr2) -> 
     r expr1 @ r expr2
   | UnOp (_, expr) -> 
@@ -126,7 +124,7 @@ let pp_print_nonterminal: Format.formatter -> string -> unit
 = fun ppf nt -> 
   Format.fprintf ppf "<%s>" nt
 
-let pp_print_nt_expr: Format.formatter -> nt_expr -> unit
+let pp_print_nt_expr: Format.formatter -> string list -> unit
 = fun ppf nt_expr -> 
   Lib.pp_print_list pp_print_nonterminal "." ppf nt_expr 
 
@@ -194,15 +192,15 @@ and pp_print_expr: Format.formatter -> expr -> unit
   Format.fprintf ppf "int_to_bitvector(%d, %a)" 
     width 
     pp_print_expr expr 
-| CaseExpr (nt, cases) -> 
+| Match (nt, cases) -> 
   Format.fprintf ppf "case %a of %a"
-    pp_print_nt_expr nt 
+    Format.pp_print_string nt 
     (Lib.pp_print_list pp_print_case " ") cases 
-| NTExpr (nt_expr, None) -> pp_print_nt_expr ppf nt_expr 
-| NTExpr (nt_expr, Some index) -> 
+| NTExpr nt_expr -> pp_print_nt_expr ppf nt_expr 
+(* | NTExpr (nt_expr, Some index) -> 
   Format.fprintf ppf "%a(%d)"
     pp_print_nt_expr nt_expr 
-    index
+    index *)
 | BLConst bits -> 
   let bits = List.map Bool.to_int bits in
   Format.fprintf ppf "(BitList 0b%a)"
@@ -233,14 +231,13 @@ let pp_print_ty: Format.formatter -> il_type -> unit
 | BitList -> Format.fprintf ppf "BitList" 
 | BitVector width -> Format.fprintf ppf "BitVector(%d)" width
 | MachineInt width -> Format.fprintf ppf "MachineInt(%d)" width
+| ADT rules -> 
+  Format.fprintf ppf "ADT: %a"
+    (Lib.pp_print_list (Lib.pp_print_list Format.pp_print_string " ") "; ") rules
 
 let pp_print_grammar_element: Format.formatter -> grammar_element ->  unit 
 = fun ppf g_el -> match g_el with 
 | Nonterminal nt -> pp_print_nonterminal ppf nt
-| NamedNonterminal (id, nt) -> 
-  Format.fprintf ppf "%s = %a" 
-    id 
-    pp_print_nonterminal nt
 | StubbedNonterminal (_, stub_id) -> Format.pp_print_string ppf stub_id
 
 let pp_print_prod_rule_rhs: Format.formatter -> prod_rule_rhs -> unit 

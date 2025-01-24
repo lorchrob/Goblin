@@ -5,7 +5,6 @@ let rec from_ge_list_to_string_list (ge_list : grammar_element list) : string li
   match ge_list with
   | [] -> []  
   | Nonterminal(x)::xs -> x :: from_ge_list_to_string_list xs 
-  | NamedNonterminal(x,y)::xs -> x :: y :: from_ge_list_to_string_list xs 
   | StubbedNonterminal(x,y)::xs -> x :: y :: from_ge_list_to_string_list xs 
 
 let rec get_all_nt_from_rhs (rvalue : prod_rule_rhs list) : string list = 
@@ -28,7 +27,7 @@ let rec get_nt_from_geList geList =
   match geList with
   | [] -> []
   | Nonterminal(x) :: xs -> x :: (get_nt_from_geList xs)
-  | NamedNonterminal _:: xs | StubbedNonterminal _ :: xs -> (get_nt_from_geList xs)
+  | StubbedNonterminal _ :: xs -> (get_nt_from_geList xs)
  
 let rec get_nt_from_rhs rhs =
   match rhs with

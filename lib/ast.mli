@@ -1,5 +1,3 @@
-type nt_expr = string list
-
 type unary_operator = UPlus | UMinus | LNot | BVNot
 
 type comp_operator = 
@@ -26,15 +24,15 @@ type bin_operator =
 | Times
 | Div
 
-type case = nt_expr * expr
+type case = string list * expr
 and expr =
 | BinOp of expr * bin_operator * expr
 | UnOp of unary_operator * expr
 | CompOp of expr * comp_operator * expr
 | Length of expr
 | BVCast of int * expr
-| CaseExpr of nt_expr * case list
-| NTExpr of nt_expr * int option
+| Match of string * case list
+| NTExpr of string list
 | BVConst of int * bool list
 | BLConst of bool list
 | BConst of bool
@@ -45,11 +43,10 @@ type semantic_constraint =
 | Dependency of string * expr
 | SyGuSExpr of expr
 
-type il_type = Bool | Int | String | BitVector of int | BitList | MachineInt of int
+type il_type = Bool | Int | String | BitVector of int | BitList | MachineInt of int | ADT of string list list
 
 type grammar_element =
 | Nonterminal of string
-| NamedNonterminal of string * string
 | StubbedNonterminal of string * string
 
 type prod_rule_rhs = 
@@ -67,6 +64,6 @@ val get_nts_from_expr : expr -> string list
 
 val pp_print_element: Format.formatter -> element ->  unit 
 val pp_print_ast : Format.formatter -> ast -> unit
-val pp_print_nt_expr : Format.formatter -> nt_expr -> unit
+val pp_print_nt_expr : Format.formatter -> string list -> unit
 val pp_print_expr : Format.formatter -> expr -> unit
 val pp_print_ty : Format.formatter -> il_type -> unit

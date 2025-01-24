@@ -65,14 +65,14 @@ let rec check_dangling_identifiers: Utils.StringSet.t -> expr -> expr
     ) nt_expr
   in
   match expr with 
-  | NTExpr (nt_expr, index) -> 
+  | NTExpr nt_expr -> 
     let nt_expr = check_d_ids_nt_expr nt_expr in 
-    NTExpr (nt_expr, index) 
+    NTExpr nt_expr 
   | BinOp (expr1, op, expr2) -> BinOp (call expr1, op, call expr2) 
   | UnOp (op, expr) -> UnOp (op, call expr) 
   | CompOp (expr1, op, expr2) -> CompOp (call expr1, op, call expr2) 
   | Length expr -> Length (call expr) 
-  | CaseExpr (nt_expr, cases) -> CaseExpr (check_d_ids_nt_expr nt_expr, cases) 
+  | Match _ -> assert false (* -> Match (check_d_ids_nt_expr nt_expr, cases) *)
   | BVConst _ 
   | BLConst _ 
   | BConst _ 
@@ -80,7 +80,7 @@ let rec check_dangling_identifiers: Utils.StringSet.t -> expr -> expr
   | IntConst _ 
   | StrConst _ -> expr
 
-let rec check_nt_expr_refs: prod_rule_map -> nt_expr -> nt_expr 
+let rec check_nt_expr_refs: prod_rule_map -> string list -> string list 
 = fun prm nt_expr -> match nt_expr with 
 | nt1 :: nt2 :: tl ->
   if (not (Utils.StringSet.mem nt2 (Utils.StringMap.find nt1 prm))) 
@@ -96,17 +96,17 @@ let rec check_prod_rule_nt_exprs: prod_rule_map -> Utils.StringSet.t -> expr -> 
 = fun prm nts expr -> 
   let call = check_prod_rule_nt_exprs prm nts in
   match expr with 
-  | NTExpr (nt_expr, index) -> 
+  | NTExpr nt_expr -> 
     if (not (Utils.StringSet.mem (List.hd nt_expr) nts)) 
     then failwith ("Nonterminal " ^  (List.hd nt_expr) ^ " not found in current production rule or type annotation")
     else
       let nt_expr = check_nt_expr_refs prm nt_expr in 
-      NTExpr (nt_expr, index) 
+      NTExpr nt_expr 
   | BinOp (expr1, op, expr2) -> BinOp (call expr1, op, call expr2) 
   | UnOp (op, expr) -> UnOp (op, call expr) 
   | CompOp (expr1, op, expr2) -> CompOp (call expr1, op, call expr2) 
   | Length expr -> Length (call expr) 
-  | CaseExpr (nt_expr, cases) -> CaseExpr (check_nt_expr_refs prm nt_expr, cases) 
+  | Match _ -> assert false (* -> Match (check_nt_expr_refs prm nt_expr, cases) *)
   | BVConst _ 
   | BLConst _ 
   | BConst _ 
@@ -120,17 +120,17 @@ let rec check_type_annot_nt_exprs: prod_rule_map -> Utils.StringSet.t -> expr ->
 = fun prm nts expr -> 
   let call = check_type_annot_nt_exprs prm nts in
   match expr with 
-  | NTExpr (nt_expr, index) -> 
+  | NTExpr nt_expr -> 
     if (not (Utils.StringSet.mem (List.hd nt_expr) nts)) 
     then failwith ("Nonterminal " ^  (List.hd nt_expr) ^ " not found in current production rule or type annotation")
     else
       let nt_expr = check_nt_expr_refs prm nt_expr in 
-      NTExpr (nt_expr, index) 
+      NTExpr nt_expr 
   | BinOp (expr1, op, expr2) -> BinOp (call expr1, op, call expr2) 
   | UnOp (op, expr) -> UnOp (op, call expr) 
   | CompOp (expr1, op, expr2) -> CompOp (call expr1, op, call expr2) 
   | Length expr -> Length (call expr) 
-  | CaseExpr (nt_expr, cases) -> CaseExpr (check_nt_expr_refs prm nt_expr, cases) 
+  | Match _ -> assert false(* -> Match (check_nt_expr_refs prm nt_expr, cases) *)
   | BVConst _ 
   | BLConst _ 
   | BConst _ 
@@ -161,7 +161,6 @@ let rhss_contains_nt nt rhss =
   List.iter (fun rhs -> match rhs with 
   | Rhs (ges, _) -> List.iter (fun ge -> match ge with 
     | Nonterminal nt2
-    | NamedNonterminal (nt2, _)
     | StubbedNonterminal (nt2, _) -> 
       if nt = nt2 then 
         print_endline "Warning: Grammar is recursive. Constraints on recursive production rules may not be respected."

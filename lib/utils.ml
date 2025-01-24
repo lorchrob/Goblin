@@ -3,8 +3,6 @@ open Ast
 module StringMap = Map.Make(String)
 module StringSet = Set.Make(String)
 
-type context = il_type StringMap.t
-
 let parse: string -> ast 
 = fun s ->
   let lexbuf = Lexing.from_string s in 
@@ -85,8 +83,7 @@ fun f arg ->
 
 let grammar_element_to_string: grammar_element -> string 
 = fun grammar_element -> match grammar_element with 
-  | Nonterminal nt2 
-  | NamedNonterminal (_, nt2) -> nt2
+  | Nonterminal nt2 -> nt2
   | StubbedNonterminal (_, stub_id) -> stub_id
 
 let pp_print_string_map_keys: Format.formatter -> 'a StringMap.t -> unit 
