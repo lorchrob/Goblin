@@ -1,36 +1,17 @@
 open Ast
 
-let first (tuple : ('a * 'b * 'c)) : 'a =
-    match tuple with
-    | (t1, _, _) -> t1
-  
-let second (tuple : ('a * 'b * 'c)) : 'b =
-    match tuple with
-    | (_,t2,_) -> t2
-
-let third (triple : ('a * 'b * 'c)) : 'c =
-    match triple with
-    | _, _, t3 -> t3
-;;
-  
-
 let random_element (lst: 'a list) : 'a =
     if lst = [] then failwith "Empty list"
-    else begin
+    else (
       let len = List.length lst in
       let random_index = Random.int len in
       List.nth lst random_index
-    end
-
-let rec isPresentInList elem lst = 
-match lst with 
-| [] -> false 
-| x::xs -> if x =  elem then true else isPresentInList elem xs
+    )
 
 let rec isNonTerminalPresent nt_name prod_options = 
     match prod_options with 
     | [] -> false 
-    | Rhs(ge_list, _) :: xs -> (isPresentInList (Nonterminal nt_name) ge_list) || (isNonTerminalPresent nt_name xs) 
+    | Rhs(ge_list, _) :: xs -> (List.mem (Nonterminal nt_name) ge_list) || (isNonTerminalPresent nt_name xs) 
     | _ :: ys -> isNonTerminalPresent nt_name ys 
 
 let rec removeFromList nt lst =
@@ -38,63 +19,50 @@ let rec removeFromList nt lst =
     | [] -> []
     | x :: xs -> if x = nt then xs else (x :: removeFromList nt xs)
 
-(* let rec removeFromTupleList nt lst =
-    match lst with
-    | [] -> []
-    | (nt :: xs) -> xs
-    | x :: xs -> x :: removeFromList xs *)
-
 let apply_add_s1_to_rule production_options nt = 
-    (
-        List.map 
-            (fun rhs_prod_rul -> 
-                match rhs_prod_rul with 
-                | Rhs(geList, scList) -> 
-                    if isPresentInList (Nonterminal nt) geList
-                        then Rhs(geList @ [Nonterminal(nt)], scList) 
-                    else Rhs(geList, scList)
-                | StubbedRhs(s) -> StubbedRhs(s) 
-            )
-            production_options 
-    )
+    List.map (fun rhs_prod_rul -> match rhs_prod_rul with 
+    | Rhs(geList, scList) -> 
+        if List.mem (Nonterminal nt) geList
+            then Rhs(geList @ [Nonterminal(nt)], scList) 
+        else Rhs(geList, scList)
+    | StubbedRhs(s) -> StubbedRhs(s) 
+    ) production_options 
+
 let rec mutation_add_s1 g nt = 
     match g with 
     | [] -> ([], false) 
-    | ProdRule(nonTerminal, production_options):: xs -> 
+    | ProdRule (nonTerminal, production_options) :: xs -> 
         (* if nonTerminal = "COMMIT" || nonTerminal = "CONFIRM"
         then *)
             let found = isNonTerminalPresent nt production_options in 
             if found then  
                 let po = apply_add_s1_to_rule production_options nt in 
-                    (ProdRule(nonTerminal, po)::xs, true) 
+                (ProdRule (nonTerminal, po) :: xs, true) 
             (* else 
                 (ProdRule(nonTerminal, production_options)::xs, false)        *)
             else 
                 let (gg, r) = mutation_add_s1 xs nt in 
-                (ProdRule(nonTerminal, production_options)::gg, r)   
+                (ProdRule (nonTerminal, production_options) :: gg, r)   
     | TypeAnnotation(v, w, x) :: ys -> 
         let (gg, r) = mutation_add_s1 ys nt in
         (TypeAnnotation(v, w, x)::gg, r)
 
-
 let rec isPresentInCaseList (nt:string) (caselist : case list) : bool = 
     match caselist with 
     | [] -> false 
-    | (nte, e)::xs -> (isPresentInList nt nte) || (isPresentInExpr nt e) || (isPresentInCaseList nt xs)
-and 
- isPresentInExpr (nt:string) (e:expr) : bool = 
+    | (nte, e)::xs -> (List.mem nt nte) || (isPresentInExpr nt e) || (isPresentInCaseList nt xs)
+
+and isPresentInExpr (nt:string) (e:expr) : bool = 
     match e with 
-    | BinOp(e1, _, e2) -> (isPresentInExpr nt e1) || (isPresentInExpr nt e2)
-    | UnOp(_, e) -> (isPresentInExpr nt e)
-    | CompOp(e1, _, e2) -> (isPresentInExpr nt e1) || (isPresentInExpr nt e2)
-    | Length(e) -> (isPresentInExpr nt e)
-    | BVCast(_, e) -> (isPresentInExpr nt e)
-    | NTExpr(n, _) -> (isPresentInList nt n)
-    | CaseExpr(nte, caselist) -> (isPresentInList nt nte) || isPresentInCaseList nt caselist
+    | BinOp (e1, _, e2) -> (isPresentInExpr nt e1) || (isPresentInExpr nt e2)
+    | UnOp (_, e) -> (isPresentInExpr nt e)
+    | CompOp (e1, _, e2) -> (isPresentInExpr nt e1) || (isPresentInExpr nt e2)
+    | Length (e) -> (isPresentInExpr nt e)
+    | BVCast (_, e) -> (isPresentInExpr nt e)
+    | NTExpr n -> (List.mem nt n)
+    | Match (nt2, caselist) -> (nt = nt2) || isPresentInCaseList nt caselist
     | _ -> false 
     
-
-
 let rec remove_constraints (nt : string) (clist : semantic_constraint list) : semantic_constraint list = 
     match clist with 
     | [] -> [] 
@@ -162,7 +130,6 @@ let update_constraint (nt : string) (cList : semantic_constraint list) (operatio
                 then SyGuSExpr(UnOp(LNot, e)) :: xs
             else SyGuSExpr(e) :: xs
         | anything -> anything :: xs
-
 
 let rec apply_update_to_rule nt production_options operation =
     match production_options with
@@ -257,8 +224,8 @@ let mutation_crossover (rhs1 : prod_rule_rhs) (rhs2 : prod_rule_rhs) : (prod_rul
             match randomGe1, randomGe2 with
             | (Nonterminal a), (Nonterminal b) -> 
                 (Rhs(crossoverList1, (remove_constraints a scList1)), Rhs(crossoverList2, (remove_constraints b scList2)))
-            | (Nonterminal _, (NamedNonterminal (_, _)|StubbedNonterminal (_, _))) -> failwith "unexpected crossover"
-            | ((NamedNonterminal (_, _)|StubbedNonterminal (_, _)), _) -> failwith "unexpected crossover"
+            | (Nonterminal _, (StubbedNonterminal (_, _))) -> failwith "unexpected crossover"
+            | ((StubbedNonterminal (_, _)), _) -> failwith "unexpected crossover"
         )
     | (Rhs (_, _), StubbedRhs _) -> failwith "unexpected crossover"
     | (StubbedRhs _, _) -> failwith "unexpected crossover"
