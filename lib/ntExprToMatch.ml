@@ -27,45 +27,111 @@ let gen_match_info ctx nt1 nt2 =
     List.mem nt2 rule   
   ) rules in
   let remaining_rules = List.filter (fun rule' -> rule' != rule) rules in
-  let remaining_cases = List.map (fun rule -> (rule, A.BConst true)) remaining_rules in
+  let remaining_cases = List.map (fun rule -> A.CaseStub rule) remaining_rules in
   rule, remaining_cases
 
+let rec pull_up_match_exprs: A.expr -> A.expr = 
+  let r = pull_up_match_exprs in
+  fun expr -> match expr with 
+  | BinOp (Match (nt, cases), op, expr2) -> 
+    let cases = List.map (fun case -> match case with 
+    | A.Case (rule, expr) ->
+      A.Case (rule, A.BinOp (expr, op, expr2))  
+    | A.CaseStub rule -> A.CaseStub rule 
+    ) cases in
+    Match (nt, cases)
+  | BinOp (expr1, op, Match (nt, cases)) -> 
+    let cases = List.map (fun case -> match case with 
+    | A.Case (rule, expr) -> A.Case (rule, A.BinOp (expr1, op, expr))
+    | A.CaseStub rule -> A.CaseStub rule
+    ) cases in
+    Match (nt, cases)
+  | BinOp (expr1, op, expr2) -> BinOp (r expr1, op, r expr2)
+  | CompOp (Match (nt, cases), op, expr2) -> 
+    let cases = List.map (fun case -> match case with 
+    | A.Case (rule, expr) -> A.Case (rule, A.CompOp (expr, op, expr2))
+    | A.CaseStub rule -> A.CaseStub rule
+    ) cases in
+    Match (nt, cases)
+  | CompOp (expr1, op, Match (nt, cases)) -> 
+    let cases = List.map (fun case -> match case with 
+    | A.Case (rule, expr) -> A.Case (rule, A.CompOp (expr1, op, expr))
+    | A.CaseStub rule -> A.CaseStub rule
+    ) cases in
+    Match (nt, cases)
+  | CompOp (expr1, op, expr2) -> CompOp (r expr1, op, r expr2)
+  | UnOp (op, Match (nt, cases)) -> 
+    let cases = List.map (fun case -> match case with 
+    | A.Case (rule, expr) -> A.Case (rule, A.UnOp (op, expr))
+    | A.CaseStub rule -> A.CaseStub rule
+    ) cases in
+    Match (nt, cases)
+  | UnOp (op, expr) -> UnOp (op, r expr)
+  | BVCast (len, Match (nt, cases)) -> 
+    let cases = List.map (fun case -> match case with 
+    | A.Case (rule, expr) -> A.Case (rule, A.BVCast (len, expr))
+    | A.CaseStub rule -> A.CaseStub rule
+    ) cases in
+    Match (nt, cases)
+  | BVCast (len, expr) -> BVCast (len, r expr)
+  | Length (Match (nt, cases)) -> 
+    let cases = List.map (fun case -> match case with 
+    | A.Case (rule, expr) -> A.Case (rule, A.Length (expr))
+    | A.CaseStub rule -> A.CaseStub rule
+    ) cases in
+    Match (nt, cases)
+  | Length (expr) -> Length (r expr)
+  | Match (nt_expr, cases) -> 
+    let cases = List.map (fun case -> match case with
+      | A.Case (nts, expr) -> A.Case (nts, r expr)
+      | A.CaseStub nts -> CaseStub nts
+    ) cases in
+    Match (nt_expr, cases) 
+  | NTExpr _ (* -> failwith "internal error: ntExprToMatch (pull_up_match_exprs)" *)
+  | BVConst _ 
+  | BLConst _ 
+  | BConst _ 
+  | IntConst _ 
+  | StrConst _ -> expr
+
 let rec nt_to_match: TC.context -> A.expr -> A.expr = 
-  fun ctx expr -> 
+fun ctx expr -> 
   let r = nt_to_match ctx in 
   match expr with
   | BinOp (NTExpr (nt1 :: nt2 :: nts), op, expr2) -> 
     let rule, remaining_cases = gen_match_info ctx nt1 nt2 in
-    Match (nt1, (rule, BinOp (NTExpr (nt2 :: nts), op, r expr2)) :: remaining_cases) 
+    Match (nt1, Case (rule, BinOp (NTExpr (nt2 :: nts), op, r expr2)) :: remaining_cases) 
   | BinOp (expr1, op, NTExpr (nt1 :: nt2 :: nts)) -> 
     let rule, remaining_cases = gen_match_info ctx nt1 nt2 in
-    Match (nt1, (rule, BinOp (r expr1, op, NTExpr (nt2 :: nts))) :: remaining_cases) 
+    Match (nt1, Case (rule, BinOp (r expr1, op, NTExpr (nt2 :: nts))) :: remaining_cases) 
   | BinOp (expr1, op, expr2) -> BinOp (r expr1, op, r expr2)
-  | UnOp (op, NTExpr (nt1 :: nt2 :: nts)) -> 
-    let rule, remaining_cases = gen_match_info ctx nt1 nt2 in 
-    Match (nt1, (rule, UnOp (op, NTExpr (nt2 :: nts))) :: remaining_cases)
-  | UnOp (op, expr) -> UnOp (op, r expr)
   | CompOp (NTExpr (nt1 :: nt2 :: nts), op, expr2) -> 
     let rule, remaining_cases = gen_match_info ctx nt1 nt2 in
-    Match (nt1, (rule, CompOp (NTExpr (nt2 :: nts), op, r expr2)) :: remaining_cases) 
+    Match (nt1, Case (rule, CompOp (NTExpr (nt2 :: nts), op, r expr2)) :: remaining_cases) 
   | CompOp (expr1, op, NTExpr (nt1 :: nt2 :: nts)) -> 
     let rule, remaining_cases = gen_match_info ctx nt1 nt2 in
-    Match (nt1, (rule, CompOp (r expr1, op, NTExpr (nt2 :: nts))) :: remaining_cases) 
+    Match (nt1, Case (rule, CompOp (r expr1, op, NTExpr (nt2 :: nts))) :: remaining_cases) 
   | CompOp (expr1, op, expr2) -> CompOp (r expr1, op, r expr2) 
   | Length (NTExpr (nt1 :: nt2 :: nts)) -> 
     let rule, remaining_cases = gen_match_info ctx nt1 nt2 in 
-    Match (nt1, (rule, Length (NTExpr (nt2 :: nts))) :: remaining_cases)
+    Match (nt1, Case (rule, Length (NTExpr (nt2 :: nts))) :: remaining_cases)
+  | UnOp (op, NTExpr (nt1 :: nt2 :: nts)) -> 
+    let rule, remaining_cases = gen_match_info ctx nt1 nt2 in 
+    Match (nt1, Case (rule, UnOp (op, NTExpr (nt2 :: nts))) :: remaining_cases)
+  | UnOp (op, expr) -> UnOp (op, r expr)
   | Length expr -> Length (r expr) 
   | Match (nt_expr, cases) -> 
-    let cases = List.map (fun (nts, expr) -> 
-      nts, r expr
+    let cases = List.map (fun case -> match case with 
+      | A.Case (nts, expr) ->
+        A.Case (nts, r expr) 
+      | A.CaseStub nts -> CaseStub nts
     ) cases in
     Match (nt_expr, cases) 
   | BVCast (len, NTExpr (nt1 :: nt2 :: nts)) -> 
     let rule, remaining_cases = gen_match_info ctx nt1 nt2 in 
-    Match (nt1, (rule, BVCast (len, NTExpr (nt2 :: nts))) :: remaining_cases)
+    Match (nt1, Case (rule, BVCast (len, NTExpr (nt2 :: nts))) :: remaining_cases)
   | BVCast (len, expr) -> BVCast (len, r expr)
-  | NTExpr _ -> failwith "internal error: ntExprToMatch (nt_to_match)"
+  | NTExpr _ (* -> failwith "internal error: ntExprToMatch (nt_to_match)" *)
   | BVConst _ 
   | BLConst _ 
   | BConst _ 
@@ -74,8 +140,8 @@ let rec nt_to_match: TC.context -> A.expr -> A.expr =
 
 let process_sc: TC.context -> A.semantic_constraint -> A.semantic_constraint 
 = fun ctx sc -> match sc with 
-  | A.Dependency (nt, expr) -> Dependency (nt, nt_to_match ctx expr)
-  | SyGuSExpr expr -> SyGuSExpr (nt_to_match ctx expr)
+  | A.Dependency (nt, expr) -> Dependency (nt, nt_to_match ctx expr |> pull_up_match_exprs)
+  | SyGuSExpr expr -> SyGuSExpr (nt_to_match ctx expr |> pull_up_match_exprs)
 
 let convert_nt_exprs_to_matches: TC.context -> A.ast -> A.ast = 
   fun ctx ast -> List.map (fun element -> match element with

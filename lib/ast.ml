@@ -28,7 +28,9 @@ type bin_operator =
 | Times 
 | Div
 
-type case = string list * expr 
+type case = 
+| Case of string list * expr 
+| CaseStub of string list
 and
 expr = 
 | BinOp of expr * bin_operator * expr 
@@ -119,7 +121,6 @@ let rec get_nts_from_expr: expr -> string list
   | StrConst _
   | IntConst _ -> []
 
-
 let pp_print_nonterminal: Format.formatter -> string -> unit 
 = fun ppf nt -> 
   Format.fprintf ppf "<%s>" nt
@@ -164,10 +165,15 @@ let pp_print_comp_op: Format.formatter -> comp_operator -> unit
 (* let pp_print_bit: Format.formatter -> bool ->  *)
 
 let rec pp_print_case: Format.formatter -> case -> unit 
-= fun ppf (nt_expr, expr) -> 
-  Format.fprintf ppf "| %a -> %a"
-    pp_print_nt_expr nt_expr 
-    pp_print_expr expr
+= fun ppf case -> 
+  match case with 
+  | Case (nt_expr, expr) -> 
+    Format.fprintf ppf "| %a -> %a"
+      (Lib.pp_print_list pp_print_nonterminal " ") nt_expr 
+      pp_print_expr expr
+  | CaseStub nt_expr -> 
+    Format.fprintf ppf "| %a -> STUB"
+      (Lib.pp_print_list pp_print_nonterminal " ") nt_expr
 
 and pp_print_expr: Format.formatter -> expr -> unit 
 = fun ppf expr -> match expr with
@@ -193,8 +199,8 @@ and pp_print_expr: Format.formatter -> expr -> unit
     width 
     pp_print_expr expr 
 | Match (nt, cases) -> 
-  Format.fprintf ppf "case %a of %a"
-    Format.pp_print_string nt 
+  Format.fprintf ppf "(match %a with %a)"
+    pp_print_nonterminal nt 
     (Lib.pp_print_list pp_print_case " ") cases 
 | NTExpr nt_expr -> pp_print_nt_expr ppf nt_expr 
 (* | NTExpr (nt_expr, Some index) -> 

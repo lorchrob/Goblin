@@ -97,3 +97,8 @@ let print_bytes_as_hex (b : bytes) =
   Bytes.iter print_byte b;
   print_newline ()
   
+let rec recurse_until_fixpoint: 'a -> ('a -> 'a -> bool) -> ('a -> 'a) -> 'a = 
+fun x eq f -> 
+  let x' = f x in 
+  if (eq x x') then x' 
+  else recurse_until_fixpoint x' eq f

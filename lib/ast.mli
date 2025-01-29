@@ -24,7 +24,9 @@ type bin_operator =
 | Times
 | Div
 
-type case = string list * expr
+type case = 
+| Case of string list * expr 
+| CaseStub of string list
 and expr =
 | BinOp of expr * bin_operator * expr
 | UnOp of unary_operator * expr

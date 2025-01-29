@@ -20,7 +20,9 @@ let main_pipeline input_string =
   Debug.debug_print Format.pp_print_string ppf "\nType checking complete\n";
 
   (* Step 2.5: Convert NTExprs to Match expressions *)
-  let ast = NtExprToMatch.convert_nt_exprs_to_matches ctx ast in
+  let ast = Utils.recurse_until_fixpoint ast (=) (NtExprToMatch.convert_nt_exprs_to_matches ctx) in
+  Debug.debug_print Format.pp_print_string ppf "\nDesugaring NTExprs complete:\n";
+  Debug.debug_print Ast.pp_print_ast ppf ast;
 
   (* Step 3: Abstract away dependent terms in the grammar *)
   Debug.debug_print Format.pp_print_string ppf "\nDependent term abstraction:\n";

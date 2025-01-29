@@ -50,7 +50,8 @@ let rec mutation_add_s1 g nt =
 let rec isPresentInCaseList (nt:string) (caselist : case list) : bool = 
     match caselist with 
     | [] -> false 
-    | (nte, e)::xs -> (List.mem nt nte) || (isPresentInExpr nt e) || (isPresentInCaseList nt xs)
+    | Case (nte, e) :: xs -> (List.mem nt nte) || (isPresentInExpr nt e) || (isPresentInCaseList nt xs)
+    | CaseStub (nte) :: xs -> (List.mem nt nte) || (isPresentInCaseList nt xs)
 
 and isPresentInExpr (nt:string) (e:expr) : bool = 
     match e with 

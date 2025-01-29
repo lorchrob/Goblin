@@ -133,7 +133,10 @@ Utils.StringMap.iter (fun stub_id dep -> match dep with
 
 let rec pp_print_match: Format.formatter -> TC.context -> string -> A.case list -> unit 
 = fun ppf ctx nt cases ->
-  let _options, exprs = List.split cases in
+  let _options, exprs = List.map (fun case -> match case with 
+    | A.Case (nts, expr) -> nts, expr 
+    | CaseStub nts -> nts, BConst true 
+  ) cases |> List.split in
   let rules = match StringMap.find nt ctx with 
   | ADT rules -> rules 
   | _ -> failwith "Internal error: sygus.ml (pp_print_match)" 

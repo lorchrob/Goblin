@@ -24,6 +24,14 @@ open Sbf
   2. Support placeholder values (maybe string type)
 *)
 
+(* 
+  <S> ::= <A> <E> { <E>.<B> < 0; };  --> 
+  <S> ::= <A> <E> { 
+    match <E> with 
+    | <B> <C> -> <B> < 0; 
+    | other case w/out <B> -> true;
+  }; 
+*)
 
 (* Main function *)
 let () = 
@@ -31,11 +39,12 @@ let () =
 
   let out = (Pipeline.main_pipeline 
     "
-    <S> ::= <A> <B> <C>
-      { <A> <- <B>; };
+    <S> ::= <A> <E> { <A>.<B> + 3 < 0; <E>.<B> + 3 < 0; }; 
+    <A> ::= <B> <C> | <D>;
+    <E> ::= <B> <C>;
     <B> :: Int;
-    <A> :: Int;
     <C> :: Int;
+    <D> :: Int;
   ") in 
   print_endline out;
 
