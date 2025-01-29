@@ -133,21 +133,24 @@ Utils.StringMap.iter (fun stub_id dep -> match dep with
 
 let rec pp_print_match: Format.formatter -> TC.context -> string -> A.case list -> unit 
 = fun ppf ctx nt cases ->
-  let _options, exprs = List.map (fun case -> match case with 
-    | A.Case (nts, expr) -> nts, expr 
-    | CaseStub nts -> nts, BConst true 
-  ) cases |> List.split in
-  let rules = match StringMap.find nt ctx with 
-  | ADT rules -> rules 
+  let adt_cases = match StringMap.find nt ctx with 
+  | ADT rules -> rules
   | _ -> failwith "Internal error: sygus.ml (pp_print_match)" 
   in
-  let rules = List.mapi (fun i rule -> (i, rule)) rules in
-  let rules = List.combine rules exprs in
+  let match_rules = List.map (fun case -> match case with 
+  | A.Case (nts, expr) -> nts, expr 
+  | CaseStub nts -> nts, BConst true 
+  ) cases in 
+  let match_rules = List.map (fun (nts, expr) -> 
+    let rule_index = Lib.find_index nts adt_cases in 
+    ((rule_index, nts), expr)
+  ) match_rules in
+
   Format.fprintf ppf "(match %s (
     %a
   ))"
-  (String.lowercase_ascii nt)
-  (Lib.pp_print_list (fun ppf -> Format.fprintf ppf "(%a)" (pp_print_option ctx nt)) " ") rules
+    (String.lowercase_ascii nt)
+    (Lib.pp_print_list (fun ppf -> Format.fprintf ppf "(%a)" (pp_print_option ctx nt)) " ") match_rules
 
 and pp_print_option: TC.context -> string -> Format.formatter -> ((int * (string list)) * A.expr) -> unit 
 = fun ctx nt ppf ((i, options), expr) -> 

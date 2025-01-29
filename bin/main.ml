@@ -39,12 +39,11 @@ let () =
 
   let out = (Pipeline.main_pipeline 
     "
-    <S> ::= <A> <E> { <A>.<B> + 3 < 0; <E>.<B> + 3 < 0; }; 
-    <A> ::= <B> <C> | <D>;
-    <E> ::= <B> <C>;
-    <B> :: Int;
-    <C> :: Int;
-    <D> :: Int;
+    <S> ::= <A> <B> { <A> <- length(<B>); };
+    <B> ::= <C> <D>;
+    <C> :: BitList { length(<C>) > 0; }; 
+    <D> :: BitVector(8);
+    <A> :: Int;
   ") in 
   print_endline out;
 

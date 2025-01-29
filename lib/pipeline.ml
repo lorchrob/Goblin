@@ -106,7 +106,7 @@ let sygusGrammarToPacket ast =
   let ast = TypeChecker.check_types ctx ast in
 
   (* Step 2.5: Convert NTExprs to Match expressions *)
-  let ast = NtExprToMatch.convert_nt_exprs_to_matches ctx ast in
+  let ast = Utils.recurse_until_fixpoint ast (=) (NtExprToMatch.convert_nt_exprs_to_matches ctx) in
 
   (* Step 3: Abstract away dependent terms in the grammar *)
   let dep_map, ast, ctx = AbstractDeps.abstract_dependencies ctx ast in 

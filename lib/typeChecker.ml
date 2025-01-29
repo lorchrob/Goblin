@@ -32,12 +32,12 @@ let last lst = lst |> List.rev |> List.hd
 let rec infer_type_expr: context -> mode -> expr -> il_type option
 = fun ctx mode expr -> match expr with 
 | NTExpr nt_expr -> (
-  match Utils.StringMap.find_opt (last nt_expr) ctx with 
-  | Some ty -> Some ty 
-  | None -> 
+  match Utils.StringMap.find (last nt_expr) ctx with 
+  | ADT _ -> 
     let msg = "Type checking error: Nonterminal '" ^ (last nt_expr) ^ "' has a composite type, but is used in some operation that requires a primitive type" in
     type_checker_error mode msg;
     None
+  | ty -> Some ty
   )
 | UnOp (UPlus, expr) 
 | UnOp (UMinus, expr) -> 
@@ -185,6 +185,12 @@ let rec infer_type_expr: context -> mode -> expr -> il_type option
   match inf_ty with 
   | Some BitList 
   | Some BitVector _ -> Some Int
+  | Some (ADT _ as inf_ty) -> 
+    let expr_str = Utils.capture_output Ast.pp_print_expr expr in 
+    let inf_ty_str = Utils.capture_output Ast.pp_print_ty inf_ty in
+    let error_message = "Type checking error: Input to length function " ^ expr_str ^ " has type " ^ inf_ty_str ^ " but must have type Int or BitVector" in 
+    type_checker_error mode error_message;
+    Some Int
   | Some inf_ty -> 
     let expr_str = Utils.capture_output Ast.pp_print_expr expr in 
     let inf_ty_str = Utils.capture_output Ast.pp_print_ty inf_ty in
@@ -214,7 +220,7 @@ let rec infer_type_expr: context -> mode -> expr -> il_type option
 and check_type_expr: context -> mode -> il_type -> expr -> expr 
 = fun ctx mode exp_ty expr -> 
   match infer_type_expr ctx mode expr with 
-  | None -> expr
+  | None -> (* should have produced a warning *) expr
   | Some inf_ty -> 
     if not (inf_ty = exp_ty) 
     then

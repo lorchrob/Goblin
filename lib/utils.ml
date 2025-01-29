@@ -3,6 +3,9 @@ open Ast
 module StringMap = Map.Make(String)
 module StringSet = Set.Make(String)
 
+(* Module state for creating fresh identifiers *)
+let k = ref 0
+
 let parse: string -> ast 
 = fun s ->
   let lexbuf = Lexing.from_string s in 
@@ -25,10 +28,6 @@ let parse_sygus: string -> Ast.ast -> (SygusAst.sygus_ast, string) result
     Ok (SygusAst.Node (constructor, [sygus_ast]))
   | _, Error e -> Error e
   | [], _ -> assert false
-
-
-(* Module state for creating fresh identifiers *)
-let k = ref 0
 
 let rec split3 lst =
   match lst with

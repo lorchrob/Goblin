@@ -35,3 +35,10 @@ let union_keys k v1 v2 = match v1, v2 with
 | Some _, Some _ -> 
   print_endline k;
   failwith "Failure unioning two maps"
+
+let find_index element lst =
+  let rec aux i = function
+    | [] -> raise Not_found
+    | x :: xs -> if element = x then i else aux (i + 1) xs
+  in
+  aux 0 lst
