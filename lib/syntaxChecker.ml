@@ -246,7 +246,7 @@ let check_sygus_exprs_for_dep_terms: ast -> unit
 let check_syntax: prod_rule_map -> Utils.StringSet.t -> ast -> ast 
 = fun prm nt_set ast -> 
   let ast = check_if_recursive ast in
-  let ast = remove_circular_deps ast in
+  let ast = Utils.recurse_until_fixpoint ast (=) remove_circular_deps in
   let _ = check_sygus_exprs_for_dep_terms ast in
   let ast = check_vacuity ast in
   let ast = List.map (fun element -> match element with 

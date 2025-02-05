@@ -1,6 +1,18 @@
 open Sbf.Pipeline
 open Alcotest
 
+(* TODO 
+Add test case for multiple cyclic dependencies: 
+"
+    <S> ::= <A> <B> <C> <D> { <A> <- <B>; <B> <- <A>; <C> <- <D>; <D> <- <C>; };
+    <A> :: Int;
+    <B> :: Int;
+    <C> :: Int; 
+    <D> :: Int;
+"
+
+*)
+
 (* Semantic constraint example *)
 let test_sc () =
   let input = 
