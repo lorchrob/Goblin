@@ -39,13 +39,19 @@ let () =
 
   let out = (Pipeline.main_pipeline 
     "
-    <S> ::= <A> <B> { <A> <- length(<B>); };
-    <B> ::= <C> <D>;
-    <C> :: BitList { length(<C>) > 0; }; 
-    <D> :: BitVector(8);
+    <S> ::= <A> <B> { <A> <- <B>; <B> <- <A>; };
     <A> :: Int;
+    <B> :: Int;
   ") in 
   print_endline out;
+
+  (* let out = (Pipeline.main_pipeline 
+  "
+<SAE_PACKET> ::= <AUTH_ALGO> <STATUS_CODE>;
+  <STATUS_CODE> :: BitVector(16);
+  <AUTH_ALGO> :: BitVector(16) { <AUTH_ALGO> = 0b0000000000000111; };
+") in 
+print_endline out; *)
 
   (* let input = 
     "

@@ -44,45 +44,47 @@ let main_pipeline input_string =
   Debug.debug_print Lib.pp_print_newline ppf ();
 
   Format.pp_print_flush Format.std_formatter ();
-  
-  (* Step 7: Call sygus engine *)
-  Debug.debug_print Format.pp_print_string ppf "Calling SyGuS:";
-  Debug.debug_print Lib.pp_print_newline ppf ();
-  let sygus_outputs = List.map (Sygus.call_sygus ctx dep_map) asts in
-  List.iter (Debug.debug_print Format.pp_print_string ppf) sygus_outputs;
-  
-  (* Step 8: Parse SyGuS output *)
-  Debug.debug_print Format.pp_print_string ppf "\nParsing SyGuS output:\n";
-  let sygus_asts = List.map2 Utils.parse_sygus sygus_outputs asts in
-  let sygus_asts = List.map Result.get_ok sygus_asts in
-  Debug.debug_print Format.pp_print_string ppf "\nSyGuS ASTs:\n";
-  List.iter (Debug.debug_print SygusAst.pp_print_sygus_ast ppf) sygus_asts;
 
-  Format.pp_print_flush Format.std_formatter ();
+  if not !Debug.only_parse then (
+    (* Step 7: Call sygus engine *)
+    Debug.debug_print Format.pp_print_string ppf "Calling SyGuS:";
+    Debug.debug_print Lib.pp_print_newline ppf ();
+    let sygus_outputs = List.map (Sygus.call_sygus ctx dep_map) asts in
+    List.iter (Debug.debug_print Format.pp_print_string ppf) sygus_outputs;
+    
+    (* Step 8: Parse SyGuS output *)
+    Debug.debug_print Format.pp_print_string ppf "\nParsing SyGuS output:\n";
+    let sygus_asts = List.map2 Utils.parse_sygus sygus_outputs asts in
+    let sygus_asts = List.map Result.get_ok sygus_asts in
+    Debug.debug_print Format.pp_print_string ppf "\nSyGuS ASTs:\n";
+    List.iter (Debug.debug_print SygusAst.pp_print_sygus_ast ppf) sygus_asts;
 
-  (* Step 9: Recombine to single AST *)
-  Debug.debug_print Format.pp_print_string ppf "\nRecombining to single AST:\n";
-  let sygus_ast = Recombine.recombine sygus_asts in 
-  Debug.debug_print SygusAst.pp_print_sygus_ast ppf sygus_ast;
+    Format.pp_print_flush Format.std_formatter ();
 
-  Format.pp_print_flush Format.std_formatter ();
+    (* Step 9: Recombine to single AST *)
+    Debug.debug_print Format.pp_print_string ppf "\nRecombining to single AST:\n";
+    let sygus_ast = Recombine.recombine sygus_asts in 
+    Debug.debug_print SygusAst.pp_print_sygus_ast ppf sygus_ast;
 
-  (* Step 10: Compute dependencies *)
-  Debug.debug_print Format.pp_print_string ppf "\nComputing dependencies:\n";
-  let sygus_ast = ComputeDeps.compute_deps dep_map ast sygus_ast in 
-  Debug.debug_print SygusAst.pp_print_sygus_ast ppf sygus_ast;
+    Format.pp_print_flush Format.std_formatter ();
 
-  (* Step 11: Bit flip mutations for BitList terms *)
-  Debug.debug_print Format.pp_print_string ppf "\nBit flip mutations:\n";
-  let sygus_ast = BitFlips.flip_bits sygus_ast in 
-  Debug.debug_print SygusAst.pp_print_sygus_ast ppf sygus_ast;
+    (* Step 10: Compute dependencies *)
+    Debug.debug_print Format.pp_print_string ppf "\nComputing dependencies:\n";
+    let sygus_ast = ComputeDeps.compute_deps dep_map ast sygus_ast in 
+    Debug.debug_print SygusAst.pp_print_sygus_ast ppf sygus_ast;
 
-  (* Step 12: Serialize! *)
-  Debug.debug_print Format.pp_print_string ppf "\nSerializing:\n";
-  let output = Utils.capture_output SygusAst.serialize sygus_ast in 
-  Format.pp_print_string ppf output; 
-  Lib.pp_print_newline ppf (); 
-  output
+    (* Step 11: Bit flip mutations for BitList terms *)
+    Debug.debug_print Format.pp_print_string ppf "\nBit flip mutations:\n";
+    let sygus_ast = BitFlips.flip_bits sygus_ast in 
+    Debug.debug_print SygusAst.pp_print_sygus_ast ppf sygus_ast;
+
+    (* Step 12: Serialize! *)
+    Debug.debug_print Format.pp_print_string ppf "\nSerializing:\n";
+    let output = Utils.capture_output SygusAst.serialize sygus_ast in 
+    Format.pp_print_string ppf output; 
+    Lib.pp_print_newline ppf (); 
+    output
+  ) else "dummy output"
 
 let rec collect_results results =
   match results with
@@ -117,23 +119,27 @@ let sygusGrammarToPacket ast =
   (* Step 5: Prune grammars (both within grammars, and unreachable stubs) *)
   (* TODO, if needed for better performance *)
 
-  (* Step 6: Call sygus engine *)
-  let sygus_outputs = List.map (Sygus.call_sygus ctx dep_map) asts in
+  if not !Debug.only_parse then (
+    (* Step 6: Call sygus engine *)
+    let sygus_outputs = List.map (Sygus.call_sygus ctx dep_map) asts in
 
-  (* Step 7: Parse SyGuS output. *)
-  let sygus_asts = List.map2 Utils.parse_sygus sygus_outputs asts in
-  match collect_results sygus_asts with
-  | Error e -> Error e
-  | Ok sygus_asts -> 
-    (* Step 8: Recombine to single AST *)
-    let sygus_ast = Recombine.recombine sygus_asts in 
+    (* Step 7: Parse SyGuS output. *)
+    let sygus_asts = List.map2 Utils.parse_sygus sygus_outputs asts in
+    match collect_results sygus_asts with
+    | Error e -> Error e
+    | Ok sygus_asts -> 
+      (* Step 8: Recombine to single AST *)
+      let sygus_ast = Recombine.recombine sygus_asts in 
 
-    (* Step 9: Compute dependencies *)
-    let sygus_ast = ComputeDeps.compute_deps dep_map ast sygus_ast in 
+      (* Step 9: Compute dependencies *)
+      let sygus_ast = ComputeDeps.compute_deps dep_map ast sygus_ast in 
 
-    (* Step 10: Bit flip mutations *)
-    let sygus_ast = BitFlips.flip_bits sygus_ast in
+      (* Step 10: Bit flip mutations *)
+      let sygus_ast = BitFlips.flip_bits sygus_ast in
 
-    (* Step 11: Serialize! *)
-    let output = SygusAst.serialize_bytes SygusAst.Big sygus_ast in 
-    Ok output
+      (* Step 11: Serialize! *)
+      let output = SygusAst.serialize_bytes SygusAst.Big sygus_ast in 
+      Ok output) 
+    else 
+      let dummy_output = Bytes.empty, Bytes.empty in
+      Ok dummy_output

@@ -155,8 +155,8 @@ let canonicalize (ogrammar : ast) : ast option =
   let unique_dependencies = StringPairSet.of_list all_dependencies in 
   StringSet.iter (fun s -> G.add_vertex g s) unique_nts; 
   StringPairSet.iter (fun s-> G.add_edge g (fst s) (snd s)) unique_dependencies ;
-  let module My_Dfs = Traverse.Dfs(G) in
-  if (My_Dfs.has_cycle g) then None  
+  let module MyDfs = Traverse.Dfs(G) in
+  if (MyDfs.has_cycle g) then None  
   else 
     let module TopSort = Topological.Make_stable(G)  in  
     TopSort.iter (fun x -> Printf.printf "%s " x) g;   Printf.printf "\n\n"; 
@@ -178,7 +178,90 @@ let get_all_dependencies_from_scs scs =
     acc @ List.map (fun nt2 -> (nt1, nt2)) nts
   ) [] scs
 
-let canonicalize_scs (scs : semantic_constraint list) : semantic_constraint list option = 
+
+let has_cycle g =
+  let module H = Hashtbl.Make(G.V) in
+  let h = H.create 97 in
+  let stack = Stack.create () in
+  let loop () =
+    while not (Stack.is_empty stack) do
+      let v = Stack.top stack in
+      if H.mem h v then begin
+        (* we are now done with node v *)
+        (* assert (H.find h v = true); *)
+        H.replace h v false;
+        ignore (Stack.pop stack)
+      end else begin
+        (* we start DFS from node v *)
+        H.add h v true;
+        G.iter_succ
+          (fun w ->
+              try if H.find h w then raise Exit
+              with Not_found -> Stack.push w stack)
+          g v;
+      end
+    done
+  in
+  try
+    G.iter_vertex
+      (fun v ->
+          if not (H.mem h v) then begin Stack.push v stack; loop () end)
+      g;
+    false
+  with Exit ->
+    true
+
+
+(* Altered version of My_Dfs.has_cycle which returns the cycle *)
+let find_cycle g =
+  let module H = Hashtbl.Make(G.V) in
+  let h = H.create 97 in
+  let parent = H.create 97 in
+  let stack = Stack.create () in
+  let cycle_ref = ref None in (* Store the detected cycle *)
+
+  let rec extract_cycle v start acc =
+    if v = start then start :: acc
+    else match H.find_opt parent v with
+          | Some p -> extract_cycle p start (v :: acc)
+          | None -> acc
+  in
+
+  let loop () =
+    while not (Stack.is_empty stack) && !cycle_ref = None do
+      let v = Stack.top stack in
+      if H.mem h v then begin
+        (* Mark node as fully processed *)
+        H.replace h v false;
+        ignore (Stack.pop stack)
+      end else begin
+        (* Start DFS from node v *)
+        H.add h v true;
+        G.iter_succ
+          (fun w ->
+              match H.find_opt h w with
+              | Some true -> (* Found a back edge, cycle detected *)
+                cycle_ref := Some (extract_cycle v w [w])
+              | _ ->
+                H.replace parent w v;
+                Stack.push w stack
+          ) g v
+      end
+    done
+  in
+
+  G.iter_vertex
+    (fun v ->
+        if not (H.mem h v) && !cycle_ref = None then begin
+          Stack.push v stack;
+          loop ()
+        end)
+    g;
+
+  !cycle_ref
+
+
+let canonicalize_scs (scs : semantic_constraint list) : string list option = 
   let g = G.create () in 
   let all_nt = get_all_nt_scs scs in 
   let unique_nts = StringSet.of_list all_nt in 
@@ -188,9 +271,9 @@ let canonicalize_scs (scs : semantic_constraint list) : semantic_constraint list
   let unique_dependencies = StringPairSet.of_list all_dependencies in 
   StringSet.iter (fun s -> G.add_vertex g s) unique_nts; 
   StringPairSet.iter (fun s-> G.add_edge g (fst s) (snd s)) unique_dependencies ;
-  let module My_Dfs = Traverse.Dfs(G) in
-  if (My_Dfs.has_cycle g) then None  
-  else Some scs
+  match find_cycle g with 
+  | Some cycle -> Some cycle 
+  | None -> None
 
 let find_vertex g label =
   let vertex = ref None in

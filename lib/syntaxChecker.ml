@@ -185,21 +185,38 @@ let check_vacuity: ast -> ast
   if ast = [] then failwith "Grammar is empty after dead rule removal"
   else ast
 
-let check_for_circular_deps: ast -> unit 
+let remove_circular_deps: ast -> ast 
 = fun ast -> 
-  List.iter (fun element -> match element with
-    | TypeAnnotation _ -> () 
-    | ProdRule (_, rhss) -> List.iter (fun rhs -> match rhs with
-        | StubbedRhs _ -> () 
-        | Rhs (_, scs) -> let scs = List.filter (fun sc -> match sc with
+  List.map (fun element -> match element with
+    | TypeAnnotation _ -> element 
+    | ProdRule (nt, rhss) -> let rhss = List.map (fun rhs -> match rhs with
+        | StubbedRhs _ -> rhs 
+        | Rhs (nt, scs) -> 
+          let sygus_exprs = List.filter (fun sc -> match sc with
+          | SyGuSExpr _ -> true 
+          | Dependency _ -> false
+          ) scs in 
+          let dependencies = List.filter (fun sc -> match sc with
           | SyGuSExpr _ -> false 
           | Dependency _ -> true
-          ) scs in 
-          print_endline "got here";
-          match TopologicalSort.canonicalize_scs scs with 
-          | Some _ -> ()
-          | None -> failwith "Circular dependency detected"
-      ) rhss
+          ) scs in
+          let dependencies = match TopologicalSort.canonicalize_scs dependencies with 
+          | None -> dependencies
+          | Some cycle -> 
+            let dep_term_to_remove = List.hd cycle in 
+            List.fold_left (fun acc dep -> match dep with 
+            | SyGuSExpr _ -> dep :: acc  
+            | Dependency (nt, _) -> 
+              if nt = dep_term_to_remove 
+              then (
+                Debug.debug_print Format.pp_print_string Format.std_formatter "Removing dependent term to avoid cycle";
+                acc 
+              ) else dep :: acc
+            ) [] dependencies
+          in 
+          Rhs (nt, sygus_exprs @ dependencies)
+      ) rhss in 
+      ProdRule (nt, rhss)
   ) ast
 
 let check_scs_for_dep_terms: semantic_constraint list -> unit 
@@ -229,7 +246,7 @@ let check_sygus_exprs_for_dep_terms: ast -> unit
 let check_syntax: prod_rule_map -> Utils.StringSet.t -> ast -> ast 
 = fun prm nt_set ast -> 
   let ast = check_if_recursive ast in
-  let _ = check_for_circular_deps ast in
+  let ast = remove_circular_deps ast in
   let _ = check_sygus_exprs_for_dep_terms ast in
   let ast = check_vacuity ast in
   let ast = List.map (fun element -> match element with 
