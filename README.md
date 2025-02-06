@@ -8,7 +8,7 @@ Other dependencies:
 
 * macOs: `brew install coreutils` (TODO: `timeout` vs `gtimeout` based on OS)
 * `cvc5`
-  * You must add `cvc5` to `$PATH`
+  * You must make cvc5 discoverable from `$PATH` (update `$PATH` environment variable so that `which cvc5` returns a valid path to cvc5)
   * If you want to run a portfolio with a second version of `cvc5`, optionally set `$PATH_TO_SECOND_CVC5` to the path to the second `cvc5` executable (including "`cvc5`", not just the folder containing the binary).
 
 How to run the tool:
