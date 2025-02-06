@@ -69,3 +69,4 @@ val pp_print_ast : Format.formatter -> ast -> unit
 val pp_print_nt_expr : Format.formatter -> string list -> unit
 val pp_print_expr : Format.formatter -> expr -> unit
 val pp_print_ty : Format.formatter -> il_type -> unit
+val pp_print_semantic_constraint: Format.formatter -> semantic_constraint -> unit

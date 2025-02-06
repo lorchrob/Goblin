@@ -203,14 +203,14 @@ let remove_circular_deps: ast -> ast
           let dependencies = match TopologicalSort.canonicalize_scs dependencies with 
           | None -> dependencies
           | Some cycle -> 
-            let dep_term_to_remove = List.hd cycle in 
             List.fold_left (fun acc dep -> match dep with 
             | SyGuSExpr _ -> dep :: acc  
-            | Dependency (nt, _) -> 
-              if nt = dep_term_to_remove 
+            | Dependency (nt, expr) -> 
+              (* Change dependent terms in cycle to sygus level constraints *)
+              if List.mem nt cycle
               then (
-                Debug.debug_print Format.pp_print_string Format.std_formatter "Removing dependent term to avoid cycle";
-                acc 
+                Debug.debug_print Format.pp_print_string Format.std_formatter "Replacing dependency with SyGuS constraint\n";
+                SyGuSExpr (CompOp (NTExpr [nt], Eq, expr)) :: acc
               ) else dep :: acc
             ) [] dependencies
           in 
@@ -219,35 +219,51 @@ let remove_circular_deps: ast -> ast
       ProdRule (nt, rhss)
   ) ast
 
-let check_scs_for_dep_terms: semantic_constraint list -> unit 
+let check_scs_for_dep_terms: semantic_constraint list -> semantic_constraint list  
 = fun scs -> 
+  List.iter (Ast.pp_print_semantic_constraint Format.std_formatter) scs;
   let dep_terms = List.fold_left (fun acc sc -> match sc with 
   | Dependency (nt, _) -> StringSet.add nt acc 
   | _ -> acc
   ) StringSet.empty scs in
-  List.iter (fun sc -> match sc with 
-  | Dependency _ -> ()
+  let deps_to_convert = List.fold_left (fun acc sc -> match sc with 
+  | Dependency _ -> acc
   | SyGuSExpr expr -> 
     let nts = Ast.get_nts_from_expr expr |> StringSet.of_list in 
-    if StringSet.is_empty (StringSet.inter dep_terms nts) then ()
-    else failwith "Dependent term found in SyGuSExpr"
-  ) scs
+    let intersection = StringSet.inter dep_terms nts in
+    if StringSet.is_empty intersection then acc
+    else 
+      let deps_to_convert = intersection in
+      StringSet.union acc deps_to_convert
+  ) StringSet.empty scs in 
+  List.fold_left (fun acc sc -> match sc with 
+  | Dependency (nt, expr) -> 
+    if StringSet.mem nt deps_to_convert then (
+      Debug.debug_print Format.pp_print_string Format.std_formatter "Replacing dependency with SyGuS constraint\n";
+      SyGuSExpr (CompOp (NTExpr [nt], Eq, expr)) :: acc
+    ) else sc :: acc
+  | SyGuSExpr _ -> sc :: acc
+  ) [] scs |> List.rev
 
-let check_sygus_exprs_for_dep_terms: ast -> unit 
+let check_sygus_exprs_for_dep_terms: ast -> ast 
 = fun ast -> 
-  List.iter (fun element -> match element with 
-  | TypeAnnotation (_, _, scs) -> check_scs_for_dep_terms scs
-  | ProdRule (_, rhss) -> List.iter (fun rhs -> match rhs with
-    | Rhs (_, scs) -> check_scs_for_dep_terms scs
-    | StubbedRhs _ -> ()
-    ) rhss
+  List.map (fun element -> match element with 
+  | TypeAnnotation (nt, ty, scs) -> 
+    let scs = check_scs_for_dep_terms scs in 
+    TypeAnnotation (nt, ty, scs)
+  | ProdRule (nt, rhss) -> 
+    let rhss = List.map (fun rhs -> match rhs with
+    | Rhs (ges, scs) -> Rhs (ges, check_scs_for_dep_terms scs)
+    | StubbedRhs _ -> rhs
+    ) rhss in 
+    ProdRule (nt, rhss)
   ) ast
 
 let check_syntax: prod_rule_map -> Utils.StringSet.t -> ast -> ast 
 = fun prm nt_set ast -> 
   let ast = check_if_recursive ast in
   let ast = Utils.recurse_until_fixpoint ast (=) remove_circular_deps in
-  let _ = check_sygus_exprs_for_dep_terms ast in
+  let ast = Utils.recurse_until_fixpoint ast (=) check_sygus_exprs_for_dep_terms in
   let ast = check_vacuity ast in
   let ast = List.map (fun element -> match element with 
   | ProdRule (nt, rhss) -> 
