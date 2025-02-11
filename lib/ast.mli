@@ -61,9 +61,9 @@ type element =
 
 type ast = element list
 
-val substitute : expr -> string -> expr -> expr 
+val rename : expr -> (string * string) list -> expr 
 val get_nts_from_expr : expr -> string list
-
+val get_nts_from_expr_shallow : expr -> string list
 val pp_print_element: Format.formatter -> element ->  unit 
 val pp_print_ast : Format.formatter -> ast -> unit
 val pp_print_nt_expr : Format.formatter -> string list -> unit

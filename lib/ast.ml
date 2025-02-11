@@ -82,30 +82,63 @@ type btree =
 *)
 
 (* Substitute e1 for var in e2. In other words, output e1[var\e2] *)
-let rec substitute: expr -> string -> expr -> expr 
-= fun e1 var e2 -> 
-  match e1 with 
-  | NTExpr ([id]) -> 
-    if id = var then e2 else e1 
+let rec rename: expr -> (string * string) list -> expr 
+= fun e renaming -> 
+  match e with 
+  | NTExpr ([id]) -> (
+    match List.assoc_opt id renaming with 
+    | Some id2 -> NTExpr ([id2])
+    | None -> e
+    )
   | NTExpr _ -> failwith "Nested or indexed NTExprs not yet supported"
-  | Match _ -> failwith "Match not yet supported"
-  | BinOp (expr1, op, expr2) -> BinOp (substitute expr1 var e2, op, substitute expr2 var e2) 
-  | UnOp (op, expr) -> UnOp (op, substitute expr var e2) 
-  | CompOp (expr1, op, expr2) -> CompOp (substitute expr1 var e2, op, substitute expr2 var e2) 
-  | Length expr -> Length (substitute expr var e2) 
+  | Match (nt, cases) -> (
+    match List.assoc_opt nt renaming with 
+    | Some nt2 -> Match (nt2, cases)
+    | None -> e
+    )
+  | BinOp (expr1, op, expr2) -> BinOp (rename expr1 renaming, op, rename expr2 renaming) 
+  | UnOp (op, expr) -> UnOp (op, rename expr renaming) 
+  | CompOp (expr1, op, expr2) -> CompOp (rename expr1 renaming, op, rename expr2 renaming) 
+  | Length expr -> Length (rename expr renaming) 
   | BVConst _ 
   | BLConst _ 
   | BConst _ 
   | BVCast _  
   | StrConst _
-  | IntConst _ -> e1
+  | IntConst _ -> e
 
 let rec get_nts_from_expr: expr -> string list 
 = fun expr -> 
   let r = get_nts_from_expr in
   match expr with 
   | NTExpr nts -> nts 
-  | Match _ -> failwith "Match not yet supported"
+  | Match (nt, cases) -> [nt] @ (List.map (fun case -> match case with 
+    | CaseStub _ -> []
+    | Case (_, expr) -> r expr
+    ) cases |> List.flatten)
+  | BinOp (expr1, _, expr2) -> 
+    r expr1 @ r expr2
+  | UnOp (_, expr) -> 
+    r expr
+  | CompOp (expr1, _, expr2) -> 
+    r expr1 @ r expr2
+  | Length expr -> 
+    r expr
+  | BVConst _ 
+  | BLConst _ 
+  | BConst _ 
+  | BVCast _  
+  | StrConst _
+  | IntConst _ -> []
+
+(* For when you want to process simple NTs after translation of dot to match expressions *)
+let rec get_nts_from_expr_shallow: expr -> string list 
+= fun expr -> 
+  let r = get_nts_from_expr_shallow in
+  match expr with 
+  | NTExpr (nt :: _) -> [nt] 
+  | NTExpr _ -> failwith "Impossible case in get_nts_from_expr_shallow"
+  | Match (nt, _) -> [nt]
   | BinOp (expr1, _, expr2) -> 
     r expr1 @ r expr2
   | UnOp (_, expr) -> 

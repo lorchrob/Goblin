@@ -39,115 +39,34 @@ let () =
 
   let out = (Pipeline.main_pipeline 
     "
-    <S> ::= <A> <B> <C> { <A> = <B>; <B> <- <C>; <C> <- <A>; };
-    <A> :: Int;
-    <B> :: Int;
+    <S> ::= <A> { <A>.<B>.<C> > <A>.<B>.<D>; };
+    <A> ::= <B>;
+    <B> ::= <C> <D>;
     <C> :: Int;
+    <D> :: Int; 
   ") in
-  print_endline out;
 
   (* let out = (Pipeline.main_pipeline 
-  "
-<SAE_PACKET> ::= <AUTH_ALGO> <STATUS_CODE>;
-  <STATUS_CODE> :: BitVector(16);
-  <AUTH_ALGO> :: BitVector(16) { <AUTH_ALGO> = 0b0000000000000111; };
-") in 
-print_endline out; *)
-
-  (* let input = 
     "
-    <SAE_PACKET> ::= <COMMIT> ;
-    <COMMIT> ::= <AUTH_ALGO> <REJECTED_GROUPS> <AC_TOKEN_CONTAINER> 
-       {<AUTH_ALGO> <- int_to_bitvector(16, 3);};
+    <S> ::= <A> { <A>.<B> > <A>.<C>; };
+    <A> ::= <B> <B> <C> <C>;
+    <B> :: Int;
+    <C> :: Int;
+  ") in *)
 
-    <AUTH_ALGO> :: BitVector(16)
-     { 
-    <AUTH_ALGO> = int_to_bitvector(16, 0) lor 
-    <AUTH_ALGO> = int_to_bitvector(16, 3); 
-    };
- 
-       <STATUS_CODE> :: BitVector(16);
-
-       <AUTH_SEQ_COMMIT> :: BitVector(16)   
-    { <AUTH_SEQ_COMMIT> <- 0b0000000000000001; }; 
-     <GROUP_ID> :: BitVector(16);
-    
-    <PASSWORD_IDENTIFIER> ::= <PASSWD_ELEMENT_ID> <PASSWD_ID_LENGTH> <PASSWD_ELEMENT_ID_EXTENSION> <PASSWD_ID>; 
-    
-    <PASSWD_ELEMENT_ID> :: BitVector(8) 
-    { <PASSWD_ELEMENT_ID> <- int_to_bitvector(8, 255); };
-    
-    <PASSWD_ID_LENGTH> :: BitVector(8)
-    { <PASSWD_ID_LENGTH> <- int_to_bitvector(8, 2); };
-    
-    <PASSWD_ELEMENT_ID_EXTENSION> :: BitVector(8)
-    { <PASSWD_ELEMENT_ID_EXTENSION> <- int_to_bitvector(8, 33); };
-    
-    
-    <PASSWD_ID> :: BitVector(8);
-    
-    <REJECTED_GROUPS> ::= <RG_ELEMENT_ID> <RG_ID_LENGTH> <RG_ELEMENT_ID_EXTENSION> <RG_ID_LIST>
-    { <RG_ID_LENGTH> <- int_to_bitvector(8, length(<RG_ID_LIST>)); };
-    
-    <RG_ELEMENT_ID> :: BitVector(8) 
-    { <RG_ELEMENT_ID> <- int_to_bitvector(8, 255); };
-    
-    <RG_ID_LENGTH>   :: BitVector(8); 
-    
-    <RG_ELEMENT_ID_EXTENSION> :: BitVector(8) 
-    { <RG_ELEMENT_ID_EXTENSION> <- int_to_bitvector(8, 92); };
-    
-    <RG_ID_LIST> ::= <RG_ID> | <RG_ID> <RG_ID_LIST>;
-     
-    <RG_ID> :: BitVector(8);
-    
-    <AC_TOKEN_CONTAINER> ::= <AC_ELEMENT_ID> <AC_ID_LENGTH> <AC_ELEMENT_ID_EXTENSION> 
-                         <AC_TOKEN_ELEMENT>
-    { <AC_ID_LENGTH> <- int_to_bitvector(8, length(<AC_TOKEN_ELEMENT>)); };
-    
-    <AC_ELEMENT_ID> :: BitVector(8) 
-    { <AC_ELEMENT_ID> <- int_to_bitvector(8, 255); };
-    
-    <AC_ID_LENGTH> :: BitVector(8);
-    
-    <AC_ELEMENT_ID_EXTENSION> :: BitVector(8)
-    { <AC_ELEMENT_ID_EXTENSION> <- int_to_bitvector(8, 93); };
-    
-    <AC_TOKEN_ELEMENT> :: BitList;
-    
-    
+  (* let out = (Pipeline.main_pipeline 
     "
-   in
-   let _ = Pipeline.main_pipeline input in
-   ()
+    <S> ::= <A> <D> { <A>.<B> > <D>.<C>; };
+    <A> ::= <B> <B>;
+    <D> ::= <C> <C>;
+    <B> :: Int;
+    <C> :: Int;
+  ") in *)
 
-   *)
+  (* let out = (Pipeline.main_pipeline 
+    "
+    <S> ::= <B> <B> { <B> + <B> > 0; };
+    <B> :: Int;
+  ") in *)
 
-
-   
-   (* <GROUP_ID> = int_to_bitvector(16, 15) => 
-   length(<AC_TOKEN>) <= 2048;
-    length(<SCALAR>) = 384 land length(<ELEMENT>) = 384;
-    <GROUP_ID> = int_to_bitvector(16, 16) => 
-    length(<SCALAR>) = 512 land length(<ELEMENT>) = 512;
-    <GROUP_ID> = int_to_bitvector(16, 17) => 
-    length(<SCALAR>) = 768 land length(<ELEMENT>) = 768;
-    <GROUP_ID> = int_to_bitvector(16, 18) => 
-    length(<SCALAR>) = 1024 land length(<ELEMENT>) = 1024;
-    <GROUP_ID> = int_to_bitvector(16, 19) => 
-    length(<SCALAR>) = 256 land length(<ELEMENT>) = 512;
-    <GROUP_ID> = int_to_bitvector(16, 20) => 
-    length(<SCALAR>) = 48 land length(<ELEMENT>) = 96;
-    <GROUP_ID> = int_to_bitvector(16, 21) => 
-    length(<SCALAR>) = 64 land length(<ELEMENT>) = 128; *)
-
-  (* let commit_grammar = Utils.parse (GrammarFuzzing.read_grammar "bin/commit.txt") in
-  let confirm_grammar = Utils.parse (GrammarFuzzing.read_grammar "bin/confirm.txt") in
-  let commit_confirm_grammar = Utils.parse (GrammarFuzzing.read_grammar "bin/commit-confirm.txt") in
-  GrammarFuzzing.runFuzzer [commit_grammar; confirm_grammar; commit_confirm_grammar;] *)
-    
-  (* let commit_confirm_grammar = Utils.parse (GrammarFuzzing.read_grammar "/home/pirwani/Desktop/WiFiPacketGen/bin/commit-confirm.txt") in
-  let pkt = MutationOps. in
-  match pkt with
-  | Some x -> Ast.pp_print_ast Format.std_formatter x ;
-  | None -> print_endline "fail" *)
+  print_endline out;

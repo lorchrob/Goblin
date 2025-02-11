@@ -23,6 +23,7 @@ let parse_args () =
 
 let debug_print pp formatter value =
   if !debug then
-    pp formatter value
+    (pp formatter value; 
+     Format.pp_print_flush formatter ();)
   else
     Format.ifprintf formatter "%a" pp value

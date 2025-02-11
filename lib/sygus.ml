@@ -142,7 +142,11 @@ let rec pp_print_match: Format.formatter -> TC.context -> string -> A.case list 
   | CaseStub nts -> nts, BConst true 
   ) cases in 
   let match_rules = List.map (fun (nts, expr) -> 
-    let rule_index = Lib.find_index nts adt_cases in 
+    (* With ambiguous NTs, we added "__n" to disambiguate *)
+    let original_nts = List.map (fun nt -> 
+      Str.split (Str.regexp "__") nt |> List.hd
+     ) nts in
+    let rule_index = Lib.find_index original_nts adt_cases in 
     ((rule_index, nts), expr)
   ) match_rules in
 

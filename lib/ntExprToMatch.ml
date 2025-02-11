@@ -81,12 +81,19 @@ let rec pull_up_match_exprs: A.expr -> A.expr =
     ) cases in
     Match (nt, cases)
   | Length (expr) -> Length (r expr)
-  | Match (nt_expr, cases) -> 
-    let cases = List.map (fun case -> match case with
+  | Match (nt, cases) -> 
+    let cases = List.mapi (fun i case -> match case with
+      (* Merge redundant matching, e.g., from <A>.<B> + <A>.<C> > 0, we don't need to match on <A> twice. *)
+      | A.Case (nts, (Match (nt2, cases2) as expr)) -> 
+        if nt = nt2 then 
+          match List.nth cases2 i with 
+          | A.Case (_, expr) -> A.Case (nts, r expr)
+          | _ -> A.Case (nts, r expr)
+        else A.Case (nts, Match (nt2, cases2))
       | A.Case (nts, expr) -> A.Case (nts, r expr)
       | A.CaseStub nts -> CaseStub nts
     ) cases in
-    Match (nt_expr, cases) 
+    Match (nt, cases) 
   | NTExpr _ (* -> failwith "internal error: ntExprToMatch (pull_up_match_exprs)" *)
   | BVConst _ 
   | BLConst _ 
