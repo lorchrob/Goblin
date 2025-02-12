@@ -24,24 +24,21 @@ let main_pipeline input_string =
   Debug.debug_print Format.pp_print_string ppf "\nDesugaring NTExprs complete:\n";
   Debug.debug_print Ast.pp_print_ast ppf ast;
 
-  (* Step 2.75: Resolve ambiguities in constraints *)
+  (* Step 3: Resolve ambiguities in constraints *)
   (* let ast = ResolveAmbiguities.resolve_ambiguities ast in
   Debug.debug_print Format.pp_print_string ppf "\nResolving grammar ambiguities complete:\n";
   Debug.debug_print Ast.pp_print_ast ppf ast; *)
 
-  (* Step 3: Abstract away dependent terms in the grammar *)
+  (* Step 4: Abstract away dependent terms in the grammar *)
   Debug.debug_print Format.pp_print_string ppf "\nDependent term abstraction:\n";
   let dep_map, ast, ctx = AbstractDeps.abstract_dependencies ctx ast in 
   Debug.debug_print Ast.pp_print_ast ppf ast;
 
-  (* Step 4: Divide and conquer *)
+  (* Step 5: Divide and conquer *)
   Debug.debug_print Format.pp_print_string ppf "\n\nDivide and conquer:\n";
   let asts = DivideAndConquer.split_ast ast in 
   List.iter (fun ast -> Debug.debug_print Ast.pp_print_ast ppf ast; Debug.debug_print Lib.pp_print_newline ppf ()) asts;
   Debug.debug_print Lib.pp_print_newline ppf ();
-
-  (* Step 5: Prune grammars (both within grammars, and unreachable stubs) *)
-  (* TODO, if needed for better performance *)
 
   (* Step 6: Translate to SyGuS problems *)
   Debug.debug_print Format.pp_print_string ppf "\nSyGuS translation:\n";
@@ -112,40 +109,37 @@ let sygusGrammarToPacket ast =
   let ast, ctx = TypeChecker.build_context ast in
   let ast = TypeChecker.check_types ctx ast in
 
-  (* Step 2.5: Convert NTExprs to Match expressions *)
+  (* Step 3: Convert NTExprs to Match expressions *)
   let ast = Utils.recurse_until_fixpoint ast (=) (NtExprToMatch.convert_nt_exprs_to_matches ctx) in
 
-  (* Step 2.75: Resolve ambiguities in constraints *)
+  (* Step 4: Resolve ambiguities in constraints *)
   (* let ast = ResolveAmbiguities.resolve_ambiguities ast in *)
 
-  (* Step 3: Abstract away dependent terms in the grammar *)
+  (* Step 5: Abstract away dependent terms in the grammar *)
   let dep_map, ast, ctx = AbstractDeps.abstract_dependencies ctx ast in 
 
-  (* Step 4: Divide and conquer *)
+  (* Step 6: Divide and conquer *)
   let asts = DivideAndConquer.split_ast ast in 
 
-  (* Step 5: Prune grammars (both within grammars, and unreachable stubs) *)
-  (* TODO, if needed for better performance *)
-
   if not !Debug.only_parse then (
-    (* Step 6: Call sygus engine *)
+    (* Step 7: Call sygus engine *)
     let sygus_outputs = List.map (Sygus.call_sygus ctx dep_map) asts in
 
-    (* Step 7: Parse SyGuS output. *)
+    (* Step 8: Parse SyGuS output. *)
     let sygus_asts = List.map2 Utils.parse_sygus sygus_outputs asts in
     match collect_results sygus_asts with
     | Error e -> Error e
     | Ok sygus_asts -> 
-      (* Step 8: Recombine to single AST *)
+      (* Step 9: Recombine to single AST *)
       let sygus_ast = Recombine.recombine sygus_asts in 
 
-      (* Step 9: Compute dependencies *)
+      (* Step 10: Compute dependencies *)
       let sygus_ast = ComputeDeps.compute_deps dep_map ast sygus_ast in 
 
-      (* Step 10: Bit flip mutations *)
+      (* Step 11: Bit flip mutations *)
       let sygus_ast = BitFlips.flip_bits sygus_ast in
 
-      (* Step 11: Serialize! *)
+      (* Step 12: Serialize! *)
       let output = SygusAst.serialize_bytes SygusAst.Big sygus_ast in 
       Ok output) 
     else 

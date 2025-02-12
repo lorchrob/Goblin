@@ -18,5 +18,7 @@ How to run the tool:
 * To run tests, run `dune test`
 
 Command-line args:
+
 * All command-line args are passed as such: `dune exec sbf -- <args here>`
 * Use `--debug` for debug output (`dune exec sbf -- --debug`)
+* Use `--only_parse` to run the front end (type checking, syntactic checks, various AST transformations, etc.) without invoking SyGuS
