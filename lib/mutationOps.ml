@@ -60,7 +60,7 @@ and isPresentInExpr (nt:string) (e:expr) : bool =
     | CompOp (e1, _, e2) -> (isPresentInExpr nt e1) || (isPresentInExpr nt e2)
     | Length (e) -> (isPresentInExpr nt e)
     | BVCast (_, e) -> (isPresentInExpr nt e)
-    | NTExpr n -> (List.mem nt n)
+    | NTExpr (_, n, _) -> (List.mem nt n)
     | Match (nt2, caselist) -> (nt = nt2) || isPresentInCaseList nt caselist
     | _ -> false 
     

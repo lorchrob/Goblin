@@ -167,7 +167,12 @@ and pp_print_option: TC.context -> string -> Format.formatter -> ((int * (string
 
 and pp_print_expr: TC.context -> Format.formatter -> A.expr -> unit 
 = fun ctx ppf expr -> match expr with 
-| NTExpr [nt] -> Format.pp_print_string ppf (String.lowercase_ascii nt)
+| NTExpr (_, [nt], None) -> Format.pp_print_string ppf (String.lowercase_ascii nt)
+| NTExpr (_, [nt], Some i) -> 
+  (*!! TODO: Use a representation that prevents name clashes with user names *)
+  Format.fprintf ppf "%a__%d"
+    Format.pp_print_string (String.lowercase_ascii nt)
+    i
 | A.Match (nt, cases)  -> pp_print_match ppf ctx nt cases
 | NTExpr _ -> assert false (* pp_print_match ppf ctx nts *)
 | BinOp (expr1, op, expr2) -> 

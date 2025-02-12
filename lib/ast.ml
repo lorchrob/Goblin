@@ -39,7 +39,17 @@ expr =
 | Length of expr
 | BVCast of int * expr
 | Match of string * case list
-| NTExpr of string list
+(* First string list tracks the context of a nonterminal after desugaring to match expression
+   Second int list is for dot notation input e.g. <A>.<B>.<C> 
+   Int option is for disambiguating references. 
+   
+   More detail:
+   First string list is initially empty. When we desugar, e.g., dot expression 
+   <A>.<B> to a match expression match <A> with | ... <B> ... -> <expr containing <B>>
+   the expression containing <B> needs to remember it came from <A>, in case of name 
+   clashes. So, this dot notation context is stored in the first string list.
+   *)
+| NTExpr of string list * string list * int option
 | BVConst of int * bool list
 | BLConst of bool list
 | BConst of bool
@@ -82,7 +92,7 @@ type btree =
 *)
 
 (* Substitute e1 for var in e2. In other words, output e1[var\e2] *)
-let rec rename: expr -> (string * string) list -> expr 
+(* let rec rename: expr -> (string * string) list -> expr 
 = fun e renaming -> 
   match e with 
   | NTExpr ([id]) -> (
@@ -105,13 +115,14 @@ let rec rename: expr -> (string * string) list -> expr
   | BConst _ 
   | BVCast _  
   | StrConst _
-  | IntConst _ -> e
+  | IntConst _ -> e *)
 
+(* This function is used before desugaring dot expressions *)
 let rec get_nts_from_expr: expr -> string list 
 = fun expr -> 
   let r = get_nts_from_expr in
   match expr with 
-  | NTExpr nts -> nts 
+  | NTExpr (_, nts, _) -> nts 
   | Match (nt, cases) -> [nt] @ (List.map (fun case -> match case with 
     | CaseStub _ -> []
     | Case (_, expr) -> r expr
@@ -132,7 +143,7 @@ let rec get_nts_from_expr: expr -> string list
   | IntConst _ -> []
 
 (* For when you want to process simple NTs after translation of dot to match expressions *)
-let rec get_nts_from_expr_shallow: expr -> string list 
+(* let rec get_nts_from_expr_shallow: expr -> string list 
 = fun expr -> 
   let r = get_nts_from_expr_shallow in
   match expr with 
@@ -152,7 +163,7 @@ let rec get_nts_from_expr_shallow: expr -> string list
   | BConst _ 
   | BVCast _  
   | StrConst _
-  | IntConst _ -> []
+  | IntConst _ -> [] *)
 
 let pp_print_nonterminal: Format.formatter -> string -> unit 
 = fun ppf nt -> 
@@ -235,11 +246,11 @@ and pp_print_expr: Format.formatter -> expr -> unit
   Format.fprintf ppf "(match %a with %a)"
     pp_print_nonterminal nt 
     (Lib.pp_print_list pp_print_case " ") cases 
-| NTExpr nt_expr -> pp_print_nt_expr ppf nt_expr 
-(* | NTExpr (nt_expr, Some index) -> 
-  Format.fprintf ppf "%a(%d)"
-    pp_print_nt_expr nt_expr 
-    index *)
+| NTExpr (_, nt_expr, None) -> pp_print_nt_expr ppf nt_expr 
+| NTExpr (_, nt_expr, Some i) -> 
+    Format.fprintf ppf "%a(%d)"
+      pp_print_nt_expr nt_expr 
+      i 
 | BLConst bits -> 
   let bits = List.map Bool.to_int bits in
   Format.fprintf ppf "(BitList 0b%a)"

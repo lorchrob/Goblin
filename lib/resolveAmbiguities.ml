@@ -13,9 +13,9 @@ let create_substitutions (m : string list SM.t) : (string * string) list list =
   let product = cartesian_product values in
   List.map (List.combine (List.map fst keys)) product
 
-let rec process_expr: A.expr -> A.expr 
-= fun expr -> 
-  let r = process_expr in
+let process_expr: A.expr -> A.expr 
+= fun expr -> expr
+  (* let r = process_expr in
   match expr with 
   | A.Match (nt, cases) -> 
     let cases = List.map (fun case -> match case with 
@@ -71,7 +71,7 @@ let rec process_expr: A.expr -> A.expr
   | BVCast _  
   | StrConst _
   | IntConst _
-  | NTExpr _ -> expr
+  | NTExpr _ -> expr *)
 
 let process_sc: A.semantic_constraint -> A.semantic_constraint 
 = fun sc -> match sc with 

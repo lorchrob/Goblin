@@ -11,6 +11,15 @@ Add test case for multiple cyclic dependencies:
     <D> :: Int;
 "
 
+Add test case for nt expr to match conversion: 
+"
+    <S> ::= <A> { <A>.<B>.<C> > <A>.<B>.<D>; };
+    <A> ::= <B>;
+    <B> ::= <C> <D>;
+    <C> :: Int;
+    <D> :: Int; 
+  "
+
 *)
 
 (* Semantic constraint example *)

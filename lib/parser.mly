@@ -161,7 +161,7 @@ expr:
 (* Case expressions *)
 // | CASE; e = nt_expr; OF; cs = case_list { Match (e, cs) }
 (* Variables *)
-| e = nt_expr; (* _ = option(index); *) { NTExpr e }
+| e = nt_expr; (* _ = option(index); *) { NTExpr ([], e, None) }
 (* Arbitrary parens *)
 | LPAREN; e = expr; RPAREN; { e }
 

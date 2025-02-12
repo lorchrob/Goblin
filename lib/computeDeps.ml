@@ -91,7 +91,7 @@ and evaluate: A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -> A.eleme
 = fun dep_map sygus_ast element expr -> 
   let call = evaluate dep_map sygus_ast element in
   match expr with 
-| NTExpr ([id]) ->
+| NTExpr (_, [id], _) -> (*!! TODO: Check if we need to consider the index *)
   let child_index = match element with 
   | A.TypeAnnotation _ -> assert false 
   | A.ProdRule (_, (Rhs (ges, _)) :: _) ->
