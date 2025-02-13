@@ -134,7 +134,7 @@ fun ctx expr ->
         let rule, remaining_cases = gen_match_info ctx nt1 nt2 in
         matches_so_far,
         Match (nt1, Case (rule, BinOp (NTExpr (nt_ctx1 @ [nt1], nt2 :: nts1, idx1), op, NTExpr (nt_ctx1 @ [nt3], nt4 :: nts2, idx2))) :: remaining_cases)
-      else if nt1 != nt3 then
+      else if not (String.equal nt1 nt3) then
         let matches_so_far = SS.add nt1 matches_so_far in
         let matches_so_far = SS.add nt3 matches_so_far in
         let rule1, remaining_cases1 = gen_match_info ctx nt1 nt2 in
@@ -187,7 +187,7 @@ fun ctx expr ->
         let rule, remaining_cases = gen_match_info ctx nt1 nt2 in
         matches_so_far,
         Match (nt1, Case (rule, CompOp (NTExpr (nt_ctx1 @ [nt1], nt2 :: nts1, idx1), op, NTExpr (nt_ctx1 @ [nt3], nt4 :: nts2, idx2))) :: remaining_cases)
-      else if nt1 != nt3 then
+      else if not (String.equal nt1 nt3) then
         let matches_so_far = SS.add nt1 matches_so_far in
         let matches_so_far = SS.add nt3 matches_so_far in
         let rule1, remaining_cases1 = gen_match_info ctx nt1 nt2 in
