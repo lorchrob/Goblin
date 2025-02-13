@@ -50,8 +50,8 @@ let rec mutation_add_s1 g nt =
 let rec isPresentInCaseList (nt:string) (caselist : case list) : bool = 
     match caselist with 
     | [] -> false 
-    | Case (nte, e) :: xs -> (List.mem nt nte) || (isPresentInExpr nt e) || (isPresentInCaseList nt xs)
-    | CaseStub (nte) :: xs -> (List.mem nt nte) || (isPresentInCaseList nt xs)
+    | Case (nte, e) :: xs -> (List.mem nt (List.map snd nte)) || (isPresentInExpr nt e) || (isPresentInCaseList nt xs)
+    | CaseStub (nte) :: xs -> (List.mem nt (List.map snd nte)) || (isPresentInCaseList nt xs)
 
 and isPresentInExpr (nt:string) (e:expr) : bool = 
     match e with 
@@ -61,7 +61,7 @@ and isPresentInExpr (nt:string) (e:expr) : bool =
     | Length (e) -> (isPresentInExpr nt e)
     | BVCast (_, e) -> (isPresentInExpr nt e)
     | NTExpr (_, n, _) -> (List.mem nt n)
-    | Match (nt2, caselist) -> (nt = nt2) || isPresentInCaseList nt caselist
+    | Match (_, nt2, caselist) -> (nt = nt2) || isPresentInCaseList nt caselist
     | _ -> false 
     
 let rec remove_constraints (nt : string) (clist : semantic_constraint list) : semantic_constraint list = 

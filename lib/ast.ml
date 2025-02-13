@@ -29,8 +29,9 @@ type bin_operator =
 | Div
 
 type case = 
-| Case of string list * expr 
-| CaseStub of string list
+(* A case is a list of <context, nonterminal> pairs (denoting a pattern) and the corresponding expression *)
+| Case of (string list * string) list * expr 
+| CaseStub of (string list * string) list
 and
 expr = 
 | BinOp of expr * bin_operator * expr 
@@ -38,7 +39,8 @@ expr =
 | CompOp of expr * comp_operator * expr 
 | Length of expr
 | BVCast of int * expr
-| Match of string * case list
+(* First string list track the context of the nonterminal being matched *)
+| Match of string list * string * case list
 (* First string list tracks the context of a nonterminal after desugaring to match expression
    Second int list is for dot notation input e.g. <A>.<B>.<C> 
    Int option is for disambiguating references. 
@@ -123,7 +125,7 @@ let rec get_nts_from_expr: expr -> string list
   let r = get_nts_from_expr in
   match expr with 
   | NTExpr (_, nts, _) -> nts 
-  | Match (nt, cases) -> [nt] @ (List.map (fun case -> match case with 
+  | Match (_, nt, cases) -> [nt] @ (List.map (fun case -> match case with 
     | CaseStub _ -> []
     | Case (_, expr) -> r expr
     ) cases |> List.flatten)
@@ -208,16 +210,21 @@ let pp_print_comp_op: Format.formatter -> comp_operator -> unit
 
 (* let pp_print_bit: Format.formatter -> bool ->  *)
 
+let pp_print_pattern: Format.formatter -> (string list * string) -> unit
+= fun ppf (nt_ctx, nt) -> 
+  Format.fprintf ppf "<%a>"
+    (Lib.pp_print_list Format.pp_print_string "_") (nt_ctx @ [nt])
+
 let rec pp_print_case: Format.formatter -> case -> unit 
 = fun ppf case -> 
   match case with 
-  | Case (nt_expr, expr) -> 
+  | Case (pattern, expr) -> 
     Format.fprintf ppf "| %a -> %a"
-      (Lib.pp_print_list pp_print_nonterminal " ") nt_expr 
+      (Lib.pp_print_list pp_print_pattern " ") pattern 
       pp_print_expr expr
-  | CaseStub nt_expr -> 
+  | CaseStub pattern -> 
     Format.fprintf ppf "| %a -> STUB"
-      (Lib.pp_print_list pp_print_nonterminal " ") nt_expr
+      (Lib.pp_print_list pp_print_pattern " ") pattern
 
 and pp_print_expr: Format.formatter -> expr -> unit 
 = fun ppf expr -> match expr with
@@ -242,14 +249,21 @@ and pp_print_expr: Format.formatter -> expr -> unit
   Format.fprintf ppf "int_to_bitvector(%d, %a)" 
     width 
     pp_print_expr expr 
-| Match (nt, cases) -> 
-  Format.fprintf ppf "(match %a with %a)"
-    pp_print_nonterminal nt 
+| Match (nts, nt, cases) -> 
+  Format.fprintf ppf "(match <%a> with %a)"
+    (Lib.pp_print_list Format.pp_print_string "_") (nts @ [nt]) 
     (Lib.pp_print_list pp_print_case " ") cases 
-| NTExpr (_, nt_expr, None) -> pp_print_nt_expr ppf nt_expr 
-| NTExpr (_, nt_expr, Some i) -> 
+| NTExpr ([], nt_expr, None) -> pp_print_nt_expr ppf nt_expr 
+| NTExpr ([], nt_expr, Some i) -> 
     Format.fprintf ppf "%a(%d)"
       pp_print_nt_expr nt_expr 
+      i 
+| NTExpr (nts, nt_expr, None) -> 
+  Format.fprintf ppf "<%a>"
+    (Lib.pp_print_list Format.pp_print_string "_") (nts @ nt_expr) 
+| NTExpr (nts, nt_expr, Some i) -> 
+    Format.fprintf ppf "<%a(%d)>"
+      (Lib.pp_print_list Format.pp_print_string "_") (nts @ nt_expr)
       i 
 | BLConst bits -> 
   let bits = List.map Bool.to_int bits in

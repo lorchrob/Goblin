@@ -20,7 +20,42 @@ Add test case for nt expr to match conversion:
     <D> :: Int; 
   "
 
+Add test cases for "horizontal" ambiguous references 
+  let out = (Pipeline.main_pipeline 
+    "
+    <S> ::= <A> { <A>.<B> > <A>.<C>; };
+    <A> ::= <B> <B> <C> <C>;
+    <B> :: Int;
+    <C> :: Int;
+  ") in
 *)
+
+let test_vertical_ambiguous_reference_1 () =
+  let input = 
+    "
+    <S> ::= <A> <E> <B> { <A>.<B>.<D> > <E>.<B>.<C>; };
+    <E> ::= <B>;
+    <A> ::= <B> <C>;
+    <B> ::= <C> <D>;
+    <C> :: Int;
+    <D> :: Int;
+  "
+  in
+  let output = main_pipeline input in
+  check string "test_vertical_ambiguous_reference_1" output "000-1000\n"
+
+let test_vertical_ambiguous_reference_2 () =
+  let input = 
+    "
+    <S> ::= <A> <B> { <A>.<B>.<D> > <A>.<C>; };
+    <A> ::= <B> <C>;
+    <B> ::= <C> <D>;
+    <C> :: Int;
+    <D> :: Int;
+  "
+  in
+  let output = main_pipeline input in
+  check string "test_vertical_ambiguous_reference_2" output "00-100\n"
 
 (* Semantic constraint example *)
 let test_sc () =
@@ -260,5 +295,7 @@ let () =
     "test_dt6", [test_case "Dependent term 6" `Quick test_dt6];
     "test_dynamic_typing", [test_case "Dynamic typing" `Quick test_dynamic_typing];
     "test_recombine", [test_case "Recombine" `Quick test_recombine];
-    "test_dot_notation", [test_case "Test dot notation" `Quick test_dot_notation]
+    "test_dot_notation", [test_case "Test dot notation" `Quick test_dot_notation];
+    "test_vertical_ambiguous_reference_1", [test_case "test_vertical_ambiguous_reference_1" `Quick test_vertical_ambiguous_reference_1];
+    "test_vertical_ambiguous_reference_2", [test_case "test_vertical_ambiguous_reference_2" `Quick test_vertical_ambiguous_reference_2];
   ]

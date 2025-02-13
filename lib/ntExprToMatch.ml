@@ -14,17 +14,17 @@ module SS = Utils.StringSet
    -> 
   match <A> with 
   | <B> <C> -> 
-     match <A> with 
-     | <B> <C> -> 
-        <B> + <C> < 0
+    <B> + <C> < 0
   *)
 
   (* 
-  1. Get a map with nt -> match level. Match level 1 means 
+  * Could resolve ambiguities in this transformation
+  * When you create a new pattern, generate fresh indices for that pattern
+  * When you peel off a nonterminal from an NTExpr, rename the next nonterminal in the NTExpr based on the renamed pattern
   
   *)
 
-let gen_match_info ctx nt1 nt2 = 
+let gen_match_info ctx nt1 nt2 nt_ctx = 
   let rules = match SM.find nt1 ctx with 
   | A.ADT rules -> rules 
   | _ -> failwith "Internal error: sygus.ml (nt_to_match)" 
@@ -33,74 +33,78 @@ let gen_match_info ctx nt1 nt2 =
     List.mem nt2 rule   
   ) rules in
   let remaining_rules = List.filter (fun rule' -> rule' != rule) rules in
-  let remaining_cases = List.map (fun rule -> A.CaseStub rule) remaining_rules in
+  (* let remaining_cases = List.map (fun rule -> A.CaseStub rule) remaining_rules in *)
   (*!! TODO: Generalize to possibly match multiple rules *)
-  rule, remaining_cases
+  let rule = List.map (fun nt -> nt_ctx @ [nt1], nt) rule in
+  let remaining_rules = List.map (fun nts -> 
+    Ast.CaseStub (List.map (fun nt -> nt_ctx @ [nt1], nt) nts)
+  ) remaining_rules in
+  rule, remaining_rules
 
 let rec pull_up_match_exprs: A.expr -> A.expr = 
   let r = pull_up_match_exprs in
   fun expr -> match expr with 
-  | BinOp (Match (nt, cases), op, expr2) -> 
+  | BinOp (Match (nt_ctx, nt, cases), op, expr2) -> 
     let cases = List.map (fun case -> match case with 
     | A.Case (rule, expr) ->
       A.Case (rule, A.BinOp (expr, op, expr2))  
     | A.CaseStub rule -> A.CaseStub rule 
     ) cases in
-    Match (nt, cases)
-  | BinOp (expr1, op, Match (nt, cases)) -> 
+    Match (nt_ctx, nt, cases)
+  | BinOp (expr1, op, Match (nt_ctx, nt, cases)) -> 
     let cases = List.map (fun case -> match case with 
     | A.Case (rule, expr) -> A.Case (rule, A.BinOp (expr1, op, expr))
     | A.CaseStub rule -> A.CaseStub rule
     ) cases in
-    Match (nt, cases)
+    Match (nt_ctx, nt, cases)
   | BinOp (expr1, op, expr2) -> BinOp (r expr1, op, r expr2)
-  | CompOp (Match (nt, cases), op, expr2) -> 
+  | CompOp (Match (nt_ctx, nt, cases), op, expr2) -> 
     let cases = List.map (fun case -> match case with 
     | A.Case (rule, expr) -> A.Case (rule, A.CompOp (expr, op, expr2))
     | A.CaseStub rule -> A.CaseStub rule
     ) cases in
-    Match (nt, cases)
-  | CompOp (expr1, op, Match (nt, cases)) -> 
+    Match (nt_ctx, nt, cases)
+  | CompOp (expr1, op, Match (nt_ctx, nt, cases)) -> 
     let cases = List.map (fun case -> match case with 
     | A.Case (rule, expr) -> A.Case (rule, A.CompOp (expr1, op, expr))
     | A.CaseStub rule -> A.CaseStub rule
     ) cases in
-    Match (nt, cases)
+    Match (nt_ctx, nt, cases)
   | CompOp (expr1, op, expr2) -> CompOp (r expr1, op, r expr2)
-  | UnOp (op, Match (nt, cases)) -> 
+  | UnOp (op, Match (nt_ctx, nt, cases)) -> 
     let cases = List.map (fun case -> match case with 
     | A.Case (rule, expr) -> A.Case (rule, A.UnOp (op, expr))
     | A.CaseStub rule -> A.CaseStub rule
     ) cases in
-    Match (nt, cases)
+    Match (nt_ctx, nt, cases)
   | UnOp (op, expr) -> UnOp (op, r expr)
-  | BVCast (len, Match (nt, cases)) -> 
+  | BVCast (len, Match (nt_ctx, nt, cases)) -> 
     let cases = List.map (fun case -> match case with 
     | A.Case (rule, expr) -> A.Case (rule, A.BVCast (len, expr))
     | A.CaseStub rule -> A.CaseStub rule
     ) cases in
-    Match (nt, cases)
+    Match (nt_ctx, nt, cases)
   | BVCast (len, expr) -> BVCast (len, r expr)
-  | Length (Match (nt, cases)) -> 
+  | Length (Match (nt_ctx, nt, cases)) -> 
     let cases = List.map (fun case -> match case with 
     | A.Case (rule, expr) -> A.Case (rule, A.Length (expr))
     | A.CaseStub rule -> A.CaseStub rule
     ) cases in
-    Match (nt, cases)
+    Match (nt_ctx, nt, cases)
   | Length (expr) -> Length (r expr)
-  | Match (nt, cases) -> 
+  | Match (nt_ctx, nt, cases) -> 
     let cases = List.mapi (fun i case -> match case with
       (* Merge redundant matching, e.g., from <A>.<B> + <A>.<C> > 0, we don't need to match on <A> twice. *)
-      | A.Case (nts, (Match (nt2, cases2) as expr)) -> 
+      | A.Case (nts, (Match (nt_ctx2, nt2, cases2) as expr)) -> 
         if nt = nt2 then 
           match List.nth cases2 i with 
           | A.Case (_, expr) -> A.Case (nts, r expr)
           | _ -> A.Case (nts, r expr)
-        else A.Case (nts, Match (nt2, cases2))
+        else A.Case (nts, Match (nt_ctx2, nt2, cases2))
       | A.Case (nts, expr) -> A.Case (nts, r expr)
       | A.CaseStub nts -> CaseStub nts
     ) cases in
-    Match (nt, cases) 
+    Match (nt_ctx, nt, cases) 
   | NTExpr _ (* -> failwith "internal error: ntExprToMatch (pull_up_match_exprs)" *)
   | BVConst _ 
   | BLConst _ 
@@ -126,26 +130,27 @@ fun ctx expr ->
         BinOp (NTExpr (nt_ctx1 @ [nt1], nt2 :: nts1, idx1), op, NTExpr (nt_ctx2 @ [nt3], nt4 :: nts2, idx2))
       else if SS.mem nt1 matches_so_far && not (SS.mem nt3 matches_so_far) then
         let matches_so_far = SS.add nt3 matches_so_far in
-        let rule, remaining_cases = gen_match_info ctx nt3 nt4 in
+        let rule, remaining_cases = gen_match_info ctx nt3 nt4 nt_ctx2 in
         matches_so_far,
-        Match (nt3, Case (rule, BinOp (NTExpr (nt_ctx1 @ [nt1], nt2 :: nts1, idx1), op, NTExpr (nt_ctx1 @ [nt3], nt4 :: nts2, idx2))) :: remaining_cases)
+        (*!! TODO: Test if the choice of nt_ctx matters *)
+        Match (nt_ctx2, nt3, Case (rule, BinOp (NTExpr (nt_ctx1 @ [nt1], nt2 :: nts1, idx1), op, NTExpr (nt_ctx2 @ [nt3], nt4 :: nts2, idx2))) :: remaining_cases)
       else if not (SS.mem nt1 matches_so_far) && SS.mem nt3 matches_so_far then
         let matches_so_far = SS.add nt1 matches_so_far in
-        let rule, remaining_cases = gen_match_info ctx nt1 nt2 in
+        let rule, remaining_cases = gen_match_info ctx nt1 nt2 nt_ctx1 in
         matches_so_far,
-        Match (nt1, Case (rule, BinOp (NTExpr (nt_ctx1 @ [nt1], nt2 :: nts1, idx1), op, NTExpr (nt_ctx1 @ [nt3], nt4 :: nts2, idx2))) :: remaining_cases)
-      else if not (String.equal nt1 nt3) then
+        Match (nt_ctx1, nt1, Case (rule, BinOp (NTExpr (nt_ctx1 @ [nt1], nt2 :: nts1, idx1), op, NTExpr (nt_ctx2 @ [nt3], nt4 :: nts2, idx2))) :: remaining_cases)
+      else if not (nt_ctx1 @ [nt1] = nt_ctx2 @ [nt3]) then
         let matches_so_far = SS.add nt1 matches_so_far in
         let matches_so_far = SS.add nt3 matches_so_far in
-        let rule1, remaining_cases1 = gen_match_info ctx nt1 nt2 in
-        let rule2, remaining_cases2 = gen_match_info ctx nt3 nt4 in
+        let rule1, remaining_cases1 = gen_match_info ctx nt1 nt2 nt_ctx1 in
+        let rule2, remaining_cases2 = gen_match_info ctx nt3 nt4 nt_ctx2 in
         matches_so_far,
-        Match (nt3, Case (rule2, Match (nt1, Case (rule1, BinOp (NTExpr (nt_ctx1 @ [nt1], nt2 :: nts1, idx1), op, NTExpr (nt_ctx1 @ [nt3], nt4 :: nts2, idx2))) :: remaining_cases1)) :: remaining_cases2)
+        Match (nt_ctx2, nt3, Case (rule2, Match (nt_ctx1, nt1, Case (rule1, BinOp (NTExpr (nt_ctx1 @ [nt1], nt2 :: nts1, idx1), op, NTExpr (nt_ctx2 @ [nt3], nt4 :: nts2, idx2))) :: remaining_cases1)) :: remaining_cases2)
       else 
         let matches_so_far = SS.add nt1 matches_so_far in
-        let rule, remaining_cases = gen_match_info ctx nt1 nt2 in
+        let rule, remaining_cases = gen_match_info ctx nt1 nt2 nt_ctx1 in
         matches_so_far,
-        Match (nt1, Case (rule, BinOp (NTExpr (nt_ctx1 @ [nt1], nt2 :: nts1, idx1), op, NTExpr (nt_ctx1 @ [nt3], nt4 :: nts2, idx2))) :: remaining_cases)
+        Match (nt_ctx1, nt1, Case (rule, BinOp (NTExpr (nt_ctx1 @ [nt1], nt2 :: nts1, idx1), op, NTExpr (nt_ctx2 @ [nt3], nt4 :: nts2, idx2))) :: remaining_cases)
     | BinOp (NTExpr (nt_ctx, nt1 :: nt2 :: nts, idx), op, expr2) -> 
       if SS.mem nt1 matches_so_far then 
         let matches_so_far, expr2 = r matches_so_far expr2 in 
@@ -154,9 +159,9 @@ fun ctx expr ->
       else
         let matches_so_far = SS.add nt1 matches_so_far in
         let matches_so_far, expr2 = r matches_so_far expr2 in
-        let rule, remaining_cases = gen_match_info ctx nt1 nt2 in
+        let rule, remaining_cases = gen_match_info ctx nt1 nt2 nt_ctx in
         matches_so_far,
-        Match (nt1, Case (rule, BinOp (NTExpr (nt_ctx @ [nt1], nt2 :: nts, idx), op, expr2)) :: remaining_cases) 
+        Match (nt_ctx, nt1, Case (rule, BinOp (NTExpr (nt_ctx @ [nt1], nt2 :: nts, idx), op, expr2)) :: remaining_cases) 
     | BinOp (expr1, op, NTExpr (nt_ctx, nt1 :: nt2 :: nts, idx)) -> 
       if SS.mem nt1 matches_so_far then 
         let matches_so_far, expr1 = r matches_so_far expr1 in
@@ -165,9 +170,9 @@ fun ctx expr ->
       else
         let matches_so_far = SS.add nt1 matches_so_far in
         let matches_so_far, expr1 = r matches_so_far expr1 in
-        let rule, remaining_cases = gen_match_info ctx nt1 nt2 in
+        let rule, remaining_cases = gen_match_info ctx nt1 nt2 nt_ctx in
         matches_so_far,
-        Match (nt1, Case (rule, BinOp (expr1, op, NTExpr (nt_ctx @ [nt1], nt2 :: nts, idx))) :: remaining_cases) 
+        Match (nt_ctx, nt1, Case (rule, BinOp (expr1, op, NTExpr (nt_ctx @ [nt1], nt2 :: nts, idx))) :: remaining_cases) 
     | BinOp (expr1, op, expr2) -> 
       let matches_so_far, expr1 = r matches_so_far expr1 in 
       let matches_so_far, expr2 = r matches_so_far expr2 in
@@ -179,26 +184,26 @@ fun ctx expr ->
         CompOp (NTExpr (nt_ctx1 @ [nt1], nt2 :: nts1, idx1), op, NTExpr (nt_ctx2 @ [nt3], nt4 :: nts2, idx2))
       else if SS.mem nt1 matches_so_far && not (SS.mem nt3 matches_so_far) then
         let matches_so_far = SS.add nt3 matches_so_far in
-        let rule, remaining_cases = gen_match_info ctx nt3 nt4 in
+        let rule, remaining_cases = gen_match_info ctx nt3 nt4 nt_ctx2 in
         matches_so_far,
-        Match (nt3, Case (rule, CompOp (NTExpr (nt_ctx1 @ [nt1], nt2 :: nts1, idx1), op, NTExpr (nt_ctx1 @ [nt3], nt4 :: nts2, idx2))) :: remaining_cases)
+        Match (nt_ctx2, nt3, Case (rule, CompOp (NTExpr (nt_ctx1 @ [nt1], nt2 :: nts1, idx1), op, NTExpr (nt_ctx2 @ [nt3], nt4 :: nts2, idx2))) :: remaining_cases)
       else if not (SS.mem nt1 matches_so_far) && SS.mem nt3 matches_so_far then
         let matches_so_far = SS.add nt1 matches_so_far in
-        let rule, remaining_cases = gen_match_info ctx nt1 nt2 in
+        let rule, remaining_cases = gen_match_info ctx nt1 nt2 nt_ctx1 in
         matches_so_far,
-        Match (nt1, Case (rule, CompOp (NTExpr (nt_ctx1 @ [nt1], nt2 :: nts1, idx1), op, NTExpr (nt_ctx1 @ [nt3], nt4 :: nts2, idx2))) :: remaining_cases)
-      else if not (String.equal nt1 nt3) then
+        Match (nt_ctx1, nt1, Case (rule, CompOp (NTExpr (nt_ctx1 @ [nt1], nt2 :: nts1, idx1), op, NTExpr (nt_ctx2 @ [nt3], nt4 :: nts2, idx2))) :: remaining_cases)
+      else if not (nt_ctx1 @ [nt1] = nt_ctx2 @ [nt3]) then
         let matches_so_far = SS.add nt1 matches_so_far in
         let matches_so_far = SS.add nt3 matches_so_far in
-        let rule1, remaining_cases1 = gen_match_info ctx nt1 nt2 in
-        let rule2, remaining_cases2 = gen_match_info ctx nt3 nt4 in
+        let rule1, remaining_cases1 = gen_match_info ctx nt1 nt2 nt_ctx1 in
+        let rule2, remaining_cases2 = gen_match_info ctx nt3 nt4 nt_ctx2 in
         matches_so_far,
-        Match (nt3, Case (rule2, Match (nt1, Case (rule1, CompOp (NTExpr (nt_ctx1 @ [nt1], nt2 :: nts1, idx1), op, NTExpr (nt_ctx1 @ [nt3], nt4 :: nts2, idx2))) :: remaining_cases1)) :: remaining_cases2)
+        Match (nt_ctx2, nt3, Case (rule2, Match (nt_ctx1, nt1, Case (rule1, CompOp (NTExpr (nt_ctx1 @ [nt1], nt2 :: nts1, idx1), op, NTExpr (nt_ctx2 @ [nt3], nt4 :: nts2, idx2))) :: remaining_cases1)) :: remaining_cases2)
       else 
         let matches_so_far = SS.add nt1 matches_so_far in
-        let rule, remaining_cases = gen_match_info ctx nt1 nt2 in
+        let rule, remaining_cases = gen_match_info ctx nt1 nt2 nt_ctx1 in
         matches_so_far,
-        Match (nt1, Case (rule, CompOp (NTExpr (nt_ctx1 @ [nt1], nt2 :: nts1, idx1), op, NTExpr (nt_ctx1 @ [nt3], nt4 :: nts2, idx2))) :: remaining_cases)
+        Match (nt_ctx1, nt1, Case (rule, CompOp (NTExpr (nt_ctx1 @ [nt1], nt2 :: nts1, idx1), op, NTExpr (nt_ctx2 @ [nt3], nt4 :: nts2, idx2))) :: remaining_cases)
     | CompOp (NTExpr (nt_ctx, nt1 :: nt2 :: nts, idx), op, expr2) -> 
       if SS.mem nt1 matches_so_far then 
         let matches_so_far, expr2 = r matches_so_far expr2 in 
@@ -207,9 +212,9 @@ fun ctx expr ->
       else
         let matches_so_far = SS.add nt1 matches_so_far in
         let matches_so_far, expr2 = r matches_so_far expr2 in
-        let rule, remaining_cases = gen_match_info ctx nt1 nt2 in
+        let rule, remaining_cases = gen_match_info ctx nt1 nt2 nt_ctx in
         matches_so_far,
-        Match (nt1, Case (rule, CompOp (NTExpr (nt_ctx @ [nt1], nt2 :: nts, idx), op, expr2)) :: remaining_cases) 
+        Match (nt_ctx, nt1, Case (rule, CompOp (NTExpr (nt_ctx @ [nt1], nt2 :: nts, idx), op, expr2)) :: remaining_cases) 
     | CompOp (expr1, op, NTExpr (nt_ctx, nt1 :: nt2 :: nts, idx)) -> 
       if SS.mem nt1 matches_so_far then 
         let matches_so_far, expr1 = r matches_so_far expr1 in
@@ -218,9 +223,9 @@ fun ctx expr ->
       else
         let matches_so_far = SS.add nt1 matches_so_far in
         let matches_so_far, expr1 = r matches_so_far expr1 in
-        let rule, remaining_cases = gen_match_info ctx nt1 nt2 in
+        let rule, remaining_cases = gen_match_info ctx nt1 nt2 nt_ctx in
         matches_so_far,
-        Match (nt1, Case (rule, CompOp (expr1, op, NTExpr (nt_ctx @ [nt1], nt2 :: nts, idx))) :: remaining_cases) 
+        Match (nt_ctx, nt1, Case (rule, CompOp (expr1, op, NTExpr (nt_ctx @ [nt1], nt2 :: nts, idx))) :: remaining_cases) 
     | CompOp (expr1, op, expr2) -> 
       let matches_so_far, expr1 = r matches_so_far expr1 in 
       let matches_so_far, expr2 = r matches_so_far expr2 in
@@ -232,18 +237,18 @@ fun ctx expr ->
         Length (NTExpr (nt_ctx @ [nt1], nt2 :: nts, idx))
       else
         let matches_so_far = SS.add nt1 matches_so_far in
-        let rule, remaining_cases = gen_match_info ctx nt1 nt2 in 
+        let rule, remaining_cases = gen_match_info ctx nt1 nt2 nt_ctx in 
         matches_so_far,
-        Match (nt1, Case (rule, Length (NTExpr (nt_ctx @ [nt1], nt2 :: nts, idx))) :: remaining_cases)
+        Match (nt_ctx, nt1, Case (rule, Length (NTExpr (nt_ctx @ [nt1], nt2 :: nts, idx))) :: remaining_cases)
     | UnOp (op, NTExpr (nt_ctx, nt1 :: nt2 :: nts, idx)) -> 
       if SS.mem nt1 matches_so_far then 
         matches_so_far,
         UnOp (op, NTExpr (nt_ctx @ [nt1], nt2 :: nts, idx))
       else
         let matches_so_far = SS.add nt1 matches_so_far in
-        let rule, remaining_cases = gen_match_info ctx nt1 nt2 in 
+        let rule, remaining_cases = gen_match_info ctx nt1 nt2 nt_ctx in 
         matches_so_far,
-        Match (nt1, Case (rule, UnOp (op, NTExpr (nt_ctx @ [nt1], nt2 :: nts, idx))) :: remaining_cases)
+        Match (nt_ctx, nt1, Case (rule, UnOp (op, NTExpr (nt_ctx @ [nt1], nt2 :: nts, idx))) :: remaining_cases)
     | UnOp (op, expr) -> 
       let matches_so_far, expr = r matches_so_far expr in 
       matches_so_far,
@@ -252,7 +257,7 @@ fun ctx expr ->
       let matches_so_far, expr = r matches_so_far expr in 
       matches_so_far,
       Length (expr) 
-    | Match (nt_expr, cases) -> 
+    | Match (nt_ctx, nt_expr, cases) -> 
       let cases, matches_so_far = List.fold_left (fun (acc_cases, acc_matches) case -> match case with 
         | A.Case (nts, expr) ->
           let matches_so_far, expr = r matches_so_far expr in
@@ -261,16 +266,16 @@ fun ctx expr ->
           CaseStub nts :: acc_cases, acc_matches
       ) ([], matches_so_far) cases in
       matches_so_far,
-      Match (nt_expr, List.rev cases) 
+      Match (nt_ctx, nt_expr, List.rev cases) 
     | BVCast (len, NTExpr (nt_ctx, nt1 :: nt2 :: nts, idx)) -> 
       if SS.mem nt1 matches_so_far then 
         matches_so_far, 
         BVCast (len, NTExpr (nt_ctx @ [nt1], nt2 :: nts, idx))
       else
         let matches_so_far = SS.add nt1 matches_so_far in
-        let rule, remaining_cases = gen_match_info ctx nt1 nt2 in 
+        let rule, remaining_cases = gen_match_info ctx nt1 nt2 nt_ctx in 
         matches_so_far,
-        Match (nt1, Case (rule, BVCast (len, NTExpr (nt_ctx @ [nt1], nt2 :: nts, idx))) :: remaining_cases)
+        Match (nt_ctx, nt1, Case (rule, BVCast (len, NTExpr (nt_ctx @ [nt1], nt2 :: nts, idx))) :: remaining_cases)
     | BVCast (len, expr) -> 
       let matches_so_far, expr = r matches_so_far expr in 
       matches_so_far,

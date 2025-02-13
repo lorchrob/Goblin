@@ -25,15 +25,17 @@ type bin_operator =
 | Div
 
 type case = 
-| Case of string list * expr 
-| CaseStub of string list
+(* A case is a list of <context, nonterminal> pairs (denoting a pattern) and the corresponding expression *)
+| Case of (string list * string) list * expr 
+| CaseStub of (string list * string) list
 and expr =
 | BinOp of expr * bin_operator * expr
 | UnOp of unary_operator * expr
 | CompOp of expr * comp_operator * expr
 | Length of expr
 | BVCast of int * expr
-| Match of string * case list
+(* First string list track the context of the nonterminal being matched *)
+| Match of string list * string * case list
 (* First string list tracks the context of a nonterminal after desugaring to match expression
    Second int list is for dot notation input e.g. <A>.<B>.<C> 
    Int option is for disambiguating references. 

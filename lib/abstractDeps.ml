@@ -11,7 +11,12 @@ let rec calculate_casts: expr -> expr
 | UnOp (op, expr) -> UnOp (op, calculate_casts expr) 
 | CompOp (expr1, op, expr2) -> CompOp (calculate_casts expr1, op, calculate_casts expr2) 
 | Length expr -> Length (calculate_casts expr) 
-| Match (nt_expr, cases) -> Match (nt_expr, cases) 
+| Match (nt_ctx, nt, cases) -> 
+  let cases = List.map (fun case -> match case with 
+  | CaseStub _ -> case 
+  | Case (nts, e) -> Case (nts, calculate_casts e)
+  ) cases in
+  Match (nt_ctx, nt, cases) 
 | NTExpr _ 
 | BVConst _ 
 | BLConst _ 

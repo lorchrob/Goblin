@@ -131,8 +131,8 @@ Utils.StringMap.iter (fun stub_id dep -> match dep with
 | SyGuSExpr _ -> failwith "Internal error: dependency map contains a SyGuSExpr"
 ) dep_map
 
-let rec pp_print_match: Format.formatter -> TC.context -> string -> A.case list -> unit 
-= fun ppf ctx nt cases ->
+let rec pp_print_match: Format.formatter -> TC.context -> string list -> string -> A.case list -> unit 
+= fun ppf ctx nt_ctx nt cases -> 
   let adt_cases = match StringMap.find nt ctx with 
   | ADT rules -> rules
   | _ -> failwith "Internal error: sygus.ml (pp_print_match)" 
@@ -141,39 +141,46 @@ let rec pp_print_match: Format.formatter -> TC.context -> string -> A.case list 
   | A.Case (nts, expr) -> nts, expr 
   | CaseStub nts -> nts, BConst true 
   ) cases in 
-  let match_rules = List.map (fun (nts, expr) -> 
+  let match_rules = List.map (fun (pattern, expr) -> 
+    let original_nts = List.map snd pattern in
     (* With ambiguous NTs, we added "__n" to disambiguate *)
     let original_nts = List.map (fun nt -> 
       Str.split (Str.regexp "__") nt |> List.hd
-     ) nts in
+     ) original_nts in
     let rule_index = Lib.find_index original_nts adt_cases in 
-    ((rule_index, nts), expr)
+    ((rule_index, pattern), expr)
   ) match_rules in
+  let nt_with_context = String.concat "_" (nt_ctx @ [nt]) |> String.lowercase_ascii in
 
   Format.fprintf ppf "(match %s (
     %a
   ))"
-    (String.lowercase_ascii nt)
+    nt_with_context
     (Lib.pp_print_list (fun ppf -> Format.fprintf ppf "(%a)" (pp_print_option ctx nt)) " ") match_rules
 
-and pp_print_option: TC.context -> string -> Format.formatter -> ((int * (string list)) * A.expr) -> unit 
-= fun ctx nt ppf ((i, options), expr) -> 
-  let options = List.map String.lowercase_ascii options in
+and pp_print_option: TC.context -> string -> Format.formatter -> ((int * ((string list * string) list)) * A.expr) -> unit 
+= fun ctx nt ppf ((i, pattern), expr) -> 
+  let pattern = List.map (fun (nt_ctx, nt) -> nt_ctx @ [nt]) pattern in
+  let pattern = List.map (List.map String.lowercase_ascii) pattern in
   Format.fprintf ppf "(%s_con%d %a) %a"
   (String.lowercase_ascii nt)
   i
-  (Lib.pp_print_list Format.pp_print_string " ") options
-  (pp_print_expr ctx) expr
+  (Lib.pp_print_list (fun option -> (Lib.pp_print_list Format.pp_print_string "_") option) " ") pattern
+  (pp_print_expr ctx) expr 
 
 and pp_print_expr: TC.context -> Format.formatter -> A.expr -> unit 
 = fun ctx ppf expr -> match expr with 
-| NTExpr (_, [nt], None) -> Format.pp_print_string ppf (String.lowercase_ascii nt)
-| NTExpr (_, [nt], Some i) -> 
+| NTExpr (nt_ctx, [nt], None) -> 
   (*!! TODO: Use a representation that prevents name clashes with user names *)
+  let nts = List.map String.lowercase_ascii (nt_ctx @ [nt]) in
+  Lib.pp_print_list Format.pp_print_string "_" ppf nts
+| NTExpr (nt_ctx, [nt], Some i) -> 
+  (*!! TODO: Use a representation that prevents name clashes with user names *)
+  let nts = List.map String.lowercase_ascii (nt_ctx @ [nt]) in
   Format.fprintf ppf "%a__%d"
-    Format.pp_print_string (String.lowercase_ascii nt)
+    (Lib.pp_print_list Format.pp_print_string "_") nts
     i
-| A.Match (nt, cases)  -> pp_print_match ppf ctx nt cases
+| A.Match (nt_ctx, nt, cases)  -> pp_print_match ppf ctx nt_ctx nt cases
 | NTExpr _ -> assert false (* pp_print_match ppf ctx nts *)
 | BinOp (expr1, op, expr2) -> 
   Format.fprintf ppf "(%a %a %a)"
@@ -415,6 +422,7 @@ fun ctx dep_map ast ->
   (* Call sygus command *)
   let cvc5 = find_command_in_path "cvc5" in
   let cvc5_2 = match Sys.getenv_opt "PATH_TO_SECOND_CVC5" with 
+  (* let cvc5_2 = find_command_in_path "cvc5" in *)
   | Some path -> path 
   | None -> print_endline "Proceeding without a second cvc5 config"; cvc5 
   in

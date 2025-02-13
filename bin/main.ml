@@ -39,9 +39,11 @@ let () =
 
   let out = (Pipeline.main_pipeline 
     "
-    <S> ::= <A> <B> { <A>.<B> > <B>; };
-    <A> ::= <B>;
-    <B> :: Int;
+    <S> ::= <A> <B> { <A>.<B>.<D> > <A>.<C>; };
+    <A> ::= <B> <C>;
+    <B> ::= <C> <D>;
+    <C> :: Int;
+    <D> :: Int;
   ") in
 
   (* let out = (Pipeline.main_pipeline 
