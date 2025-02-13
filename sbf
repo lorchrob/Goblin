@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+# Check if any arguments are passed
+if [ "$#" -eq 0 ]; then
+    dune exec sbf
+else
+    dune exec sbf -- "$@"
+fi
