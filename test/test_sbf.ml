@@ -1,34 +1,31 @@
 open Sbf.Pipeline
 open Alcotest
 
-(* TODO 
-Add test case for multiple cyclic dependencies: 
-"
-    <S> ::= <A> <B> <C> <D> { <A> <- <B>; <B> <- <A>; <C> <- <D>; <D> <- <C>; };
-    <A> :: Int;
-    <B> :: Int;
-    <C> :: Int; 
-    <D> :: Int;
-"
-
-Add test case for nt expr to match conversion: 
-"
+let test_dot_notation_2 () =
+  let input = 
+    "
     <S> ::= <A> { <A>.<B>.<C> > <A>.<B>.<D>; };
     <A> ::= <B>;
     <B> ::= <C> <D>;
     <C> :: Int;
     <D> :: Int; 
   "
+  in
+  let output = main_pipeline input in
+  check string "test_dot_notation_2" output "0-1\n"
 
-Add test cases for "horizontal" ambiguous references 
-  let out = (Pipeline.main_pipeline 
+let test_cyclic_dependencies () =
+  let input = 
     "
-    <S> ::= <A> { <A>.<B> > <A>.<C>; };
-    <A> ::= <B> <B> <C> <C>;
+    <S> ::= <A> <B> <C> <D> { <A> <- <B>; <B> <- <A>; <C> <- <D>; <D> <- <C>; };
+    <A> :: Int;
     <B> :: Int;
-    <C> :: Int;
-  ") in
-*)
+    <C> :: Int; 
+    <D> :: Int;
+"
+  in
+  let output = main_pipeline input in
+  check string "test_cyclic_dependencies" output "0000\n"
 
 let test_horizontal_ambiguous_reference_1 () =
   let input = 
@@ -311,4 +308,6 @@ let () =
     "test_vertical_ambiguous_reference_1", [test_case "test_vertical_ambiguous_reference_1" `Quick test_vertical_ambiguous_reference_1];
     "test_vertical_ambiguous_reference_2", [test_case "test_vertical_ambiguous_reference_2" `Quick test_vertical_ambiguous_reference_2];
     "test_horizontal_ambiguous_reference_1", [test_case "test_horizontal_ambiguous_reference_1" `Quick test_horizontal_ambiguous_reference_1];
+    "test_cyclic_dependencies", [test_case "test_cyclic_dependencies" `Quick test_cyclic_dependencies];
+    "test_dot_notation_2", [test_case "test_dot_notation_2" `Quick test_dot_notation_2];
   ]
