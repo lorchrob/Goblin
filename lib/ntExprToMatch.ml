@@ -35,9 +35,9 @@ let gen_match_info ctx nt1 nt2 nt_ctx =
   let remaining_rules = List.filter (fun rule' -> rule' != rule) rules in
   (* let remaining_cases = List.map (fun rule -> A.CaseStub rule) remaining_rules in *)
   (*!! TODO: Generalize to possibly match multiple rules *)
-  let rule = List.map (fun nt -> nt_ctx @ [nt1], nt) rule in
+  let rule = List.map (fun nt -> nt_ctx @ [nt1], nt, None) rule in
   let remaining_rules = List.map (fun nts -> 
-    Ast.CaseStub (List.map (fun nt -> nt_ctx @ [nt1], nt) nts)
+    Ast.CaseStub (List.map (fun nt -> nt_ctx @ [nt1], nt, None) nts)
   ) remaining_rules in
   rule, remaining_rules
 

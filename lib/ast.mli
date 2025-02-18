@@ -26,8 +26,9 @@ type bin_operator =
 
 type case = 
 (* A case is a list of <context, nonterminal> pairs (denoting a pattern) and the corresponding expression *)
-| Case of (string list * string) list * expr 
-| CaseStub of (string list * string) list
+(* The int option eases dealing with horizontal ambiguous references *)
+| Case of (string list * string * int option) list * expr 
+| CaseStub of (string list * string * int option) list
 and expr =
 | BinOp of expr * bin_operator * expr
 | UnOp of unary_operator * expr
@@ -73,9 +74,9 @@ type element =
 
 type ast = element list
 
-(* val rename : expr -> (string * string) list -> expr  *)
+val rename : expr -> (string * int) list -> expr 
 val get_nts_from_expr : expr -> string list
-(* val get_nts_from_expr_shallow : expr -> string list *)
+val get_nts_from_expr_shallow : expr -> string list
 val pp_print_element: Format.formatter -> element ->  unit 
 val pp_print_ast : Format.formatter -> ast -> unit
 val pp_print_nt_expr : Format.formatter -> string list -> unit

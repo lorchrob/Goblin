@@ -29,9 +29,10 @@ type bin_operator =
 | Div
 
 type case = 
-(* A case is a list of <context, nonterminal> pairs (denoting a pattern) and the corresponding expression *)
-| Case of (string list * string) list * expr 
-| CaseStub of (string list * string) list
+(* A case is a list of <context, nonterminal, idx> triples (denoting a pattern) and the corresponding expression *)
+(* The int option eases dealing with horizontal ambiguous references *)
+| Case of (string list * string * int option) list * expr 
+| CaseStub of (string list * string * int option) list
 and
 expr = 
 | BinOp of expr * bin_operator * expr 
@@ -94,30 +95,27 @@ type btree =
 *)
 
 (* Substitute e1 for var in e2. In other words, output e1[var\e2] *)
-(* let rec rename: expr -> (string * string) list -> expr 
+let rec rename: expr -> (string * int) list -> expr 
 = fun e renaming -> 
   match e with 
-  | NTExpr ([id]) -> (
+  | NTExpr (nt_ctx, [id], None) -> (
     match List.assoc_opt id renaming with 
-    | Some id2 -> NTExpr ([id2])
+    | Some i -> NTExpr (nt_ctx, [id], Some i)
     | None -> e
     )
-  | NTExpr _ -> failwith "Nested or indexed NTExprs not yet supported"
-  | Match (nt, cases) -> (
-    match List.assoc_opt nt renaming with 
-    | Some nt2 -> Match (nt2, cases)
-    | None -> e
-    )
+  (*!! TODO: Check if this case is necessary *)
+  | Match (nt_ctx, nt, cases) -> Match (nt_ctx, nt, cases)
   | BinOp (expr1, op, expr2) -> BinOp (rename expr1 renaming, op, rename expr2 renaming) 
   | UnOp (op, expr) -> UnOp (op, rename expr renaming) 
   | CompOp (expr1, op, expr2) -> CompOp (rename expr1 renaming, op, rename expr2 renaming) 
   | Length expr -> Length (rename expr renaming) 
+  | NTExpr _ -> failwith "Internal error in rename: case should be impossible"
   | BVConst _ 
   | BLConst _ 
   | BConst _ 
   | BVCast _  
   | StrConst _
-  | IntConst _ -> e *)
+  | IntConst _ -> e
 
 (* This function is used before desugaring dot expressions *)
 let rec get_nts_from_expr: expr -> string list 
@@ -145,13 +143,13 @@ let rec get_nts_from_expr: expr -> string list
   | IntConst _ -> []
 
 (* For when you want to process simple NTs after translation of dot to match expressions *)
-(* let rec get_nts_from_expr_shallow: expr -> string list 
+let rec get_nts_from_expr_shallow: expr -> string list 
 = fun expr -> 
   let r = get_nts_from_expr_shallow in
   match expr with 
-  | NTExpr (nt :: _) -> [nt] 
+  | NTExpr (_, nt :: _, _) -> [nt] 
   | NTExpr _ -> failwith "Impossible case in get_nts_from_expr_shallow"
-  | Match (nt, _) -> [nt]
+  | Match (_, nt, _) -> [nt]
   | BinOp (expr1, _, expr2) -> 
     r expr1 @ r expr2
   | UnOp (_, expr) -> 
@@ -165,7 +163,7 @@ let rec get_nts_from_expr: expr -> string list
   | BConst _ 
   | BVCast _  
   | StrConst _
-  | IntConst _ -> [] *)
+  | IntConst _ -> []
 
 let pp_print_nonterminal: Format.formatter -> string -> unit 
 = fun ppf nt -> 
@@ -210,10 +208,16 @@ let pp_print_comp_op: Format.formatter -> comp_operator -> unit
 
 (* let pp_print_bit: Format.formatter -> bool ->  *)
 
-let pp_print_pattern: Format.formatter -> (string list * string) -> unit
-= fun ppf (nt_ctx, nt) -> 
-  Format.fprintf ppf "<%a>"
-    (Lib.pp_print_list Format.pp_print_string "_") (nt_ctx @ [nt])
+let pp_print_pattern: Format.formatter -> (string list * string * int option) -> unit
+= fun ppf (nt_ctx, nt, idx) -> 
+  match idx with 
+  | None -> 
+    Format.fprintf ppf "<%a>"
+      (Lib.pp_print_list Format.pp_print_string "_") (nt_ctx @ [nt])
+  | Some i -> 
+    Format.fprintf ppf "<%a(%d)>"
+      (Lib.pp_print_list Format.pp_print_string "_") (nt_ctx @ [nt])
+      i
 
 let rec pp_print_case: Format.formatter -> case -> unit 
 = fun ppf case -> 
@@ -222,7 +226,7 @@ let rec pp_print_case: Format.formatter -> case -> unit
     Format.fprintf ppf "| %a -> %a"
       (Lib.pp_print_list pp_print_pattern " ") pattern 
       pp_print_expr expr
-  | CaseStub pattern -> 
+  | CaseStub (pattern) -> 
     Format.fprintf ppf "| %a -> STUB"
       (Lib.pp_print_list pp_print_pattern " ") pattern
 

@@ -19,28 +19,28 @@ let main_pipeline input_string =
   let ast = TypeChecker.check_types ctx ast in
   Debug.debug_print Format.pp_print_string ppf "\nType checking complete\n";
 
-  (* Step 2.5: Convert NTExprs to Match expressions *)
+  (* Step 3: Convert NTExprs to Match expressions *)
   let ast = Utils.recurse_until_fixpoint ast (=) (NtExprToMatch.convert_nt_exprs_to_matches ctx) in
   Debug.debug_print Format.pp_print_string ppf "\nDesugaring NTExprs complete:\n";
   Debug.debug_print Ast.pp_print_ast ppf ast;
 
-  (* Step 3: Resolve ambiguities in constraints *)
-  (* let ast = ResolveAmbiguities.resolve_ambiguities ast in
+  (* Step 4: Resolve ambiguities in constraints *)
+  let ast = ResolveAmbiguities.resolve_ambiguities ast in
   Debug.debug_print Format.pp_print_string ppf "\nResolving grammar ambiguities complete:\n";
-  Debug.debug_print Ast.pp_print_ast ppf ast; *)
+  Debug.debug_print Ast.pp_print_ast ppf ast;
 
-  (* Step 4: Abstract away dependent terms in the grammar *)
+  (* Step 5: Abstract away dependent terms in the grammar *)
   Debug.debug_print Format.pp_print_string ppf "\nDependent term abstraction:\n";
   let dep_map, ast, ctx = AbstractDeps.abstract_dependencies ctx ast in 
   Debug.debug_print Ast.pp_print_ast ppf ast;
 
-  (* Step 5: Divide and conquer *)
+  (* Step 6: Divide and conquer *)
   Debug.debug_print Format.pp_print_string ppf "\n\nDivide and conquer:\n";
   let asts = DivideAndConquer.split_ast ast in 
   List.iter (fun ast -> Debug.debug_print Ast.pp_print_ast ppf ast; Debug.debug_print Lib.pp_print_newline ppf ()) asts;
   Debug.debug_print Lib.pp_print_newline ppf ();
 
-  (* Step 6: Translate to SyGuS problems *)
+  (* Step 7.1: Translate to SyGuS problems *)
   Debug.debug_print Format.pp_print_string ppf "\nSyGuS translation:\n";
   List.iter (fun ast -> Debug.debug_print Sygus.pp_print_ast ppf (ctx, dep_map, ast); Debug.debug_print Lib.pp_print_newline ppf ()) asts;
   Debug.debug_print Lib.pp_print_newline ppf ();
@@ -48,7 +48,7 @@ let main_pipeline input_string =
   Format.pp_print_flush Format.std_formatter ();
 
   if not !Debug.only_parse then (
-    (* Step 7: Call sygus engine *)
+    (* Step 7.2: Call sygus engine *)
     Debug.debug_print Format.pp_print_string ppf "Calling SyGuS:";
     Debug.debug_print Lib.pp_print_newline ppf ();
     let sygus_outputs = List.map (Sygus.call_sygus ctx dep_map) asts in
@@ -113,7 +113,7 @@ let sygusGrammarToPacket ast =
   let ast = Utils.recurse_until_fixpoint ast (=) (NtExprToMatch.convert_nt_exprs_to_matches ctx) in
 
   (* Step 4: Resolve ambiguities in constraints *)
-  (* let ast = ResolveAmbiguities.resolve_ambiguities ast in *)
+  let ast = ResolveAmbiguities.resolve_ambiguities ast in
 
   (* Step 5: Abstract away dependent terms in the grammar *)
   let dep_map, ast, ctx = AbstractDeps.abstract_dependencies ctx ast in 

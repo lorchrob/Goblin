@@ -30,6 +30,18 @@ Add test cases for "horizontal" ambiguous references
   ") in
 *)
 
+let test_horizontal_ambiguous_reference_1 () =
+  let input = 
+    "
+    <S> ::= <A> { <A>.<B> > <A>.<C>; };
+    <A> ::= <B> <B> <C> <C>;
+    <B> :: Int;
+    <C> :: Int;
+  "
+  in
+  let output = main_pipeline input in
+  check string "test_horizontal_ambiguous_reference_1" output "00-1-1\n"
+
 let test_vertical_ambiguous_reference_1 () =
   let input = 
     "
@@ -298,4 +310,5 @@ let () =
     "test_dot_notation", [test_case "Test dot notation" `Quick test_dot_notation];
     "test_vertical_ambiguous_reference_1", [test_case "test_vertical_ambiguous_reference_1" `Quick test_vertical_ambiguous_reference_1];
     "test_vertical_ambiguous_reference_2", [test_case "test_vertical_ambiguous_reference_2" `Quick test_vertical_ambiguous_reference_2];
+    "test_horizontal_ambiguous_reference_1", [test_case "test_horizontal_ambiguous_reference_1" `Quick test_horizontal_ambiguous_reference_1];
   ]
