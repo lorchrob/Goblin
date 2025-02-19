@@ -24,8 +24,7 @@ module SS = Utils.StringSet
   
   *)
 
-let gen_match_info ctx (nt1, _) (nt2, _) nt_ctx = 
-  let nt_ctx = List.map fst nt_ctx in
+let gen_match_info ctx (nt1, idx1) (nt2, _) nt_ctx = 
   let rules = match SM.find nt1 ctx with 
   | A.ADT rules -> rules 
   | _ -> failwith "Internal error: sygus.ml (nt_to_match)" 
@@ -36,9 +35,9 @@ let gen_match_info ctx (nt1, _) (nt2, _) nt_ctx =
   let remaining_rules = List.filter (fun rule' -> rule' != rule) rules in
   (* let remaining_cases = List.map (fun rule -> A.CaseStub rule) remaining_rules in *)
   (*!! TODO: Generalize to possibly match multiple rules *)
-  let rule = List.map (fun nt -> nt_ctx @ [nt1], nt, None) rule in
+  let rule = List.map (fun nt -> nt_ctx @ [nt1, idx1], (nt, None)) rule in
   let remaining_rules = List.map (fun nts -> 
-    Ast.CaseStub (List.map (fun nt -> nt_ctx @ [nt1], nt, None) nts)
+    Ast.CaseStub (List.map (fun nt -> nt_ctx @ [nt1, idx1], (nt, None)) nts)
   ) remaining_rules in
   rule, remaining_rules
 

@@ -29,10 +29,10 @@ type bin_operator =
 | Div
 
 type case = 
-(* A case is a list of <context, nonterminal, idx> triples (denoting a pattern) and the corresponding expression *)
+(* A case is a list of <context, nonterminal> pairs (denoting a pattern) and the corresponding expression *)
 (* The int option eases dealing with horizontal ambiguous references *)
-| Case of (string list * string * int option) list * expr 
-| CaseStub of (string list * string * int option) list
+| Case of ((string * int option) list * (string * int option)) list * expr 
+| CaseStub of ((string * int option) list * (string * int option)) list
 and
 expr = 
 | BinOp of expr * bin_operator * expr 
@@ -230,16 +230,9 @@ let pp_print_comp_op: Format.formatter -> comp_operator -> unit
 
 (* let pp_print_bit: Format.formatter -> bool ->  *)
 
-let pp_print_pattern: Format.formatter -> (string list * string * int option) -> unit
-= fun ppf (nt_ctx, nt, idx) -> 
-  match idx with 
-  | None -> 
-    Format.fprintf ppf "<%a>"
-      (Lib.pp_print_list Format.pp_print_string "_") (nt_ctx @ [nt])
-  | Some i -> 
-    Format.fprintf ppf "<%a(%d)>"
-      (Lib.pp_print_list Format.pp_print_string "_") (nt_ctx @ [nt])
-      i
+let pp_print_pattern: Format.formatter -> ((string * int option) list * (string * int option)) -> unit
+= fun ppf (nt_ctx, (nt, idx)) -> 
+    pp_print_nt_with_underscores ppf (nt_ctx @ [nt, idx])
 
 let rec pp_print_case: Format.formatter -> case -> unit 
 = fun ppf case -> 

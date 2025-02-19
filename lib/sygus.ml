@@ -142,7 +142,7 @@ let rec pp_print_match: Format.formatter -> TC.context -> (string * int option) 
   | CaseStub nts -> nts, BConst true 
   ) cases in 
   let match_rules = List.map (fun (pattern, expr) -> 
-    let original_nts = List.map (fun (_, b, _) -> b) pattern in
+    let original_nts = List.map (fun (_, (b, _)) -> b) pattern in
     let rule_index = Lib.find_index original_nts adt_cases in 
     ((rule_index, pattern), expr)
   ) match_rules in
@@ -153,22 +153,13 @@ let rec pp_print_match: Format.formatter -> TC.context -> (string * int option) 
     (Lib.pp_print_list pp_print_nt_helper "_") (nt_ctx @ [nt, idx])
     (Lib.pp_print_list (fun ppf -> Format.fprintf ppf "(%a)" (pp_print_option ctx nt)) " ") match_rules
 
-and pp_print_pattern_nt 
-= fun ppf (pattern, idx) -> 
-    Format.fprintf ppf "%a%s"
-      (Lib.pp_print_list Format.pp_print_string "_") pattern 
-      (match idx with 
-        | Some idx -> string_of_int idx 
-        | None -> "")
-
-and pp_print_option: TC.context -> string -> Format.formatter -> ((int * ((string list * string * int option) list)) * A.expr) -> unit 
+and pp_print_option: TC.context -> string -> Format.formatter -> ((int * (((string * int option) list * (string * int option)) list)) * A.expr) -> unit 
 = fun ctx nt ppf ((i, pattern), expr) -> 
-  let pattern = List.map (fun (nt_ctx, nt, idx) -> nt_ctx @ [nt], idx) pattern in
-  let pattern = List.map (fun (nt, idx) -> List.map String.lowercase_ascii nt, idx) pattern in
+  let pattern = List.map (fun (nt_ctx, (nt, idx)) -> nt_ctx @ [nt, idx]) pattern in
     Format.fprintf ppf "(%s_con%d %a) %a"
     (String.lowercase_ascii nt)
     i
-    (Lib.pp_print_list pp_print_pattern_nt " ") pattern
+    (Lib.pp_print_list (fun t -> (Lib.pp_print_list pp_print_nt_helper "_") t) " ") pattern
     (pp_print_expr ctx) expr 
 
 and pp_print_nt_helper 

@@ -27,7 +27,7 @@ let rec process_expr: A.expr -> A.expr
     | A.CaseStub _ -> case 
     | Case (nts, expr) -> 
       (* Map of nt -> # of occurrences for nts *)
-      let dups = List.fold_left (fun acc (_, nt, _) ->
+      let dups = List.fold_left (fun acc (_, (nt, _)) ->
         match SM.find_opt nt acc with 
         | None -> SM.add nt 1 acc
         | Some i -> SM.add nt (i+1) acc
@@ -36,11 +36,11 @@ let rec process_expr: A.expr -> A.expr
         i > 1
       ) dups in
       (* Rename duplicated nts *)
-      let nts, _ = List.fold_left (fun (acc_nts, acc_dups) (nt_ctx, nt, idx) -> 
+      let nts, _ = List.fold_left (fun (acc_nts, acc_dups) (nt_ctx, (nt, idx)) -> 
         match SM.find_opt nt acc_dups with 
-        | None -> (nt_ctx, nt, idx) :: acc_nts, acc_dups
+        | None -> (nt_ctx, (nt, idx)) :: acc_nts, acc_dups
         | Some i -> 
-          let acc_nts = (nt_ctx, nt, Some i) :: acc_nts in
+          let acc_nts = (nt_ctx, (nt, Some i)) :: acc_nts in
           let acc_dups = SM.add nt (i-1) acc_dups in
           acc_nts, acc_dups  
       ) ([], dups) nts in 

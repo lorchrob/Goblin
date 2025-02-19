@@ -27,8 +27,8 @@ type bin_operator =
 type case = 
 (* A case is a list of <context, nonterminal> pairs (denoting a pattern) and the corresponding expression *)
 (* The int option eases dealing with horizontal ambiguous references *)
-| Case of (string list * string * int option) list * expr 
-| CaseStub of (string list * string * int option) list
+| Case of ((string * int option) list * (string * int option)) list * expr 
+| CaseStub of ((string * int option) list * (string * int option)) list
 and expr =
 | BinOp of expr * bin_operator * expr
 | UnOp of unary_operator * expr
