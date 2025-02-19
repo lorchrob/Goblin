@@ -131,8 +131,8 @@ Utils.StringMap.iter (fun stub_id dep -> match dep with
 | SyGuSExpr _ -> failwith "Internal error: dependency map contains a SyGuSExpr"
 ) dep_map
 
-let rec pp_print_match: Format.formatter -> TC.context -> string list -> string -> A.case list -> unit 
-= fun ppf ctx nt_ctx nt cases -> 
+let rec pp_print_match: Format.formatter -> TC.context -> (string * int option) list -> string * int option -> A.case list -> unit 
+= fun ppf ctx nt_ctx (nt, idx) cases -> 
   let adt_cases = match StringMap.find nt ctx with 
   | ADT rules -> rules
   | _ -> failwith "Internal error: sygus.ml (pp_print_match)" 
@@ -146,12 +146,11 @@ let rec pp_print_match: Format.formatter -> TC.context -> string list -> string 
     let rule_index = Lib.find_index original_nts adt_cases in 
     ((rule_index, pattern), expr)
   ) match_rules in
-  let nt_with_context = String.concat "_" (nt_ctx @ [nt]) |> String.lowercase_ascii in
 
-  Format.fprintf ppf "(match %s (
+  Format.fprintf ppf "(match %a (
     %a
   ))"
-    nt_with_context
+    (Lib.pp_print_list pp_print_nt_helper "_") (nt_ctx @ [nt, idx])
     (Lib.pp_print_list (fun ppf -> Format.fprintf ppf "(%a)" (pp_print_option ctx nt)) " ") match_rules
 
 and pp_print_pattern_nt 
@@ -172,20 +171,22 @@ and pp_print_option: TC.context -> string -> Format.formatter -> ((int * ((strin
     (Lib.pp_print_list pp_print_pattern_nt " ") pattern
     (pp_print_expr ctx) expr 
 
+and pp_print_nt_helper 
+= fun ppf (str, idx) -> 
+  Format.fprintf ppf "%s%s"
+    (String.lowercase_ascii str) 
+    (match idx with 
+    | None -> ""
+    | Some i -> string_of_int i)
+
 and pp_print_expr: TC.context -> Format.formatter -> A.expr -> unit 
 = fun ctx ppf expr -> match expr with 
-| NTExpr (nt_ctx, [nt], None) -> 
+| NTExpr (nt_ctx, [nt]) -> 
   (*!! TODO: Use a representation that prevents name clashes with user names *)
-  let nts = List.map String.lowercase_ascii (nt_ctx @ [nt]) in
-  Lib.pp_print_list Format.pp_print_string "_" ppf nts
-| NTExpr (nt_ctx, [nt], Some i) -> 
-  (*!! TODO: Use a representation that prevents name clashes with user names *)
-  let nts = List.map String.lowercase_ascii (nt_ctx @ [nt]) in
-  Format.fprintf ppf "%a%d"
-    (Lib.pp_print_list Format.pp_print_string "_") nts
-    i
+  let nts = List.map (fun (str, idx) -> String.lowercase_ascii str, idx) (nt_ctx @ [nt]) in
+  Lib.pp_print_list pp_print_nt_helper "_" ppf nts
 | A.Match (nt_ctx, nt, cases)  -> pp_print_match ppf ctx nt_ctx nt cases
-| NTExpr _ -> assert false (* pp_print_match ppf ctx nts *)
+| NTExpr _ -> failwith "Reached impossible case in pp_print_expr"
 | BinOp (expr1, op, expr2) -> 
   Format.fprintf ppf "(%a %a %a)"
     pp_print_binop op 

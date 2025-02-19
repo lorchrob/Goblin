@@ -31,10 +31,10 @@ let last lst = lst |> List.rev |> List.hd
 
 let rec infer_type_expr: context -> mode -> expr -> il_type option
 = fun ctx mode expr -> match expr with 
-| NTExpr (_, nt_expr, _) -> (
-  match Utils.StringMap.find (last nt_expr) ctx with 
+| NTExpr (_, nt_expr) -> (
+  match Utils.StringMap.find (fst (last nt_expr)) ctx with 
   | ADT _ -> 
-    let msg = "Type checking error: Nonterminal '" ^ (last nt_expr) ^ "' has a composite type, but is used in some operation that requires a primitive type" in
+    let msg = "Type checking error: Nonterminal '" ^ (fst (last nt_expr)) ^ "' has a composite type, but is used in some operation that requires a primitive type" in
     type_checker_error mode msg;
     None
   | ty -> Some ty

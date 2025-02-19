@@ -59,15 +59,16 @@ let rec check_dangling_identifiers: Utils.StringSet.t -> expr -> expr
 = fun nt_set expr -> 
   let call = check_dangling_identifiers nt_set in 
   let check_d_ids_nt_expr nt_expr = 
-    List.map (fun nt -> match Utils.StringSet.find_opt nt nt_set with 
+    List.iter (fun nt -> match Utils.StringSet.find_opt nt nt_set with 
     | None -> failwith ("Dangling identifier " ^ nt)
-    | Some _ -> nt
+    | Some _ -> ()
     ) nt_expr
   in
   match expr with 
-  | NTExpr (nt_context, nt_expr, index) -> 
-    let nt_expr = check_d_ids_nt_expr nt_expr in 
-    NTExpr (nt_context, nt_expr, index)
+  | NTExpr (nt_ctx, nt_expr) -> 
+    let nt_expr' = List.map fst nt_expr in
+    let _ = check_d_ids_nt_expr nt_expr' in 
+    NTExpr (nt_ctx, nt_expr)
   | BinOp (expr1, op, expr2) -> BinOp (call expr1, op, call expr2) 
   | UnOp (op, expr) -> UnOp (op, call expr) 
   | CompOp (expr1, op, expr2) -> CompOp (call expr1, op, call expr2) 
@@ -80,14 +81,14 @@ let rec check_dangling_identifiers: Utils.StringSet.t -> expr -> expr
   | IntConst _ 
   | StrConst _ -> expr
 
-let rec check_nt_expr_refs: prod_rule_map -> string list -> string list 
+let rec check_nt_expr_refs: prod_rule_map -> (string * int option) list -> (string * int option) list 
 = fun prm nt_expr -> match nt_expr with 
-| nt1 :: nt2 :: tl ->
+| (nt1, idx1) :: (nt2, idx2) :: tl ->
   if (not (Utils.StringSet.mem nt2 (Utils.StringMap.find nt1 prm))) 
   then 
-    let sub_expr_str = Utils.capture_output Ast.pp_print_nt_expr [nt1; nt2] in
+    let sub_expr_str = Utils.capture_output Ast.pp_print_nt_with_dots [(nt1, idx1); (nt2, idx2)] in
     failwith ("Dot notation " ^ sub_expr_str ^ " is an invalid reference" )
-  else nt1 :: check_nt_expr_refs prm (nt2 :: tl)
+  else (nt1, idx1) :: check_nt_expr_refs prm ((nt2, idx2) :: tl)
 | _ -> nt_expr
 
 (* Check each nonterminal expression begins with a valid nonterminal
@@ -96,12 +97,12 @@ let rec check_prod_rule_nt_exprs: prod_rule_map -> Utils.StringSet.t -> expr -> 
 = fun prm nts expr -> 
   let call = check_prod_rule_nt_exprs prm nts in
   match expr with 
-  | NTExpr (nt_context, nt_expr, index) -> 
-    if (not (Utils.StringSet.mem (List.hd nt_expr) nts)) 
-    then failwith ("Nonterminal " ^  (List.hd nt_expr) ^ " not found in current production rule or type annotation")
+  | NTExpr (nt_context, nt_expr) -> 
+    if (not (Utils.StringSet.mem (List.hd nt_expr |> fst) nts)) 
+    then failwith ("Nonterminal " ^  (List.hd nt_expr |> fst) ^ " not found in current production rule or type annotation")
     else
       let nt_expr = check_nt_expr_refs prm nt_expr in 
-      NTExpr (nt_context, nt_expr, index) 
+      NTExpr (nt_context, nt_expr) 
   | BinOp (expr1, op, expr2) -> BinOp (call expr1, op, call expr2) 
   | UnOp (op, expr) -> UnOp (op, call expr) 
   | CompOp (expr1, op, expr2) -> CompOp (call expr1, op, call expr2) 
@@ -120,12 +121,12 @@ let rec check_type_annot_nt_exprs: prod_rule_map -> Utils.StringSet.t -> expr ->
 = fun prm nts expr -> 
   let call = check_type_annot_nt_exprs prm nts in
   match expr with 
-  | NTExpr (nt_context, nt_expr, index) -> 
-    if (not (Utils.StringSet.mem (List.hd nt_expr) nts)) 
-    then failwith ("Nonterminal " ^  (List.hd nt_expr) ^ " not found in current production rule or type annotation")
+  | NTExpr (nt_context, nt_expr) -> 
+    if (not (Utils.StringSet.mem (List.hd nt_expr |> fst) nts)) 
+    then failwith ("Nonterminal " ^  (List.hd nt_expr |> fst) ^ " not found in current production rule or type annotation")
     else
       let nt_expr = check_nt_expr_refs prm nt_expr in 
-      NTExpr (nt_context, nt_expr, index) 
+      NTExpr (nt_context, nt_expr) 
   | BinOp (expr1, op, expr2) -> BinOp (call expr1, op, call expr2) 
   | UnOp (op, expr) -> UnOp (op, call expr) 
   | CompOp (expr1, op, expr2) -> CompOp (call expr1, op, call expr2) 
@@ -210,7 +211,7 @@ let remove_circular_deps: ast -> ast
               if List.mem nt cycle
               then (
                 Debug.debug_print Format.pp_print_string Format.std_formatter "Replacing dependency with SyGuS constraint\n";
-                SyGuSExpr (CompOp (NTExpr ([], [nt], None), Eq, expr)) :: acc
+                SyGuSExpr (CompOp (NTExpr ([], [nt, None]), Eq, expr)) :: acc
               ) else dep :: acc
             ) [] dependencies
           in 
@@ -240,7 +241,7 @@ let check_scs_for_dep_terms: semantic_constraint list -> semantic_constraint lis
   | Dependency (nt, expr) -> 
     if StringSet.mem nt deps_to_convert then (
       Debug.debug_print Format.pp_print_string Format.std_formatter "Replacing dependency with SyGuS constraint\n";
-      SyGuSExpr (CompOp (NTExpr ([], [nt], None), Eq, expr)) :: acc
+      SyGuSExpr (CompOp (NTExpr ([], [nt, None]), Eq, expr)) :: acc
     ) else sc :: acc
   | SyGuSExpr _ -> sc :: acc
   ) [] scs |> List.rev

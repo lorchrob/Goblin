@@ -40,8 +40,9 @@ expr =
 | CompOp of expr * comp_operator * expr 
 | Length of expr
 | BVCast of int * expr
-(* First string list track the context of the nonterminal being matched *)
-| Match of string list * string * case list
+(* First string list track the context of the nonterminal being matched 
+   Int options are for clarifying ambiguous dot notation references, as in NTExpr *)
+| Match of (string * int option) list * (string * int option) * case list
 (* First string list tracks the context of a nonterminal after desugaring to match expression
    Second int list is for dot notation input e.g. <A>.<B>.<C> 
    Int option is for disambiguating references. 
@@ -51,8 +52,11 @@ expr =
    <A>.<B> to a match expression match <A> with | ... <B> ... -> <expr containing <B>>
    the expression containing <B> needs to remember it came from <A>, in case of name 
    clashes. So, this dot notation context is stored in the first string list.
+
+   The int options are initially None, but may be populated by the tool as a  
+   structured form of renaming to clarify ambiguous dot notation references.
    *)
-| NTExpr of string list * string list * int option
+| NTExpr of (string * int option) list * (string * int option) list
 | BVConst of int * bool list
 | BLConst of bool list
 | BConst of bool
@@ -98,9 +102,9 @@ type btree =
 let rec rename: expr -> (string * int) list -> expr 
 = fun e renaming -> 
   match e with 
-  | NTExpr (nt_ctx, [id], None) -> (
+  | NTExpr (nt_ctx, [id, _]) -> (
     match List.assoc_opt id renaming with 
-    | Some i -> NTExpr (nt_ctx, [id], Some i)
+    | Some i -> NTExpr (nt_ctx, [id, Some i])
     | None -> e
     )
   (*!! TODO: Check if this case is necessary *)
@@ -122,8 +126,8 @@ let rec get_nts_from_expr: expr -> string list
 = fun expr -> 
   let r = get_nts_from_expr in
   match expr with 
-  | NTExpr (_, nts, _) -> nts 
-  | Match (_, nt, cases) -> [nt] @ (List.map (fun case -> match case with 
+  | NTExpr (_, nts) -> List.map fst nts 
+  | Match (_, (nt, _), cases) -> [nt] @ (List.map (fun case -> match case with 
     | CaseStub _ -> []
     | Case (_, expr) -> r expr
     ) cases |> List.flatten)
@@ -147,9 +151,9 @@ let rec get_nts_from_expr_shallow: expr -> string list
 = fun expr -> 
   let r = get_nts_from_expr_shallow in
   match expr with 
-  | NTExpr (_, nt :: _, _) -> [nt] 
+  | NTExpr (_, (nt, _) :: _) -> [nt] 
   | NTExpr _ -> failwith "Impossible case in get_nts_from_expr_shallow"
-  | Match (_, nt, _) -> [nt]
+  | Match (_, (nt, _), _) -> [nt]
   | BinOp (expr1, _, expr2) -> 
     r expr1 @ r expr2
   | UnOp (_, expr) -> 
@@ -165,13 +169,31 @@ let rec get_nts_from_expr_shallow: expr -> string list
   | StrConst _
   | IntConst _ -> []
 
-let pp_print_nonterminal: Format.formatter -> string -> unit 
-= fun ppf nt -> 
-  Format.fprintf ppf "<%s>" nt
+let pp_print_nt_helper_dots: Format.formatter -> string * int option -> unit 
+= fun ppf (nt, idx) -> 
+  Format.fprintf ppf "<%s%s>" 
+    nt
+    (match idx with 
+    | None -> ""
+    | Some i -> string_of_int i)
 
-let pp_print_nt_expr: Format.formatter -> string list -> unit
+let pp_print_nt_helper_underscores: Format.formatter -> string * int option -> unit 
+= fun ppf (nt, idx) -> 
+  Format.fprintf ppf "%s%s" 
+    nt
+    (match idx with 
+    | None -> ""
+    | Some i -> string_of_int i)
+
+let pp_print_nt_with_dots: Format.formatter -> (string * int option) list -> unit
 = fun ppf nt_expr -> 
-  Lib.pp_print_list pp_print_nonterminal "." ppf nt_expr 
+  Format.fprintf ppf "%a"
+  (Lib.pp_print_list pp_print_nt_helper_dots ".") nt_expr 
+
+let pp_print_nt_with_underscores: Format.formatter -> (string * int option) list -> unit
+= fun ppf nt_expr -> 
+  Format.fprintf ppf "<%a>"
+  (Lib.pp_print_list pp_print_nt_helper_underscores "_") nt_expr 
 
 let pp_print_bin_op: Format.formatter -> bin_operator -> unit
 = fun ppf op -> match op with 
@@ -254,21 +276,15 @@ and pp_print_expr: Format.formatter -> expr -> unit
     width 
     pp_print_expr expr 
 | Match (nts, nt, cases) -> 
-  Format.fprintf ppf "(match <%a> with %a)"
-    (Lib.pp_print_list Format.pp_print_string "_") (nts @ [nt]) 
+  Format.fprintf ppf "(match %a with %a)"
+    pp_print_nt_with_underscores (nts @ [nt])
     (Lib.pp_print_list pp_print_case " ") cases 
-| NTExpr ([], nt_expr, None) -> pp_print_nt_expr ppf nt_expr 
-| NTExpr ([], nt_expr, Some i) -> 
-    Format.fprintf ppf "%a(%d)"
-      pp_print_nt_expr nt_expr 
-      i 
-| NTExpr (nts, nt_expr, None) -> 
-  Format.fprintf ppf "<%a>"
-    (Lib.pp_print_list Format.pp_print_string "_") (nts @ nt_expr) 
-| NTExpr (nts, nt_expr, Some i) -> 
-    Format.fprintf ppf "<%a(%d)>"
-      (Lib.pp_print_list Format.pp_print_string "_") (nts @ nt_expr)
-      i 
+| NTExpr (nts, [nt_expr]) -> pp_print_nt_with_underscores ppf (nts @ [nt_expr]) 
+| NTExpr ([], nt_expr) -> pp_print_nt_with_dots ppf (nt_expr) 
+| NTExpr (nt_ctx, nts) -> 
+  Format.fprintf ppf "%a:%a"
+    pp_print_nt_with_underscores nt_ctx 
+    pp_print_nt_with_dots nts
 | BLConst bits -> 
   let bits = List.map Bool.to_int bits in
   Format.fprintf ppf "(BitList 0b%a)"
@@ -284,8 +300,8 @@ and pp_print_expr: Format.formatter -> expr -> unit
 let pp_print_semantic_constraint: Format.formatter -> semantic_constraint -> unit 
 = fun ppf sc -> match sc with 
 | Dependency (nt, expr) -> 
-  Format.fprintf ppf "%a <- %a;"
-    pp_print_nonterminal nt 
+  Format.fprintf ppf "<%a> <- %a;"
+    Format.pp_print_string nt 
     pp_print_expr expr
 | SyGuSExpr expr -> 
   Format.fprintf ppf "%a;"
@@ -305,7 +321,7 @@ let pp_print_ty: Format.formatter -> il_type -> unit
 
 let pp_print_grammar_element: Format.formatter -> grammar_element ->  unit 
 = fun ppf g_el -> match g_el with 
-| Nonterminal nt -> pp_print_nonterminal ppf nt
+| Nonterminal nt -> pp_print_nt_with_dots ppf [nt, None]
 | StubbedNonterminal (_, stub_id) -> Format.pp_print_string ppf stub_id
 
 let pp_print_prod_rule_rhs: Format.formatter -> prod_rule_rhs -> unit 
@@ -325,17 +341,17 @@ let pp_print_element: Format.formatter -> element ->  unit
 = fun ppf el -> match el with 
 | ProdRule (nt, rhss) -> 
   Format.fprintf ppf "%a ::= %a;"
-    pp_print_nonterminal nt
+    pp_print_nt_with_dots [nt, None]
     (Lib.pp_print_list pp_print_prod_rule_rhs " | ") rhss
 
 | TypeAnnotation (nt, ty, []) -> 
   Format.fprintf ppf "%a :: %a;"
-    pp_print_nonterminal nt 
+    pp_print_nt_with_dots [nt, None] 
     pp_print_ty ty
 
 | TypeAnnotation (nt, ty, scs) -> 
   Format.fprintf ppf "%a :: %a { %a };"
-    pp_print_nonterminal nt 
+    pp_print_nt_with_dots [nt, None] 
     pp_print_ty ty
     (Lib.pp_print_list pp_print_semantic_constraint " ") scs
 

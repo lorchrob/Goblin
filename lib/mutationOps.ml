@@ -60,8 +60,8 @@ and isPresentInExpr (nt:string) (e:expr) : bool =
     | CompOp (e1, _, e2) -> (isPresentInExpr nt e1) || (isPresentInExpr nt e2)
     | Length (e) -> (isPresentInExpr nt e)
     | BVCast (_, e) -> (isPresentInExpr nt e)
-    | NTExpr (_, n, _) -> (List.mem nt n)
-    | Match (_, nt2, caselist) -> (nt = nt2) || isPresentInCaseList nt caselist
+    | NTExpr (_, n) -> (List.mem nt (List.map fst n))
+    | Match (_, (nt2, _), caselist) -> (nt = nt2) || isPresentInCaseList nt caselist
     | _ -> false 
     
 let rec remove_constraints (nt : string) (clist : semantic_constraint list) : semantic_constraint list = 
