@@ -35,6 +35,7 @@ let rec process_expr: A.expr -> A.expr
     let cases = List.map (fun case -> match case with 
     | A.CaseStub _ -> case 
     | Case (nts, expr) -> 
+      let expr = r expr in
       (* Map of nt -> # of occurrences for nts *)
       let dups = List.fold_left (fun acc (nt_ctx, nt) ->
         let nt = nt_ctx @ [nt] in
