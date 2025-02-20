@@ -34,7 +34,7 @@ let gen_match_info ctx (nt1, idx1) (nt2, _) nt_ctx =
   ) rules in
   let remaining_rules = List.filter (fun rule' -> rule' != rule) rules in
   (* let remaining_cases = List.map (fun rule -> A.CaseStub rule) remaining_rules in *)
-  (*!! TODO: Generalize to possibly match multiple rules *)
+  (* TODO: Generalize to possibly match multiple rules *)
   let rule = List.map (fun nt -> nt_ctx @ [nt1, idx1], (nt, None)) rule in
   let remaining_rules = List.map (fun nts -> 
     Ast.CaseStub (List.map (fun nt -> nt_ctx @ [nt1, idx1], (nt, None)) nts)
@@ -132,7 +132,7 @@ fun ctx expr ->
         let matches_so_far = SS.add (fst nt3) matches_so_far in
         let rule, remaining_cases = gen_match_info ctx nt3 nt4 nt_ctx2 in
         matches_so_far,
-        (*!! TODO: Test if the choice of nt_ctx matters *)
+        (* TODO: Test if the choice of nt_ctx matters *)
         Match (nt_ctx2, nt3, Case (rule, BinOp (NTExpr (nt_ctx1 @ [nt1], nt2 :: nts1), op, NTExpr (nt_ctx2 @ [nt3], nt4 :: nts2))) :: remaining_cases)
       else if not (SS.mem (fst nt1) matches_so_far) && SS.mem (fst nt3) matches_so_far then
         let matches_so_far = SS.add (fst nt1) matches_so_far in

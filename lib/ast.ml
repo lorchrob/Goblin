@@ -99,16 +99,35 @@ type btree =
 *)
 
 (* Substitute e1 for var in e2. In other words, output e1[var\e2] *)
-let rec rename: expr -> (string * int) list -> expr 
+let rec rename: expr -> ((string * int option) list * int) list -> expr 
 = fun e renaming -> 
   match e with 
-  | NTExpr (nt_ctx, [id, _]) -> (
-    match List.assoc_opt id renaming with 
+  | NTExpr (nt_ctx, [id, idx]) -> (
+    match List.assoc_opt (nt_ctx @ [id, idx]) renaming with 
     | Some i -> NTExpr (nt_ctx, [id, Some i])
     | None -> e
     )
-  (*!! TODO: Check if this case is necessary *)
-  | Match (nt_ctx, nt, cases) -> Match (nt_ctx, nt, cases)
+  | Match (nt_ctx, (id, idx), cases) -> (
+    let cases = List.map (fun case -> match case with 
+    | CaseStub pattern -> 
+      let pattern = List.map (fun (nt_ctx, (id, idx)) ->
+        match List.assoc_opt (nt_ctx @ [id, idx]) renaming with 
+        | Some i -> nt_ctx, (id, Some i)
+        | None -> nt_ctx, (id, idx)
+      ) pattern in
+      CaseStub pattern
+    | Case (pattern, expr) -> 
+      let pattern = List.map (fun (nt_ctx, (id, idx)) ->
+        match List.assoc_opt (nt_ctx @ [id, idx]) renaming with 
+        | Some i -> nt_ctx, (id, Some i)
+        | None -> nt_ctx, (id, idx)
+      ) pattern in
+      Case (pattern, rename expr renaming)
+    ) cases in
+    match List.assoc_opt (nt_ctx @ [id, idx]) renaming with 
+    | Some i -> Match (nt_ctx, (id, Some i), cases)
+    | None -> Match (nt_ctx, (id, idx), cases) 
+    )
   | BinOp (expr1, op, expr2) -> BinOp (rename expr1 renaming, op, rename expr2 renaming) 
   | UnOp (op, expr) -> UnOp (op, rename expr renaming) 
   | CompOp (expr1, op, expr2) -> CompOp (rename expr1 renaming, op, rename expr2 renaming) 
@@ -127,7 +146,7 @@ let rec get_nts_from_expr: expr -> string list
   let r = get_nts_from_expr in
   match expr with 
   | NTExpr (_, nts) -> List.map fst nts 
-  | Match (_, (nt, _), cases) -> [nt] @ (List.map (fun case -> match case with 
+  | Match (_, (nt, _), cases) -> nt :: (List.map (fun case -> match case with 
     | CaseStub _ -> []
     | Case (_, expr) -> r expr
     ) cases |> List.flatten)
@@ -147,13 +166,18 @@ let rec get_nts_from_expr: expr -> string list
   | IntConst _ -> []
 
 (* For when you want to process simple NTs after translation of dot to match expressions *)
-let rec get_nts_from_expr_shallow: expr -> string list 
+let rec get_nts_from_expr_after_desugaring_dot_notation: expr -> (string * int option) list list 
 = fun expr -> 
-  let r = get_nts_from_expr_shallow in
+  let r = get_nts_from_expr_after_desugaring_dot_notation in
   match expr with 
-  | NTExpr (_, (nt, _) :: _) -> [nt] 
-  | NTExpr _ -> failwith "Impossible case in get_nts_from_expr_shallow"
-  | Match (_, (nt, _), _) -> [nt]
+  | NTExpr (nt_ctx, (nt, idx) :: _) -> [nt_ctx @ [nt, idx]] 
+  | NTExpr _ -> failwith "Impossible case in get_nts_from_expr_after_desugaring_dot_notation"
+  | Match (nt_ctx, (nt, idx), cases) -> (nt_ctx @ [nt, idx]) :: 
+    (List.map (fun case -> match case with 
+    | CaseStub pattern -> List.map (fun (nt_ctx, (nt, idx)) -> nt_ctx @ [nt, idx]) pattern
+    | Case (pattern, expr) -> 
+      List.map (fun (nt_ctx, (nt, idx)) -> nt_ctx @ [nt, idx]) pattern @ r expr
+    ) cases |> List.flatten)
   | BinOp (expr1, _, expr2) -> 
     r expr1 @ r expr2
   | UnOp (_, expr) -> 

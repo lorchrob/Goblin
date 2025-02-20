@@ -34,7 +34,7 @@ let rec check_type_expr: context -> SyntaxChecker.prod_rule_map -> string -> gra
       failwith error_message
     else expr
 
-  | UnOp (BVNot, expr) -> expr (*!!*)
+  | UnOp (BVNot, expr) -> expr (**)
 
   | BinOp (expr1, BVAnd, expr2) -> expr
   | BinOp (expr1, BVOr, expr2) -> expr

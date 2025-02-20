@@ -1,11 +1,20 @@
 module A = Ast
-module SM = Utils.StringMap
+type nt = (string * int option) list
 
+let compare_nts nt1 nt2 = List.compare (fun (str1, i1) (str2, i2) -> 
+  let c1 = String.compare str1 str2 in 
+  if c1 <> 0 then c1 
+  else Option.compare (-) i1 i2
+) nt1 nt2
 
+module NTM = Map.Make(struct
+  type t = nt  
+  let compare = compare_nts
+end)
 
-let create_substitutions (dups : int list SM.t) : (string * int) list list =
+let create_substitutions (dups : int list NTM.t) : ((string * int option) list * int) list list =
   (* Generate all combinations of (key, value) pairs from the map *)
-  let choices = SM.bindings dups |> List.map (fun (key, values) -> List.map (fun v -> (key, v)) values) in
+  let choices = NTM.bindings dups |> List.map (fun (key, values) -> List.map (fun v -> (key, v)) values) in
   
   (* Compute the Cartesian product of these choices to get all possible substitutions *)
   let rec cartesian_product = function
@@ -27,36 +36,40 @@ let rec process_expr: A.expr -> A.expr
     | A.CaseStub _ -> case 
     | Case (nts, expr) -> 
       (* Map of nt -> # of occurrences for nts *)
-      let dups = List.fold_left (fun acc (_, (nt, _)) ->
-        match SM.find_opt nt acc with 
-        | None -> SM.add nt 1 acc
-        | Some i -> SM.add nt (i+1) acc
-      ) SM.empty nts in 
-      let dups = SM.filter (fun _ i -> 
+      let dups = List.fold_left (fun acc (nt_ctx, nt) ->
+        let nt = nt_ctx @ [nt] in
+        match NTM.find_opt nt acc with 
+        | None -> NTM.add nt 1 acc
+        | Some i -> NTM.add nt (i+1) acc
+      ) NTM.empty nts in 
+      let dups = NTM.filter (fun _ i -> 
         i > 1
       ) dups in
       (* Rename duplicated nts *)
       let nts, _ = List.fold_left (fun (acc_nts, acc_dups) (nt_ctx, (nt, idx)) -> 
-        match SM.find_opt nt acc_dups with 
+        let nt' = nt_ctx @ [nt, idx] in
+        match NTM.find_opt nt' acc_dups with 
         | None -> (nt_ctx, (nt, idx)) :: acc_nts, acc_dups
         | Some i -> 
           let acc_nts = (nt_ctx, (nt, Some i)) :: acc_nts in
-          let acc_dups = SM.add nt (i-1) acc_dups in
+          let acc_dups = NTM.add nt' (i-1) acc_dups in
           acc_nts, acc_dups  
       ) ([], dups) nts in 
       let nts = List.rev nts in
       (* Generate new expr for every possible combination of ambiguous references *)
-      let expr_nts = A.get_nts_from_expr_shallow expr in 
-      let duplicated_expr_nts = List.filter (fun nt -> SM.mem nt dups) expr_nts in
-      let dups = SM.filter (fun nt _ -> List.mem nt duplicated_expr_nts) dups in
-      let dups = SM.fold (fun nt i acc -> 
+      let expr_nts = A.get_nts_from_expr_after_desugaring_dot_notation expr in 
+      let duplicated_expr_nts = List.filter (fun nt -> NTM.mem nt dups) expr_nts in
+      let dups = NTM.filter (fun nt _ -> List.mem nt duplicated_expr_nts) dups in
+      let dups = NTM.fold (fun nt i acc -> 
         let generated_nts = 
           Utils.replicate nt i |> 
           List.mapi (fun i _ -> i+1)
         in
-        SM.add nt generated_nts acc  
-      ) dups SM.empty in
+        NTM.add nt generated_nts acc  
+      ) dups NTM.empty in
       let substitutions = create_substitutions dups in
+      (* For debugging substitution list *)
+      (* List.iter (fun substitution -> List.iter (fun (nt, i) -> A.pp_print_nt_with_underscores Format.std_formatter nt; print_endline (string_of_int i)) substitution; print_endline "") substitutions; *)
       let exprs = List.map (A.rename expr) substitutions in
       (* Cover all possible cases with conjunction *)
       let expr = match exprs with 

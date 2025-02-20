@@ -53,7 +53,7 @@ let replicate value length =
 let il_int_to_bitvector: int -> int -> expr 
 = fun length n ->
   if n >= (1 lsl length) then
-    (*!! If we overflow, return max value *)
+    (* NOTE: If we overflow, return max value *)
     BVConst (length, replicate true length)
   else
     let rec to_bits acc len n =

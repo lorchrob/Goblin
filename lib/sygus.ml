@@ -18,7 +18,7 @@ let pp_print_ty: Format.formatter -> A.il_type -> unit
 = fun ppf ty -> match ty with 
 | Int -> Format.fprintf ppf "Int"
 | Bool -> Format.fprintf ppf "Bool"
-(*!! Strings should only be present for dependency computations. 
+(* NOTE: Strings should only be present for dependency computations. 
    If it's here, it is a grammar element that would be pruned anyway. *)
 | String -> Format.fprintf ppf "Int"
 | BitVector len -> Format.fprintf ppf "(_ BitVec %d)" len
@@ -173,7 +173,7 @@ and pp_print_nt_helper
 and pp_print_expr: TC.context -> Format.formatter -> A.expr -> unit 
 = fun ctx ppf expr -> match expr with 
 | NTExpr (nt_ctx, [nt]) -> 
-  (*!! TODO: Use a representation that prevents name clashes with user names *)
+  (* TODO: Use a representation that prevents name clashes with user names *)
   let nts = List.map (fun (str, idx) -> String.lowercase_ascii str, idx) (nt_ctx @ [nt]) in
   Lib.pp_print_list pp_print_nt_helper "_" ppf nts
 | A.Match (nt_ctx, nt, cases)  -> pp_print_match ppf ctx nt_ctx nt cases

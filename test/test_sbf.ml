@@ -1,6 +1,19 @@
 open Sbf.Pipeline
 open Alcotest
 
+let test_another_ambiguous_reference () =
+  let input = 
+    "
+    <S> ::= <A> { <A>.<B>.<D> > <A>.<C>.<D>; };
+    <A> ::= <B> <B> <C> <C>;
+    <B> ::= <D>;
+    <C> ::= <D>;
+    <D> :: Int;
+  "
+  in
+  let output = main_pipeline input in
+  check string "test_another_ambiguous_reference" output "00-1-1\n"
+
 let test_dot_notation_2 () =
   let input = 
     "
@@ -293,8 +306,6 @@ let () =
     "test_dt2", [test_case "Dependent term 2" `Quick test_dt2];
     "test_dc", [test_case "Divide and conquer" `Quick test_dc];
     "test_bl", [test_case "Bit list" `Quick test_bl];
-    (* "test_top_level_ty_annot", [test_case "Top level type annotation" `Quick test_top_level_ty_annot]; *)
-    (* "test_ty_annot_sc", [test_case "Top level type annotation with semantic constraint" `Quick test_ty_annot_sc]; *)
     "test_mult_prod_rules", [test_case "Test example with nonterminal with multiple prod rules, with semantic constraints" `Quick test_mult_prod_rules];
     "test_ty_annot_sc2", [test_case "Top level type annotation with semantic constraint 2" `Quick test_ty_annot_sc2];
     "test_bv_len", [test_case "Top length function on bitvector" `Quick test_bv_len];
@@ -310,4 +321,5 @@ let () =
     "test_horizontal_ambiguous_reference_1", [test_case "test_horizontal_ambiguous_reference_1" `Quick test_horizontal_ambiguous_reference_1];
     "test_cyclic_dependencies", [test_case "test_cyclic_dependencies" `Quick test_cyclic_dependencies];
     "test_dot_notation_2", [test_case "test_dot_notation_2" `Quick test_dot_notation_2];
+    "test_another_ambiguous_reference", [test_case "test_another_ambiguous_reference" `Quick test_another_ambiguous_reference];
   ]

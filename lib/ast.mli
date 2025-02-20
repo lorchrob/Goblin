@@ -78,12 +78,13 @@ type element =
 
 type ast = element list
 
-val rename : expr -> (string * int) list -> expr 
+val rename : expr -> ((string * int option) list * int) list -> expr 
 val get_nts_from_expr : expr -> string list
-val get_nts_from_expr_shallow : expr -> string list
+val get_nts_from_expr_after_desugaring_dot_notation : expr -> (string * int option) list list 
 val pp_print_element: Format.formatter -> element ->  unit 
 val pp_print_ast : Format.formatter -> ast -> unit
 val pp_print_nt_with_dots : Format.formatter -> (string * int option) list -> unit
+val pp_print_nt_with_underscores : Format.formatter -> (string * int option) list -> unit
 val pp_print_expr : Format.formatter -> expr -> unit
 val pp_print_ty : Format.formatter -> il_type -> unit
 val pp_print_semantic_constraint: Format.formatter -> semantic_constraint -> unit

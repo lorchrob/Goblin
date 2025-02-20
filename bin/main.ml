@@ -48,12 +48,12 @@ let () =
 
   (* let out = (Pipeline.main_pipeline 
   "
-    <S> ::= <A> { <A>.<B> + 3 < 0; <A>.<D> + 3 < 0; }; 
-    <A> ::= <B> <C> | <D>;
+    <S> ::= <A> { <A>.<B> > <A>.<C>; };
+    <A> ::= <B> <B> <C> <C>;
     <B> :: Int;
     <C> :: Int;
-    <D> :: Int;
-    ") in *)
+  ") in *)
+
 
 
   print_endline out;
