@@ -25,7 +25,7 @@ let build_prm: ast -> prod_rule_map
   | ProdRule (nt, rhss) -> 
     List.fold_left (fun acc rhss -> match rhss with 
     | Rhs (ges, _) -> 
-      let grammar_elements = List.map Utils.grammar_element_to_string ges in
+      let grammar_elements = List.map Ast.grammar_element_to_string ges in
       let grammar_elements = Utils.StringSet.of_list grammar_elements in (
       match Utils.StringMap.find_opt nt acc with 
       | Some mem -> 
@@ -142,7 +142,7 @@ let rec check_type_annot_nt_exprs: prod_rule_map -> Utils.StringSet.t -> expr ->
 let check_syntax_prod_rule: prod_rule_map -> Utils.StringSet.t -> prod_rule_rhs -> prod_rule_rhs
 = fun prm nt_set rhss -> match rhss with 
 | Rhs (ges, scs) ->
-  let ges' = List.map Utils.grammar_element_to_string ges in
+  let ges' = List.map Ast.grammar_element_to_string ges in
   let scs = List.map (fun sc -> match sc with 
   | Dependency (nt2, expr) -> 
     if (not (Utils.StringSet.mem nt2 nt_set)) then failwith ("Dangling identifier " ^ nt2) else

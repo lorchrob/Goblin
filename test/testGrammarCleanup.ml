@@ -1,7 +1,7 @@
 open Sbf
 open Ast
 
-let input = Utils.parse "
+let input = Parsing.parse "
 <C> ::= <B>
 <S> ::= <A> <C> | <S> ;
 <A> ::= <B> | <S> ;

@@ -303,7 +303,7 @@ and evaluate: A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -> A.eleme
   )
 | BVCast (len, expr) -> (
   match call expr with 
-  | [IntConst i] -> [Utils.il_int_to_bitvector len i]
+  | [IntConst i] -> [A.il_int_to_bitvector len i]
   | _ -> eval_fail 27
  )
 | BVConst _ | BLConst _ | IntConst _ | BConst _ | StrConst _ -> [expr]

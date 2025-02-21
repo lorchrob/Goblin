@@ -91,42 +91,75 @@ type element =
 (* DANIYAL: This is the type of the grammar terms *)
 type ast = element list
 
-(* 
-Basic ADT:
-type btree = 
-| Leaf of int
-| Node of btree * int * btree 
-*)
 
-(* Substitute e1 for var in e2. In other words, output e1[var\e2] *)
+let rec drop lst n =
+  match (lst, n) with
+  | (xs, 0) -> xs
+  | ([], x) -> 
+    if x = 0 then [] else
+    failwith "Internal error: drop"
+  | (_ :: xs, n) -> drop xs (n - 1);;
+
+
+let prefixes lst =
+  let rec aux acc = function
+    | [] -> List.rev acc
+    | x :: xs -> aux ((match acc with [] -> [x] | p :: _ -> (p @ [x])) :: acc) xs
+  in
+  aux [] lst
+
+(* Base case of rename (below). Instead of renaming when there is an exact match of 
+   NTExprs, we rename for any matching prefix. *)
+let rename_base_case nt_expr renaming = 
+  let prefixes = prefixes nt_expr in 
+  let renamed_prefix = List.fold_left (fun acc nt_expr -> 
+    if acc != None then acc else
+    match List.assoc_opt (nt_expr) renaming with 
+    | Some i -> 
+      let nt_ctx = Utils.init nt_expr in 
+      let (id, _) = Utils.last nt_expr in
+      Some (nt_ctx @ [id, Some i])
+    | None -> None
+  ) None prefixes in 
+  match renamed_prefix with 
+  | None -> nt_expr 
+  | Some renamed_prefix -> 
+    let prefix_len = List.length renamed_prefix in 
+    renamed_prefix @ (drop nt_expr prefix_len)
+
+(* Substitute e1 for var in e2. *)
+(* TODO: 
+  1. Update the renaming to apply to nt prefixes, not just if the entire nt is an exact
+     match for the substitution
+  2. If we are matching on an nt with N possible renamings (including the previous generalization),
+     then we need to generate N nested matches on the nt (one for each renaming) BEFORE recursing 
+    *)
 let rec rename: expr -> ((string * int option) list * int) list -> expr 
 = fun e renaming -> 
   match e with 
-  | NTExpr (nt_ctx, [id, idx]) -> (
-    match List.assoc_opt (nt_ctx @ [id, idx]) renaming with 
-    | Some i -> NTExpr (nt_ctx, [id, Some i])
-    | None -> e
-    )
+  | NTExpr (nt_ctx, [id, idx]) -> 
+    let nt_expr = rename_base_case (nt_ctx @ [id, idx]) renaming in 
+    NTExpr (Utils.init nt_expr, [Utils.last nt_expr])
   | Match (nt_ctx, (id, idx), cases) -> (
     let cases = List.map (fun case -> match case with 
     | CaseStub pattern -> 
       let pattern = List.map (fun (nt_ctx, (id, idx)) ->
-        match List.assoc_opt (nt_ctx @ [id, idx]) renaming with 
-        | Some i -> nt_ctx, (id, Some i)
-        | None -> nt_ctx, (id, idx)
+        let nt_expr = rename_base_case (nt_ctx @ [id, idx]) renaming in 
+        Utils.init nt_expr, Utils.last nt_expr
       ) pattern in
       CaseStub pattern
     | Case (pattern, expr) -> 
       let pattern = List.map (fun (nt_ctx, (id, idx)) ->
-        match List.assoc_opt (nt_ctx @ [id, idx]) renaming with 
-        | Some i -> nt_ctx, (id, Some i)
-        | None -> nt_ctx, (id, idx)
+        let nt_expr = rename_base_case (nt_ctx @ [id, idx]) renaming in 
+        Utils.init nt_expr, Utils.last nt_expr
       ) pattern in
       Case (pattern, rename expr renaming)
     ) cases in
-    match List.assoc_opt (nt_ctx @ [id, idx]) renaming with 
+    (* match List.assoc_opt (nt_ctx @ [id, idx]) renaming with 
     | Some i -> Match (nt_ctx, (id, Some i), cases)
-    | None -> Match (nt_ctx, (id, idx), cases) 
+    | None -> Match (nt_ctx, (id, idx), cases)  *)
+    let nt_expr = rename_base_case (nt_ctx @ [id, idx]) renaming in 
+    Match (Utils.init nt_expr, Utils.last nt_expr, cases)
     )
   | BinOp (expr1, op, expr2) -> BinOp (rename expr1 renaming, op, rename expr2 renaming) 
   | UnOp (op, expr) -> UnOp (op, rename expr renaming) 
@@ -376,3 +409,23 @@ let pp_print_ast: Format.formatter -> ast ->  unit
 = fun ppf ast -> 
   Format.fprintf ppf "%a\n"
     (Lib.pp_print_list pp_print_element "\n") ast
+
+let il_int_to_bitvector: int -> int -> expr 
+= fun length n ->
+  if n >= (1 lsl length) then
+    (* NOTE: If we overflow, return max value *)
+    BVConst (length, Utils.replicate true length)
+  else
+    let rec to_bits acc len n =
+      if len = 0 then acc
+      else
+        let bit = (n land 1) = 1 in
+        to_bits (bit :: acc) (len - 1) (n lsr 1)
+    in
+    let bits = to_bits [] length n in 
+    BVConst (length, bits)
+
+let grammar_element_to_string: grammar_element -> string 
+= fun grammar_element -> match grammar_element with 
+  | Nonterminal nt2 -> nt2
+  | StubbedNonterminal (_, stub_id) -> stub_id

@@ -88,3 +88,5 @@ val pp_print_nt_with_underscores : Format.formatter -> (string * int option) lis
 val pp_print_expr : Format.formatter -> expr -> unit
 val pp_print_ty : Format.formatter -> il_type -> unit
 val pp_print_semantic_constraint: Format.formatter -> semantic_constraint -> unit
+val il_int_to_bitvector : int -> int -> expr
+val grammar_element_to_string : grammar_element -> string

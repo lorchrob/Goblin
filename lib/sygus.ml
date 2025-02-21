@@ -243,7 +243,7 @@ let pp_print_constraints_rhs: TC.context -> string -> Format.formatter -> A.prod
 | StubbedRhs _ -> Format.fprintf ppf "2STUB\n"
 | Rhs (ges, scs) ->
   let 
-    ges = List.map Utils.grammar_element_to_string ges |> List.map String.lowercase_ascii 
+    ges = List.map Ast.grammar_element_to_string ges |> List.map String.lowercase_ascii 
   in  
   let exprs = List.filter_map (fun sc -> match sc with 
   | A.SyGuSExpr expr -> Some expr 
@@ -290,7 +290,7 @@ let pp_print_constraints: TC.context -> Format.formatter -> A.ast -> unit
 let pp_print_rhs: string -> Format.formatter -> A.prod_rule_rhs * int -> unit
 = fun nt ppf (rhs, idx) -> match rhs with 
 | A.Rhs (ges, _) ->
-  let ges = List.map Utils.grammar_element_to_string ges in 
+  let ges = List.map Ast.grammar_element_to_string ges in 
   let ges = List.map String.lowercase_ascii ges in
   Format.fprintf ppf "(%s %a)"
     ((String.lowercase_ascii nt) ^ "_con" ^ (string_of_int idx))

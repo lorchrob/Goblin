@@ -167,7 +167,7 @@ let serialize_bytes: endianness -> sygus_ast -> bytes * bytes
 
 (* For a concrete example, try the following in main.ml: 
 
-  let ast = Utils.parse
+  let ast = Parsing.parse
   "
   <S> ::= <A> <Placeholder> <B> <Placeholder2> <C> { <Placeholder> <- \"testa\"; <Placeholder2> <- \"testb\";};
   <A> :: BitVector(16) { <A> <- int_to_bitvector(16, 256); }; 

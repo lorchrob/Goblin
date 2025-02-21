@@ -4,7 +4,7 @@ let rec calculate_casts: expr -> expr
 = fun expr -> match expr with 
 | BVCast (len, expr) -> (
   match expr with 
-  | IntConst i -> Utils.il_int_to_bitvector len i
+  | IntConst i -> Ast.il_int_to_bitvector len i
   | _ -> BVCast (len, expr)
   )
 | BinOp (expr1, op, expr2) -> BinOp (calculate_casts expr1, op, calculate_casts expr2) 

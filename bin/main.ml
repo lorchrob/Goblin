@@ -39,21 +39,11 @@ let () =
 
   let out = (Pipeline.main_pipeline 
     "
-    <S> ::= <A> { <A>.<B>.<D> > <A>.<C>.<D>; };
-    <A> ::= <B> <B> <C> <C>;
-    <B> ::= <D>;
-    <C> ::= <D>;
+    <S> ::= <A> { <A>.<B>.<D> > <A>.<B>.<D>; };
+    <A> ::= <B> <B>;
+    <B> ::= <D> <D>;
     <D> :: Int;
   ") in
-
-  (* let out = (Pipeline.main_pipeline 
-  "
-    <S> ::= <A> { <A>.<B> > <A>.<C>; };
-    <A> ::= <B> <B> <C> <C>;
-    <B> :: Int;
-    <C> :: Int;
-  ") in *)
-
 
 
   print_endline out;

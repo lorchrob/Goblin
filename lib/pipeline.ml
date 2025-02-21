@@ -4,7 +4,7 @@ let main_pipeline input_string =
 
   (* Step 0: Parse user input *)
   Debug.debug_print Format.pp_print_string ppf "Lexing and parsing:\n";
-  let ast = Utils.parse input_string in 
+  let ast = Parsing.parse input_string in 
   Debug.debug_print Ast.pp_print_ast ppf ast;
 
   (* Step 1: Syntactic checks *)
@@ -56,7 +56,7 @@ let main_pipeline input_string =
     
     (* Step 8: Parse SyGuS output *)
     Debug.debug_print Format.pp_print_string ppf "\nParsing SyGuS output:\n";
-    let sygus_asts = List.map2 Utils.parse_sygus sygus_outputs asts in
+    let sygus_asts = List.map2 Parsing.parse_sygus sygus_outputs asts in
     let sygus_asts = List.map Result.get_ok sygus_asts in
     Debug.debug_print Format.pp_print_string ppf "\nSyGuS ASTs:\n";
     List.iter (Debug.debug_print SygusAst.pp_print_sygus_ast ppf) sygus_asts;
@@ -126,7 +126,7 @@ let sygusGrammarToPacket ast =
     let sygus_outputs = List.map (Sygus.call_sygus ctx dep_map) asts in
 
     (* Step 8: Parse SyGuS output. *)
-    let sygus_asts = List.map2 Utils.parse_sygus sygus_outputs asts in
+    let sygus_asts = List.map2 Parsing.parse_sygus sygus_outputs asts in
     match collect_results sygus_asts with
     | Error e -> Error e
     | Ok sygus_asts -> 
