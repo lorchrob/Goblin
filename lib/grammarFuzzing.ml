@@ -21,7 +21,9 @@ type output = CRASH | TIMEOUT | EXPECTED_OUTPUT | UNEXPECTED_OUTPUT | Message of
 
 type provenance = RawPacket of packet | ValidPacket of packet_type
 
-type child = (provenance list * grammar) * score
+type provenance_child = (provenance list) * score
+
+type grammar_child = grammar * score
 
 (* type single_queue = ((provenance list) * (child list)) *)
 
@@ -29,9 +31,11 @@ type queue_handle = NOTHING | CONFIRMED | ACCEPTED
 
 type state_child = NOTHING of child | CONFIRMED of child | ACCEPTED of child
 
-type population = NOTHING of child list | CONFIRMED of child list | ACCEPTED of child list
+type provenance_population = NOTHING of provenance_child list | CONFIRMED of provenance_child list | ACCEPTED of provenance_child list
 
-type triple_queue = population list
+type grammar_population = grammar_child list
+
+type triple_queue = provenance_population list
 
 type trace = packet list
 
