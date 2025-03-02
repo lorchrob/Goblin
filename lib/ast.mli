@@ -16,6 +16,8 @@ type bin_operator =
 | BVOr
 | BVXor
 | LAnd
+(* Generated logical and, to distinguish from user input logical and *)
+| GLAnd
 | LOr
 | LXor
 | LImplies
@@ -91,3 +93,4 @@ val pp_print_semantic_constraint: Format.formatter -> semantic_constraint -> uni
 val il_int_to_bitvector : int -> int -> expr
 val grammar_element_to_string : grammar_element -> string
 val nts_of_rhs: prod_rule_rhs -> string list 
+val expr_contains_dangling_nt: Utils.SILSet.t -> expr -> bool 

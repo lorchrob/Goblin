@@ -37,13 +37,45 @@ open Sbf
 let () = 
   Debug.parse_args ();
 
-    let out = (Pipeline.main_pipeline 
+    (* let out = (Pipeline.main_pipeline 
     "
     <S> ::= <A> { <A>.<B>.<D> > <A>.<B>.<D>; };
-    <A> ::= <B> | <B>;
+    <A> ::= <B> | <B> <D>;
     <B> ::= <D> <D>;
     <D> :: Int;
-  ") in
+  ") in *)
+
+  (* let out = (Pipeline.main_pipeline 
+    "
+    <S> ::= <A> { <A>.<B> > <A>.<C>; };
+    <A> ::= <B> <B> <C> <C>;
+    <B> :: Int;
+    <C> :: Int;
+  ") in *)
+
+  let out = (Pipeline.main_pipeline 
+  "
+  <S> ::= <A> <A> { <A>.<B>.<D> > 1; };
+  <A> ::= <B>;
+  <B> ::= <D>;
+  <D> :: Int;
+") in
+
+  (* let out = (Pipeline.main_pipeline 
+    "
+    <S> ::= <A> <A> { <A>.<B>.<D> > 1; };
+    <A> ::= <B> | <B> <D>;
+    <B> ::= <D>;
+    <D> :: Int;
+  ") in *)
+
+  (* let out = (Pipeline.main_pipeline 
+    "
+    <S> ::= <A> <A> | <A> <A> <D> { <A>.<B>.<D> > <A>.<B>.<D>; };
+    <A> ::= <B> | <B> <D>;
+    <B> ::= <D> <D>;
+    <D> :: Int;
+  ") in *)
 
 
   print_endline out;

@@ -3,14 +3,15 @@ module TC = TypeChecker
 module SM = Utils.StringMap
 
 module SISet = Set.Make(struct
-  type t = string * int option  (* Define the type of elements in the set *)
+  type t = string * int option  
   
-  (* Provide a comparison function for 'string * int' pairs *)
   let compare (s1, i1) (s2, i2) =
     let cmp_str = String.compare s1 s2 in
     if cmp_str <> 0 then cmp_str
     else compare i1 i2
 end)
+
+module SILSet = Utils.SILSet
 
 (* <A>.<B> + 3 < 0  
    -> 
@@ -37,23 +38,23 @@ let find_indices lst =
   let occurrences = Hashtbl.create (List.length lst) in
   
   (* Compute occurrences of each string *)
-  List.iter (fun s ->
+  List.iter (List.iter (fun s ->
     Hashtbl.replace occurrences s (match Hashtbl.find_opt occurrences s with
       | None -> 1
       | Some count -> count + 1
     )
-  ) lst;
+  )) lst;
 
   (* Generate the result with indices for repeated elements *)
   let counts = Hashtbl.create (List.length lst) in
-  List.map (fun s ->
+  List.map (List.map (fun s ->
     let count = Hashtbl.find occurrences s in
     if count = 1 then (s, None)
     else 
       let index = (Hashtbl.find_opt counts s |> Option.value ~default:0) + 1 in
       Hashtbl.replace counts s index;
       (s, Some (index - 1))
-  ) lst
+  )) lst
 
 (*!! TODO: 
   * Update to generate indices on matched pattern if there were multiple options
@@ -71,8 +72,8 @@ let gen_match_info ctx (nt1, idx1) (nt2, _idx2) nt_ctx =
   let remaining_rules = List.filter (fun rule' -> not (List.mem rule' rules')) rules in
   
   (* TODO: Generalize to possibly match multiple rules *)
-  let rules' = List.map find_indices rules' in
-  let remaining_rules = List.map find_indices remaining_rules in
+  let rules' = find_indices rules' in
+  let remaining_rules = find_indices remaining_rules in
   let rules' = List.map (List.map (fun (nt, idx) -> nt_ctx @ [nt1, idx1], (nt, idx))) rules' in
   let remaining_rules = List.map (fun nts -> 
     Ast.CaseStub (List.map (fun (nt, idx) -> nt_ctx @ [nt1, idx1], (nt, idx)) nts)
@@ -154,12 +155,22 @@ let rec pull_up_match_exprs: A.expr -> A.expr =
   | IntConst _ 
   | StrConst _ -> expr
 
-(* Generate match expressions for the "top level" of each NT expr. 
-   We apply this function iteratively until there are no more match 
-   statements to generate. If we encounter the same "top level" NT 
+(* Recursively generate match expressions for the "top level" of each NT expr, 
+   until all the NTExprs have no more dots. If we encounter the same "top level" NT 
    more than once, don't repeat the match. 
    
-   Here, "top level" refers to (e.g.) <A> in <A>.<B>.<C>... *)
+   Here, "top level" refers to (e.g.) <A> in <A>.<B>.<C>... 
+   
+   E.g., <A>.<B>.<C> > <A>.<D>.<E> 
+   -> 
+    match <A> with (don't match on <A> twice)
+      | <A_B> <A_D> -> (we record the "match history" in the pattern names for name disambiguation)
+        match <A_B> with
+        | <A_B_C> -> 
+          match <A_D> with 
+          | <A_D_E> -> 
+            <A_B_C> > <A_D_E> 
+   *)
 let nt_to_match: TC.context -> A.expr -> A.expr = 
 fun ctx expr -> 
   let rec helper: TC.context -> SISet.t -> A.expr -> SISet.t * A.expr 
@@ -397,15 +408,111 @@ fun ctx expr ->
     | StrConst _ -> matches_so_far, expr
   in snd (helper ctx SISet.empty expr)
 
+(* Say a production rule has multiple options with the same nonterminal, e.g., 
+  <A> ::= <B> | <B> { ... }. 
+  The resolveAmbiguities step of the pipeline transformed a constraint like "<A>.<B> > 1"
+  to "<A>.<B0> > 1 and <A>.<B1> > 1", because the semantics of dot notation is implicit universal 
+  quantification. 
+
+  But, the constraints over <B0> should only appear in 
+  the first case of "match <A> with | <A_B0> -> ... | <A_B1> -> ...", and the constraints over 
+  <B1> should only appear in the second case. So in the previous example, we should get 
+  "match <A> with | <A_B0> -> <A>.<B0> > 1 | <A_B1> -> <A>.<B1> > 1"
+
+  What if it's <A>.<B> > <A>.<B> - 1? Trivially valid, but pretend it's not. Then 
+  resolveAmbiguities generates 
+  <A>.<B0> > <A>.<B0> - 1 and <A>.<B0> > <A>.<B1> - 1 and <A>.<B1> > <A>.<B0> - 1 and <A>.<B1> > <A>.<B1> - 1. 
+  The first case should contain <A>.<B0> > <A>.<B0> - 1, and the second should contain 
+  <A>.<B1> > <A>.<B1> - 1. 
+  The other two conjuncts don't fit any case, because they reference hanging identifiers.
+
+  This function filters out the conjuncts that don't belong in each match expression case. 
+  *)
+let filter_out_dangling_nts expr = 
+  let rec helper ctx expr = match expr with
+  (* Generated conjunction. If expr1 or expr2 has dangling nts, remove it *)
+  | A.BinOp (expr1, GLAnd, expr2) -> 
+    let expr1 = helper ctx expr1 in 
+    let expr2 = helper ctx expr2 in
+    let b1 = A.expr_contains_dangling_nt ctx expr1 in 
+    let b2 = A.expr_contains_dangling_nt ctx expr2 in
+    if b1 && b2 then 
+      A.BConst true
+    else if b1 && not b2 then
+      helper ctx expr2
+    else if not b1 && b2 then
+      helper ctx expr1
+    else 
+      A.BinOp (expr1, GLAnd, expr2)
+  | Match (nt_ctx, nt, cases) -> 
+    (* Extend the context on each pattern if we're matching on a valid nt *)
+    if nt_ctx = [] || (SILSet.mem (nt_ctx @ [nt]) ctx) then 
+      let cases = List.map (fun case -> match case with 
+      | A.CaseStub _ -> case 
+      | Case (nt_expr, e) -> 
+        let ctx = List.fold_left (fun acc (nts, nt) ->
+          SILSet.add (nts @ [nt]) acc  
+        ) ctx nt_expr in 
+        (* let ctx = SILSet.add (nt_ctx @ [nt]) ctx in *)
+        Case (nt_expr, helper ctx e)
+      ) cases in
+      Match (nt_ctx, nt, cases) 
+    (* If we match on a dangling nt, remove the match. 
+       Dangling NTs in the resulting expr are handled recursively. *)
+    else 
+      (print_endline "got here";
+      List.iter (fun (nt, idx) -> match idx with 
+      | Some idx -> 
+        Format.fprintf Format.std_formatter "%s%d "
+          nt idx
+      | None -> 
+        Format.fprintf Format.std_formatter "%s "
+          nt
+      ) (nt_ctx @ [nt]);
+      Format.pp_print_newline Format.std_formatter ();
+      let expr = List.find_map (fun case -> match case with 
+      | A.CaseStub _ -> None 
+      | Case (_, expr) -> Some expr
+      ) cases |> Option.get in 
+      helper ctx expr)
+  | A.BinOp (expr1, op, expr2) -> 
+    A.BinOp (helper ctx expr1, op, helper ctx expr2) 
+  | UnOp (op, expr) -> 
+    UnOp (op, helper ctx expr) 
+  | CompOp (expr1, op, expr2) -> 
+    CompOp (helper ctx expr1, op, helper ctx expr2) 
+  | Length expr -> 
+    Length (helper ctx expr) 
+  | BVCast _
+  | NTExpr _ 
+  | BVConst _ 
+  | BLConst _ 
+  | BConst _ 
+  | IntConst _ 
+  | StrConst _ -> expr
+  in 
+  helper SILSet.empty expr
+
 let process_sc: TC.context -> A.semantic_constraint -> A.semantic_constraint 
 = fun ctx sc -> match sc with 
-  | A.Dependency (nt, expr) -> Dependency (nt, nt_to_match ctx expr |> pull_up_match_exprs)
-  | SyGuSExpr expr -> SyGuSExpr (nt_to_match ctx expr |> pull_up_match_exprs)
+  | A.Dependency (nt, expr) -> 
+    let expr = 
+      Utils.recurse_until_fixpoint expr (=) 
+      (fun expr -> nt_to_match ctx expr |> pull_up_match_exprs) 
+    in 
+    let expr = filter_out_dangling_nts expr in
+    Dependency (nt, expr)
+  | SyGuSExpr expr -> 
+    let expr = 
+      Utils.recurse_until_fixpoint expr (=) 
+      (A.pp_print_expr Format.std_formatter expr; Format.pp_print_newline Format.std_formatter ();
+        fun expr -> nt_to_match ctx expr |> pull_up_match_exprs) 
+    in 
+    let expr = filter_out_dangling_nts expr in
+    SyGuSExpr (expr)
 
 let convert_nt_exprs_to_matches: TC.context -> A.ast -> A.ast = 
   fun ctx ast -> 
-    Debug.debug_print Format.pp_print_string Format.std_formatter "NTExpr to Match iteration:\n";
-    Debug.debug_print A.pp_print_ast Format.std_formatter ast;
     List.map (fun element -> match element with
     | A.ProdRule (nt, rhss) -> 
       let rhss = List.map (fun rhs -> match rhs with 

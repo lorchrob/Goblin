@@ -162,6 +162,7 @@ and evaluate: A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -> A.eleme
   | [BVConst (len, bv1)], [BVConst (_, bv2)] -> [BVConst (len, List.map2 (fun a b -> (a || b) && not (a && b)) bv1 bv2)] 
   | _ -> eval_fail 12
   )
+|  BinOp (expr1, GLAnd, expr2)
 | BinOp (expr1, LAnd, expr2) -> 
   let expr1 = call expr1 in 
   let expr2 = call expr2 in (

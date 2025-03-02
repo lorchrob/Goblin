@@ -1,6 +1,16 @@
 module StringMap = Map.Make(String)
 module StringSet = Set.Make(String)
 
+module SILSet = Set.Make(struct
+  type t = (string * int option) list 
+  
+  let compare l1 l2 =
+    List.compare (fun (s1, i1) (s2, i2) -> 
+    let cmp_str = String.compare s1 s2 in
+    if cmp_str <> 0 then cmp_str
+    else compare i1 i2) l1 l2 
+end)
+
 (* Module state for creating fresh identifiers *)
 let k = ref 0
 

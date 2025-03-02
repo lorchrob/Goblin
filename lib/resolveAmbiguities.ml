@@ -1,3 +1,8 @@
+(* Note that if this ambiguity resolution strategy becomes too laborious, 
+   there is a simpler (but less efficient) approach of also introducing new 
+   symbols at the grammar level 
+   (the current strategy avoids this). *)
+
 module A = Ast
 module TC = TypeChecker
 type nt = (string * int option) list
@@ -5,6 +10,11 @@ type nt = (string * int option) list
 let cartesian_product lst1 lst2 =
   List.concat_map (fun x -> List.map (fun y -> (x, y)) lst2) lst1
 
+(* Given an input expr, convert it into a (generated) conjunction of 
+   all the possible expressions the base expr could represent. 
+   E.g., <A>.<B>.<C> > 0 could produce 
+   <A>.<B0>.<C0> > 1 and <A>.<B0>.<C1> > 1 and <A>.<B1>.<C0> > 1 and <A>.<B1>.<C1> > 1,
+   assuming there are ambiguous references for <A>.<B> and <B>.<C>.   *)
 let rec generate_all_possible_exprs: TC.context -> string list -> A.expr -> A.expr list
 (* nts represents the list of nonterminals that could be referenced in the expression *)
 = fun ctx nts expr -> 
@@ -93,14 +103,14 @@ let process_sc: TC.context -> string list -> A.semantic_constraint -> A.semantic
   | A.Dependency (nt, expr) -> 
     let exprs = generate_all_possible_exprs ctx nts expr in
     let expr = match exprs with 
-      | init :: exprs -> List.fold_left (fun acc expr -> A.BinOp (expr, LAnd, acc)) init exprs 
+      | init :: exprs -> List.fold_left (fun acc expr -> A.BinOp (expr, GLAnd, acc)) init exprs 
       | [] -> expr 
     in
     Dependency (nt, expr)
   | SyGuSExpr expr -> 
     let exprs = generate_all_possible_exprs ctx nts expr in
     let expr = match exprs with 
-      | init :: exprs -> List.fold_left (fun acc expr -> A.BinOp (expr, LAnd, acc)) init exprs 
+      | init :: exprs -> List.fold_left (fun acc expr -> A.BinOp (expr, GLAnd, acc)) init exprs 
       | [] -> expr 
     in
     SyGuSExpr expr

@@ -5,6 +5,11 @@
       a) NTExpr starts with a nonterminal on rule RHS if prod rule or rule LHS if type annotation 
       b) Each dot references a valid nonterminal
   3. No nonterminal has both a production rule and a type annotation
+
+  (*!! TODO: For now, don't support redundant rule options (same list of NTs). 
+       If we allow this, then match statements are a bit harder to generate, 
+       because you could accidentally match the same constructor twice 
+       rather than the distinct constructors. *)
 *)
 
 open Ast

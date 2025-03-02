@@ -92,6 +92,7 @@ let rec infer_type_expr: context -> mode -> expr -> il_type option
     failwith error_message
   | _ -> None
   )
+| BinOp (expr1, GLAnd, expr2) 
 | BinOp (expr1, LAnd, expr2) 
 | BinOp (expr1, LOr, expr2) 
 | BinOp (expr1, LXor, expr2)  

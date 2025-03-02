@@ -1,6 +1,12 @@
 open Sbf.Pipeline
 open Alcotest
 
+(* TODO
+  1. For "infeasible" tests, create non-infeasible counterpart
+  2. Add tests from main.ml
+
+*)
+
 let test_another_ambiguous_reference_1 () =
   let input = 
     "
@@ -17,13 +23,13 @@ let test_another_ambiguous_reference_2 () =
   let input = 
     "
     <S> ::= <A> { <A>.<B>.<D> > <A>.<B>.<D>; };
-    <A> ::= <B> | <B>;
+    <A> ::= <B> | <B> <D>;
     <B> ::= <D> <D>;
     <D> :: Int;
   "
   in
   let output = main_pipeline input in
-  check string "test_another_ambiguous_reference_2" output "00-1-1\n"
+  check string "test_another_ambiguous_reference_2" output "infeasible\n"
 
 let test_another_ambiguous_reference () =
   let input = 

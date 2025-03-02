@@ -94,6 +94,7 @@ let pp_print_binop: Format.formatter -> A.bin_operator -> unit
 | A.BVAnd -> Format.fprintf ppf "bvand"
 | BVOr -> Format.fprintf ppf "bvor"
 | BVXor -> failwith "BitVector xor is not supported"
+| GLAnd
 | LAnd -> Format.fprintf ppf "and"
 | LOr -> Format.fprintf ppf "or"
 | LXor -> Format.fprintf ppf "xor"
@@ -238,6 +239,35 @@ let pp_print_semantic_constraint_ty_annot: TC.context -> Format.formatter -> str
   Format.fprintf ppf "(constraint (%s top))"
     constraint_id
 
+
+let find_indices lst =
+  let occurrences = Hashtbl.create (List.length lst) in
+  
+  (* Compute occurrences of each string *)
+  List.iter (fun s ->
+    Hashtbl.replace occurrences s (match Hashtbl.find_opt occurrences s with
+      | None -> 1
+      | Some count -> count + 1
+    )
+  ) lst;
+
+  (* Generate the result with indices for repeated elements *)
+  let counts = Hashtbl.create (List.length lst) in
+  List.map (fun s ->
+    let count = Hashtbl.find occurrences s in
+    if count = 1 then (s, None)
+    else 
+      let index = (Hashtbl.find_opt counts s |> Option.value ~default:0) + 1 in
+      Hashtbl.replace counts s index;
+      (s, Some (index - 1))
+  ) lst
+
+let pp_print_ges_pattern: Format.formatter -> string list -> unit 
+= fun ppf ges -> 
+  let ges = find_indices ges in 
+  Format.fprintf ppf "%a"
+    (Lib.pp_print_list pp_print_nt_helper " ") ges
+
 let pp_print_constraints_rhs: TC.context -> string -> Format.formatter -> A.prod_rule_rhs * int -> unit
 = fun ctx nt ppf (rhs, idx) -> match rhs with 
 | StubbedRhs _ -> Format.fprintf ppf "2STUB\n"
@@ -252,17 +282,17 @@ let pp_print_constraints_rhs: TC.context -> string -> Format.formatter -> A.prod
   if List.length exprs > 1 then
     Format.fprintf ppf "((%s %a)\n\t\t (and %a))"
     ((String.lowercase_ascii nt) ^ "_con" ^ (string_of_int idx)) 
-      (Lib.pp_print_list Format.pp_print_string " ") ges
+      pp_print_ges_pattern ges
       (Lib.pp_print_list (pp_print_expr ctx) " ") exprs
   else if List.length exprs = 1 then 
     Format.fprintf ppf "((%s %a)\n\t\t %a)"
     ((String.lowercase_ascii nt) ^ "_con" ^ (string_of_int idx)) 
-      (Lib.pp_print_list Format.pp_print_string " ") ges
+      pp_print_ges_pattern ges
       (Lib.pp_print_list (pp_print_expr ctx) " ") exprs 
   else 
     Format.fprintf ppf "((%s %a)\n\t\t true)"
     ((String.lowercase_ascii nt) ^ "_con" ^ (string_of_int idx)) 
-      (Lib.pp_print_list Format.pp_print_string " ") ges
+      pp_print_ges_pattern ges
   
 let pp_print_semantic_constraints_prod_rule
 = fun ctx ppf nt rhss ->

@@ -3,7 +3,7 @@ let main_pipeline input_string =
   let ppf = Format.std_formatter in
 
   (* Step 0: Parse user input *)
-  Debug.debug_print Format.pp_print_string ppf "Lexing and parsing:\n";
+  Debug.debug_print Format.pp_print_string ppf "Lexing and parsing complete:\n";
   let ast = Parsing.parse input_string in 
   Debug.debug_print Ast.pp_print_ast ppf ast;
 
@@ -11,13 +11,13 @@ let main_pipeline input_string =
   let prm = SyntaxChecker.build_prm ast in
   let nt_set = SyntaxChecker.build_nt_set ast in
   let ast = SyntaxChecker.check_syntax prm nt_set ast in 
-  Debug.debug_print Format.pp_print_string ppf "\nSyntactic checks complete\n";
+  Debug.debug_print Format.pp_print_string ppf "\nSyntactic checks complete:\n";
   Debug.debug_print Ast.pp_print_ast ppf ast;
 
   (* Step 2: Type checking *)
   let ast, ctx = TypeChecker.build_context ast in
   let ast = TypeChecker.check_types ctx ast in
-  Debug.debug_print Format.pp_print_string ppf "\nType checking complete\n";
+  Debug.debug_print Format.pp_print_string ppf "\nType checking complete:\n";
 
   (* Step 3: Resolve ambiguities in constraints *)
   let ast = ResolveAmbiguities.resolve_ambiguities ctx ast in
@@ -122,7 +122,7 @@ let sygusGrammarToPacket ast =
   let ast = ResolveAmbiguities.resolve_ambiguities ctx ast in
 
   (* Step 4: Convert NTExprs to Match expressions *)
-  let ast = Utils.recurse_until_fixpoint ast (=) (NtExprToMatch.convert_nt_exprs_to_matches ctx) in
+  let ast = NtExprToMatch.convert_nt_exprs_to_matches ctx ast in
 
   (* Step 5: Abstract away dependent terms in the grammar *)
   let dep_map, ast, ctx = AbstractDeps.abstract_dependencies ctx ast in 

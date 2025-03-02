@@ -20,6 +20,8 @@ type bin_operator =
 | BVOr 
 | BVXor 
 | LAnd
+(* Generated logical and, to distinguish from user input logical and *)
+| GLAnd
 | LOr
 | LXor 
 | LImplies 
@@ -257,6 +259,7 @@ let pp_print_bin_op: Format.formatter -> bin_operator -> unit
 | BVAnd -> Format.fprintf ppf "bvand"
 | BVOr -> Format.fprintf ppf "bvor"
 | BVXor -> Format.fprintf ppf "bvxor"
+| GLAnd 
 | LAnd -> Format.fprintf ppf "land"
 | LOr -> Format.fprintf ppf "lor"
 | LXor -> Format.fprintf ppf "lxor"
@@ -439,3 +442,41 @@ let nts_of_rhs: prod_rule_rhs -> string list
   | StubbedNonterminal _ -> assert false
   ) ges
 | StubbedRhs _ -> assert false
+
+let rec expr_contains_dangling_nt: Utils.SILSet.t -> expr -> bool 
+= fun ctx expr -> 
+  let r = expr_contains_dangling_nt ctx in
+  match expr with 
+  | NTExpr (nt_ctx, nts) -> 
+    let nt_expr = Utils.init (nt_ctx @ nts) in  
+    (* let prefixes = prefixes nt_expr in   *)
+      (* List.iter (fun (nt, idx) -> 
+        match idx with 
+        | Some idx -> 
+          Format.fprintf Format.std_formatter "%s%d "
+            nt
+            idx
+        | None ->
+          Format.fprintf Format.std_formatter "%s "
+            nt
+      ) prefix;
+      Format.pp_print_newline Format.std_formatter ();  *)
+    (List.length nt_expr > 1) && 
+    not (Utils.SILSet.mem nt_expr ctx)
+  | BinOp (expr1, _, expr2) -> 
+    r expr1 || r expr2
+  | UnOp (_, expr) -> 
+    r expr
+  | CompOp (expr1, _, expr2) -> 
+    r expr1 || r expr2
+  | Length expr -> 
+    r expr
+  | BVConst _ 
+  | BLConst _ 
+  | BConst _ 
+  | BVCast _  
+  | StrConst _
+  | IntConst _ -> false
+  | Match _ -> 
+    failwith "Encountered Match in expr_contains_dangling_nt. 
+    Shouldn't be possible, as this function should only process base expressions."
