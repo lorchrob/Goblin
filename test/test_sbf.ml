@@ -1,6 +1,30 @@
 open Sbf.Pipeline
 open Alcotest
 
+let test_another_ambiguous_reference_1 () =
+  let input = 
+    "
+    <S> ::= <A> { <A>.<B>.<D> > <A>.<B>.<D>; };
+    <A> ::= <B> <B>;
+    <B> ::= <D> <D>;
+    <D> :: Int;
+  "
+  in
+  let output = main_pipeline input in
+  check string "test_another_ambiguous_reference_1" output "infeasible\n"
+
+let test_another_ambiguous_reference_2 () =
+  let input = 
+    "
+    <S> ::= <A> { <A>.<B>.<D> > <A>.<B>.<D>; };
+    <A> ::= <B> | <B>;
+    <B> ::= <D> <D>;
+    <D> :: Int;
+  "
+  in
+  let output = main_pipeline input in
+  check string "test_another_ambiguous_reference_2" output "00-1-1\n"
+
 let test_another_ambiguous_reference () =
   let input = 
     "
@@ -322,4 +346,6 @@ let () =
     "test_cyclic_dependencies", [test_case "test_cyclic_dependencies" `Quick test_cyclic_dependencies];
     "test_dot_notation_2", [test_case "test_dot_notation_2" `Quick test_dot_notation_2];
     "test_another_ambiguous_reference", [test_case "test_another_ambiguous_reference" `Quick test_another_ambiguous_reference];
+    "test_another_ambiguous_reference_1", [test_case "test_another_ambiguous_reference_1" `Quick test_another_ambiguous_reference_1];
+    "test_another_ambiguous_reference_2", [test_case "test_another_ambiguous_reference_2" `Quick test_another_ambiguous_reference_2];
   ]

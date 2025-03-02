@@ -19,14 +19,14 @@ let main_pipeline input_string =
   let ast = TypeChecker.check_types ctx ast in
   Debug.debug_print Format.pp_print_string ppf "\nType checking complete\n";
 
-  (* Step 3: Convert NTExprs to Match expressions *)
-  let ast = Utils.recurse_until_fixpoint ast (=) (NtExprToMatch.convert_nt_exprs_to_matches ctx) in
-  Debug.debug_print Format.pp_print_string ppf "\nDesugaring NTExprs complete:\n";
+  (* Step 3: Resolve ambiguities in constraints *)
+  let ast = ResolveAmbiguities.resolve_ambiguities ctx ast in
+  Debug.debug_print Format.pp_print_string ppf "\nResolving grammar ambiguities complete:\n";
   Debug.debug_print Ast.pp_print_ast ppf ast;
 
-  (* Step 4: Resolve ambiguities in constraints *)
-  let ast = ResolveAmbiguities.resolve_ambiguities ast in
-  Debug.debug_print Format.pp_print_string ppf "\nResolving grammar ambiguities complete:\n";
+  (* Step 4: Convert NTExprs to Match expressions *)
+  let ast = Utils.recurse_until_fixpoint ast (=) (NtExprToMatch.convert_nt_exprs_to_matches ctx) in
+  Debug.debug_print Format.pp_print_string ppf "\nDesugaring NTExprs complete:\n";
   Debug.debug_print Ast.pp_print_ast ppf ast;
 
   (* Step 5: Abstract away dependent terms in the grammar *)
@@ -58,6 +58,11 @@ let main_pipeline input_string =
     Debug.debug_print Format.pp_print_string ppf "\nParsing SyGuS output:\n";
     let sygus_asts = List.map2 Parsing.parse_sygus sygus_outputs asts in
     let sygus_asts = List.map Result.get_ok sygus_asts in
+    let sygus_asts = 
+      if List.mem (SygusAst.VarLeaf "infeasible") sygus_asts 
+      then [SygusAst.VarLeaf "infeasible"]
+      else sygus_asts
+    in
     Debug.debug_print Format.pp_print_string ppf "\nSyGuS ASTs:\n";
     List.iter (Debug.debug_print SygusAst.pp_print_sygus_ast ppf) sygus_asts;
 
@@ -72,7 +77,11 @@ let main_pipeline input_string =
 
     (* Step 10: Compute dependencies *)
     Debug.debug_print Format.pp_print_string ppf "\nComputing dependencies:\n";
-    let sygus_ast = ComputeDeps.compute_deps dep_map ast sygus_ast in 
+    let sygus_ast = 
+      if not (List.mem (SygusAst.VarLeaf "infeasible") sygus_asts)
+      then ComputeDeps.compute_deps dep_map ast sygus_ast 
+      else SygusAst.VarLeaf "infeasible"
+    in  
     Debug.debug_print SygusAst.pp_print_sygus_ast ppf sygus_ast;
 
     (* Step 11: Bit flip mutations for BitList terms *)
@@ -109,11 +118,11 @@ let sygusGrammarToPacket ast =
   let ast, ctx = TypeChecker.build_context ast in
   let ast = TypeChecker.check_types ctx ast in
 
-  (* Step 3: Convert NTExprs to Match expressions *)
-  let ast = Utils.recurse_until_fixpoint ast (=) (NtExprToMatch.convert_nt_exprs_to_matches ctx) in
+  (* Step 3: Resolve ambiguities in constraints *)
+  let ast = ResolveAmbiguities.resolve_ambiguities ctx ast in
 
-  (* Step 4: Resolve ambiguities in constraints *)
-  let ast = ResolveAmbiguities.resolve_ambiguities ast in
+  (* Step 4: Convert NTExprs to Match expressions *)
+  let ast = Utils.recurse_until_fixpoint ast (=) (NtExprToMatch.convert_nt_exprs_to_matches ctx) in
 
   (* Step 5: Abstract away dependent terms in the grammar *)
   let dep_map, ast, ctx = AbstractDeps.abstract_dependencies ctx ast in 
@@ -125,6 +134,7 @@ let sygusGrammarToPacket ast =
     (* Step 7: Call sygus engine *)
     let sygus_outputs = List.map (Sygus.call_sygus ctx dep_map) asts in
 
+    (*!! TODO: Update to handle infeasible case as above *)
     (* Step 8: Parse SyGuS output. *)
     let sygus_asts = List.map2 Parsing.parse_sygus sygus_outputs asts in
     match collect_results sygus_asts with

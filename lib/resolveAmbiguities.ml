@@ -1,110 +1,117 @@
 module A = Ast
+module TC = TypeChecker
 type nt = (string * int option) list
 
-let compare_nts nt1 nt2 = List.compare (fun (str1, i1) (str2, i2) -> 
-  let c1 = String.compare str1 str2 in 
-  if c1 <> 0 then c1 
-  else Option.compare (-) i1 i2
-) nt1 nt2
+let cartesian_product lst1 lst2 =
+  List.concat_map (fun x -> List.map (fun y -> (x, y)) lst2) lst1
 
-module NTM = Map.Make(struct
-  type t = nt  
-  let compare = compare_nts
-end)
-
-let create_substitutions (dups : int list NTM.t) : ((string * int option) list * int) list list =
-  (* Generate all combinations of (key, value) pairs from the map *)
-  let choices = NTM.bindings dups |> List.map (fun (key, values) -> List.map (fun v -> (key, v)) values) in
-  
-  (* Compute the Cartesian product of these choices to get all possible substitutions *)
-  let rec cartesian_product = function
-    | [] -> [[]]
-    | hd :: tl ->
-      let rest = cartesian_product tl in
-      List.concat (List.map (fun h -> List.map (fun r -> h :: r) rest) hd)
-  in
-  
-  cartesian_product choices
-    
-
-let rec process_expr: A.expr -> A.expr 
-= fun expr -> 
-  let r = process_expr in
+let rec generate_all_possible_exprs: TC.context -> string list -> A.expr -> A.expr list
+(* nts represents the list of nonterminals that could be referenced in the expression *)
+= fun ctx nts expr -> 
+  let r = generate_all_possible_exprs ctx nts in
   match expr with 
-  | A.Match (nt_ctx, nt, cases) -> 
-    let cases = List.map (fun case -> match case with 
-    | A.CaseStub _ -> case 
-    | Case (nts, expr) -> 
-      let expr = r expr in
-      (* Map of nt -> # of occurrences for nts *)
-      let dups = List.fold_left (fun acc (nt_ctx, nt) ->
-        let nt = nt_ctx @ [nt] in
-        match NTM.find_opt nt acc with 
-        | None -> NTM.add nt 1 acc
-        | Some i -> NTM.add nt (i+1) acc
-      ) NTM.empty nts in 
-      let dups = NTM.filter (fun _ i -> 
-        i > 1
-      ) dups in
-      (* Rename duplicated nts *)
-      let nts, _ = List.fold_left (fun (acc_nts, acc_dups) (nt_ctx, (nt, idx)) -> 
-        let nt' = nt_ctx @ [nt, idx] in
-        match NTM.find_opt nt' acc_dups with 
-        | None -> (nt_ctx, (nt, idx)) :: acc_nts, acc_dups
-        | Some i -> 
-          let acc_nts = (nt_ctx, (nt, Some i)) :: acc_nts in
-          let acc_dups = NTM.add nt' (i-1) acc_dups in
-          acc_nts, acc_dups  
-      ) ([], dups) nts in 
-      let nts = List.rev nts in
-      (* Generate new expr for every possible combination of ambiguous references *)
-      let expr_nts = A.get_nts_from_expr_after_desugaring_dot_notation expr in 
-      let duplicated_expr_nts = List.filter (fun nt -> NTM.mem nt dups) expr_nts in
-      let dups = NTM.filter (fun nt _ -> List.mem nt duplicated_expr_nts) dups in
-      let dups = NTM.fold (fun nt i acc -> 
-        let generated_nts = 
-          Utils.replicate nt i |> 
-          List.mapi (fun i _ -> i+1)
+  | NTExpr ([], nt_expr) -> 
+    let rec helper nts nt_expr = match nt_expr with 
+      | [] -> failwith "Impossible case in generate_all_possible_exprs"
+      (* If there is already an index, we eliminate the ambiguity. 
+         This might allow us to include indices in the input syntax for no (or little) extra cost *)
+      | (nt', Some idx) :: [] -> [[(nt', Some idx)]]
+      | (nt', None) :: [] -> 
+        (* let rhs_nts = match Utils.StringMap.find nt ctx with 
+        | ADT options -> List.flatten options
+        | _ -> [nt']
+        in *)
+        let nt_options = 
+          nts |>
+          List.filter (fun nt'' -> String.equal nt' nt'') |>
+          List.mapi (fun i rhs_nt -> (rhs_nt, Some i)) 
+        in 
+        let nt_options = 
+          if List.length nt_options = 1 
+          then [(fst (List.hd nt_options), None)] 
+          else nt_options 
         in
-        NTM.add nt generated_nts acc  
-      ) dups NTM.empty in
-      let substitutions = create_substitutions dups in
-      (* For debugging substitution list *)
-      (* List.iter (fun substitution -> List.iter (fun (nt, i) -> A.pp_print_nt_with_underscores Format.std_formatter nt; print_endline (string_of_int i)) substitution; print_endline "") substitutions; *)
-      let exprs = List.map (A.rename expr) substitutions in
-      (* Cover all possible cases with conjunction *)
-      let expr = match exprs with 
-      | init :: exprs -> List.fold_left (fun acc expr -> A.BinOp (expr, LAnd, acc)  
-      ) init exprs 
-      | [] -> expr 
-      in
-      A.Case (nts, expr)
-    ) cases in 
-    Match (nt_ctx, nt, cases)
-  | BinOp (expr1, op, expr2) -> BinOp (r expr1, op, r expr2)
-  | UnOp (op, expr) -> UnOp (op, r expr)
-  | CompOp (expr1, op, expr2) -> CompOp (r expr1, op, r expr2)
-  | Length expr -> Length (r expr)
+        (* let nt_options  *)
+        List.map (fun nt_option -> [nt_option]) nt_options
+      | (nt', Some idx) :: nt_expr' -> 
+        let nt_options = [(nt', Some idx)] in 
+        let nts' = match Utils.StringMap.find nt' ctx with 
+        | ADT options -> List.flatten options
+        | _ -> [nt']
+        in
+        let recursive_options = helper nts' nt_expr' in
+        let all_combos = cartesian_product nt_options recursive_options in 
+        List.map (fun (nt, nt_expr) -> nt :: nt_expr) all_combos
+      | (nt', None) :: nt_expr' -> 
+        let nt_options = 
+          nts |>
+          List.filter (fun nt'' -> String.equal nt' nt'') |>
+          List.mapi (fun i rhs_nt -> (rhs_nt, Some i)) 
+        in 
+        let nt_options = 
+          if List.length nt_options = 1 
+          then [(fst (List.hd nt_options), None)] 
+          else nt_options 
+        in
+        let nts' = match Utils.StringMap.find nt' ctx with 
+        | ADT options -> List.flatten options
+        | _ -> [nt']
+        in
+        let recursive_options = helper nts' nt_expr' in
+        let all_combos = cartesian_product nt_options recursive_options in 
+        List.map (fun (nt, nt_expr) -> nt :: nt_expr) all_combos
+    in 
+    let exprs = helper nts nt_expr in 
+    List.map (fun e -> A.NTExpr ([], e)) exprs
+  | NTExpr _ ->  failwith "Impossible case in generate_all_possible_exprs: encountered NTExpr with context, but dot notation should not be desugared yet"
+  | A.Match _ -> failwith "Impossible case in generate_all_possible_exprs: encountered Match, but dot notation should not be desugared yet"
+  | BinOp (expr1, op, expr2) -> 
+    let exprs1 = r expr1 in 
+    let exprs2 = r expr2 in 
+    let pairs = cartesian_product exprs1 exprs2 in
+    List.map (fun (e1, e2) -> A.BinOp (e1, op, e2)) pairs
+  | UnOp (op, expr) ->
+    let exprs = r expr in 
+    List.map (fun e -> A.UnOp (op, e)) exprs
+  | CompOp (expr1, op, expr2) -> 
+    let exprs1 = r expr1 in 
+    let exprs2 = r expr2 in 
+    let pairs = cartesian_product exprs1 exprs2 in
+    List.map (fun (e1, e2) -> A.CompOp (e1, op, e2)) pairs
+  | Length expr -> 
+    let exprs = r expr in 
+    List.map (fun e -> A.Length (e)) exprs
   | BVConst _ 
   | BLConst _ 
   | BConst _ 
   | BVCast _  
   | StrConst _
-  | IntConst _
-  | NTExpr _ -> expr
+  | IntConst _ -> [expr]
 
-let process_sc: A.semantic_constraint -> A.semantic_constraint 
-= fun sc -> match sc with 
-  | A.Dependency (nt, expr) -> Dependency (nt, process_expr expr)
-  | SyGuSExpr expr -> SyGuSExpr (process_expr expr)
+let process_sc: TC.context -> string list -> A.semantic_constraint -> A.semantic_constraint 
+= fun ctx nts sc -> match sc with 
+  | A.Dependency (nt, expr) -> 
+    let exprs = generate_all_possible_exprs ctx nts expr in
+    let expr = match exprs with 
+      | init :: exprs -> List.fold_left (fun acc expr -> A.BinOp (expr, LAnd, acc)) init exprs 
+      | [] -> expr 
+    in
+    Dependency (nt, expr)
+  | SyGuSExpr expr -> 
+    let exprs = generate_all_possible_exprs ctx nts expr in
+    let expr = match exprs with 
+      | init :: exprs -> List.fold_left (fun acc expr -> A.BinOp (expr, LAnd, acc)) init exprs 
+      | [] -> expr 
+    in
+    SyGuSExpr expr
 
-let resolve_ambiguities: A.ast -> A.ast 
-= fun ast -> List.map (fun element -> match element with
+let resolve_ambiguities: TC.context -> A.ast -> A.ast 
+= fun ctx ast -> List.map (fun element -> match element with
 | A.ProdRule (nt, rhss) -> 
   let rhss = List.map (fun rhs -> match rhs with 
-  | A.Rhs (ges, scs) -> A.Rhs (ges, List.map process_sc scs) 
+  | A.Rhs (ges, scs) -> A.Rhs (ges, List.map (process_sc ctx (A.nts_of_rhs rhs)) scs) 
   | StubbedRhs _ -> rhs 
   ) rhss in 
   A.ProdRule (nt, rhss)
-| TypeAnnotation (nt, ty, scs) -> TypeAnnotation (nt, ty, List.map process_sc scs)
-) ast 
+| TypeAnnotation (nt, ty, scs) -> TypeAnnotation (nt, ty, List.map (process_sc ctx [nt]) scs)
+) ast  

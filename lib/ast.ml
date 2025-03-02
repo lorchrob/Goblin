@@ -429,3 +429,13 @@ let grammar_element_to_string: grammar_element -> string
 = fun grammar_element -> match grammar_element with 
   | Nonterminal nt2 -> nt2
   | StubbedNonterminal (_, stub_id) -> stub_id
+
+(* Used before divide and conquer *)
+let nts_of_rhs: prod_rule_rhs -> string list 
+= fun rhs -> match rhs with 
+| Rhs (ges, _) -> 
+  List.map (fun ge -> match ge with 
+  | Nonterminal nt -> nt 
+  | StubbedNonterminal _ -> assert false
+  ) ges
+| StubbedRhs _ -> assert false

@@ -23,6 +23,7 @@
     "Int", INT ;
     "BitVec", BITVEC ;
     "str", STR ;
+    "infeasible", INFEASIBLE ;
   ] 
 }
 

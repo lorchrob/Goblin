@@ -22,6 +22,7 @@ open SygusAst
 %token UNDERSCORE
 %token BITVEC
 %token STR
+%token INFEASIBLE
 
 %token<bool list> BITS
 %token<string> ID
@@ -38,6 +39,8 @@ s: d = sygus_term; EOF { d } ;
 sygus_term:
 | LPAREN; LPAREN; DEFINE; HYPHEN; FUN; TOP; LPAREN; RPAREN; top_type; t = lisp_term; RPAREN; RPAREN;
   { t }
+| INFEASIBLE;
+  { VarLeaf "infeasible" }
 
 top_type:
 | ID; {}
