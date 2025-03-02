@@ -227,7 +227,6 @@ let remove_circular_deps: ast -> ast
 
 let check_scs_for_dep_terms: semantic_constraint list -> semantic_constraint list  
 = fun scs -> 
-  List.iter (Ast.pp_print_semantic_constraint Format.std_formatter) scs;
   let dep_terms = List.fold_left (fun acc sc -> match sc with 
   | Dependency (nt, _) -> StringSet.add nt acc 
   | _ -> acc

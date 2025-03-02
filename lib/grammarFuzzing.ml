@@ -109,7 +109,6 @@ let read_grammar filename =
 let read_from_file filename =
   let _ = Unix.system ("touch " ^ filename) in
   Unix.sleepf 0.1 ;
-  (* print_endline "read_from_file" ; *)
 
   let ic = open_in filename in
   try
@@ -350,12 +349,9 @@ let rec applyMutation (m : mutation) (g : ast) : packet_type * grammar =
     let added_grammar = (mutation_add_s1 g nt) in
     if snd added_grammar = false then applyMutation Add g
     else
-      (* pp_print_ast Format.std_formatter (fst added_grammar) ; *)
       NOTHING, (fst added_grammar)
 
   | Delete -> print_endline "\n\nDELETING\n\n" ;
-      print_endline nt ;
-      pp_print_ast Format.std_formatter g ;
     let delete_attempt = (mutation_delete g nt) in
     if snd delete_attempt = false then applyMutation Delete g
     else

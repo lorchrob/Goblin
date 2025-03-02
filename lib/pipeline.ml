@@ -45,7 +45,7 @@ let main_pipeline input_string =
   List.iter (fun ast -> Debug.debug_print Sygus.pp_print_ast ppf (ctx, dep_map, ast); Debug.debug_print Lib.pp_print_newline ppf ()) asts;
   Debug.debug_print Lib.pp_print_newline ppf ();
 
-  Format.pp_print_flush Format.std_formatter ();
+  Format.pp_print_flush ppf ();
 
   if not !Debug.only_parse then (
     (* Step 7.2: Call sygus engine *)
@@ -66,14 +66,14 @@ let main_pipeline input_string =
     Debug.debug_print Format.pp_print_string ppf "\nSyGuS ASTs:\n";
     List.iter (Debug.debug_print SygusAst.pp_print_sygus_ast ppf) sygus_asts;
 
-    Format.pp_print_flush Format.std_formatter ();
+    Format.pp_print_flush ppf ();
 
     (* Step 9: Recombine to single AST *)
     Debug.debug_print Format.pp_print_string ppf "\nRecombining to single AST:\n";
     let sygus_ast = Recombine.recombine sygus_asts in 
     Debug.debug_print SygusAst.pp_print_sygus_ast ppf sygus_ast;
 
-    Format.pp_print_flush Format.std_formatter ();
+    Format.pp_print_flush ppf ();
 
     (* Step 10: Compute dependencies *)
     Debug.debug_print Format.pp_print_string ppf "\nComputing dependencies:\n";
@@ -93,7 +93,6 @@ let main_pipeline input_string =
     Debug.debug_print Format.pp_print_string ppf "\nSerializing:\n";
     let output = Utils.capture_output SygusAst.serialize sygus_ast in 
     Format.pp_print_string ppf output; 
-    Lib.pp_print_newline ppf (); 
     output
   ) else "dummy output"
 

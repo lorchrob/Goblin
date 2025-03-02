@@ -2,15 +2,6 @@ module A = Ast
 module TC = TypeChecker
 module SM = Utils.StringMap
 
-module SISet = Set.Make(struct
-  type t = string * int option  
-  
-  let compare (s1, i1) (s2, i2) =
-    let cmp_str = String.compare s1 s2 in
-    if cmp_str <> 0 then cmp_str
-    else compare i1 i2
-end)
-
 module SILSet = Utils.SILSet
 
 (* <A>.<B> + 3 < 0  
@@ -60,7 +51,7 @@ let find_indices lst =
   * Update to generate indices on matched pattern if there were multiple options
   * If there were multiple options, only use the versions of the base expression that 
     apply to the corresponding options
-  * Might also want to update the SISet.t to include whole nt_ctx as well as nt. *)
+  * Might also want to update the SILSet.t to include whole nt_ctx as well as nt. *)
 let gen_match_info ctx (nt1, idx1) (nt2, _idx2) nt_ctx = 
   let rules = match SM.find nt1 ctx with 
   | A.ADT rules -> rules 
@@ -173,16 +164,16 @@ let rec pull_up_match_exprs: A.expr -> A.expr =
    *)
 let nt_to_match: TC.context -> A.expr -> A.expr = 
 fun ctx expr -> 
-  let rec helper: TC.context -> SISet.t -> A.expr -> SISet.t * A.expr 
+  let rec helper: TC.context -> SILSet.t -> A.expr -> SILSet.t * A.expr 
   = fun ctx matches_so_far expr ->
     let r = helper ctx in 
     match expr with
     | BinOp (NTExpr (nt_ctx1, nt1 :: nt2 :: nts1), op, NTExpr (nt_ctx2, nt3 :: nt4 :: nts2)) -> 
-      if SISet.mem nt1 matches_so_far && SISet.mem nt3 matches_so_far then 
+      if SILSet.mem (nt_ctx1 @ [nt1]) matches_so_far && SILSet.mem (nt_ctx2 @ [nt3]) matches_so_far then 
         matches_so_far,
         BinOp (NTExpr (nt_ctx1 @ [nt1], nt2 :: nts1), op, NTExpr (nt_ctx2 @ [nt3], nt4 :: nts2))
-      else if SISet.mem nt1 matches_so_far && not (SISet.mem nt3 matches_so_far) then
-        let matches_so_far = SISet.add nt3 matches_so_far in
+      else if SILSet.mem (nt_ctx1 @ [nt1]) matches_so_far && not (SILSet.mem (nt_ctx2 @ [nt3]) matches_so_far) then
+        let matches_so_far = SILSet.add (nt_ctx2 @ [nt3]) matches_so_far in
         let rules, remaining_cases = gen_match_info ctx nt3 nt4 nt_ctx2 in
         let cases =  List.fold_left (fun acc rule ->
           A.Case (rule, BinOp (NTExpr (nt_ctx1 @ [nt1], nt2 :: nts1), op, NTExpr (nt_ctx2 @ [nt3], nt4 :: nts2))) :: acc
@@ -190,8 +181,8 @@ fun ctx expr ->
         in
         matches_so_far,
         Match (nt_ctx2, nt3, cases @ remaining_cases)
-      else if not (SISet.mem nt1 matches_so_far) && SISet.mem nt3 matches_so_far then
-        let matches_so_far = SISet.add nt1 matches_so_far in
+      else if not (SILSet.mem (nt_ctx1 @ [nt1]) matches_so_far) && SILSet.mem (nt_ctx2 @ [nt3]) matches_so_far then
+        let matches_so_far = SILSet.add (nt_ctx1 @ [nt1]) matches_so_far in
         let rules, remaining_cases = gen_match_info ctx nt1 nt2 nt_ctx1 in
         let cases =  List.fold_left (fun acc rule ->
           A.Case (rule, BinOp (NTExpr (nt_ctx1 @ [nt1], nt2 :: nts1), op, NTExpr (nt_ctx2 @ [nt3], nt4 :: nts2))) :: acc
@@ -200,8 +191,8 @@ fun ctx expr ->
         matches_so_far,
         Match (nt_ctx1, nt1, cases @ remaining_cases)
       else if not (nt_ctx1 @ [nt1] = nt_ctx2 @ [nt3]) then
-        let matches_so_far = SISet.add nt1 matches_so_far in
-        let matches_so_far = SISet.add nt3 matches_so_far in
+        let matches_so_far = SILSet.add (nt_ctx1 @ [nt1]) matches_so_far in
+        let matches_so_far = SILSet.add (nt_ctx2 @ [nt3]) matches_so_far in
         let rules1, remaining_cases1 = gen_match_info ctx nt1 nt2 nt_ctx1 in
         let rules2, remaining_cases2 = gen_match_info ctx nt3 nt4 nt_ctx2 in
         let cases1 =  List.fold_left (fun acc rule ->
@@ -215,7 +206,7 @@ fun ctx expr ->
         matches_so_far,
         Match (nt_ctx2, nt3, cases2 @ remaining_cases2)
       else 
-        let matches_so_far = SISet.add nt1 matches_so_far in
+        let matches_so_far = SILSet.add (nt_ctx1 @ [nt1]) matches_so_far in
         let rules, remaining_cases = gen_match_info ctx nt1 nt2 nt_ctx1 in
         let cases =  List.fold_left (fun acc rule ->
           A.Case (rule, BinOp (NTExpr (nt_ctx1 @ [nt1], nt2 :: nts1), op, NTExpr (nt_ctx2 @ [nt3], nt4 :: nts2))) :: acc
@@ -224,12 +215,12 @@ fun ctx expr ->
         matches_so_far,
         Match (nt_ctx1, nt1, cases @ remaining_cases)
     | BinOp (NTExpr (nt_ctx, nt1 :: nt2 :: nts), op, expr2) -> 
-      if SISet.mem nt1 matches_so_far then 
+      if SILSet.mem (nt_ctx @ [nt1]) matches_so_far then 
         let matches_so_far, expr2 = r matches_so_far expr2 in 
         matches_so_far,
         BinOp (NTExpr (nt_ctx @ [nt1], nt2 :: nts), op, expr2)
       else
-        let matches_so_far = SISet.add nt1 matches_so_far in
+        let matches_so_far = SILSet.add (nt_ctx @ [nt1]) matches_so_far in
         let matches_so_far, expr2 = r matches_so_far expr2 in
         let rules, remaining_cases = gen_match_info ctx nt1 nt2 nt_ctx in
         let cases =  List.fold_left (fun acc rule ->
@@ -239,12 +230,12 @@ fun ctx expr ->
         matches_so_far,
         Match (nt_ctx, nt1, cases @ remaining_cases) 
     | BinOp (expr1, op, NTExpr (nt_ctx, nt1 :: nt2 :: nts)) -> 
-      if SISet.mem nt1 matches_so_far then 
+      if SILSet.mem (nt_ctx @ [nt1]) matches_so_far then 
         let matches_so_far, expr1 = r matches_so_far expr1 in
         matches_so_far,
         BinOp (expr1, op, NTExpr (nt_ctx @ [nt1], nt2 :: nts))
       else
-        let matches_so_far = SISet.add nt1 matches_so_far in
+        let matches_so_far = SILSet.add (nt_ctx @ [nt1]) matches_so_far in
         let matches_so_far, expr1 = r matches_so_far expr1 in
         let rules, remaining_cases = gen_match_info ctx nt1 nt2 nt_ctx in
         let cases =  List.fold_left (fun acc rule ->
@@ -259,11 +250,11 @@ fun ctx expr ->
       matches_so_far, 
       BinOp (expr1, op, expr2)
     | CompOp (NTExpr (nt_ctx1, nt1 :: nt2 :: nts1), op, NTExpr (nt_ctx2, nt3 :: nt4 :: nts2)) -> 
-      if SISet.mem nt1 matches_so_far && SISet.mem nt3 matches_so_far then 
+      if SILSet.mem (nt_ctx1 @ [nt1]) matches_so_far && SILSet.mem (nt_ctx2 @ [nt3]) matches_so_far then 
         matches_so_far,
         CompOp (NTExpr (nt_ctx1 @ [nt1], nt2 :: nts1), op, NTExpr (nt_ctx2 @ [nt3], nt4 :: nts2))
-      else if SISet.mem nt1 matches_so_far && not (SISet.mem nt3 matches_so_far) then
-        let matches_so_far = SISet.add nt3 matches_so_far in
+      else if SILSet.mem (nt_ctx1 @ [nt1]) matches_so_far && not (SILSet.mem (nt_ctx2 @ [nt3]) matches_so_far) then
+        let matches_so_far = SILSet.add (nt_ctx2 @ [nt3]) matches_so_far in
         let rules, remaining_cases = gen_match_info ctx nt3 nt4 nt_ctx2 in
         let cases =  List.fold_left (fun acc rule ->
           A.Case (rule, CompOp (NTExpr (nt_ctx1 @ [nt1], nt2 :: nts1), op, NTExpr (nt_ctx2 @ [nt3], nt4 :: nts2))) :: acc
@@ -271,8 +262,8 @@ fun ctx expr ->
         in
         matches_so_far,
         Match (nt_ctx2, nt3, cases @ remaining_cases)
-      else if not (SISet.mem nt1 matches_so_far) && SISet.mem nt3 matches_so_far then
-        let matches_so_far = SISet.add nt1 matches_so_far in
+      else if not (SILSet.mem (nt_ctx1 @ [nt1]) matches_so_far) && SILSet.mem (nt_ctx2 @ [nt3]) matches_so_far then
+        let matches_so_far = SILSet.add (nt_ctx1 @ [nt1]) matches_so_far in
         let rules, remaining_cases = gen_match_info ctx nt1 nt2 nt_ctx1 in
         let cases =  List.fold_left (fun acc rule ->
           A.Case (rule, CompOp (NTExpr (nt_ctx1 @ [nt1], nt2 :: nts1), op, NTExpr (nt_ctx2 @ [nt3], nt4 :: nts2))) :: acc
@@ -281,8 +272,8 @@ fun ctx expr ->
         matches_so_far,
         Match (nt_ctx1, nt1, cases @ remaining_cases)
       else if not (nt_ctx1 @ [nt1] = nt_ctx2 @ [nt3]) then
-        let matches_so_far = SISet.add nt1 matches_so_far in
-        let matches_so_far = SISet.add nt3 matches_so_far in
+        let matches_so_far = SILSet.add (nt_ctx1 @ [nt1]) matches_so_far in
+        let matches_so_far = SILSet.add (nt_ctx2 @ [nt3]) matches_so_far in
         let rules1, remaining_cases1 = gen_match_info ctx nt1 nt2 nt_ctx1 in
         let rules2, remaining_cases2 = gen_match_info ctx nt3 nt4 nt_ctx2 in
         let cases1 =  List.fold_left (fun acc rule ->
@@ -296,7 +287,7 @@ fun ctx expr ->
         matches_so_far,
         Match (nt_ctx2, nt3, cases2 @ remaining_cases2)
       else 
-        let matches_so_far = SISet.add nt1 matches_so_far in
+        let matches_so_far = SILSet.add (nt_ctx1 @ [nt1]) matches_so_far in
         let rules, remaining_cases = gen_match_info ctx nt1 nt2 nt_ctx1 in
         let cases =  List.fold_left (fun acc rule ->
           A.Case (rule, CompOp (NTExpr (nt_ctx1 @ [nt1], nt2 :: nts1), op, NTExpr (nt_ctx2 @ [nt3], nt4 :: nts2))) :: acc
@@ -305,12 +296,12 @@ fun ctx expr ->
         matches_so_far,
         Match (nt_ctx1, nt1, cases @ remaining_cases)
     | CompOp (NTExpr (nt_ctx, nt1 :: nt2 :: nts), op, expr2) -> 
-      if SISet.mem nt1 matches_so_far then 
+      if SILSet.mem (nt_ctx @ [nt1]) matches_so_far then 
         let matches_so_far, expr2 = r matches_so_far expr2 in 
         matches_so_far,
         CompOp (NTExpr (nt_ctx @ [nt1], nt2 :: nts), op, expr2)
       else
-        let matches_so_far = SISet.add nt1 matches_so_far in
+        let matches_so_far = SILSet.add (nt_ctx @ [nt1]) matches_so_far in
         let matches_so_far, expr2 = r matches_so_far expr2 in
         let rules, remaining_cases = gen_match_info ctx nt1 nt2 nt_ctx in
         let cases =  List.fold_left (fun acc rule ->
@@ -320,12 +311,12 @@ fun ctx expr ->
         matches_so_far,
         Match (nt_ctx, nt1, cases @ remaining_cases) 
     | CompOp (expr1, op, NTExpr (nt_ctx, nt1 :: nt2 :: nts)) -> 
-      if SISet.mem nt1 matches_so_far then 
+      if SILSet.mem (nt_ctx @ [nt1]) matches_so_far then 
         let matches_so_far, expr1 = r matches_so_far expr1 in
         matches_so_far,
         CompOp (expr1, op, NTExpr (nt_ctx @ [nt1], nt2 :: nts))
       else
-        let matches_so_far = SISet.add nt1 matches_so_far in
+        let matches_so_far = SILSet.add (nt_ctx @ [nt1]) matches_so_far in
         let matches_so_far, expr1 = r matches_so_far expr1 in
         let rules, remaining_cases = gen_match_info ctx nt1 nt2 nt_ctx in
         let cases =  List.fold_left (fun acc rule ->
@@ -340,11 +331,11 @@ fun ctx expr ->
       matches_so_far, 
       CompOp (expr1, op, expr2)
     | Length (NTExpr (nt_ctx, nt1 :: nt2 :: nts)) -> 
-      if SISet.mem nt1 matches_so_far then 
+      if SILSet.mem (nt_ctx @ [nt1]) matches_so_far then 
         matches_so_far,
         Length (NTExpr (nt_ctx @ [nt1], nt2 :: nts))
       else
-        let matches_so_far = SISet.add nt1 matches_so_far in
+        let matches_so_far = SILSet.add (nt_ctx @ [nt1]) matches_so_far in
         let rules, remaining_cases = gen_match_info ctx nt1 nt2 nt_ctx in 
         let cases =  List.fold_left (fun acc rule ->
           A.Case (rule, Length (NTExpr (nt_ctx @ [nt1], nt2 :: nts))) :: acc
@@ -353,11 +344,11 @@ fun ctx expr ->
         matches_so_far,
         Match (nt_ctx, nt1, cases @ remaining_cases)
     | UnOp (op, NTExpr (nt_ctx, nt1 :: nt2 :: nts)) -> 
-      if SISet.mem nt1 matches_so_far then 
+      if SILSet.mem (nt_ctx @ [nt1]) matches_so_far then 
         matches_so_far,
         UnOp (op, NTExpr (nt_ctx @ [nt1], nt2 :: nts))
       else
-        let matches_so_far = SISet.add nt1 matches_so_far in
+        let matches_so_far = SILSet.add (nt_ctx @ [nt1]) matches_so_far in
         let rules, remaining_cases = gen_match_info ctx nt1 nt2 nt_ctx in 
         let cases =  List.fold_left (fun acc rule ->
           A.Case (rule, UnOp (op, NTExpr (nt_ctx @ [nt1], nt2 :: nts))) :: acc
@@ -377,18 +368,18 @@ fun ctx expr ->
       let cases, matches_so_far = List.fold_left (fun (acc_cases, acc_matches) case -> match case with 
         | A.Case (nts, expr) ->
           let matches_so_far, expr = r matches_so_far expr in
-          A.Case (nts, expr) :: acc_cases, SISet.union matches_so_far acc_matches
+          A.Case (nts, expr) :: acc_cases, SILSet.union matches_so_far acc_matches
         | A.CaseStub nts -> 
           CaseStub nts :: acc_cases, acc_matches
       ) ([], matches_so_far) cases in
       matches_so_far,
       Match (nt_ctx, nt_expr, List.rev cases) 
     | BVCast (len, NTExpr (nt_ctx, nt1 :: nt2 :: nts)) -> 
-      if SISet.mem nt1 matches_so_far then 
+      if SILSet.mem (nt_ctx @ [nt1]) matches_so_far then 
         matches_so_far, 
         BVCast (len, NTExpr (nt_ctx @ [nt1], nt2 :: nts))
       else
-        let matches_so_far = SISet.add nt1 matches_so_far in
+        let matches_so_far = SILSet.add (nt_ctx @ [nt1]) matches_so_far in
         let rules, remaining_cases = gen_match_info ctx nt1 nt2 nt_ctx in 
         let cases =  List.fold_left (fun acc rule ->
           A.Case (rule, BVCast (len, NTExpr (nt_ctx @ [nt1], nt2 :: nts))) :: acc
@@ -406,7 +397,7 @@ fun ctx expr ->
     | BConst _ 
     | IntConst _ 
     | StrConst _ -> matches_so_far, expr
-  in snd (helper ctx SISet.empty expr)
+  in snd (helper ctx SILSet.empty expr)
 
 (* Say a production rule has multiple options with the same nonterminal, e.g., 
   <A> ::= <B> | <B> { ... }. 
@@ -460,21 +451,11 @@ let filter_out_dangling_nts expr =
     (* If we match on a dangling nt, remove the match. 
        Dangling NTs in the resulting expr are handled recursively. *)
     else 
-      (print_endline "got here";
-      List.iter (fun (nt, idx) -> match idx with 
-      | Some idx -> 
-        Format.fprintf Format.std_formatter "%s%d "
-          nt idx
-      | None -> 
-        Format.fprintf Format.std_formatter "%s "
-          nt
-      ) (nt_ctx @ [nt]);
-      Format.pp_print_newline Format.std_formatter ();
       let expr = List.find_map (fun case -> match case with 
       | A.CaseStub _ -> None 
       | Case (_, expr) -> Some expr
       ) cases |> Option.get in 
-      helper ctx expr)
+      helper ctx expr
   | A.BinOp (expr1, op, expr2) -> 
     A.BinOp (helper ctx expr1, op, helper ctx expr2) 
   | UnOp (op, expr) -> 
@@ -505,8 +486,7 @@ let process_sc: TC.context -> A.semantic_constraint -> A.semantic_constraint
   | SyGuSExpr expr -> 
     let expr = 
       Utils.recurse_until_fixpoint expr (=) 
-      (A.pp_print_expr Format.std_formatter expr; Format.pp_print_newline Format.std_formatter ();
-        fun expr -> nt_to_match ctx expr |> pull_up_match_exprs) 
+      (fun expr -> nt_to_match ctx expr |> pull_up_match_exprs) 
     in 
     let expr = filter_out_dangling_nts expr in
     SyGuSExpr (expr)

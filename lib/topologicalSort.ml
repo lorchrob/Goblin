@@ -159,7 +159,6 @@ let canonicalize (ogrammar : ast) : ast option =
   if (MyDfs.has_cycle g) then None  
   else 
     let module TopSort = Topological.Make_stable(G)  in  
-    TopSort.iter (fun x -> Printf.printf "%s " x) g;   Printf.printf "\n\n"; 
     let top_sort_nts = TopSort.fold (fun x y -> y @ [x]) g [] in 
     (* let rev_top_sort_nts = List.rev top_sort_nts in  *)
     Some (collect_rules top_sort_nts ogrammar [])
@@ -266,8 +265,6 @@ let canonicalize_scs (scs : semantic_constraint list) : string list option =
   let all_nt = get_all_nt_scs scs in 
   let unique_nts = StringSet.of_list all_nt in 
   let all_dependencies = get_all_dependencies_from_scs scs in 
-  List.iter (fun (s1, s2) -> Format.fprintf Format.std_formatter "%s <- %s\n" s1 s2) all_dependencies;
-  Format.pp_print_flush Format.std_formatter ();
   let unique_dependencies = StringPairSet.of_list all_dependencies in 
   StringSet.iter (fun s -> G.add_vertex g s) unique_nts; 
   StringPairSet.iter (fun s-> G.add_edge g (fst s) (snd s)) unique_dependencies ;

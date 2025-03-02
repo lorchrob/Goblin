@@ -50,7 +50,6 @@ let expr_to_sygus_ast: A.expr -> SA.sygus_ast
 
 let rec sygus_ast_to_expr: SA.sygus_ast -> A.expr list
 = fun sygus_ast -> 
-  SygusAst.pp_print_sygus_ast Format.std_formatter sygus_ast;
   match sygus_ast with 
 | IntLeaf i -> [IntConst i]
 | BVLeaf (len, bits) -> [BVConst (len, bits)]
@@ -327,8 +326,6 @@ let rec compute_deps: A.semantic_constraint Utils.StringMap.t -> A.ast -> SA.syg
     ) ast in
     let element = match element with 
     | None -> 
-      print_endline constructor; 
-      print_endline (constructor |> remove_stub |> remove_suffix);
       failwith "Internal error in computeDeps.ml"
     | Some element -> element 
     in

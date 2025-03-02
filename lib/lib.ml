@@ -28,12 +28,11 @@ let pow base exponent =
     | e -> aux (base * accumulator) (base * base) ((e - 1) / 2) in
   aux 1 base exponent
 
-let union_keys k v1 v2 = match v1, v2 with 
+let union_keys _ v1 v2 = match v1, v2 with 
 | Some v1, None -> Some v1 
 | None, Some v2 -> Some v2 
 | None, None -> None 
 | Some _, Some _ -> 
-  print_endline k;
   failwith "Failure unioning two maps"
 
 let find_index element lst =

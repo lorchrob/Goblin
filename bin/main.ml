@@ -53,21 +53,23 @@ let () =
     <C> :: Int;
   ") in *)
 
-  let out = (Pipeline.main_pipeline 
+  (* let out = (Pipeline.main_pipeline 
   "
   <S> ::= <A> <A> { <A>.<B>.<D> > 1; };
   <A> ::= <B>;
   <B> ::= <D>;
   <D> :: Int;
-") in
+") in *)
 
-  (* let out = (Pipeline.main_pipeline 
+  let _ = (Pipeline.main_pipeline 
     "
     <S> ::= <A> <A> { <A>.<B>.<D> > 1; };
     <A> ::= <B> | <B> <D>;
     <B> ::= <D>;
     <D> :: Int;
-  ") in *)
+  ") in
+
+  ()
 
   (* let out = (Pipeline.main_pipeline 
     "
@@ -76,6 +78,3 @@ let () =
     <B> ::= <D> <D>;
     <D> :: Int;
   ") in *)
-
-
-  print_endline out;

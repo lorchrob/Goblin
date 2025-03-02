@@ -449,18 +449,6 @@ let rec expr_contains_dangling_nt: Utils.SILSet.t -> expr -> bool
   match expr with 
   | NTExpr (nt_ctx, nts) -> 
     let nt_expr = Utils.init (nt_ctx @ nts) in  
-    (* let prefixes = prefixes nt_expr in   *)
-      (* List.iter (fun (nt, idx) -> 
-        match idx with 
-        | Some idx -> 
-          Format.fprintf Format.std_formatter "%s%d "
-            nt
-            idx
-        | None ->
-          Format.fprintf Format.std_formatter "%s "
-            nt
-      ) prefix;
-      Format.pp_print_newline Format.std_formatter ();  *)
     (List.length nt_expr > 1) && 
     not (Utils.SILSet.mem nt_expr ctx)
   | BinOp (expr1, _, expr2) -> 
