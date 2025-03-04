@@ -1,0 +1,5 @@
+<S> ::= <A> <B> { <A> <- length(<B>); };
+<B> ::= <C> <D>;
+<C> :: BitList { length(<C>) > 0; }; 
+<D> :: BitVector(8);
+<A> :: Int;

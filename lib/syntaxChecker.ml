@@ -215,7 +215,7 @@ let remove_circular_deps: ast -> ast
               (* Change dependent terms in cycle to sygus level constraints *)
               if List.mem nt cycle
               then (
-                Debug.debug_print Format.pp_print_string Format.std_formatter "Replacing dependency with SyGuS constraint\n";
+                Utils.debug_print Format.pp_print_string Format.std_formatter "Replacing dependency with SyGuS constraint\n";
                 SyGuSExpr (CompOp (NTExpr ([], [nt, None]), Eq, expr)) :: acc
               ) else dep :: acc
             ) [] dependencies
@@ -244,7 +244,7 @@ let check_scs_for_dep_terms: semantic_constraint list -> semantic_constraint lis
   List.fold_left (fun acc sc -> match sc with 
   | Dependency (nt, expr) -> 
     if StringSet.mem nt deps_to_convert then (
-      Debug.debug_print Format.pp_print_string Format.std_formatter "Replacing dependency with SyGuS constraint\n";
+      Utils.debug_print Format.pp_print_string Format.std_formatter "Replacing dependency with SyGuS constraint\n";
       SyGuSExpr (CompOp (NTExpr ([], [nt, None]), Eq, expr)) :: acc
     ) else sc :: acc
   | SyGuSExpr _ -> sc :: acc

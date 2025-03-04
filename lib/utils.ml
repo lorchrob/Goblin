@@ -14,6 +14,13 @@ end)
 (* Module state for creating fresh identifiers *)
 let k = ref 0
 
+let read_file filename =
+  let ic = open_in filename in
+  let len = in_channel_length ic in
+  let content = really_input_string ic len in
+  close_in ic;
+  content
+
 let rec split3 lst =
   match lst with
   | [] -> ([], [], [])
@@ -70,3 +77,10 @@ fun x eq f ->
 let last xs = xs |> List.rev |> List.hd 
 
 let init xs = xs |> List.rev |> List.tl |> List.rev
+
+let debug_print pp formatter value =
+  if !Flags.debug then
+    (pp formatter value; 
+     Format.pp_print_flush formatter ();)
+  else
+    Format.ifprintf formatter "%a" pp value

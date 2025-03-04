@@ -1,0 +1,14 @@
+<SAE_PACKET> ::= <COMMIT> ;
+<COMMIT> ::= <AUTH_ALGO> <REJECTED_GROUPS>
+{<AUTH_ALGO> <- int_to_bitvector(16, 3);};
+
+<AUTH_ALGO> :: BitVector(16);
+
+<REJECTED_GROUPS> ::= <RG_ID_LENGTH>  <RG_ID_LIST> 
+{ <RG_ID_LENGTH> <- int_to_bitvector(8, length(<RG_ID_LIST>)); };
+
+<RG_ID_LENGTH>   :: BitVector(8); 
+
+<RG_ID_LIST> ::= <RG_ID> | <RG_ID> <RG_ID_LIST>;
+
+<RG_ID> :: BitVector(8);

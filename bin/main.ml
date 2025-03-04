@@ -35,7 +35,16 @@ open Sbf
 
 (* Main function *)
 let () = 
-  Debug.parse_args ();
+  Flags.parse_args ();
+
+  let filename = match !Flags.filename with 
+  | Some filename -> filename 
+  | None -> failwith "You must specify an input filename with --file <filename>"
+  in
+  
+  let _ = Pipeline.main_pipeline filename in
+
+  ()
 
     (* let out = (Pipeline.main_pipeline 
     "
@@ -61,15 +70,13 @@ let () =
   <D> :: Int;
 ") in *)
 
-  let _ = (Pipeline.main_pipeline 
+  (* let _ = (Pipeline.main_pipeline 
     "
     <S> ::= <A> <A> { <A>.<B>.<D> > 1; };
     <A> ::= <B> | <B> <D>;
     <B> ::= <D>;
     <D> :: Int;
-  ") in
-
-  ()
+  ") in *)
 
   (* let out = (Pipeline.main_pipeline 
     "

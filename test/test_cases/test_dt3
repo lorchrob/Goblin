@@ -1,0 +1,4 @@
+<S> ::= <A> <B> { <A> <- <B>; };
+
+<A> :: BitVector(2); 
+<B> :: BitVector(2) { <B> = 0b01; } ;

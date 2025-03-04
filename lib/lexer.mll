@@ -74,7 +74,7 @@ rule read =
   | int as p { INTEGER (int_of_string p) }
   | id as p {
     try (
-      Debug.debug_print Format.pp_print_string Format.std_formatter p; (* switch to true for more debug output *)
+      Utils.debug_print Format.pp_print_string Format.std_formatter p; (* switch to true for more debug output *)
       Hashtbl.find keyword_table p
     ) with Not_found -> ID (p)
   }
