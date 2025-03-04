@@ -1,6 +1,6 @@
 # WiFi SAE Packet Generator
 
-fRequired opam packages:
+Required opam packages:
 
 * `opam install menhir alcotest ppx_bitstring yojson ocamlgraph lwt lwt_ppx`
 
