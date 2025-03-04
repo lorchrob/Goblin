@@ -22,7 +22,7 @@ let rec generate_all_possible_exprs: TC.context -> string list -> A.expr -> A.ex
   match expr with 
   | NTExpr ([], nt_expr) -> 
     let rec helper nts nt_expr = match nt_expr with 
-      | [] -> failwith "Impossible case in generate_all_possible_exprs"
+      | [] -> Utils.crash "Impossible case in generate_all_possible_exprs"
       (* If there is already an index, we eliminate the ambiguity. 
          This might allow us to include indices in the input syntax for no (or little) extra cost *)
       | (nt', Some idx) :: [] -> [[(nt', Some idx)]]
@@ -73,8 +73,8 @@ let rec generate_all_possible_exprs: TC.context -> string list -> A.expr -> A.ex
     in 
     let exprs = helper nts nt_expr in 
     List.map (fun e -> A.NTExpr ([], e)) exprs
-  | NTExpr _ ->  failwith "Impossible case in generate_all_possible_exprs: encountered NTExpr with context, but dot notation should not be desugared yet"
-  | A.Match _ -> failwith "Impossible case in generate_all_possible_exprs: encountered Match, but dot notation should not be desugared yet"
+  | NTExpr _ ->  Utils.crash "Impossible case in generate_all_possible_exprs: encountered NTExpr with context, but dot notation should not be desugared yet"
+  | A.Match _ -> Utils.crash "Impossible case in generate_all_possible_exprs: encountered Match, but dot notation should not be desugared yet"
   | BinOp (expr1, op, expr2) -> 
     let exprs1 = r expr1 in 
     let exprs2 = r expr2 in 

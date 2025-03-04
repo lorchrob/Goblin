@@ -1,7 +1,7 @@
 open Ast
 
 let random_element (lst: 'a list) : 'a =
-    if lst = [] then failwith "Empty list"
+    if lst = [] then Utils.crash "Empty list"
     else (
       let len = List.length lst in
       let random_index = Random.int len in
@@ -163,7 +163,7 @@ let rec mutation_update g nt operation =
 
 let rec replace_element geList nt1 nt2 =
     match geList with
-    | [] -> failwith "error crossover"
+    | [] -> Utils.crash "error crossover"
     | x :: xs -> if x = nt1 then nt2 :: xs
                  else x :: (replace_element xs nt1 nt2)
 
@@ -205,7 +205,7 @@ let rec grammarUpdateAfterCrossover (nt : string) (g : ast) (rhs1 : prod_rule_rh
 let extract_nt_po pr1 pr2 =
 match pr1, pr2 with
 | ProdRule(a, b), ProdRule(c, d) -> a, c, b, d
-| _, _ -> failwith "bad random for crossover"
+| _, _ -> Utils.crash "bad random for crossover"
 
 let log_grammar msg =
 let oc = open_out_gen [Open_append; Open_creat] 0o666 "../../failed_grammar.grammar" in
@@ -225,8 +225,8 @@ let mutation_crossover (rhs1 : prod_rule_rhs) (rhs2 : prod_rule_rhs) : (prod_rul
             match randomGe1, randomGe2 with
             | (Nonterminal a), (Nonterminal b) -> 
                 (Rhs(crossoverList1, (remove_constraints a scList1)), Rhs(crossoverList2, (remove_constraints b scList2)))
-            | (Nonterminal _, (StubbedNonterminal (_, _))) -> failwith "unexpected crossover"
-            | ((StubbedNonterminal (_, _)), _) -> failwith "unexpected crossover"
+            | (Nonterminal _, (StubbedNonterminal (_, _))) -> Utils.crash "unexpected crossover"
+            | ((StubbedNonterminal (_, _)), _) -> Utils.crash "unexpected crossover"
         )
-    | (Rhs (_, _), StubbedRhs _) -> failwith "unexpected crossover"
-    | (StubbedRhs _, _) -> failwith "unexpected crossover"
+    | (Rhs (_, _), StubbedRhs _) -> Utils.crash "unexpected crossover"
+    | (StubbedRhs _, _) -> Utils.crash "unexpected crossover"

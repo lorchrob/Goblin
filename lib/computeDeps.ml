@@ -1,7 +1,7 @@
 module SA = SygusAst
 module A = Ast
 
-let eval_fail index = failwith ("Internal error: evaluation error #" ^ string_of_int index)
+let eval_fail index = Utils.crash ("Internal error: evaluation error #" ^ string_of_int index)
 
 let remove_stub input = 
   let open Str in
@@ -26,10 +26,10 @@ let bvult bv1 bv2 =
     | b1 :: t1, b2 :: t2 ->
       if b1 = b2 then compare_bits t1 t2
       else b1 < b2
-    | _ -> failwith "Evaluator error: Bit vector operands must be of equal length"
+    | _ -> Utils.crash "Evaluator error: Bit vector operands must be of equal length"
   in
   if List.length bv1 <> List.length bv2 then
-    failwith "Evaluator error: Bit vector operands must be of equal length"
+    Utils.crash "Evaluator error: Bit vector operands must be of equal length"
   else
     compare_bits bv1 bv2
 
@@ -38,7 +38,7 @@ let process_constructor_str: string -> string
 = fun input -> 
   let re = Str.regexp "\\(.*\\)_con" in
   if Str.string_match re input 0 then Str.matched_group 1 input |> String.uppercase_ascii
-  else failwith "Interal error (process_constructor_str): Input string does not match the required format" 
+  else Utils.crash "Interal error (process_constructor_str): Input string does not match the required format" 
 
 let expr_to_sygus_ast: A.expr -> SA.sygus_ast 
 = fun expr -> match expr with 
@@ -61,10 +61,10 @@ let rec compute_dep: A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -> 
 = fun dep_map sygus_ast element var -> 
   match Utils.StringMap.find_opt (process_constructor_str var) dep_map with 
   | None -> 
-    failwith ("Internal error: Hanging identifier '" ^ var ^ "' when computing dependencies")
+    Utils.crash ("Internal error: Hanging identifier '" ^ var ^ "' when computing dependencies")
   | Some sc -> (
     match sc with 
-    | SyGuSExpr _ -> failwith "Internal error: Encountered SyGuSExpr when computing dependencies"
+    | SyGuSExpr _ -> Utils.crash "Internal error: Encountered SyGuSExpr when computing dependencies"
     | Dependency (_, expr) -> 
       evaluate dep_map sygus_ast element expr |> List.hd |> expr_to_sygus_ast
   )
@@ -100,7 +100,7 @@ and evaluate: A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -> A.eleme
       | StubbedNonterminal (nt, _) -> id = nt;
       ) ges 
     with Not_found ->
-      failwith ("Dangling identifier " ^ id ^ " in semantic constraint"))
+      Utils.crash ("Dangling identifier " ^ id ^ " in semantic constraint"))
   | A.ProdRule _ -> assert false
   in (
   match sygus_ast with 
@@ -297,7 +297,7 @@ and evaluate: A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -> A.eleme
     | [(A.IntConst i)], A.StrConst str -> 
       if str = "<AC_TOKEN>" || str = "<SCALAR>" then [IntConst (i + 32*8)] 
       else if str = "<ELEMENT>" then [IntConst (i + 64*8)]
-      else failwith "Tried to compute length of unknown placeholder"
+      else Utils.crash "Tried to compute length of unknown placeholder"
     | _ -> eval_fail 26
     ) [(A.IntConst (0))] exprs
   )
@@ -307,8 +307,8 @@ and evaluate: A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -> A.eleme
   | _ -> eval_fail 27
  )
 | BVConst _ | BLConst _ | IntConst _ | BConst _ | StrConst _ -> [expr]
-| NTExpr _ -> failwith "Internal error: Complicated NTExprs not yet supported"
-| Match _ -> failwith "Internal error: Match not yet supported"
+| NTExpr _ -> Utils.crash "Internal error: Complicated NTExprs not yet supported"
+| Match _ -> Utils.crash "Internal error: Match not yet supported"
 
 
 let rec compute_deps: A.semantic_constraint Utils.StringMap.t -> A.ast -> SA.sygus_ast -> SA.sygus_ast 
@@ -326,7 +326,7 @@ let rec compute_deps: A.semantic_constraint Utils.StringMap.t -> A.ast -> SA.syg
     ) ast in
     let element = match element with 
     | None -> 
-      failwith "Internal error in computeDeps.ml"
+      Utils.crash "Internal error in computeDeps.ml"
     | Some element -> element 
     in
     if Utils.StringMap.mem (remove_suffix var |> String.uppercase_ascii) dep_map

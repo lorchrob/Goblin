@@ -277,7 +277,7 @@ let find_vertex g label =
   G.iter_vertex (fun v -> if G.V.label v = label then vertex := Some v) g;
   match !vertex with
   | Some v -> v
-  | None -> failwith "Vertex not found"  (* This case should never happen as per the assumption *)
+  | None -> Utils.crash "Vertex not found"  (* This case should never happen as per the assumption *)
     
 let dead_rule_removal (canonicalized_grammar : ast) (start_symbol : string) : ast option =
   let g = G.create() in

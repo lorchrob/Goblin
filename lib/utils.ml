@@ -84,3 +84,6 @@ let debug_print pp formatter value =
      Format.pp_print_flush formatter ();)
   else
     Format.ifprintf formatter "%a" pp value
+
+let crash message = 
+  print_endline message; exit 1

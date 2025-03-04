@@ -79,7 +79,7 @@ let wait_for_oracle_response response_file =
         else if response = "CONFIRMED" then CONFIRMED_
         else if response = "ACCEPTED" then ACCEPTED_
         else if response = "IGNORE" then IGNORE_
-        else failwith "unexpected condition in oracle.."
+        else Utils.crash "unexpected condition in oracle.."
     | None ->
         Unix.sleepf 0.1;  (* Wait for a while before checking again *)
         loop ()

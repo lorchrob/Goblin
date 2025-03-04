@@ -11,7 +11,7 @@ let rec check_type_expr: context -> SyntaxChecker.prod_rule_map -> string -> gra
       let act_ty_str = Utils.capture_output Ast.pp_print_ty act_ty in 
       let exp_ty_str = Utils.capture_output Ast.pp_print_ty exp_ty in 
       let error_message = "Type checking error: expression " ^ expr_str ^ " has type " ^ act_ty_str ^ " but has expected type " ^ exp_ty_str in
-      failwith error_message
+      Utils.crash error_message
     else expr
     
   | UnOp (UPlus, expr)
@@ -22,7 +22,7 @@ let rec check_type_expr: context -> SyntaxChecker.prod_rule_map -> string -> gra
       let act_ty_str = Utils.capture_output Ast.pp_print_ty act_ty in 
       let exp_ty_str = Utils.capture_output Ast.pp_print_ty exp_ty in 
       let error_message = "Type checking error: expression " ^ expr_str ^ " has type " ^ act_ty_str ^ " but has expected type " ^ exp_ty_str in
-      failwith error_message
+      Utils.crash error_message
     else expr
   | UnOp (LNot, expr) -> 
     let act_ty = infer_ty ctx expr in 
@@ -31,7 +31,7 @@ let rec check_type_expr: context -> SyntaxChecker.prod_rule_map -> string -> gra
       let act_ty_str = Utils.capture_output Ast.pp_print_ty act_ty in 
       let exp_ty_str = Utils.capture_output Ast.pp_print_ty exp_ty in 
       let error_message = "Type checking error: expression " ^ expr_str ^ " has type " ^ act_ty_str ^ " but has expected type " ^ exp_ty_str in
-      failwith error_message
+      Utils.crash error_message
     else expr
 
   | UnOp (BVNot, expr) -> expr (**)
@@ -50,7 +50,7 @@ let rec check_type_expr: context -> SyntaxChecker.prod_rule_map -> string -> gra
       let act_ty_str = Utils.capture_output Ast.pp_print_ty Bool in
       let exp_ty_str = Utils.capture_output Ast.pp_print_ty exp_ty in 
       let error_message = "Type checking error: expression " ^ expr_str ^ " has type " ^ act_ty_str ^ " but has expected type " ^ exp_ty_str in
-      failwith error_message
+      Utils.crash error_message
     else expr
   | BinOp (expr1, Plus, expr2) 
   | BinOp (expr1, Minus, expr2) 
@@ -63,5 +63,5 @@ let rec check_type_expr: context -> SyntaxChecker.prod_rule_map -> string -> gra
       let act_ty_str = Utils.capture_output Ast.pp_print_ty Int in
       let exp_ty_str = Utils.capture_output Ast.pp_print_ty exp_ty in 
       let error_message = "Type checking error: expression " ^ expr_str ^ " has type " ^ act_ty_str ^ " but has expected type " ^ exp_ty_str in
-      failwith error_message
+      Utils.crash error_message
     else expr

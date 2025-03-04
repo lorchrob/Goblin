@@ -99,7 +99,7 @@ let rec drop lst n =
   | (xs, 0) -> xs
   | ([], x) -> 
     if x = 0 then [] else
-    failwith "Internal error: drop"
+    Utils.crash "Internal error: drop"
   | (_ :: xs, n) -> drop xs (n - 1);;
 
 
@@ -167,7 +167,7 @@ let rec rename: expr -> ((string * int option) list * int) list -> expr
   | UnOp (op, expr) -> UnOp (op, rename expr renaming) 
   | CompOp (expr1, op, expr2) -> CompOp (rename expr1 renaming, op, rename expr2 renaming) 
   | Length expr -> Length (rename expr renaming) 
-  | NTExpr _ -> failwith "Internal error in rename: case should be impossible"
+  | NTExpr _ -> Utils.crash "Internal error in rename: case should be impossible"
   | BVConst _ 
   | BLConst _ 
   | BConst _ 
@@ -206,7 +206,7 @@ let rec get_nts_from_expr_after_desugaring_dot_notation: expr -> (string * int o
   let r = get_nts_from_expr_after_desugaring_dot_notation in
   match expr with 
   | NTExpr (nt_ctx, (nt, idx) :: _) -> [nt_ctx @ [nt, idx]] 
-  | NTExpr _ -> failwith "Impossible case in get_nts_from_expr_after_desugaring_dot_notation"
+  | NTExpr _ -> Utils.crash "Impossible case in get_nts_from_expr_after_desugaring_dot_notation"
   | Match (nt_ctx, (nt, idx), cases) -> (nt_ctx @ [nt, idx]) :: 
     (List.map (fun case -> match case with 
     | CaseStub pattern -> List.map (fun (nt_ctx, (nt, idx)) -> nt_ctx @ [nt, idx]) pattern
@@ -466,5 +466,5 @@ let rec expr_contains_dangling_nt: Utils.SILSet.t -> expr -> bool
   | StrConst _
   | IntConst _ -> false
   | Match _ -> 
-    failwith "Encountered Match in expr_contains_dangling_nt. 
+    Utils.crash "Encountered Match in expr_contains_dangling_nt. 
     Shouldn't be possible, as this function should only process base expressions."

@@ -71,6 +71,7 @@ open Ast
 // %left SEMICOLON
 
 %start <Ast.ast> s
+// %parameter <Lexing.position * Lexing.position>
 
 %%
 

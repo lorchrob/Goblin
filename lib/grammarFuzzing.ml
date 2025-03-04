@@ -222,7 +222,7 @@ let wait_for_python_bin_response response_file =
 let get_message message = 
   match message with
   | Message message -> message
-  | _ -> failwith "not message type"
+  | _ -> Utils.crash "not message type"
 
 let map_provenance_to_string (p : provenance) : string =
   match p with
@@ -230,8 +230,8 @@ let map_provenance_to_string (p : provenance) : string =
   | ValidPacket CONFIRM -> "CONFIRM"
   | ValidPacket ASSOCIATION_REQUEST -> "ASSOCIATION_REQUEST"
   | ValidPacket RESET -> "RESET"
-  | ValidPacket NOTHING -> failwith "unexpected symbol.."
-  | RawPacket _ -> failwith "handle the raw packet case"
+  | ValidPacket NOTHING -> Utils.crash "unexpected symbol.."
+  | RawPacket _ -> Utils.crash "handle the raw packet case"
   
 let callDriver x =
   let message_file = "sync/message.txt" in
@@ -245,7 +245,7 @@ let callDriver x =
     | CONFIRM -> (wait_for_python_response response_file, ACCEPTED_)
     | ASSOCIATION_REQUEST -> (wait_for_python_response response_file, NOTHING_)
     | RESET -> (wait_for_python_response response_file, NOTHING_)
-    | NOTHING -> failwith "unexpected symbol.."
+    | NOTHING -> Utils.crash "unexpected symbol.."
   )
   | RawPacket y ->
     write_to_file message_file y;
@@ -283,12 +283,12 @@ let rec scoreFunction (pktStatus : (provenance * output) list) (mutatedPopulatio
         ((old_provenance @ [packet])  :: (fst future_provenance_and_population)), (((old_provenance @ [packet], current_grammar), score +. 0.5) :: (snd future_provenance_and_population))
       else 
         ((old_provenance @ [packet]) :: (fst future_provenance_and_population)), (((old_provenance @ [packet], current_grammar), score +. 0.7) :: (snd future_provenance_and_population))        
-    | Message _ -> failwith "Message type should not be matched in score func.."
+    | Message _ -> Utils.crash "Message type should not be matched in score func.."
 
     
 (* Function to get a random element from a list *)
 let random_element (lst: 'a list) : 'a =
-  if lst = [] then failwith "Empty list"
+  if lst = [] then Utils.crash "Empty list"
   else begin
     let len = List.length lst in
     let random_index = Random.int len in
@@ -405,8 +405,8 @@ let rec applyMutation (m : mutation) (g : ast) : packet_type * grammar =
       | ASSOCIATION_REQUEST -> 
         print_endline "\n\nINJECTING ASSOCIATION REQUEST\n\n" ;
         ASSOCIATION_REQUEST, g
-      | NOTHING -> failwith "unexpected symbol NOTHING"
-      | RESET -> failwith "RESET should not occur"
+      | NOTHING -> Utils.crash "unexpected symbol NOTHING"
+      | RESET -> Utils.crash "RESET should not occur"
     )
   | None -> NOTHING, g
 
@@ -512,7 +512,7 @@ let run_trace (trace : provenance list) : string list =
       | COMMIT -> "COMMIT"
       | CONFIRM -> "CONFIRM"
       | ASSOCIATION_REQUEST -> "ASSOCIATION_REQUEST"
-      | NOTHING | RESET -> failwith "unexpected provenance element.."
+      | NOTHING | RESET -> Utils.crash "unexpected provenance element.."
     ) 
   ) trace
   
@@ -535,7 +535,7 @@ let callDriver_new packets packet =
   let response_file = "sync/response.txt" in
   let placeholder_replaced_file = "sync/placeholders-replace.pkt" in
   match packet with 
-  | ValidPacket _ -> failwith "unexpected sygus output ADT.."
+  | ValidPacket _ -> Utils.crash "unexpected sygus output ADT.."
     (* write_symbol_to_file "sync/trace-length.txt" (Printf.sprintf "%d" ((List.length packets) + 1)) ; 
     write_traces_to_files (packets @ [(map_provenance_to_string packet)]) 0 ;
     (* write_symbol_to_file message_file (packets ^ (map_provenance_to_string packet) ^ ", ") ; ( *)
@@ -544,7 +544,7 @@ let callDriver_new packets packet =
     | CONFIRM -> (wait_for_python_response response_file, ACCEPTED_)
     | ASSOCIATION_REQUEST -> (wait_for_python_response response_file, NOTHING_)
     | RESET -> (wait_for_python_response response_file, NOTHING_)
-    | NOTHING -> failwith "unexpected symbol.."
+    | NOTHING -> Utils.crash "unexpected symbol.."
   ) *)
   | RawPacket y ->
     (* write_symbol_to_file "sync/trace-length.txt" (Printf.sprintf "%d" ((List.length packets) + 1)) ;  *)
@@ -691,7 +691,7 @@ let uniform_sample_from_queue (q : triple_queue) : (child list) * (state list) =
 let population_size_across_queues (x : population) (y : population) (z : population) =
   match x, y, z with
   | NOTHING a, CONFIRMED b, ACCEPTED c  -> List.length a + List.length b + List.length c
-  | _, _, _ -> failwith "Queue order not maintained"
+  | _, _, _ -> Utils.crash "Queue order not maintained"
 
 (* let oracle (pkt : provenance) : queue_handle =
   match pkt with
@@ -707,9 +707,9 @@ let population_size_across_queues (x : population) (y : population) (z : populat
 let rec map_packet_to_state (cl : child list) (old_states : state list) (new_states : state list) : state_child list =
   match cl, old_states, new_states with
   | [], [], [] -> []
-  | [], _, _ -> failwith "child list exhausted, state list non-empty"
-  | _, [], _ -> failwith "state list exhausted, child list non-empty"
-  | _, _, [] -> failwith "state list exhausted, child list non-empty"
+  | [], _, _ -> Utils.crash "child list exhausted, state list non-empty"
+  | _, [], _ -> Utils.crash "state list exhausted, child list non-empty"
+  | _, _, [] -> Utils.crash "state list exhausted, child list non-empty"
   
   | x :: xs, y :: ys, z :: zs -> 
     match z with 
@@ -721,10 +721,10 @@ let rec map_packet_to_state (cl : child list) (old_states : state list) (new_sta
         | NOTHING_ -> NOTHING x :: map_packet_to_state xs ys zs
         | CONFIRMED_ -> CONFIRMED x :: map_packet_to_state xs ys zs
         | ACCEPTED_ -> ACCEPTED x :: map_packet_to_state xs ys zs
-        | IGNORE_ -> failwith "unexpected IGNORE_ pattern"
+        | IGNORE_ -> Utils.crash "unexpected IGNORE_ pattern"
       
-    (* | NOTHING -> failwith "unreachable case.. nothing symbol unexpected in provenance"
-    | RESET -> failwith "unreachable case.. reset symbol unexpected in provenance" *)
+    (* | NOTHING -> Utils.crash "unreachable case.. nothing symbol unexpected in provenance"
+    | RESET -> Utils.crash "unreachable case.. reset symbol unexpected in provenance" *)
 
 let get_child_from_state (c : state_child) : child =
   match c with 
@@ -760,7 +760,7 @@ let dump_single_trace (trace : provenance list) : string =
       | COMMIT -> "COMMIT"
       | CONFIRM -> "CONFIRM"
       | ASSOCIATION_REQUEST -> "ASSOCIATION_REQUEST"
-      | NOTHING | RESET -> failwith "unexpected provenance element.."
+      | NOTHING | RESET -> Utils.crash "unexpected provenance element.."
     ) 
   ) trace in
   let result = ref "" in
@@ -782,7 +782,7 @@ let normalize_scores (q : triple_queue) : triple_queue =
     CONFIRMED (List.map (fun i -> (fst i), (snd i /. (float_of_int (List.length (fst i |> fst))))) y);
     ACCEPTED (List.map (fun i -> (fst i), (snd i /. (float_of_int (List.length (fst i |> fst))))) z)
     ]
-    | _, _, _ -> failwith "unexpected queue handle"
+    | _, _, _ -> Utils.crash "unexpected queue handle"
 
 let merge_queues (q1 : triple_queue) (q2 : triple_queue) : triple_queue = [
     NOTHING ((extract_child_from_state (List.nth q1 0)) @ (extract_child_from_state (List.nth q2 0))); 

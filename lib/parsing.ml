@@ -1,7 +1,19 @@
 let parse: string -> Ast.ast 
 = fun s ->
-  let lexbuf = Lexing.from_string s in 
-  Parser.s Lexer.read lexbuf
+  let lexbuf = Lexing.from_string s in
+  try
+    Parser.s Lexer.read lexbuf
+  with
+  | Lexer.SyntaxError msg -> 
+      let pos = lexbuf.Lexing.lex_curr_p in
+      Printf.eprintf "Syntax error at line %d, column %d: %s\n"
+        pos.Lexing.pos_lnum (pos.Lexing.pos_cnum - pos.Lexing.pos_bol) msg;
+      exit 1
+  | Parser.Error  ->
+      let pos = lexbuf.Lexing.lex_curr_p in
+      Printf.eprintf "Syntax error at line %d, column %d\n"
+        pos.Lexing.pos_lnum (pos.Lexing.pos_cnum - pos.Lexing.pos_bol);
+      exit 1
 
 let parse_sygus: string -> Ast.ast -> (SygusAst.sygus_ast, string) result
 = fun s ast ->

@@ -33,7 +33,7 @@ let union_keys _ v1 v2 = match v1, v2 with
 | None, Some v2 -> Some v2 
 | None, None -> None 
 | Some _, Some _ -> 
-  failwith "Failure unioning two maps"
+  Utils.crash "Failure unioning two maps"
 
 let find_index element lst =
   let rec aux i = function

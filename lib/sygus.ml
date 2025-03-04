@@ -24,7 +24,7 @@ let pp_print_ty: Format.formatter -> A.il_type -> unit
 | BitVector len -> Format.fprintf ppf "(_ BitVec %d)" len
 | BitList -> Format.fprintf ppf "(Seq Bool)"
 | MachineInt width -> Format.fprintf ppf "(_ BitVec %d)" (Lib.pow 2 width)
-| ADT _ -> failwith "Internal error: sygus.ml (pp_print_ty)"
+| ADT _ -> Utils.crash "Internal error: sygus.ml (pp_print_ty)"
 
 let pp_print_constructor: TC.context -> Ast.semantic_constraint Utils.StringMap.t -> Ast.ast ->  Format.formatter -> A.grammar_element -> unit 
 = fun ctx dep_map ast ppf ge -> match ge with 
@@ -72,7 +72,7 @@ let pp_print_datatypes: Format.formatter -> TC.context -> Ast.semantic_constrain
     Format.fprintf ppf "(declare-datatype %s (\n\t(%s)\n))\n"
       (String.uppercase_ascii stub_id)
       ((String.lowercase_ascii stub_id) ^ "_con")
-  | SyGuSExpr _ -> failwith "Internal error: dependency map contains a SyGuSExpr"
+  | SyGuSExpr _ -> Utils.crash "Internal error: dependency map contains a SyGuSExpr"
   ) dep_map;
   List.iter (fun element -> match element with 
   | A.TypeAnnotation _ -> ()
@@ -93,7 +93,7 @@ let pp_print_binop: Format.formatter -> A.bin_operator -> unit
 = fun ppf op -> match op with 
 | A.BVAnd -> Format.fprintf ppf "bvand"
 | BVOr -> Format.fprintf ppf "bvor"
-| BVXor -> failwith "BitVector xor is not supported"
+| BVXor -> Utils.crash "BitVector xor is not supported"
 | GLAnd
 | LAnd -> Format.fprintf ppf "and"
 | LOr -> Format.fprintf ppf "or"
@@ -129,14 +129,14 @@ Utils.StringMap.iter (fun stub_id dep -> match dep with
   Format.fprintf ppf "\t(%s %s)"
   (String.lowercase_ascii stub_id) 
   (String.uppercase_ascii stub_id) 
-| SyGuSExpr _ -> failwith "Internal error: dependency map contains a SyGuSExpr"
+| SyGuSExpr _ -> Utils.crash "Internal error: dependency map contains a SyGuSExpr"
 ) dep_map
 
 let rec pp_print_match: Format.formatter -> TC.context -> (string * int option) list -> string * int option -> A.case list -> unit 
 = fun ppf ctx nt_ctx (nt, idx) cases -> 
   let adt_cases = match StringMap.find nt ctx with 
   | ADT rules -> rules
-  | _ -> failwith "Internal error: sygus.ml (pp_print_match)" 
+  | _ -> Utils.crash "Internal error: sygus.ml (pp_print_match)" 
   in
   let match_rules = List.map (fun case -> match case with 
   | A.Case (nts, expr) -> nts, expr 
@@ -178,7 +178,7 @@ and pp_print_expr: TC.context -> Format.formatter -> A.expr -> unit
   let nts = List.map (fun (str, idx) -> String.lowercase_ascii str, idx) (nt_ctx @ [nt]) in
   Lib.pp_print_list pp_print_nt_helper "_" ppf nts
 | A.Match (nt_ctx, nt, cases)  -> pp_print_match ppf ctx nt_ctx nt cases
-| NTExpr _ -> failwith "Reached impossible case in pp_print_expr"
+| NTExpr _ -> Utils.crash "Reached impossible case in pp_print_expr"
 | BinOp (expr1, op, expr2) -> 
   Format.fprintf ppf "(%a %a %a)"
     pp_print_binop op 
@@ -222,9 +222,9 @@ and pp_print_expr: TC.context -> Format.formatter -> A.expr -> unit
     (Lib.pp_print_list Format.pp_print_int "") bits
 | BConst b ->  Format.fprintf ppf "%b" b
 | IntConst i -> Format.fprintf ppf "%d" i
-| StrConst _ -> failwith "Error: String constants can only be in dependencies (of the form 'nonterminal <- string_literal')"
-| BLConst _ -> failwith "BitList literals not yet fully supported"
-| BVCast _ -> failwith "Integer to bitvector casts in semantic constraints that aren't preprocessable are not supported"
+| StrConst _ -> Utils.crash "Error: String constants can only be in dependencies (of the form 'nonterminal <- string_literal')"
+| BLConst _ -> Utils.crash "BitList literals not yet fully supported"
+| BVCast _ -> Utils.crash "Integer to bitvector casts in semantic constraints that aren't preprocessable are not supported"
 
 let pp_print_semantic_constraint_ty_annot: TC.context -> Format.formatter -> string -> A.il_type -> A.semantic_constraint -> unit 
 = fun ctx ppf nt ty sc -> match sc with 
@@ -309,7 +309,7 @@ let pp_print_semantic_constraints_prod_rule
 
 let pp_print_constraints: TC.context -> Format.formatter -> A.ast -> unit 
 = fun ctx ppf ast -> match ast with 
-| [] -> failwith "Input grammar must have at least one production rule or type annotation"
+| [] -> Utils.crash "Input grammar must have at least one production rule or type annotation"
 | A.ProdRule (nt, rhss) :: _ -> 
   if List.exists (fun rhs -> match rhs with | A.Rhs (_, _ :: _) -> true | _ -> false) rhss then
   let rhss = List.mapi (fun i rhs -> (rhs, i)) rhss in
@@ -349,7 +349,7 @@ let pp_print_rules: Ast.semantic_constraint Utils.StringMap.t -> Format.formatte
       (String.lowercase_ascii stub_id) 
       (String.uppercase_ascii stub_id) 
       ((String.lowercase_ascii stub_id) ^ "_con")
-  | SyGuSExpr _ -> failwith "Internal error: dependency map contains a SyGuSExpr"
+  | SyGuSExpr _ -> Utils.crash "Internal error: dependency map contains a SyGuSExpr"
   ) dep_map
 
 let pp_print_grammar: Format.formatter -> Ast.semantic_constraint Utils.StringMap.t -> A.ast -> unit 
@@ -412,11 +412,11 @@ let run_commands cmd1 cmd2 =
 
 let find_command_in_path cmd =
   match Sys.getenv_opt "PATH" with
-  | None -> failwith "$PATH is not set"
+  | None -> Utils.crash "$PATH is not set"
   | Some path ->
       let paths = String.split_on_char ':' path in
       let rec find_in_paths = function
-        | [] -> failwith (cmd ^ " not found in $PATH")
+        | [] -> Utils.crash (cmd ^ " not found in $PATH")
         | dir :: rest ->
             let full_path = Filename.concat dir cmd in
             if Sys.file_exists full_path && Sys.is_directory full_path = false then

@@ -101,7 +101,7 @@ type metadata = {
 
 let int_to_byte n =
   if n < 0 || n > 255 then
-    failwith "Integer out of range for 1 byte representation";
+    Utils.crash "Integer out of range for 1 byte representation";
   let bytes = Bytes.create 1 in
   Bytes.set bytes 0 (Char.chr n);
   bytes
@@ -155,7 +155,7 @@ let serialize_bytes: endianness -> sygus_ast -> bytes * bytes
       (var_leaf_data, new_metadata, offset + var_leaf_length)
       
     | IntLeaf _ -> 
-      failwith "Internal error: serializing final packet, but encountered leaf variable (possibly uncomputed dependent term)"
+      Utils.crash "Internal error: serializing final packet, but encountered leaf variable (possibly uncomputed dependent term)"
   in
   let initial_metadata = {
     var_leaf_count = 0;

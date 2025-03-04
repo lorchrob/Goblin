@@ -1,6 +1,8 @@
 {
   open Parser
 
+  exception SyntaxError of string
+
   let mk_hashtbl init =
     let tbl = List.length init |> Hashtbl.create in
     init |> List.iter (fun (k, v) -> Hashtbl.add tbl k v) ;
@@ -79,8 +81,8 @@ rule read =
     ) with Not_found -> ID (p)
   }
   | eof { EOF }
-  | _ as c { failwith (Printf.sprintf "Unexpected character: %c" c) }
+  | _ as c { raise (SyntaxError (Printf.sprintf "Unexpected character: %c" c)) }
 
 and read_bits = parse
   | bit+ as b { BITS (List.of_seq (String.to_seq b |> Seq.map (fun c -> c = '1'))) }
-  | _ { failwith "Invalid bit sequence" }
+  | _ { Utils.crash "Invalid bit sequence" }
