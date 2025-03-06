@@ -1,7 +1,6 @@
 (* TODO: 
-  * Update second pipeline to handle infeasible response from sygus 
-  * support bvxor and lxor
-  * check if the grammar is finite (I think we already did that)
+  * Dead rule removal after dividing into subproblems
+  * Check if the grammar is finite (maybe we already did that)
   * Give Omar list of tasks need to be completed with help
   * Get time to meet about CCSA readings
 *)
@@ -146,11 +145,22 @@ let sygusGrammarToPacket ast =
     match collect_results sygus_asts with
     | Error e -> Error e
     | Ok sygus_asts -> 
+      (* Catch infeasible response *)
+      let sygus_asts = 
+        if List.mem (SygusAst.VarLeaf "infeasible") sygus_asts 
+        then [SygusAst.VarLeaf "infeasible"]
+        else sygus_asts
+      in
+
       (* Step 9: Recombine to single AST *)
       let sygus_ast = Recombine.recombine sygus_asts in 
 
       (* Step 10: Compute dependencies *)
-      let sygus_ast = ComputeDeps.compute_deps dep_map ast sygus_ast in 
+      let sygus_ast = 
+        if not (List.mem (SygusAst.VarLeaf "infeasible") sygus_asts)
+        then ComputeDeps.compute_deps dep_map ast sygus_ast 
+        else SygusAst.VarLeaf "infeasible"
+      in  
 
       (* Step 11: Bit flip mutations *)
       let sygus_ast = BitFlips.flip_bits sygus_ast in
