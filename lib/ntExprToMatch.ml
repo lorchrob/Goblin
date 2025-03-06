@@ -47,11 +47,6 @@ let find_indices lst =
       (s, Some (index - 1))
   )) lst
 
-(*!! TODO: 
-  * Update to generate indices on matched pattern if there were multiple options
-  * If there were multiple options, only use the versions of the base expression that 
-    apply to the corresponding options
-  * Might also want to update the SILSet.t to include whole nt_ctx as well as nt. *)
 let gen_match_info ctx (nt1, idx1) (nt2, _idx2) nt_ctx = 
   let rules = match SM.find nt1 ctx with 
   | A.ADT rules -> rules 
@@ -61,8 +56,6 @@ let gen_match_info ctx (nt1, idx1) (nt2, _idx2) nt_ctx =
     List.mem nt2 rule   
   ) rules in
   let remaining_rules = List.filter (fun rule' -> not (List.mem rule' rules')) rules in
-  
-  (* TODO: Generalize to possibly match multiple rules *)
   let rules' = find_indices rules' in
   let remaining_rules = find_indices remaining_rules in
   let rules' = List.map (List.map (fun (nt, idx) -> nt_ctx @ [nt1, idx1], (nt, idx))) rules' in

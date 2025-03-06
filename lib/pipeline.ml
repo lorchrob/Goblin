@@ -1,4 +1,11 @@
-(* input string -> output serialized packet *)
+(* TODO: 
+  * Update second pipeline to handle infeasible response from sygus 
+  * support bvxor and lxor
+  * check if the grammar is finite (I think we already did that)
+  * Give Omar list of tasks need to be completed with help
+  * Get time to meet about CCSA readings
+*)
+
 let main_pipeline filename = 
   let ppf = Format.std_formatter in
   let input_string = Utils.read_file filename in 
@@ -134,7 +141,6 @@ let sygusGrammarToPacket ast =
     (* Step 7: Call sygus engine *)
     let sygus_outputs = List.map (Sygus.call_sygus ctx dep_map) asts in
 
-    (*!! TODO: Update to handle infeasible case as above *)
     (* Step 8: Parse SyGuS output. *)
     let sygus_asts = List.map2 Parsing.parse_sygus sygus_outputs asts in
     match collect_results sygus_asts with

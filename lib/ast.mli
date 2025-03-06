@@ -80,7 +80,6 @@ type element =
 
 type ast = element list
 
-val rename : expr -> ((string * int option) list * int) list -> expr 
 val get_nts_from_expr : expr -> string list
 val get_nts_from_expr_after_desugaring_dot_notation : expr -> (string * int option) list list 
 val pp_print_element: Format.formatter -> element ->  unit 

@@ -86,4 +86,20 @@ let debug_print pp formatter value =
     Format.ifprintf formatter "%a" pp value
 
 let crash message = 
-  print_endline message; exit 1
+  failwith message
+
+(* let rec drop lst n =
+  match (lst, n) with
+  | (xs, 0) -> xs
+  | ([], x) -> 
+    if x = 0 then [] else
+    crash "Internal error: drop"
+  | (_ :: xs, n) -> drop xs (n - 1);;
+
+
+let prefixes lst =
+  let rec aux acc = function
+    | [] -> List.rev acc
+    | x :: xs -> aux ((match acc with [] -> [x] | p :: _ -> (p @ [x])) :: acc) xs
+  in
+  aux [] lst *)

@@ -19,12 +19,6 @@ open Sbf
 *)
 
 (* 
-  TODO:
-  1. Proper debug logging
-  2. Support placeholder values (maybe string type)
-*)
-
-(* 
   <S> ::= <A> <E> { <E>.<B> < 0; };  --> 
   <S> ::= <A> <E> { 
     match <E> with 

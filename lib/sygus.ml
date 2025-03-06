@@ -93,7 +93,7 @@ let pp_print_binop: Format.formatter -> A.bin_operator -> unit
 = fun ppf op -> match op with 
 | A.BVAnd -> Format.fprintf ppf "bvand"
 | BVOr -> Format.fprintf ppf "bvor"
-| BVXor -> Utils.crash "BitVector xor is not supported"
+| BVXor -> Utils.crash "Should not reach this case in pp_print_binop"
 | GLAnd
 | LAnd -> Format.fprintf ppf "and"
 | LOr -> Format.fprintf ppf "or"
@@ -179,6 +179,12 @@ and pp_print_expr: TC.context -> Format.formatter -> A.expr -> unit
   Lib.pp_print_list pp_print_nt_helper "_" ppf nts
 | A.Match (nt_ctx, nt, cases)  -> pp_print_match ppf ctx nt_ctx nt cases
 | NTExpr _ -> Utils.crash "Reached impossible case in pp_print_expr"
+| BinOp (expr1, BVXor, expr2) -> 
+  Format.fprintf ppf "(and (or %a %a) (not (and %a %a)))"
+    (pp_print_expr ctx) expr1 
+    (pp_print_expr ctx) expr2
+    (pp_print_expr ctx) expr1 
+    (pp_print_expr ctx) expr2
 | BinOp (expr1, op, expr2) -> 
   Format.fprintf ppf "(%a %a %a)"
     pp_print_binop op 
