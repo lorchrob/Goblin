@@ -43,8 +43,18 @@ let stub_subproblems: ast -> ast * ast list
     let ast, subproblems = stub_subproblems' ast in 
     element :: ast, subproblems
 
-let rec split_ast: ast -> ast list 
+let rec split_ast': ast -> ast list 
 = fun ast -> 
     let new_ast, subproblems = stub_subproblems ast in 
-    new_ast :: (List.map split_ast subproblems |> List.flatten)
+    new_ast :: (List.map split_ast' subproblems |> List.flatten)
     |> List.filter (fun ast -> ast <> [])
+
+let split_ast: ast -> ast list 
+= fun ast -> 
+  let asts = split_ast' ast in 
+  let asts = List.map (fun ast -> match ast with 
+    | ProdRule (sym, _) :: _-> TopologicalSort.dead_rule_removal ast sym |> Option.get
+    | TypeAnnotation (sym, ges, scs) :: _ -> [TypeAnnotation (sym, ges, scs)]
+    | _ -> Utils.crash "Unexpected case in split_ast"
+  ) asts in 
+  asts

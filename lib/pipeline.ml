@@ -1,6 +1,4 @@
 (* TODO: 
-  * Dead rule removal after dividing into subproblems
-  * Check if the grammar is finite (maybe we already did that)
   * Give Omar list of tasks need to be completed with help
   * Get time to meet about CCSA readings
 *)
