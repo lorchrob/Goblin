@@ -1,8 +1,3 @@
-(* TODO: 
-  * Give Omar list of tasks need to be completed with help
-  * Get time to meet about CCSA readings
-*)
-
 let main_pipeline filename = 
   let ppf = Format.std_formatter in
   let input_string = Utils.read_file filename in 
