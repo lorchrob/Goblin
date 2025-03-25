@@ -23,6 +23,11 @@ let merge: A.ast -> A.element -> A.ast
   | A.TypeAnnotation (nt, ty, scs) -> 
     (* If a prior AST rule constrains the NT, we need to push up the constraints *)
     if A.ast_constrains_nt ast nt then 
+      let _ = List.iter (fun sc -> match sc with 
+      | A.SyGuSExpr _ -> ()
+      | Dependency _ -> 
+        Utils.crash "Unsupported case in merge. This grammar has some nonterminal that is a computed term (of the form <nt> <- expr) and is also referenced elsewhere in some constraint. This is currently unsupported, but will be supported in the future."
+      ) scs in 
       let ast = List.fold_left (fun acc element -> match element with
       | A.TypeAnnotation _ -> acc @ [element]
       | A.ProdRule (nt2, rhss) -> 
@@ -66,19 +71,13 @@ let merge: A.ast -> A.element -> A.ast
     | A.StubbedRhs _ -> []
     | A.Rhs (_, scs) -> scs
     ) rhss in
-    (* To push the scs up a level, we need to prepend a dot notation reference *)
-    let scs = List.map (fun sc -> match sc with 
-    | A.SyGuSExpr expr -> A.SyGuSExpr (A.prepend_nt_to_dot_exprs nt expr)
-    | Dependency (nt2, expr) -> 
-      if nt = nt2 then 
-        (* TODO: Support dependencies of the form <A>.<B> <- <expr>, which allows us to push up 
-           a dependency where the dependent NT is constrained. 
-           Potential optimization: If a dependent NT is constrained, maybe we can ignore that constraint. *)
-        Utils.crash "Unsupported case in merge. This grammar has some nonterminal that is a computed term (of the form <nt> <- expr) and is also referenced elsewhere in some constraint. This is currently unsupported, but will be supported in the future."
-      else 
-        Dependency (nt2, A.prepend_nt_to_dot_exprs nt expr)
-    ) scs in 
     if A.ast_constrains_nt ast nt then 
+      (* To push the scs up a level, we need to prepend a dot notation reference *)
+      let scs = List.map (fun sc -> match sc with 
+      | A.SyGuSExpr expr -> A.SyGuSExpr (A.prepend_nt_to_dot_exprs nt expr)
+      | Dependency _ -> 
+        Utils.crash "Unsupported case in merge. This grammar has some nonterminal that is a computed term (of the form <nt> <- expr) and is also referenced elsewhere in some constraint. This is currently unsupported, but will be supported in the future."
+      ) scs in 
       let ast = List.fold_left (fun acc element -> match element with
       | A.TypeAnnotation _ -> acc @ [element]
       | A.ProdRule (nt2, rhss) -> 
