@@ -386,3 +386,44 @@ let rec expr_contains_dangling_nt: Utils.SILSet.t -> expr -> bool
   | Match _ -> 
     Utils.crash "Encountered Match in expr_contains_dangling_nt. 
     Shouldn't be possible, as this function should only process base expressions."
+
+let sc_constrains_nt: string -> semantic_constraint -> bool 
+= fun nt sc -> match sc with 
+| SyGuSExpr expr -> List.mem nt (get_nts_from_expr expr)
+| Dependency (nt2, _) -> nt = nt2
+
+let get_nts_from_sc: semantic_constraint -> string list 
+= fun sc -> match sc with 
+| SyGuSExpr expr -> get_nts_from_expr expr
+| Dependency (nt2, _) -> [nt2]
+
+(* To be called before desugaring NTs to match expressions and resolving ambiguities *)
+let ast_constrains_nt: ast -> string -> bool 
+= fun ast nt -> 
+  List.exists (fun element -> match element with 
+    | TypeAnnotation (nt2, _, _ :: _) when nt = nt2 -> true 
+    | TypeAnnotation _ -> false
+    | ProdRule (_, rhss) -> List.exists (fun rhs -> match rhs with 
+      | Rhs (_, scs) -> List.exists (sc_constrains_nt nt) scs
+      | StubbedRhs _ -> false
+    ) rhss
+  ) ast
+
+(* Use before desugaring NTs to match expressions*)
+let rec prepend_nt_to_dot_exprs: string -> expr -> expr 
+= fun nt expr -> 
+  let r = prepend_nt_to_dot_exprs nt in
+  match expr with
+  | NTExpr ([], nts) -> NTExpr ([], (nt, None) :: nts)
+  | BVCast (len, expr) -> BVCast (len, r expr)
+  | BinOp (expr1, op, expr2) -> BinOp (r expr1, op, r expr2) 
+  | UnOp (op, expr) -> UnOp (op, r expr) 
+  | CompOp (expr1, op, expr2) -> CompOp (r expr1, op, r expr2) 
+  | Length expr -> Length (r expr) 
+  | Match _ -> Utils.crash "Unexpected case 1 in prepend_nt_to_dot_exprs"
+  | NTExpr _ -> Utils.crash "Unexpected case 2 in prepend_nt_to_dot_exprs" 
+  | BVConst _ 
+  | BLConst _ 
+  | BConst _ 
+  | IntConst _ 
+  | StrConst _ -> expr

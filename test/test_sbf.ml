@@ -132,6 +132,21 @@ let test_dot_notation () =
   let output = String.trim (main_pipeline input) in
   check string "test_dot_notation" output "-40" 
 
+let overlapping_constraints () = 
+  let input = "../../../test/test_cases/overlapping_constraints" in
+  let output = String.trim (main_pipeline input) in
+  check string "overlapping_constraints" output "54" 
+
+let overlapping_constraints_2 () = 
+  let input = "../../../test/test_cases/overlapping_constraints_2" in
+  let output = String.trim (main_pipeline input) in
+  check string "overlapping_constraints_2" output "5343" 
+
+let repeated_nt_dependency () = 
+  let input = "../../../test/test_cases/repeated_nt_dependency" in
+  let output = String.trim (main_pipeline input) in
+  check string "repeated_nt_dependency" output "33" 
+
 let () = 
   run "My_module" [
     "test_sc", [test_case "Semantic constraint" `Quick test_sc];
@@ -158,4 +173,7 @@ let () =
     "test_another_ambiguous_reference", [test_case "test_another_ambiguous_reference" `Quick test_another_ambiguous_reference];
     "test_another_ambiguous_reference_1", [test_case "test_another_ambiguous_reference_1" `Quick test_another_ambiguous_reference_1];
     "test_another_ambiguous_reference_2", [test_case "test_another_ambiguous_reference_2" `Quick test_another_ambiguous_reference_2];
+    "overlapping_constraints", [test_case "overlapping_constraints" `Quick overlapping_constraints];
+    "overlapping_constraints_2", [test_case "overlapping_constraints_2" `Quick overlapping_constraints_2];
+    "repeated_nt_dependency", [test_case "repeated_nt_dependency" `Quick repeated_nt_dependency];
   ]

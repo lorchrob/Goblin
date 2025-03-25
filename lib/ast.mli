@@ -81,6 +81,7 @@ type element =
 type ast = element list
 
 val get_nts_from_expr : expr -> string list
+val get_nts_from_sc: semantic_constraint -> string list 
 val get_nts_from_expr_after_desugaring_dot_notation : expr -> (string * int option) list list 
 val pp_print_element: Format.formatter -> element ->  unit 
 val pp_print_ast : Format.formatter -> ast -> unit
@@ -93,3 +94,5 @@ val il_int_to_bitvector : int -> int -> expr
 val grammar_element_to_string : grammar_element -> string
 val nts_of_rhs: prod_rule_rhs -> string list 
 val expr_contains_dangling_nt: Utils.SILSet.t -> expr -> bool 
+val ast_constrains_nt: ast -> string -> bool
+val prepend_nt_to_dot_exprs: string -> expr -> expr
