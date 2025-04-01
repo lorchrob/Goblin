@@ -40,6 +40,15 @@ let () =
 
   ()
 
+  (* let filename = "../../../test/test_cases/test_check_sygus_ast" in
+  let input = Utils.read_file filename in 
+  let ast = Parsing.parse input in
+  let sygus_ast = SygusAst.Node ("A", [SygusAst.Node ("B", [SygusAst.VarLeaf ""]); SygusAst.Node ("C", [SygusAst.VarLeaf ""])]) in
+  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  match output with
+  | Ok _ -> ()  
+  | Error msg -> failwith msg *)
+
     (* let out = (Pipeline.main_pipeline 
     "
     <S> ::= <A> { <A>.<B>.<D> > <A>.<B>.<D>; };

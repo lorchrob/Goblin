@@ -1,11 +1,33 @@
 open Sbf.Pipeline
+open Sbf
 open Alcotest
+module SA = SygusAst
 
 (* TODO
   1. For "infeasible" tests, create non-infeasible counterpart
   2. Add tests from main.ml
 
 *)
+
+let test_check_sygus_ast () =
+  let filename = "../../../test/test_cases/test_check_sygus_ast" in
+  let input = Utils.read_file filename in 
+  let ast = Parsing.parse input in
+  let sygus_ast = SygusAst.Node ("A", [SygusAst.Node ("B", [SygusAst.VarLeaf ""]); SygusAst.Node ("C", [SygusAst.VarLeaf ""])]) in
+  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  match output with
+  | Ok _ -> ()  
+  | Error msg -> fail msg
+
+let test_check_sygus_ast_2 () =
+  let filename = "../../../test/test_cases/test_check_sygus_ast" in
+  let input = Utils.read_file filename in 
+  let ast = Parsing.parse input in 
+  let sygus_ast = SygusAst.Node ("A", [SygusAst.Node ("D", [SygusAst.VarLeaf ""]); SygusAst.Node ("C", [SygusAst.VarLeaf ""])]) in
+  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  match output with
+  | Ok _ -> fail "Expected error"
+  | Error _ -> ()
 
 let test_another_ambiguous_reference_1 () =
   (* TODO: Fix ugly paths. The test_cases directory is currently not included in the build directory, 
@@ -176,4 +198,6 @@ let () =
     "overlapping_constraints", [test_case "overlapping_constraints" `Quick overlapping_constraints];
     "overlapping_constraints_2", [test_case "overlapping_constraints_2" `Quick overlapping_constraints_2];
     "repeated_nt_dependency", [test_case "repeated_nt_dependency" `Quick repeated_nt_dependency];
+    "test_check_sygus_ast", [test_case "test_check_sygus_ast" `Quick test_check_sygus_ast];
+    "test_check_sygus_ast_2", [test_case "test_check_sygus_ast_2" `Quick test_check_sygus_ast_2];
   ]
