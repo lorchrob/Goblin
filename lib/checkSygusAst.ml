@@ -29,7 +29,7 @@ let rec check_sygus_ast: Ast.ast -> SygusAst.sygus_ast -> (unit, string) result
     | A.Rhs (ges, _) -> 
       if List.length ges != List.length children then false 
       else 
-        List.for_all2 (fun child ge -> 
+        List.for_all2 (fun child ge ->  
           match child, ge with 
           | _, A.StubbedNonterminal _ -> false 
           | SA.Node (constructor, _), Nonterminal nt -> constructor = nt

@@ -1,7 +1,4 @@
-(* Taken from Kind 2 *)
-
-(** A result for some computation. [Ok] or [Error] of [Format.formatter]*)
-type 'a res = ('a, Format.formatter -> unit) result
+(* Heavily borrowed from Kind 2 *)
 
 let ok v = Ok v
 
@@ -61,18 +58,20 @@ let unwrap = function
 let map_res f_ok f_err = function
   | Ok arg -> Ok (f_ok arg)
   | Error err -> Error (f_err err)
+  
+let identity = fun a -> a
 
 (** Maps a function to a result if it's [Error]. *)
-let map_err f = map_res (fun a -> a) f
+let map_err f = map_res identity f
 
 (** Feeds a result to a function returning a result, propagates if argument's
 an error. *)
-let chain ?fmt:(fmt = (fun a -> a)) f = function
+let chain ?fmt:(fmt = identity) f = function
   | Ok arg -> f arg |> map_err fmt
   | Error err -> Error err
 
 (** Fold over a list of results. *)
-let l_fold ?fmt:(fmt = (fun a -> a)) f init =
+let l_fold ?fmt:(fmt = identity) f init =
   let rec loop acc = function
     | head :: tail -> (
       match f acc head with
@@ -84,7 +83,7 @@ let l_fold ?fmt:(fmt = (fun a -> a)) f init =
   loop init
 
 (** Map over a list with a result-producing function. *)
-let l_map ?fmt:(fmt = (fun a -> a)) f =
+let l_map ?fmt:(fmt = identity) f =
   let rec loop pref = function
     | head :: tail -> (
       match f head with
@@ -96,7 +95,7 @@ let l_map ?fmt:(fmt = (fun a -> a)) f =
   loop []
 
 (** Iterate over a list with a result-producing function. *)
-let l_iter ?fmt:(fmt = (fun a -> a)) f =
+let l_iter ?fmt:(fmt = identity) f =
   let rec loop = function
     | head :: tail -> (
       match f head with
