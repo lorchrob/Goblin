@@ -105,11 +105,3 @@ let l_iter ?fmt:(fmt = identity) f =
     | [] -> Ok ()
   in
   loop
-
-(* 
-   Local Variables:
-   compile-command: "make -C .. -k"
-   tuareg-interactive-program: "./kind2.top -I ./_build -I ./_build/SExpr"
-   indent-tabs-mode: nil
-   End: 
-*)

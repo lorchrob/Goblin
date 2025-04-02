@@ -66,7 +66,7 @@ let rec compute_dep: A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -> 
     match sc with 
     | SyGuSExpr _ -> Utils.crash "Internal error: Encountered SyGuSExpr when computing dependencies"
     | Dependency (_, expr) -> 
-      evaluate dep_map sygus_ast element expr |> List.hd |> expr_to_sygus_ast
+      evaluate ~dep_map sygus_ast element expr |> List.hd |> expr_to_sygus_ast
   )
 
 (* NOTE: This code assumes that the dependent term is a bitvector. If we wanted to make it general,
@@ -86,13 +86,13 @@ and evaluate_sygus_ast: A.semantic_constraint Utils.StringMap.t -> A.element -> 
   Node (cons, subterms)
 
 
-and evaluate: A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -> A.element -> A.expr -> A.expr list
-= fun dep_map sygus_ast element expr -> 
-  let call = evaluate dep_map sygus_ast element in
+and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -> A.element -> A.expr -> A.expr list
+= fun ?(dep_map=Utils.StringMap.empty) sygus_ast element expr -> 
+  let call = evaluate ~dep_map sygus_ast element in
   match expr with 
 | NTExpr (_, [id, _]) -> (* TODO: Check if we need to consider the index *)
   let child_index = match element with 
-  | A.TypeAnnotation _ -> assert false 
+  | A.TypeAnnotation _ -> Utils.crash "Unexpected case in evaluate" 
   | A.ProdRule (_, (Rhs (ges, _)) :: _) ->
     (try  
       Utils.find_index (fun ge -> match ge with 
@@ -101,7 +101,7 @@ and evaluate: A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -> A.eleme
       ) ges 
     with Not_found ->
       Utils.crash ("Dangling identifier " ^ id ^ " in semantic constraint"))
-  | A.ProdRule _ -> assert false
+  | A.ProdRule _ -> Utils.crash "Unexpected case in evaluate"
   in (
   match sygus_ast with 
   | VarLeaf _ | BVLeaf _ | IntLeaf _ | BLLeaf _ -> 
@@ -307,8 +307,8 @@ and evaluate: A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -> A.eleme
   | _ -> eval_fail 27
  )
 | BVConst _ | BLConst _ | IntConst _ | BConst _ | StrConst _ -> [expr]
-| NTExpr _ -> Utils.crash "Internal error: Complicated NTExprs not yet supported"
-| Match _ -> Utils.crash "Internal error: Match not yet supported"
+| NTExpr _ -> Utils.crash "Internal error: Complicated NTExprs not yet supported in dependency computation"
+| Match _ -> Utils.crash "Internal error: Match not yet supported in dependency computation"
 
 
 let rec compute_deps: A.semantic_constraint Utils.StringMap.t -> A.ast -> SA.sygus_ast -> SA.sygus_ast 
