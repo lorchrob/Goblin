@@ -12,10 +12,18 @@ let (let*) = Res.(>>=)
   2. Sygus_ast respects every semantic constraint in ast (semantic well-formedness)
 *)
 
-let rec check_sygus_ast: Ast.ast -> SygusAst.sygus_ast -> (unit, string) result 
+let check_start_symbol: Ast.ast -> SygusAst.sygus_ast -> (unit, string) result 
+= fun ast sygus_ast -> match ast, sygus_ast with 
+| A.ProdRule (nt, _) :: _, SA.Node (constructor, _) -> 
+  if nt = constructor then Ok () else 
+  Error ("Sygus AST root constructor '" ^ constructor ^ "' does not match the AST start symbol")
+| A.TypeAnnotation _ :: _, _ -> Utils.crash "Unexpected case in check_start_symbol"
+| _ -> Error "Sygus AST root node is a leaf node"
+
+let rec check_syntax_semantics: Ast.ast -> SygusAst.sygus_ast -> (unit, string) result 
 = fun ast sygus_ast -> match sygus_ast with 
   | Node (constructor, children) -> 
-    let* _ = R.seq (List.map (check_sygus_ast ast) children) in 
+    let* _ = R.seq (List.map (check_syntax_semantics ast) children) in 
     let nt_rhss = List.find_map (fun element -> match element with
     | A.TypeAnnotation _ -> None 
     | A.ProdRule (nt, rhss) -> 
@@ -54,8 +62,13 @@ let rec check_sygus_ast: Ast.ast -> SygusAst.sygus_ast -> (unit, string) result
     let b = List.exists (fun sc -> match sc with 
     | [A.BConst false] -> true 
     | [BConst true] -> false 
-    | _ -> failwith "Unexpected pattern in check_sygus_ast"
+    | _ -> failwith "Unexpected pattern in check_syntax_semantics"
     ) scs in
     if b then Error ("Semantic constraint on constructor '" ^ constructor ^ " is falsified") else
     Ok ()
   | _ -> Ok ()
+
+let check_sygus_ast: Ast.ast -> SygusAst.sygus_ast -> (unit, string) result 
+= fun ast sygus_ast -> 
+  let* _ = check_start_symbol ast sygus_ast in 
+  check_syntax_semantics ast sygus_ast
