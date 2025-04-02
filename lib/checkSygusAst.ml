@@ -6,7 +6,7 @@ let (let*) = Res.(>>=)
 
 (* Check
   1. The sygus_ast is an instance of the grammar (syntactic well-formedness)
-    a. TODO: The grammar starts at the start symbol 
+    a. The grammar starts at the start symbol 
     b. Each non-leaf node in the sygus ast, along with its children, 
        has some corresponding grammar production rule 
   2. Sygus_ast respects every semantic constraint in ast (semantic well-formedness)
