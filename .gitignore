@@ -53,3 +53,5 @@ results/*
 temporal-info/*
 sync/*
 
+bin/claude-key-data.txt
+bin/eapol.txt
