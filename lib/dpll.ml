@@ -139,6 +139,7 @@ let declare_smt_variables _filename _variables = ()
 
 let assert_smt_constraint filename expr = 
   let expr_smtlib_string = Utils.capture_output (Sygus.pp_print_expr Utils.StringMap.empty) expr in 
+  let expr_smtlib_string = Format.asprintf "(assert %s)" expr_smtlib_string in
   Utils.write_to_file filename expr_smtlib_string
 
 (* TODO: Handle semantic constraints *)

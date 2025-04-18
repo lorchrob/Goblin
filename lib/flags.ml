@@ -4,9 +4,9 @@ type engine =
 
 let debug = ref false
 let only_parse = ref false
+let daniyal = ref false
 let filename = ref None
 let selected_engine = ref SyGuS
-let daniyal = ref false
 
 let parse_args () = 
   let open Cmdliner in
@@ -35,6 +35,11 @@ let parse_args () =
     Arg.(value & flag & info ["p"; "only-parse"] ~doc)
   in
 
+  let daniyal_flag =
+    let doc = "Activate daniyal mode" in
+    Arg.(value & flag & info ["a"; "daniyal"] ~doc)
+  in
+
   let filename_flag =
     let doc = "Specify the input file" in
     Arg.(value & opt (some string) None & info ["f"; "file"] ~doc)
@@ -45,26 +50,22 @@ let parse_args () =
     Arg.(value & opt engine_conv SyGuS & info ["e"; "engine"] ~docv:"ENGINE" ~doc)
   in
 
-  let daniyal_flag =
-    let doc = "Activate daniyal mode" in
-    Arg.(value & flag & info ["--daniyal"] ~doc)
-  in
-
-  let set_flags new_debug new_only_parse new_filename new_engine new_daniyal =
+  let set_flags new_debug new_only_parse new_daniyal new_filename new_engine =
+    Format.pp_print_flush Format.std_formatter ();
     debug := new_debug;
     only_parse := new_only_parse;
+    daniyal := new_daniyal;
     filename := new_filename;
     selected_engine := new_engine;
-    daniyal := new_daniyal;
   in
 
   let term =
     Term.(const set_flags
           $ debug_flag
           $ only_parse_flag
+          $ daniyal_flag
           $ filename_flag
-          $ engine_flag
-          $ daniyal_flag)
+          $ engine_flag)
   in
 
   let info = Cmd.info "sbf" in

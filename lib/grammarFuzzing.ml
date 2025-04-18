@@ -852,7 +852,7 @@ let rec fuzzingAlgorithm
       save_iteration_time (currentIteration + 1) iteration_timer ;
       fuzzingAlgorithm maxCurrentPopulation newQueue (List.append iTraces iT) tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations seed
 
-let initialize_files =
+let initialize_files () =
   initialize_clear_file "temporal-info/NOTHING-queue-info.txt";
   initialize_clear_file "temporal-info/CONFIRMED-queue-info.txt";
   initialize_clear_file "temporal-info/ACCEPTED-queue-info.txt";
@@ -869,7 +869,7 @@ let initialize_files =
 
 let runFuzzer grammar_list = 
   Random.self_init ();
-  initialize_files ;
+  initialize_files ();
   let commit_grammar = List.nth grammar_list 0 in
   let confirm_grammar = List.nth grammar_list 1 in
   let commit_confirm_grammar = List.nth grammar_list 2 in
