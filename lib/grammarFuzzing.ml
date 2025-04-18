@@ -568,8 +568,8 @@ let callDriver_new packets packet =
     
 let run_sequence (c : child) : (provenance * output) * state =
   let stateTransition = fst c |> fst in
-  print_endline "\n\n\nGRAMMAR TO SYGUS:" ;
-  pp_print_ast Format.std_formatter (fst c |> snd) ;
+  (* print_endline "\n\n\nGRAMMAR TO SYGUS:" ;
+  pp_print_ast Format.std_formatter (fst c |> snd) ; *)
   let sygus_start_time = Unix.gettimeofday () in
   let removed_dead_rules_for_sygus = dead_rule_removal (fst c |> snd) "SAE_PACKET" in
   match removed_dead_rules_for_sygus with
@@ -579,12 +579,14 @@ let run_sequence (c : child) : (provenance * output) * state =
     let packetToSend_ = Lwt_main.run (timeout_wrapper 5.0 (fun () -> (Pipeline.sygusGrammarToPacket grammar_to_sygus))) in (
       match packetToSend_ with
       | Ok (packetToSend, _metadata) ->
+        print_endline "SUCCESS";
         let trace_start_time = Unix.gettimeofday () in
         let driver_output = callDriver_new (run_trace stateTransition) (RawPacket packetToSend) in
         trace_time := Unix.gettimeofday () -. trace_start_time ;
         save_time_info "temporal-info/OCaml-time-info.csv" (1 + (List.length (stateTransition))) ;
         (RawPacket packetToSend, (fst driver_output)), (snd driver_output)
       | Error _ -> 
+        print_endline "ERROR";
         sygus_fail_execution_time := ((Unix.gettimeofday ()) -. sygus_start_time) ;
         sygus_fail_calls := !sygus_fail_calls + 1 ;
         ((ValidPacket NOTHING, EXPECTED_OUTPUT), IGNORE_)
