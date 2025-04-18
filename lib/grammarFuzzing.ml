@@ -860,9 +860,9 @@ let initialize_files () =
   initialize_clear_file "temporal-info/OCaml-time-info.csv";
   initialize_clear_file "temporal-info/sample-info.txt";
   initialize_clear_file "results/interesting_traces.txt";
-  initialize_clear_file "sync/driver_oracle.json";
+  (* initialize_clear_file "sync/driver_oracle.json"; *)
   initialize_clear_file "sync/oracle-response.txt";
-  initialize_clear_file "sync/placeholders-replace.pkt";
+  (* initialize_clear_file "sync/placeholders-replace.pkt"; *)
   initialize_clear_file "sync/message.txt";
   initialize_clear_file "sync/response.txt";
   ()
