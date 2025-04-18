@@ -557,7 +557,7 @@ let callDriver_new packets packet =
     (* print_endline "string_to_send success.." ; *)
     (* print_endline (Bytes.to_string bin_placeholders) ; *)
     (* let oracle_start_time = Unix.gettimeofday () in *)
-    (* let oracle_result = parse_packet string_to_send in *)
+    let oracle_result = wait_for_oracle_response "sync/oracle-response.txt" in
     (* oracle_time := ((Unix.gettimeofday ()) -. oracle_start_time) ; *)
     (* print_endline "oracle result success" ; *)
     let driver_start_time = Unix.gettimeofday () in
