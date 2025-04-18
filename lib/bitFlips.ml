@@ -7,7 +7,7 @@ let flip_bit_list lst =
   if Random.bool () then List.map random_bit_flip lst else lst
 
 let rec flip_bits: sygus_ast -> sygus_ast 
-= fun sygus_ast -> Random.self_init(); match sygus_ast with 
+= fun sygus_ast -> Random.self_init (); match sygus_ast with 
 | IntLeaf _ | BVLeaf _ | VarLeaf _ -> sygus_ast 
 | BLLeaf bits -> 
   BLLeaf (flip_bit_list bits)

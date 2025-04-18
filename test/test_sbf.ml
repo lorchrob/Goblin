@@ -7,6 +7,12 @@ module SA = SygusAst
   1. For "infeasible" tests, create non-infeasible counterpart
   2. Add tests from main.ml
 
+3. Try something like 
+A -> B C { B.F < B.H } 
+B -> F G | H I
+_ :: Int
+
+
 *)
 
 let test_check_sygus_ast () =

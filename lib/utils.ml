@@ -21,6 +21,11 @@ let read_file filename =
   close_in ic;
   content
 
+let write_to_file filename content =
+  let oc = open_out filename in  
+  Printf.fprintf oc "%s\n" content; 
+  close_out oc  
+
 let rec split3 lst =
   match lst with
   | [] -> ([], [], [])

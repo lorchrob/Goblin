@@ -1,2 +1,3 @@
 val pp_print_ast : Format.formatter -> (TypeChecker.context * Ast.semantic_constraint Utils.StringMap.t * Ast.ast) -> unit 
 val call_sygus : TypeChecker.context -> Ast.semantic_constraint Utils.StringMap.t -> Ast.ast -> string
+val pp_print_expr: TypeChecker.context -> Format.formatter -> Ast.expr -> unit

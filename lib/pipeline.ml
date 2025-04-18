@@ -39,6 +39,11 @@ let main_pipeline filename =
   let dep_map, ast, ctx = AbstractDeps.abstract_dependencies ctx ast in 
   Utils.debug_print Ast.pp_print_ast ppf ast;
 
+  (if !Flags.selected_engine = Flags.DPLL then 
+    let ast = Dpll.dpll ast in 
+    print_endline ast; 
+    Utils.crash "Exiting early :D");
+
   (* Step 7: Divide and conquer *)
   Utils.debug_print Format.pp_print_string ppf "\n\nDivide and conquer:\n";
   let asts = DivideAndConquer.split_ast ast in 
