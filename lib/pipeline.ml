@@ -128,7 +128,7 @@ let sygusGrammarToPacket ast =
   let ast = TypeChecker.check_types ctx ast in
 
   (* Step 3: Merge overlapping constraints *)
-  let ast = MergeOverlappingConstraints.merge_overlapping_constraints ast in
+  (* let ast = MergeOverlappingConstraints.merge_overlapping_constraints ast in *)
 
   (* Step 4: Resolve ambiguities in constraints *)
   let ast = ResolveAmbiguities.resolve_ambiguities ctx ast in
