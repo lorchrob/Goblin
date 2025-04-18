@@ -533,7 +533,7 @@ let write_trace_to_file p_list =
 let callDriver_new packets packet =
   (* let message_file = "sync/message.txt" in *)
   let response_file = "sync/response.txt" in
-  let placeholder_replaced_file = "sync/placeholders-replace.pkt" in
+  (* let placeholder_replaced_file = "sync/placeholders-replace.pkt" in *)
   match packet with 
   | ValidPacket _ -> Utils.crash "unexpected sygus output ADT.."
     (* write_symbol_to_file "sync/trace-length.txt" (Printf.sprintf "%d" ((List.length packets) + 1)) ; 
