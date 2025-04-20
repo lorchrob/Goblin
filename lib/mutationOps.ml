@@ -28,8 +28,47 @@ let apply_add_s1_to_rule production_options nt =
     | StubbedRhs(s) -> StubbedRhs(s) 
     ) production_options 
 
-let rec mutation_add_s1 g nt = 
-    match g with 
+let rec find_random_production_rule (grammar : ast) : element option = 
+    let candidate = random_element grammar in
+    match candidate with
+    | ProdRule (x, y) -> Some (ProdRule (x, y))
+    | _ -> find_random_production_rule grammar
+
+let rec grammar_element_addition (geList : grammar_element list) (nt : string) (insertion_index : int) : grammar_element list = 
+    match insertion_index, geList with
+    | _, [] -> [Nonterminal nt]
+    | 0, xs -> (Nonterminal nt) :: xs
+    | count, x :: xs -> x :: (grammar_element_addition xs nt (count - 1))
+     
+let rec mutation_add_s1 (g : ast) (nt : string) (pr : element option) : ast * bool = 
+    match pr with 
+    | Some (ProdRule (nt_name, _)) -> (
+        match g with
+        | [] -> [], false
+        | ProdRule (nonterminal, pr_rhs) :: xs ->
+            if nonterminal = nt_name then ( 
+                match pr_rhs with 
+                | [] -> ([], false)
+                | Rhs (geList, scList) :: ys -> 
+                    let list_length = List.length geList in
+                    let insertion_index = Random.int list_length in
+                    (ProdRule (nonterminal, Rhs ((grammar_element_addition geList nt insertion_index), scList) :: ys) :: xs), true
+                (* | StubbedRhs x :: ys -> StubbedRhs x :: ys, false *)
+                | _ :: _ -> ([], false)
+            )
+            else
+                let (gg, r) = mutation_add_s1 xs nt pr in 
+                    (ProdRule (nonterminal, pr_rhs) :: gg, r)
+        | x :: xs -> 
+            let (gg, r) = mutation_add_s1 xs nt pr in 
+                x :: gg, r
+            (* x :: mutation_add_s1 (xs nt pr) *)
+    )
+    | Some _ -> [], false
+    | None -> ([], false)
+    
+
+    (* match g with 
     | [] -> ([], false) 
     | ProdRule (nonTerminal, production_options) :: xs -> 
         (* if nonTerminal = "COMMIT" || nonTerminal = "CONFIRM"
@@ -45,7 +84,7 @@ let rec mutation_add_s1 g nt =
                 (ProdRule (nonTerminal, production_options) :: gg, r)   
     | TypeAnnotation(v, w, x) :: ys -> 
         let (gg, r) = mutation_add_s1 ys nt in
-        (TypeAnnotation(v, w, x)::gg, r)
+        (TypeAnnotation(v, w, x)::gg, r) *)
 
 let rec isPresentInCaseList (nt:string) (caselist : case list) : bool = 
     match caselist with 

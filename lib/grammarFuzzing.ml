@@ -357,7 +357,8 @@ let rec applyMutation (m : mutation) (g : ast) : packet_type * grammar =
   let nt = random_element nonterminals in
   match m with
     Add -> print_endline "\n\nADDING\n\n" ; 
-    let added_grammar = (mutation_add_s1 g nt) in
+    let random_prod_rule = find_random_production_rule g in
+    let added_grammar = (mutation_add_s1 g nt random_prod_rule) in
     if snd added_grammar = false then applyMutation Add g
     else
       NOTHING, (fst added_grammar)
