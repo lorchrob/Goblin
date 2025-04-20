@@ -138,8 +138,19 @@ let read_binary_file filename =
 
 let write_symbol_to_file filename msg =
   let _ = Unix.system ("touch " ^ filename) in
-  Unix.sleepf 0.1 ;
-  print_endline "write_symbol_to_file" ;
+  Unix.sleepf 0.1;
+
+  (* Wait until the file is empty *)
+  let rec wait_until_empty () =
+    let stats = Unix.stat filename in
+    if stats.st_size = 0 then ()
+    else (
+      Unix.sleepf 0.1;
+      wait_until_empty ()
+    )
+  in
+  wait_until_empty ();
+  print_endline "write_symbol_to_file";
   let oc = open_out filename in
   output_string oc msg;
   close_out oc
@@ -860,9 +871,9 @@ let initialize_files () =
   initialize_clear_file "temporal-info/OCaml-time-info.csv";
   initialize_clear_file "temporal-info/sample-info.txt";
   initialize_clear_file "results/interesting_traces.txt";
-  initialize_clear_file "sync/driver_oracle.json";
+  (* initialize_clear_file "sync/driver_oracle.json"; *)
   initialize_clear_file "sync/oracle-response.txt";
-  initialize_clear_file "sync/placeholders-replace.pkt";
+  (* initialize_clear_file "sync/placeholders-replace.pkt"; *)
   initialize_clear_file "sync/message.txt";
   initialize_clear_file "sync/response.txt";
   ()
