@@ -169,7 +169,7 @@ let rhss_contains_nt nt rhss =
     | Nonterminal nt2
     | StubbedNonterminal (nt2, _) -> 
       if nt = nt2 then 
-        print_endline "Warning: Grammar is recursive. Constraints on recursive production rules may not be respected."
+        Utils.warning_print Format.pp_print_string Format.std_formatter "Warning: Grammar is recursive. Constraints on recursive production rules may not be respected.\n"
       else ()
   ) ges
   | StubbedRhs _ -> ()

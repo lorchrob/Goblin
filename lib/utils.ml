@@ -90,6 +90,13 @@ let debug_print pp formatter value =
   else
     Format.ifprintf formatter "%a" pp value
 
+let warning_print pp formatter value =
+  if not !Flags.no_warnings then
+    (pp formatter value; 
+      Format.pp_print_flush formatter ();)
+  else
+    Format.ifprintf formatter "%a" pp value
+
 let crash message = 
   failwith message
 

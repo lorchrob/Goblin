@@ -3,6 +3,7 @@ type engine =
   | DPLL
 
 let debug = ref false
+let no_warnings = ref true
 let only_parse = ref false
 let daniyal = ref false
 let filename = ref None
@@ -30,6 +31,11 @@ let parse_args () =
     Arg.(value & flag & info ["d"; "debug"] ~doc)
   in
 
+  let no_warnings_flag =
+    let doc = "Disable warnings" in
+    Arg.(value & flag & info ["n"; "no-warnings"] ~doc)
+  in
+
   let only_parse_flag =
     let doc = "Only parse the input without executing it" in
     Arg.(value & flag & info ["p"; "only-parse"] ~doc)
@@ -50,9 +56,10 @@ let parse_args () =
     Arg.(value & opt engine_conv SyGuS & info ["e"; "engine"] ~docv:"ENGINE" ~doc)
   in
 
-  let set_flags new_debug new_only_parse new_daniyal new_filename new_engine =
+  let set_flags new_debug new_no_warnings new_only_parse new_daniyal new_filename new_engine =
     Format.pp_print_flush Format.std_formatter ();
     debug := new_debug;
+    no_warnings := new_no_warnings;
     only_parse := new_only_parse;
     daniyal := new_daniyal;
     filename := new_filename;
@@ -62,6 +69,7 @@ let parse_args () =
   let term =
     Term.(const set_flags
           $ debug_flag
+          $ no_warnings_flag
           $ only_parse_flag
           $ daniyal_flag
           $ filename_flag
