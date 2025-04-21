@@ -352,75 +352,77 @@ let rec check_well_formed_rules (grammar : ast) : bool =
   | TypeAnnotation(_,_,_) :: xs -> check_well_formed_rules xs
     
 
-let rec applyMutation (m : mutation) (g : ast) : packet_type * grammar =
+let rec applyMutation (m : mutation) (g : ast) (count : int) : (packet_type * grammar) option =
   Random.self_init () ;
-  let nt = random_element nonterminals in
-  match m with
-    Add -> print_endline "\n\nADDING\n\n" ; 
-    let random_prod_rule = find_random_production_rule g in
-    let added_grammar = (mutation_add_s1 g nt random_prod_rule) in
-    if snd added_grammar = false then applyMutation Add g
-    else
-      NOTHING, (fst added_grammar)
+  if count = 0 then None
+  else
+    let nt = random_element nonterminals in
+    match m with
+      Add -> print_endline "\n\nADDING\n\n" ; 
+      let random_prod_rule = find_random_production_rule g in
+      let added_grammar = (mutation_add_s1 g nt random_prod_rule) in
+      if snd added_grammar = false then applyMutation Add g (count - 1)
+      else
+        Some (NOTHING, (fst added_grammar))
 
-  | Delete -> print_endline "\n\nDELETING\n\n" ;
-    let delete_attempt = (mutation_delete g nt) in
-    if snd delete_attempt = false then applyMutation Delete g
-    else
-      let deleted_grammar = canonicalize (fst delete_attempt) in
-      (
-        match deleted_grammar with
-      | Some x ->
-        let well_formed_check = check_well_formed_rules x in
+    | Delete -> print_endline "\n\nDELETING\n\n" ;
+      let delete_attempt = (mutation_delete g nt) in
+      if snd delete_attempt = false then applyMutation Delete g (count - 1)
+      else
+        let deleted_grammar = canonicalize (fst delete_attempt) in
         (
-          match well_formed_check with
-          | true -> NOTHING, x
-          | false -> applyMutation Delete g
-        )
-      | None -> applyMutation Delete g
-      )
-
-  | Modify -> print_endline "\n\nMODIFYING\n\n" ;
-    let operation = random_element [Plus; Minus] in
-    let (modified_grammar, success_code) = mutation_update g nt operation in
-    if success_code then 
-      NOTHING, modified_grammar
-    else applyMutation Modify g  
-
-  | CrossOver -> print_endline "\n\n\nENTERING CROSSOVER\n\n\n" ;
-      let (pr1, pr2) = get_production_rules_for_crossover g in
-      let nt1, nt2, po1, po2 = extract_nt_po pr1 pr2 in
-      let rhs1 = random_element po1 in
-      let rhs2 = random_element po2 in
-      let crossoverPRs = mutation_crossover rhs1 rhs2 in
-      let newPR = grammarUpdateAfterCrossover nt1 g rhs1 rhs2 crossoverPRs in
-      let finalGrammar = grammarUpdateAfterCrossover nt2 newPR rhs1 rhs2 crossoverPRs in
-      let canonicalizedGrammar = canonicalize finalGrammar in
-        (match canonicalizedGrammar with
-        | Some(x) -> pp_print_ast Format.std_formatter x; 
+          match deleted_grammar with
+        | Some x ->
           let well_formed_check = check_well_formed_rules x in
-          (match well_formed_check with
-          | true ->
-            NOTHING, x
-          | false -> applyMutation CrossOver g
+          (
+            match well_formed_check with
+            | true -> Some (NOTHING, x)
+            | false -> applyMutation Delete g (count - 1)
           )
-        | None -> (applyMutation CrossOver g))
-  | CorrectPacket -> 
-    let x = random_element [COMMIT; CONFIRM; ASSOCIATION_REQUEST] in (
-      match x with 
-      | COMMIT -> 
-        print_endline "\n\nINJECTING CORRECT COMMIT\n\n" ;
-        COMMIT, g
-      | CONFIRM -> 
-        print_endline "\n\nINJECTING CORRECT CONFIRM\n\n" ;
-        CONFIRM, g
-      | ASSOCIATION_REQUEST -> 
-        print_endline "\n\nINJECTING ASSOCIATION REQUEST\n\n" ;
-        ASSOCIATION_REQUEST, g
-      | NOTHING -> Utils.crash "unexpected symbol NOTHING"
-      | RESET -> Utils.crash "RESET should not occur"
-    )
-  | None -> NOTHING, g
+        | None -> applyMutation Delete g (count - 1)
+        )
+
+    | Modify -> print_endline "\n\nMODIFYING\n\n" ;
+      let operation = random_element [Plus; Minus] in
+      let (modified_grammar, success_code) = mutation_update g nt operation in
+      if success_code then 
+        Some (NOTHING, modified_grammar)
+      else applyMutation Modify g (count - 1)
+
+    | CrossOver -> print_endline "\n\n\nENTERING CROSSOVER\n\n\n" ;
+        let (pr1, pr2) = get_production_rules_for_crossover g in
+        let nt1, nt2, po1, po2 = extract_nt_po pr1 pr2 in
+        let rhs1 = random_element po1 in
+        let rhs2 = random_element po2 in
+        let crossoverPRs = mutation_crossover rhs1 rhs2 in
+        let newPR = grammarUpdateAfterCrossover nt1 g rhs1 rhs2 crossoverPRs in
+        let finalGrammar = grammarUpdateAfterCrossover nt2 newPR rhs1 rhs2 crossoverPRs in
+        let canonicalizedGrammar = canonicalize finalGrammar in
+          (match canonicalizedGrammar with
+          | Some(x) -> pp_print_ast Format.std_formatter x; 
+            let well_formed_check = check_well_formed_rules x in
+            (match well_formed_check with
+            | true ->
+              Some (NOTHING, x)
+            | false -> applyMutation CrossOver g (count - 1)
+            )
+          | None -> (applyMutation CrossOver g (count - 1)))
+    | CorrectPacket -> 
+      let x = random_element [COMMIT; CONFIRM; ASSOCIATION_REQUEST] in (
+        match x with 
+        | COMMIT -> 
+          print_endline "\n\nINJECTING CORRECT COMMIT\n\n" ;
+          Some (COMMIT, g)
+        | CONFIRM -> 
+          print_endline "\n\nINJECTING CORRECT CONFIRM\n\n" ;
+          Some (CONFIRM, g)
+        | ASSOCIATION_REQUEST -> 
+          print_endline "\n\nINJECTING ASSOCIATION REQUEST\n\n" ;
+          Some (ASSOCIATION_REQUEST, g)
+        | NOTHING -> Utils.crash "unexpected symbol NOTHING"
+        | RESET -> Utils.crash "RESET should not occur"
+      )
+    | None -> Some (NOTHING, g)
 
 
 let rec newMutatedSet (p : child list) (m : mutationOperations) (n : int) : child list = 
@@ -429,10 +431,11 @@ let rec newMutatedSet (p : child list) (m : mutationOperations) (n : int) : chil
   | _, _, [] -> []
   | _, [], _ -> []
   | _, (x::xs), (mu::ms) ->
-    let mutated_grammar = applyMutation mu (fst x |> snd) in
+    let mutated_grammar = applyMutation mu (fst x |> snd) 10 in
     (match mutated_grammar with
-    | (NOTHING, z) -> ((((fst x |> fst)), z), (snd x)) :: (newMutatedSet xs ms (n - 1))
-    | (y, z) -> (((fst x |> fst) @ [(ValidPacket y)], z), (snd x)) :: (newMutatedSet xs ms (n - 1))
+    | Some (NOTHING, z) -> ((((fst x |> fst)), z), (snd x)) :: (newMutatedSet xs ms (n - 1))
+    | Some (y, z) -> (((fst x |> fst) @ [(ValidPacket y)], z), (snd x)) :: (newMutatedSet xs ms (n - 1))
+    | None -> newMutatedSet xs ms (n - 1)
     )
 
 let rec mutationList sampleFunction (mutationOps : mutationOperations) (n : int): mutation list =

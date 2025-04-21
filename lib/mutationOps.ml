@@ -64,8 +64,8 @@ let rec mutation_add_s1 (g : ast) (nt : string) (pr : element option) : ast * bo
                 x :: gg, r
             (* x :: mutation_add_s1 (xs nt pr) *)
     )
-    | Some _ -> [], false
-    | None -> ([], false)
+    | Some _ -> g, false
+    | None -> g, false
     
 
     (* match g with 
