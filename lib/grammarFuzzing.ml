@@ -436,7 +436,7 @@ let rec newMutatedSet (p : child list) (m : mutationOperations) (n : int) : chil
     (match mutated_grammar with
     | Some (NOTHING, z) -> ((((fst x |> fst)), z), (snd x)) :: (newMutatedSet xs ms (n - 1))
     | Some (y, z) -> (((fst x |> fst) @ [(ValidPacket y)], z), (snd x)) :: (newMutatedSet xs ms (n - 1))
-    | None -> newMutatedSet xs ms (n - 1)
+    | None -> (([], []), 0.0) :: newMutatedSet xs ms (n - 1)
     )
 
 let rec mutationList sampleFunction (mutationOps : mutationOperations) (n : int): mutation list =
@@ -584,39 +584,44 @@ let callDriver_new packets packet =
     (driver_result, oracle_result)
     
 let run_sequence (c : child) : (provenance * output) * state =
-  let stateTransition = fst c |> fst in
-  (* print_endline "\n\n\nGRAMMAR TO SYGUS:" ;
-  pp_print_ast Format.std_formatter (fst c |> snd) ; *)
-  let sygus_start_time = Unix.gettimeofday () in
-  let removed_dead_rules_for_sygus = dead_rule_removal (fst c |> snd) "SAE_PACKET" in
-  match removed_dead_rules_for_sygus with
-  | Some grammar_to_sygus ->
-    sygus_success_execution_time := ((Unix.gettimeofday ()) -. sygus_start_time) ;
-    sygus_success_calls := !sygus_success_calls + 1 ;
-    let packetToSend_ = Lwt_main.run (timeout_wrapper 5.0 (fun () -> (Pipeline.sygusGrammarToPacket grammar_to_sygus))) in (
-      match packetToSend_ with
-      | Ok (packetToSend, _metadata) ->
-        print_endline "SUCCESS";
-        let trace_start_time = Unix.gettimeofday () in
-        let driver_output = callDriver_new (run_trace stateTransition) (RawPacket packetToSend) in
-        trace_time := Unix.gettimeofday () -. trace_start_time ;
-        save_time_info "temporal-info/OCaml-time-info.csv" (1 + (List.length (stateTransition))) ;
-        (RawPacket packetToSend, (fst driver_output)), (snd driver_output)
-      | Error _ -> 
-        print_endline "ERROR";
-        sygus_fail_execution_time := ((Unix.gettimeofday ()) -. sygus_start_time) ;
-        sygus_fail_calls := !sygus_fail_calls + 1 ;
-        ((ValidPacket NOTHING, EXPECTED_OUTPUT), IGNORE_)
-    )
-  | None -> ((ValidPacket NOTHING, EXPECTED_OUTPUT), IGNORE_)
-  
+  if c = (([],[]),0.0) then ((ValidPacket NOTHING, EXPECTED_OUTPUT), IGNORE_)
+  else begin 
+    let stateTransition = fst c |> fst in
+    (* print_endline "\n\n\nGRAMMAR TO SYGUS:" ;
+    pp_print_ast Format.std_formatter (fst c |> snd) ; *)
+    let sygus_start_time = Unix.gettimeofday () in
+    let removed_dead_rules_for_sygus = dead_rule_removal (fst c |> snd) "SAE_PACKET" in
+    match removed_dead_rules_for_sygus with
+    | Some grammar_to_sygus ->
+      sygus_success_execution_time := ((Unix.gettimeofday ()) -. sygus_start_time) ;
+      sygus_success_calls := !sygus_success_calls + 1 ;
+      let packetToSend_ = Lwt_main.run (timeout_wrapper 5.0 (fun () -> (Pipeline.sygusGrammarToPacket grammar_to_sygus))) in (
+        match packetToSend_ with
+        | Ok (packetToSend, _metadata) ->
+          print_endline "SUCCESS";
+          let trace_start_time = Unix.gettimeofday () in
+          let driver_output = callDriver_new (run_trace stateTransition) (RawPacket packetToSend) in
+          trace_time := Unix.gettimeofday () -. trace_start_time ;
+          save_time_info "temporal-info/OCaml-time-info.csv" (1 + (List.length (stateTransition))) ;
+          (RawPacket packetToSend, (fst driver_output)), (snd driver_output)
+        | Error _ -> 
+          print_endline "ERROR";
+          sygus_fail_execution_time := ((Unix.gettimeofday ()) -. sygus_start_time) ;
+          sygus_fail_calls := !sygus_fail_calls + 1 ;
+          ((ValidPacket NOTHING, EXPECTED_OUTPUT), IGNORE_)
+      )
+    | None -> ((ValidPacket NOTHING, EXPECTED_OUTPUT), IGNORE_)
+  end
 
 let executeMutatedPopulation (mutatedPopulation : child list) (old_states : state list) : (((provenance list list) * (child list)) * (state list)) * (state list) =
   print_endline "EXECUTING MUTATED POPULATION.." ;
 
   let _outputList = List.map run_sequence mutatedPopulation in
-  let cat_mutated_population = List.map2 (fun x y -> (x, y)) mutatedPopulation _outputList in 
+  (* print_endline "List.map2 first try"; *)
+  let cat_mutated_population = List.map2 (fun x y -> (x, y)) mutatedPopulation _outputList in
+  (* print_endline "List.map2 first try SUCCESS"; *)
   let old_new_states = List.map2 (fun x y -> (x, y)) cat_mutated_population old_states in
+  (* print_endline "List.map2 second one SUCCESS"; *)
   let removed_sygus_errors = List.filter (fun x -> (fst x |> snd |> fst |> fst) <> (ValidPacket NOTHING)) old_new_states in
   let filtered_mutated_population = List.map (fun x -> fst x |> fst) removed_sygus_errors in
   let old_states_ = List.map (fun x -> snd x) removed_sygus_errors in
