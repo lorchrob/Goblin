@@ -362,9 +362,10 @@ let rec applyMutation (m : mutation) (g : ast) (count : int) : (packet_type * gr
       let random_prod_rule = find_random_production_rule g in
       let added_grammar = (mutation_add_s1 g nt random_prod_rule) in
       if snd added_grammar = false then applyMutation Add g (count - 1)
-      else
+      else begin
+        pp_print_ast Format.std_formatter (fst added_grammar); 
         Some (NOTHING, (fst added_grammar))
-
+      end
     | Delete -> print_endline "\n\nDELETING\n\n" ;
       let delete_attempt = (mutation_delete g nt) in
       if snd delete_attempt = false then applyMutation Delete g (count - 1)
@@ -376,7 +377,7 @@ let rec applyMutation (m : mutation) (g : ast) (count : int) : (packet_type * gr
           let well_formed_check = check_well_formed_rules x in
           (
             match well_formed_check with
-            | true -> Some (NOTHING, x)
+            | true -> pp_print_ast Format.std_formatter x; Some (NOTHING, x)
             | false -> applyMutation Delete g (count - 1)
           )
         | None -> applyMutation Delete g (count - 1)
@@ -399,7 +400,7 @@ let rec applyMutation (m : mutation) (g : ast) (count : int) : (packet_type * gr
         let finalGrammar = grammarUpdateAfterCrossover nt2 newPR rhs1 rhs2 crossoverPRs in
         let canonicalizedGrammar = canonicalize finalGrammar in
           (match canonicalizedGrammar with
-          | Some(x) -> pp_print_ast Format.std_formatter x; 
+          | Some(x) -> 
             let well_formed_check = check_well_formed_rules x in
             (match well_formed_check with
             | true ->
@@ -502,6 +503,7 @@ let sendPacket (c : child) : (provenance * output) * state =
         (RawPacket packetToSend, (fst driver_output)), (snd driver_output)
       | Error _ -> 
         sygus_fail_execution_time := ((Unix.gettimeofday ()) -. sygus_start_time) ;
+        log_grammar grammar_to_sygus;
         sygus_fail_calls := !sygus_fail_calls + 1 ;
         ((ValidPacket NOTHING, EXPECTED_OUTPUT), IGNORE_)
     )
@@ -892,5 +894,6 @@ let runFuzzer grammar_list =
   let confirmed_queue = CONFIRMED([([ValidPacket COMMIT], commit_grammar), 0.0; ([ValidPacket COMMIT], confirm_grammar), 0.0; ([ValidPacket COMMIT], commit_confirm_grammar), 0.0;]) in
   let accepted_queue = ACCEPTED([([ValidPacket COMMIT; ValidPacket CONFIRM], commit_grammar), 0.0; ([ValidPacket COMMIT; ValidPacket CONFIRM], confirm_grammar), 0.0; ([ValidPacket COMMIT; ValidPacket CONFIRM], commit_confirm_grammar), 0.0;]) in
 
-  let _ = fuzzingAlgorithm 10000 [nothing_queue; confirmed_queue; accepted_queue] [] 100 0 1150 100 100 [Add; Delete; Modify; CrossOver;CorrectPacket;] [nothing_queue; confirmed_queue; accepted_queue] in
+  let _ = fuzzingAlgorithm 10000 [nothing_queue; confirmed_queue; accepted_queue] [] 100 0 1150 100 100 [ CorrectPacket;  Modify; Add;CrossOver;Delete;] [nothing_queue; confirmed_queue; accepted_queue] in
   ()
+  (* CorrectPacket;  Modify; Add;CrossOver;*)

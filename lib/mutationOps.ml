@@ -54,14 +54,14 @@ let rec mutation_add_s1 (g : ast) (nt : string) (pr : element option) : ast * bo
                     let insertion_index = Random.int list_length in
                     (ProdRule (nonterminal, Rhs ((grammar_element_addition geList nt insertion_index), scList) :: ys) :: xs), true
                 (* | StubbedRhs x :: ys -> StubbedRhs x :: ys, false *)
-                | _ :: _ -> ([], false)
+                | StubbedRhs(x) :: ys -> (ProdRule (nonterminal, StubbedRhs(x) :: ys) :: xs), false
             )
             else
                 let (gg, r) = mutation_add_s1 xs nt pr in 
                     (ProdRule (nonterminal, pr_rhs) :: gg, r)
-        | x :: xs -> 
+        | TypeAnnotation(x,y,z) :: xs -> 
             let (gg, r) = mutation_add_s1 xs nt pr in 
-                x :: gg, r
+                ((TypeAnnotation(x,y,z) :: gg), r)
             (* x :: mutation_add_s1 (xs nt pr) *)
     )
     | Some _ -> g, false
@@ -148,7 +148,7 @@ let rec mutation_delete g nt =
                 (ProdRule(nonTerminal, production_options) :: gg, r)    *)
     | TypeAnnotation(v, w, x) :: ys -> 
         let (gg, r) = mutation_delete ys nt 
-                in (TypeAnnotation(v, w, x)::gg, r)
+                in (TypeAnnotation(v, w, x) :: gg, r)
 
 let update_constraint (nt : string) (cList : semantic_constraint list) (operation : bin_operator) : semantic_constraint list =
     match cList with 
