@@ -1,5 +1,6 @@
 module StringMap = Map.Make(String)
 module StringSet = Set.Make(String)
+module IntMap = Map.Make(Int)
 
 module SILSet = Set.Make(struct
   type t = (string * int option) list 
@@ -99,6 +100,22 @@ let warning_print pp formatter value =
 
 let crash message = 
   failwith message
+
+let find_command_in_path cmd =
+  match Sys.getenv_opt "PATH" with
+  | None -> crash "$PATH is not set"
+  | Some path ->
+      let paths = String.split_on_char ':' path in
+      let rec find_in_paths = function
+        | [] -> crash (cmd ^ " not found in $PATH")
+        | dir :: rest ->
+            let full_path = Filename.concat dir cmd in
+            if Sys.file_exists full_path && Sys.is_directory full_path = false then
+              full_path
+            else
+              find_in_paths rest
+      in
+      find_in_paths paths
 
 (* let rec drop lst n =
   match (lst, n) with
