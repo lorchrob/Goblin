@@ -352,75 +352,78 @@ let rec check_well_formed_rules (grammar : ast) : bool =
   | TypeAnnotation(_,_,_) :: xs -> check_well_formed_rules xs
     
 
-let rec applyMutation (m : mutation) (g : ast) : packet_type * grammar =
+let rec applyMutation (m : mutation) (g : ast) (count : int) : (packet_type * grammar) option =
   Random.self_init () ;
-  let nt = random_element nonterminals in
-  match m with
-    Add -> print_endline "\n\nADDING\n\n" ; 
-    let random_prod_rule = find_random_production_rule g in
-    let added_grammar = (mutation_add_s1 g nt random_prod_rule) in
-    if snd added_grammar = false then applyMutation Add g
-    else
-      NOTHING, (fst added_grammar)
-
-  | Delete -> print_endline "\n\nDELETING\n\n" ;
-    let delete_attempt = (mutation_delete g nt) in
-    if snd delete_attempt = false then applyMutation Delete g
-    else
-      let deleted_grammar = canonicalize (fst delete_attempt) in
-      (
-        match deleted_grammar with
-      | Some x ->
-        let well_formed_check = check_well_formed_rules x in
+  if count = 0 then None
+  else
+    let nt = random_element nonterminals in
+    match m with
+      Add -> print_endline "\n\nADDING\n\n" ; 
+      let random_prod_rule = find_random_production_rule g in
+      let added_grammar = (mutation_add_s1 g nt random_prod_rule) in
+      if snd added_grammar = false then applyMutation Add g (count - 1)
+      else begin
+        pp_print_ast Format.std_formatter (fst added_grammar); 
+        Some (NOTHING, (fst added_grammar))
+      end
+    | Delete -> print_endline "\n\nDELETING\n\n" ;
+      let delete_attempt = (mutation_delete g nt) in
+      if snd delete_attempt = false then applyMutation Delete g (count - 1)
+      else
+        let deleted_grammar = canonicalize (fst delete_attempt) in
         (
-          match well_formed_check with
-          | true -> NOTHING, x
-          | false -> applyMutation Delete g
-        )
-      | None -> applyMutation Delete g
-      )
-
-  | Modify -> print_endline "\n\nMODIFYING\n\n" ;
-    let operation = random_element [Plus; Minus] in
-    let (modified_grammar, success_code) = mutation_update g nt operation in
-    if success_code then 
-      NOTHING, modified_grammar
-    else applyMutation Modify g  
-
-  | CrossOver -> print_endline "\n\n\nENTERING CROSSOVER\n\n\n" ;
-      let (pr1, pr2) = get_production_rules_for_crossover g in
-      let nt1, nt2, po1, po2 = extract_nt_po pr1 pr2 in
-      let rhs1 = random_element po1 in
-      let rhs2 = random_element po2 in
-      let crossoverPRs = mutation_crossover rhs1 rhs2 in
-      let newPR = grammarUpdateAfterCrossover nt1 g rhs1 rhs2 crossoverPRs in
-      let finalGrammar = grammarUpdateAfterCrossover nt2 newPR rhs1 rhs2 crossoverPRs in
-      let canonicalizedGrammar = canonicalize finalGrammar in
-        (match canonicalizedGrammar with
-        | Some(x) -> pp_print_ast Format.std_formatter x; 
+          match deleted_grammar with
+        | Some x ->
           let well_formed_check = check_well_formed_rules x in
-          (match well_formed_check with
-          | true ->
-            NOTHING, x
-          | false -> applyMutation CrossOver g
+          (
+            match well_formed_check with
+            | true -> pp_print_ast Format.std_formatter x; Some (NOTHING, x)
+            | false -> applyMutation Delete g (count - 1)
           )
-        | None -> (applyMutation CrossOver g))
-  | CorrectPacket -> 
-    let x = random_element [COMMIT; CONFIRM; ASSOCIATION_REQUEST] in (
-      match x with 
-      | COMMIT -> 
-        print_endline "\n\nINJECTING CORRECT COMMIT\n\n" ;
-        COMMIT, g
-      | CONFIRM -> 
-        print_endline "\n\nINJECTING CORRECT CONFIRM\n\n" ;
-        CONFIRM, g
-      | ASSOCIATION_REQUEST -> 
-        print_endline "\n\nINJECTING ASSOCIATION REQUEST\n\n" ;
-        ASSOCIATION_REQUEST, g
-      | NOTHING -> Utils.crash "unexpected symbol NOTHING"
-      | RESET -> Utils.crash "RESET should not occur"
-    )
-  | None -> NOTHING, g
+        | None -> applyMutation Delete g (count - 1)
+        )
+
+    | Modify -> print_endline "\n\nMODIFYING\n\n" ;
+      let operation = random_element [Plus; Minus] in
+      let (modified_grammar, success_code) = mutation_update g nt operation in
+      if success_code then 
+        Some (NOTHING, modified_grammar)
+      else applyMutation Modify g (count - 1)
+
+    | CrossOver -> print_endline "\n\n\nENTERING CROSSOVER\n\n\n" ;
+        let (pr1, pr2) = get_production_rules_for_crossover g in
+        let nt1, nt2, po1, po2 = extract_nt_po pr1 pr2 in
+        let rhs1 = random_element po1 in
+        let rhs2 = random_element po2 in
+        let crossoverPRs = mutation_crossover rhs1 rhs2 in
+        let newPR = grammarUpdateAfterCrossover nt1 g rhs1 rhs2 crossoverPRs in
+        let finalGrammar = grammarUpdateAfterCrossover nt2 newPR rhs1 rhs2 crossoverPRs in
+        let canonicalizedGrammar = canonicalize finalGrammar in
+          (match canonicalizedGrammar with
+          | Some(x) -> 
+            let well_formed_check = check_well_formed_rules x in
+            (match well_formed_check with
+            | true ->
+              Some (NOTHING, x)
+            | false -> applyMutation CrossOver g (count - 1)
+            )
+          | None -> (applyMutation CrossOver g (count - 1)))
+    | CorrectPacket -> 
+      let x = random_element [COMMIT; CONFIRM; ASSOCIATION_REQUEST] in (
+        match x with 
+        | COMMIT -> 
+          print_endline "\n\nINJECTING CORRECT COMMIT\n\n" ;
+          Some (COMMIT, g)
+        | CONFIRM -> 
+          print_endline "\n\nINJECTING CORRECT CONFIRM\n\n" ;
+          Some (CONFIRM, g)
+        | ASSOCIATION_REQUEST -> 
+          print_endline "\n\nINJECTING ASSOCIATION REQUEST\n\n" ;
+          Some (ASSOCIATION_REQUEST, g)
+        | NOTHING -> Utils.crash "unexpected symbol NOTHING"
+        | RESET -> Utils.crash "RESET should not occur"
+      )
+    | None -> Some (NOTHING, g)
 
 
 let rec newMutatedSet (p : child list) (m : mutationOperations) (n : int) : child list = 
@@ -429,10 +432,11 @@ let rec newMutatedSet (p : child list) (m : mutationOperations) (n : int) : chil
   | _, _, [] -> []
   | _, [], _ -> []
   | _, (x::xs), (mu::ms) ->
-    let mutated_grammar = applyMutation mu (fst x |> snd) in
+    let mutated_grammar = applyMutation mu (fst x |> snd) 10 in
     (match mutated_grammar with
-    | (NOTHING, z) -> ((((fst x |> fst)), z), (snd x)) :: (newMutatedSet xs ms (n - 1))
-    | (y, z) -> (((fst x |> fst) @ [(ValidPacket y)], z), (snd x)) :: (newMutatedSet xs ms (n - 1))
+    | Some (NOTHING, z) -> ((((fst x |> fst)), z), (snd x)) :: (newMutatedSet xs ms (n - 1))
+    | Some (y, z) -> (((fst x |> fst) @ [(ValidPacket y)], z), (snd x)) :: (newMutatedSet xs ms (n - 1))
+    | None -> (([], []), 0.0) :: newMutatedSet xs ms (n - 1)
     )
 
 let rec mutationList sampleFunction (mutationOps : mutationOperations) (n : int): mutation list =
@@ -499,6 +503,7 @@ let sendPacket (c : child) : (provenance * output) * state =
         (RawPacket packetToSend, (fst driver_output)), (snd driver_output)
       | Error _ -> 
         sygus_fail_execution_time := ((Unix.gettimeofday ()) -. sygus_start_time) ;
+        log_grammar grammar_to_sygus;
         sygus_fail_calls := !sygus_fail_calls + 1 ;
         ((ValidPacket NOTHING, EXPECTED_OUTPUT), IGNORE_)
     )
@@ -579,39 +584,44 @@ let callDriver_new packets packet =
     (driver_result, oracle_result)
     
 let run_sequence (c : child) : (provenance * output) * state =
-  let stateTransition = fst c |> fst in
-  (* print_endline "\n\n\nGRAMMAR TO SYGUS:" ;
-  pp_print_ast Format.std_formatter (fst c |> snd) ; *)
-  let sygus_start_time = Unix.gettimeofday () in
-  let removed_dead_rules_for_sygus = dead_rule_removal (fst c |> snd) "SAE_PACKET" in
-  match removed_dead_rules_for_sygus with
-  | Some grammar_to_sygus ->
-    sygus_success_execution_time := ((Unix.gettimeofday ()) -. sygus_start_time) ;
-    sygus_success_calls := !sygus_success_calls + 1 ;
-    let packetToSend_ = Lwt_main.run (timeout_wrapper 5.0 (fun () -> (Pipeline.sygusGrammarToPacket grammar_to_sygus))) in (
-      match packetToSend_ with
-      | Ok (packetToSend, _metadata) ->
-        print_endline "SUCCESS";
-        let trace_start_time = Unix.gettimeofday () in
-        let driver_output = callDriver_new (run_trace stateTransition) (RawPacket packetToSend) in
-        trace_time := Unix.gettimeofday () -. trace_start_time ;
-        save_time_info "temporal-info/OCaml-time-info.csv" (1 + (List.length (stateTransition))) ;
-        (RawPacket packetToSend, (fst driver_output)), (snd driver_output)
-      | Error _ -> 
-        print_endline "ERROR";
-        sygus_fail_execution_time := ((Unix.gettimeofday ()) -. sygus_start_time) ;
-        sygus_fail_calls := !sygus_fail_calls + 1 ;
-        ((ValidPacket NOTHING, EXPECTED_OUTPUT), IGNORE_)
-    )
-  | None -> ((ValidPacket NOTHING, EXPECTED_OUTPUT), IGNORE_)
-  
+  if c = (([],[]),0.0) then ((ValidPacket NOTHING, EXPECTED_OUTPUT), IGNORE_)
+  else begin 
+    let stateTransition = fst c |> fst in
+    (* print_endline "\n\n\nGRAMMAR TO SYGUS:" ;
+    pp_print_ast Format.std_formatter (fst c |> snd) ; *)
+    let sygus_start_time = Unix.gettimeofday () in
+    let removed_dead_rules_for_sygus = dead_rule_removal (fst c |> snd) "SAE_PACKET" in
+    match removed_dead_rules_for_sygus with
+    | Some grammar_to_sygus ->
+      sygus_success_execution_time := ((Unix.gettimeofday ()) -. sygus_start_time) ;
+      sygus_success_calls := !sygus_success_calls + 1 ;
+      let packetToSend_ = Lwt_main.run (timeout_wrapper 5.0 (fun () -> (Pipeline.sygusGrammarToPacket grammar_to_sygus))) in (
+        match packetToSend_ with
+        | Ok (packetToSend, _metadata) ->
+          print_endline "SUCCESS";
+          let trace_start_time = Unix.gettimeofday () in
+          let driver_output = callDriver_new (run_trace stateTransition) (RawPacket packetToSend) in
+          trace_time := Unix.gettimeofday () -. trace_start_time ;
+          save_time_info "temporal-info/OCaml-time-info.csv" (1 + (List.length (stateTransition))) ;
+          (RawPacket packetToSend, (fst driver_output)), (snd driver_output)
+        | Error _ -> 
+          print_endline "ERROR";
+          sygus_fail_execution_time := ((Unix.gettimeofday ()) -. sygus_start_time) ;
+          sygus_fail_calls := !sygus_fail_calls + 1 ;
+          ((ValidPacket NOTHING, EXPECTED_OUTPUT), IGNORE_)
+      )
+    | None -> ((ValidPacket NOTHING, EXPECTED_OUTPUT), IGNORE_)
+  end
 
 let executeMutatedPopulation (mutatedPopulation : child list) (old_states : state list) : (((provenance list list) * (child list)) * (state list)) * (state list) =
   print_endline "EXECUTING MUTATED POPULATION.." ;
 
   let _outputList = List.map run_sequence mutatedPopulation in
-  let cat_mutated_population = List.map2 (fun x y -> (x, y)) mutatedPopulation _outputList in 
+  (* print_endline "List.map2 first try"; *)
+  let cat_mutated_population = List.map2 (fun x y -> (x, y)) mutatedPopulation _outputList in
+  (* print_endline "List.map2 first try SUCCESS"; *)
   let old_new_states = List.map2 (fun x y -> (x, y)) cat_mutated_population old_states in
+  (* print_endline "List.map2 second one SUCCESS"; *)
   let removed_sygus_errors = List.filter (fun x -> (fst x |> snd |> fst |> fst) <> (ValidPacket NOTHING)) old_new_states in
   let filtered_mutated_population = List.map (fun x -> fst x |> fst) removed_sygus_errors in
   let old_states_ = List.map (fun x -> snd x) removed_sygus_errors in
@@ -889,5 +899,6 @@ let runFuzzer grammar_list =
   let confirmed_queue = CONFIRMED([([ValidPacket COMMIT], commit_grammar), 0.0; ([ValidPacket COMMIT], confirm_grammar), 0.0; ([ValidPacket COMMIT], commit_confirm_grammar), 0.0;]) in
   let accepted_queue = ACCEPTED([([ValidPacket COMMIT; ValidPacket CONFIRM], commit_grammar), 0.0; ([ValidPacket COMMIT; ValidPacket CONFIRM], confirm_grammar), 0.0; ([ValidPacket COMMIT; ValidPacket CONFIRM], commit_confirm_grammar), 0.0;]) in
 
-  let _ = fuzzingAlgorithm 10000 [nothing_queue; confirmed_queue; accepted_queue] [] 100 0 1150 100 100 [Add; Delete; Modify; CrossOver;CorrectPacket;] [nothing_queue; confirmed_queue; accepted_queue] in
+  let _ = fuzzingAlgorithm 10000 [nothing_queue; confirmed_queue; accepted_queue] [] 100 0 1150 100 100 [ CorrectPacket;  Modify; Add;CrossOver;Delete;] [nothing_queue; confirmed_queue; accepted_queue] in
   ()
+  (* CorrectPacket;  Modify; Add;CrossOver;*)
