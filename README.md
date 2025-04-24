@@ -19,6 +19,8 @@ How to run the tool:
 
 Command-line args:
 
+* Use `--help` for command-line arg documentation that's guaranteed to be up to date (e.g., `sbf --help`)
 * Use `--file <filename>` to specify the input file (**required**) (e.g., `sbf --file ./my_files/input`)
 * Use `--debug` for debug output
-* Use `--only_parse` to run the front end (type checking, syntactic checks, various AST transformations, etc.) without invoking SyGuS
+* Use `--only-parse` to run the front end (type checking, syntactic checks, various AST transformations, etc.) without invoking SyGuS
+* Use `--no-warnings` to disable warnings
