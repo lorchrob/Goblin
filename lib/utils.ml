@@ -27,6 +27,11 @@ let write_to_file filename content =
   Printf.fprintf oc "%s\n" content; 
   close_out oc  
 
+let append_to_file filename content =
+  let oc = open_out_gen [Open_creat; Open_text; Open_append] 0o666 filename in
+  output_string oc content;
+  close_out oc
+
 let rec split3 lst =
   match lst with
   | [] -> ([], [], [])
@@ -59,9 +64,9 @@ let capture_output: (Format.formatter -> 'a -> unit) -> 'a -> string =
 fun f arg ->
   let buf = Buffer.create 80 in
   let ppf = Format.formatter_of_buffer buf in
-  f ppf arg;                (* Call the function with redirected output *)
-  Format.pp_print_flush ppf ();  (* Flush the formatter to ensure all output is captured *)
-  Buffer.contents buf  (* Retrieve the contents of the buffer as a string *)
+  f ppf arg;                
+  Format.pp_print_flush ppf ();  
+  Buffer.contents buf 
 
 let pp_print_string_map_keys: Format.formatter -> 'a StringMap.t -> unit 
 = fun ppf map -> 

@@ -171,66 +171,70 @@ and pp_print_nt_helper
     | None -> ""
     | Some i -> string_of_int i)
 
-and pp_print_expr: TC.context -> Format.formatter -> A.expr -> unit 
-= fun ctx ppf expr -> match expr with 
-| NTExpr (nt_ctx, [nt]) -> 
-  (* TODO: Use a representation that prevents name clashes with user names *)
-  let nts = List.map (fun (str, idx) -> String.lowercase_ascii str, idx) (nt_ctx @ [nt]) in
-  Lib.pp_print_list pp_print_nt_helper "_" ppf nts
-| A.Match (nt_ctx, nt, cases)  -> pp_print_match ppf ctx nt_ctx nt cases
-| NTExpr _ -> Utils.crash "Reached impossible case in pp_print_expr"
-| BinOp (expr1, BVXor, expr2) -> 
-  Format.fprintf ppf "(and (or %a %a) (not (and %a %a)))"
-    (pp_print_expr ctx) expr1 
-    (pp_print_expr ctx) expr2
-    (pp_print_expr ctx) expr1 
-    (pp_print_expr ctx) expr2
-| BinOp (expr1, op, expr2) -> 
-  Format.fprintf ppf "(%a %a %a)"
-    pp_print_binop op 
-    (pp_print_expr ctx) expr1 
-    (pp_print_expr ctx) expr2
-| CompOp (expr1, BVLt, expr2) -> 
-  Format.fprintf ppf "(bvult %a %a)"
-    (pp_print_expr ctx) expr1 
-    (pp_print_expr ctx) expr2
-| CompOp (expr1, BVLte, expr2) -> 
-  Format.fprintf ppf "(or (bvult %a %a) (= %a %a))"
-    (pp_print_expr ctx) expr1 
-    (pp_print_expr ctx) expr2
-    (pp_print_expr ctx) expr1 
-    (pp_print_expr ctx) expr2
-| CompOp (expr1, BVGt, expr2) -> 
-  Format.fprintf ppf "(bvult %a %a)"
-    (pp_print_expr ctx) expr2
-    (pp_print_expr ctx) expr1 
-| CompOp (expr1, BVGte, expr2) -> 
-  Format.fprintf ppf "(or (bvult %a %a) (= %a %a))"
-    (pp_print_expr ctx) expr2
-    (pp_print_expr ctx) expr1 
-    (pp_print_expr ctx) expr2
-    (pp_print_expr ctx) expr1 
-| CompOp (expr1, op, expr2) -> 
-  Format.fprintf ppf "(%a %a %a)"
-    pp_print_compop op 
-    (pp_print_expr ctx) expr1 
-    (pp_print_expr ctx) expr2
-| UnOp (op, expr) -> 
-  Format.fprintf ppf "(%a %a)"
-    pp_print_unop op 
-    (pp_print_expr ctx) expr
-| Length expr -> 
-  Format.fprintf ppf "(seq.len %a)"
-    (pp_print_expr ctx) expr
-| BVConst (_, bits) -> 
-  let bits = List.map Bool.to_int bits in
-  Format.fprintf ppf "#b%a"
-    (Lib.pp_print_list Format.pp_print_int "") bits
-| BConst b ->  Format.fprintf ppf "%b" b
-| IntConst i -> Format.fprintf ppf "%d" i
-| StrConst _ -> Utils.crash "Error: String constants can only be in dependencies (of the form 'nonterminal <- string_literal')"
-| BLConst _ -> Utils.crash "BitList literals not yet fully supported"
-| BVCast _ -> Utils.crash "Integer to bitvector casts in semantic constraints that aren't preprocessable are not supported"
+(* The NT prefix is only used in the dpll.ml module *)
+and pp_print_expr: ?nt_prefix:string -> TC.context -> Format.formatter -> A.expr -> unit 
+= fun ?(nt_prefix="") ctx ppf expr -> 
+  let r = pp_print_expr ~nt_prefix ctx in
+  match expr with 
+  | NTExpr (nt_ctx, [nt]) ->
+    (* TODO: Use a representation that prevents name clashes with user names *)
+    let nts = List.map (fun (str, idx) -> String.lowercase_ascii str, idx) (nt_ctx @ [nt]) in
+    Format.pp_print_string ppf nt_prefix;
+    Lib.pp_print_list pp_print_nt_helper "_" ppf nts
+  | A.Match (nt_ctx, nt, cases)  -> pp_print_match ppf ctx nt_ctx nt cases
+  | NTExpr _ -> Utils.crash "Reached impossible case in pp_print_expr"
+  | BinOp (expr1, BVXor, expr2) -> 
+    Format.fprintf ppf "(and (or %a %a) (not (and %a %a)))"
+      r expr1 
+      r expr2
+      r expr1 
+      r expr2
+  | BinOp (expr1, op, expr2) -> 
+    Format.fprintf ppf "(%a %a %a)"
+      pp_print_binop op 
+      r expr1 
+      r expr2
+  | CompOp (expr1, BVLt, expr2) -> 
+    Format.fprintf ppf "(bvult %a %a)"
+      r expr1 
+      r expr2
+  | CompOp (expr1, BVLte, expr2) -> 
+    Format.fprintf ppf "(or (bvult %a %a) (= %a %a))"
+      r expr1 
+      r expr2
+      r expr1 
+      r expr2
+  | CompOp (expr1, BVGt, expr2) -> 
+    Format.fprintf ppf "(bvult %a %a)"
+      r expr2
+      r expr1 
+  | CompOp (expr1, BVGte, expr2) -> 
+    Format.fprintf ppf "(or (bvult %a %a) (= %a %a))"
+      r expr2
+      r expr1 
+      r expr2
+      r expr1 
+  | CompOp (expr1, op, expr2) -> 
+    Format.fprintf ppf "(%a %a %a)"
+      pp_print_compop op 
+      r expr1 
+      r expr2
+  | UnOp (op, expr) -> 
+    Format.fprintf ppf "(%a %a)"
+      pp_print_unop op 
+      r expr
+  | Length expr -> 
+    Format.fprintf ppf "(seq.len %a)"
+      r expr
+  | BVConst (_, bits) -> 
+    let bits = List.map Bool.to_int bits in
+    Format.fprintf ppf "#b%a"
+      (Lib.pp_print_list Format.pp_print_int "") bits
+  | BConst b ->  Format.fprintf ppf "%b" b
+  | IntConst i -> Format.fprintf ppf "%d" i
+  | StrConst _ -> Utils.crash "Error: String constants can only be in dependencies (of the form 'nonterminal <- string_literal')"
+  | BLConst _ -> Utils.crash "BitList literals not yet fully supported"
+  | BVCast _ -> Utils.crash "Integer to bitvector casts in semantic constraints that aren't preprocessable are not supported"
 
 let pp_print_semantic_constraint_ty_annot: TC.context -> Format.formatter -> string -> A.il_type -> A.semantic_constraint -> unit 
 = fun ctx ppf nt ty sc -> match sc with 

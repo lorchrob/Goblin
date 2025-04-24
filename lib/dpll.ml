@@ -9,6 +9,12 @@ _ :: Int
 *)
 
 (* 
+  TODO:
+  * Make sure paths are unique
+
+*)
+
+(* 
   * At each production rule, choose an option to pursue 
   * Keep in context a set of constraints wrt the current root 
   * Construct a derivation tree, depth first, DPLL-style
@@ -20,11 +26,41 @@ _ :: Int
     * When determining if a terminal is "tied to" another terminal, you have to 
       consider recursive dependencies
 
+<S> -> terminal | <S> <S>
+
+
+
+<S> -> <S> <A> { <S>.<A> > 0; } | <A>
+<A> -> ...
+
+<A> -> ... 
+
+<S> -> <S>* | terminal
+
+<S> -> <A> 
+<A> -> <S> | ... 
+
+
+<S> -> <A> { <A>.<B> > 0; }; 
+-- <A>.<B> may or may not need to be pushed depending on the path
+-- Look at CLP
+<A> -> <B> | <C>
+...
+
+Notes
+  * Don't need the restriction on grammar recursiveness in the direct approach
+  * Don't need a recursive function for constraints; hold and instantiate
+  * Conceptually similar to datalog/CLP, but with SMT constraint solving
+  * Lean into incremental nature of the solver; extra work is proportional to new constraint,
+    not the whole problem
+  * Optimization: minimize grammar (explore later as needed)
+
 Ideas to implement
   * Choosing which production rule option to expand
     * Depth-first, left-first
     * Coin flip. Better (in terms of randomness of generated terms), 
       but then you need to track visited paths.
+    * IDS
   * Backtracking style 
     * Fail on UNSAT
     * If you hit UNSAT, backtrack chronologically DPLL-style
@@ -86,38 +122,22 @@ Interfacing with the solver
     * Serialize the AST
 *)
 
+(* Module state *)
 let i = ref 0
-let j = ref 0
-let uid = ref 0
 
 type model_value = 
 | ConcreteInt of int
 
 type derivation_tree = 
-| SymbolicIntLeaf of int (* int is uniue ID *)
-| ConcreteIntLeaf of int (* int is value of the leaf *)
-(* label, index, unique ID, children *)
+| SymbolicIntLeaf of string list (* path to this node *)
+| ConcreteIntLeaf of string list * int (* path to this node, value of the leaf *)
+(* label, index, path to this node, children *)
 (* The index is of which production rule option you chose, to enable backtracking *)
-| Node of string * int option ref * int * derivation_tree list ref
+| Node of string * int option ref * string list * derivation_tree list ref
 
 module DTSet = Set.Make(struct
   type t = derivation_tree ref
   let compare = Stdlib.compare
-end)
-
-module CSet = Set.Make(struct
-  type t = A.expr 
-  let compare = Stdlib.compare
-end)
-
-module CSetSet = Set.Make(struct
-  type t = CSet.t 
-  let compare = CSet.compare
-end)
-
-module CSetMap = Map.Make(struct
-  type t = CSet.t 
-  let compare = CSet.compare
 end)
 
 let random_int_in_range: int -> int -> int
@@ -125,15 +145,29 @@ let random_int_in_range: int -> int -> int
   Random.self_init (); 
   min + Random.int (max - min + 1) 
 
-let declare_smt_variables _ctx _renaming _filename = ()
+let declare_smt_variables: Utils.StringSet.t ref -> A.il_type Utils.StringMap.t -> string -> unit 
+= fun declared_variables ctx filename -> 
+  Utils.StringMap.iter (fun var ty -> 
+    if Utils.StringSet.mem var !declared_variables then 
+      () 
+    else 
+      let declaration_string = Format.asprintf "(declare-fun %s () %a)\n" var A.pp_print_ty ty in
+      declared_variables := Utils.StringSet.add var !declared_variables;
+      Utils.append_to_file filename declaration_string 
+  ) ctx 
 
-let assert_smt_constraint: string -> Ast.expr -> unit 
-= fun filename expr ->
-  let expr_smtlib_string = Utils.capture_output (Sygus.pp_print_expr Utils.StringMap.empty) expr in 
-  let expr_smtlib_string = Format.asprintf "(assert %s)\n(get-model)\n" expr_smtlib_string in
-  Utils.write_to_file filename expr_smtlib_string
+let initialize_smt_file: string -> unit 
+= fun filename ->
+  let contents = Format.asprintf "(set-logic QF_LIA)\n" in
+  Utils.write_to_file filename contents
 
-let rec model_of_sygus_ast: SygusAst.sygus_ast -> model_value Utils.IntMap.t 
+(* TODO: Use push; check result; backtrack *)
+let assert_smt_constraint: string -> string -> Ast.expr -> unit 
+= fun nt_prefix filename expr ->
+  let expr_smtlib_string = Format.asprintf "(assert %a)\n" (Sygus.pp_print_expr ~nt_prefix:nt_prefix Utils.StringMap.empty) expr in
+  Utils.append_to_file filename expr_smtlib_string
+
+let rec model_of_sygus_ast: SygusAst.sygus_ast -> model_value Utils.StringMap.t 
 = fun sygus_ast -> 
   let r = model_of_sygus_ast in 
   match sygus_ast with 
@@ -141,41 +175,54 @@ let rec model_of_sygus_ast: SygusAst.sygus_ast -> model_value Utils.IntMap.t
   | BLLeaf _ 
   | BVLeaf _ -> Utils.crash "Unsupported case in model_of_sygus_ast"
   | Node (constructor, [IntLeaf value]) -> 
-    Utils.IntMap.singleton value (ConcreteInt (int_of_string constructor))
+    Utils.StringMap.singleton constructor (ConcreteInt value)
   | Node (_, children) -> 
     List.fold_left (fun acc child -> 
       let map = r child in 
-      Utils.IntMap.merge Lib.union_keys acc map  
-    ) Utils.IntMap.empty children
+      Utils.StringMap.merge Lib.union_keys acc map  
+    ) Utils.StringMap.empty children
   | IntLeaf _ -> Utils.crash "Unexpected case in model_of_sygus_ast"
   
 
-let get_smt_result: A.ast -> string -> model_value Utils.IntMap.t 
+let get_smt_result: A.ast -> string -> model_value Utils.StringMap.t 
 = fun ast filename -> 
+  Utils.append_to_file filename "(check-sat)\n(get-model)";
   let cvc5 = Utils.find_command_in_path "cvc5" in
   let (output_filename, output_channel) = Filename.open_temp_file "cvc5_out" ".smt2" in
   close_out output_channel;
   let command = 
-    Printf.sprintf "timeout 3 %s --produce-models --dag-thresh=0 %s > %s 2>/dev/null" 
+    Printf.sprintf "timeout 3 %s --produce-models --dag-thresh=0 --lang=smtlib2 %s > %s 2>/dev/null" 
       cvc5 filename output_filename 
   in
   let exit_status = Sys.command command in
   if exit_status <> 0 then
-    failwith (Printf.sprintf "CVC5 failed with exit status %d on file %s" exit_status filename);
+    failwith (Printf.sprintf "cvc5 failed with exit status %d on file %s" exit_status filename);
   let result = Parsing.parse_sygus output_filename ast |> Result.get_ok in
   Sys.remove output_filename;
   model_of_sygus_ast result
 
-let rec instantiate_terminals: model_value Utils.IntMap.t -> derivation_tree -> derivation_tree 
+let rec instantiate_terminals: model_value Utils.StringMap.t -> derivation_tree -> derivation_tree 
 = fun model derivation_tree -> 
   let r = instantiate_terminals model in 
   match derivation_tree with 
   | ConcreteIntLeaf _ -> derivation_tree 
-  | SymbolicIntLeaf uid -> 
-    let value = match Utils.IntMap.find uid model with 
+  | SymbolicIntLeaf path -> 
+    let path' = List.fold_left (^) "" path in
+    let value = match Utils.StringMap.find path' model with 
     | ConcreteInt int -> int 
     in
-    ConcreteIntLeaf value
+    ConcreteIntLeaf (path, value)
+  | Node (nt, idx, uid, children) -> 
+    children := List.map r !children;
+    Node (nt, idx, uid, children)
+
+let rec fill_unconstrained_nonterminals: derivation_tree -> derivation_tree 
+= fun derivation_tree -> 
+  let r = fill_unconstrained_nonterminals in 
+  match derivation_tree with 
+  | ConcreteIntLeaf _ -> derivation_tree 
+  | SymbolicIntLeaf path -> 
+    ConcreteIntLeaf (path, random_int_in_range (-100) 100)
   | Node (nt, idx, uid, children) -> 
     children := List.map r !children;
     Node (nt, idx, uid, children)
@@ -190,7 +237,7 @@ let rec is_complete derivation_tree = match derivation_tree with
 let rec serialize_derivation_tree: derivation_tree -> string 
 = fun derivation_tree -> match derivation_tree with
 | SymbolicIntLeaf _ -> Utils.crash "Encountered symbolic leaf during serialization in serialize_derivation_tree"
-| ConcreteIntLeaf i -> string_of_int i 
+| ConcreteIntLeaf (_, i) -> string_of_int i 
 | Node (_, _, _, children) -> 
   let children = List.map serialize_derivation_tree !children in 
   List.fold_left (^) "" children
@@ -203,11 +250,11 @@ let dpll: A.ast -> string
   | ProdRule (nt, _) -> nt
   in 
   (* Set up the key data structures *)
-  let derivation_tree = ref (Node (start_symbol, ref None, !uid, ref [])) in 
-  uid := !uid + 1;
-  let frontier = ref (DTSet.singleton derivation_tree) in
-  let _disjoint_sets = ref CSetSet.empty in 
-  let _hanging_nonterminal_map = ref CSetMap.empty in 
+  let derivation_tree = ref (Node (start_symbol, ref None, [], ref [])) in 
+  let frontier = ref (DTSet.singleton derivation_tree) in 
+  let declared_variables = ref Utils.StringSet.empty in 
+
+  initialize_smt_file "./examples/out/test";
 
   (* Iteratively expand the frontier and instantiate the derivation tree leaves *)
   while not (DTSet.is_empty !frontier) do 
@@ -219,25 +266,22 @@ let dpll: A.ast -> string
     | ConcreteIntLeaf _ -> () (* Nothing to expand *)
     | Node (_, _, _, children) when not (List.length !children = 0) -> 
       Utils.crash "Trying to expand a node that already has children in dpll"
-    | Node (nt, _idx, _, children) -> 
+    | Node (nt, _idx, path, children) -> 
       let grammar_rule = List.find (fun element -> match element with 
       | A.ProdRule (nt2, _) 
       | TypeAnnotation (nt2, _, _) -> String.equal nt nt2
       ) ast in 
       match grammar_rule with 
       | A.TypeAnnotation (_nt, Int, []) -> 
-        children := [ConcreteIntLeaf (random_int_in_range (-100) 100)]
+        children := [SymbolicIntLeaf (path @ [nt])]
       | A.TypeAnnotation (_nt, Int, scs) -> 
         List.iter (fun sc -> match sc with 
           | A.SyGuSExpr expr ->
-            let expr, renaming = var_names_to_unique_ids expr in
-            declare_smt_variables ctx renaming ("./examples/out/test" ^ string_of_int !j);
-            assert_smt_constraint ("./examples/out/test" ^ string_of_int !j) expr; 
-            children := [SymbolicIntLeaf (!uid)];
-            let model = get_smt_result ast ("./examples/out/test" ^ string_of_int !j) in  
-            derivation_tree := instantiate_terminals model !derivation_tree;
-            uid := !uid + 1;
-            j := !j + 1
+            let path' = List.fold_left (^) "" (path @ [String.lowercase_ascii nt]) in
+            let path'' = List.fold_left (^) "" path in
+            declare_smt_variables declared_variables (Utils.StringMap.singleton path' A.Int) "./examples/out/test";
+            assert_smt_constraint path'' "./examples/out/test" expr; 
+            children := [SymbolicIntLeaf (path @ [nt])];
           | A.Dependency _ -> ()
         ) scs;
       | A.TypeAnnotation _ -> Utils.crash "Unsupported"
@@ -248,10 +292,8 @@ let dpll: A.ast -> string
         | A.Rhs (ges, _scs) -> 
           List.map (fun ge -> match ge with 
           | A.Nonterminal nt -> 
-            let n = Node (nt, ref None, !uid, ref []) in 
-            uid := !uid + 1; 
-            n
-          | StubbedNonterminal _ -> SymbolicIntLeaf (-1) (* TODO: Think about this case *)
+            Node (nt, ref None, path @ [nt], ref []) 
+          | StubbedNonterminal _ -> Utils.crash "Unexpected case in dpll"
           ) ges;
       in
 
@@ -266,4 +308,7 @@ let dpll: A.ast -> string
       ) !frontier !children;
   done;
 
+  let model = get_smt_result ast "./examples/out/test" in  
+  derivation_tree := instantiate_terminals model !derivation_tree;
+  derivation_tree := fill_unconstrained_nonterminals !derivation_tree;
   serialize_derivation_tree !derivation_tree
