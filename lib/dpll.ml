@@ -124,6 +124,13 @@ Interfacing with the solver
 
 (* Module state *)
 let i = ref 0
+let assertion_level = ref 1
+
+type solver_instance = {
+  in_channel : in_channel;   
+  out_channel : out_channel; 
+  err_channel : in_channel;  
+}
 
 type model_value = 
 | ConcreteInt of int
@@ -142,30 +149,64 @@ end)
 
 let random_int_in_range: int -> int -> int
 = fun min max ->
-  Random.self_init (); 
   min + Random.int (max - min + 1) 
 
-let declare_smt_variables: Utils.StringSet.t ref -> A.il_type Utils.StringMap.t -> string -> unit 
-= fun declared_variables ctx filename -> 
+let issue_solver_command: string -> solver_instance -> unit 
+= fun cmd_string solver -> 
+  output_string solver.out_channel cmd_string;
+  flush solver.out_channel
+
+let declare_smt_variables: Utils.StringSet.t ref -> A.il_type Utils.StringMap.t -> solver_instance -> unit 
+= fun declared_variables ctx solver -> 
   Utils.StringMap.iter (fun var ty -> 
     if Utils.StringSet.mem var !declared_variables then 
       () 
     else 
       let declaration_string = Format.asprintf "(declare-fun %s () %a)\n" var A.pp_print_ty ty in
       declared_variables := Utils.StringSet.add var !declared_variables;
-      Utils.append_to_file filename declaration_string 
+      issue_solver_command declaration_string solver
   ) ctx 
 
-let initialize_smt_file: string -> unit 
-= fun filename ->
-  let contents = Format.asprintf "(set-logic QF_LIA)\n" in
-  Utils.write_to_file filename contents
+let read_get_model_response solver =
+  let rec loop acc parens =
+    try
+      let line = input_line solver.in_channel in
+      let parens = parens + (List.length (String.split_on_char '(' line) - 1) - (List.length (String.split_on_char ')' line) - 1) in
+      let acc = acc ^ "\n" ^ line in
+      if parens <= 0 && (not (String.equal line "sat")) then
+        acc
+      else
+        loop acc parens
+    with End_of_file -> 
+      acc
+  in
+  let result = (loop "" 0) in
+  result
+  
 
-(* TODO: Use push; check result; backtrack *)
-let assert_smt_constraint: string -> string -> Ast.expr -> unit 
-= fun nt_prefix filename expr ->
-  let expr_smtlib_string = Format.asprintf "(assert %a)\n" (Sygus.pp_print_expr ~nt_prefix:nt_prefix Utils.StringMap.empty) expr in
-  Utils.append_to_file filename expr_smtlib_string
+let initialize_cvc5 () : solver_instance =
+  let cvc5 = Utils.find_command_in_path "cvc5" in
+  let cmd = 
+    Printf.sprintf "%s --produce-models --dag-thresh=0 --lang=smtlib2 --incremental" 
+      cvc5 
+  in
+  let (in_chan, out_chan, err_chan) = Unix.open_process_full cmd (Unix.environment ()) in
+  let set_logic_command = Format.asprintf "(set-logic QF_LIA)\n" in
+  let solver = { in_channel = in_chan; out_channel = out_chan; err_channel = err_chan } in
+  issue_solver_command set_logic_command solver;
+  solver
+
+(* TODO: Check result for unsat and backtrack if necessary *)
+let assert_smt_constraint: string -> solver_instance -> Ast.expr -> unit 
+= fun nt_prefix solver expr ->
+  let push_cmd = Format.asprintf "(push %d)" !assertion_level in
+  let assert_cmd = 
+    Format.asprintf "(assert %a)\n" (Sygus.pp_print_expr ~nt_prefix:nt_prefix Utils.StringMap.empty) expr 
+  in
+  assertion_level := !assertion_level + 1;
+  issue_solver_command push_cmd solver; 
+  issue_solver_command assert_cmd solver; 
+  ()
 
 let rec model_of_sygus_ast: SygusAst.sygus_ast -> model_value Utils.StringMap.t 
 = fun sygus_ast -> 
@@ -184,31 +225,18 @@ let rec model_of_sygus_ast: SygusAst.sygus_ast -> model_value Utils.StringMap.t
   | IntLeaf _ -> Utils.crash "Unexpected case in model_of_sygus_ast"
   
 
-let get_smt_result: A.ast -> string -> model_value Utils.StringMap.t 
-= fun ast filename -> 
-  Utils.append_to_file filename "(check-sat)\n(get-model)";
-  let cvc5 = Utils.find_command_in_path "cvc5" in
-  let (output_filename, output_channel) = Filename.open_temp_file "cvc5_out" ".smt2" in
-  close_out output_channel;
-  let command = 
-    Printf.sprintf "timeout 3 %s --produce-models --dag-thresh=0 --lang=smtlib2 %s > %s 2>/dev/null" 
-      cvc5 filename output_filename 
-  in
-  let exit_status = Sys.command command in
-  if exit_status <> 0 then
-    failwith (Printf.sprintf "cvc5 failed with exit status %d on file %s" exit_status filename);
-  let ic = open_in output_filename in
-  let file_contents = really_input_string ic (in_channel_length ic) in
-  close_in ic;
-  let result = Parsing.parse_sygus file_contents ast |> Result.get_ok in
-  Sys.remove output_filename;
+let get_smt_result: A.ast -> solver_instance -> model_value Utils.StringMap.t 
+= fun ast solver -> 
+  issue_solver_command "(check-sat)\n(get-model)\n" solver;
+  let response = read_get_model_response solver in
+  let result = Parsing.parse_sygus response ast |> Result.get_ok in
   model_of_sygus_ast result
 
 let rec instantiate_terminals: model_value Utils.StringMap.t -> derivation_tree -> derivation_tree 
 = fun model derivation_tree -> 
   let r = instantiate_terminals model in 
   match derivation_tree with 
-  | ConcreteIntLeaf _ -> derivation_tree 
+  | ConcreteIntLeaf (path, _) 
   | SymbolicIntLeaf path -> 
     let path' = String.concat "_" path in
     let value = match Utils.StringMap.find path' model with 
@@ -248,6 +276,8 @@ let rec serialize_derivation_tree: derivation_tree -> string
 (* TODO: Handle semantic constraints *)
 let dpll: A.ast -> string
 = fun ast -> 
+  Random.self_init (); 
+
   let start_symbol = match List.hd ast with 
   | A.TypeAnnotation (nt, _, _) -> nt
   | ProdRule (nt, _) -> nt
@@ -257,7 +287,7 @@ let dpll: A.ast -> string
   let frontier = ref (DTSet.singleton derivation_tree) in 
   let declared_variables = ref Utils.StringSet.empty in 
 
-  initialize_smt_file "./examples/out/test";
+  let solver = initialize_cvc5 () in
 
   (* Iteratively expand the frontier and instantiate the derivation tree leaves *)
   while not (DTSet.is_empty !frontier) do 
@@ -282,9 +312,11 @@ let dpll: A.ast -> string
           | A.SyGuSExpr expr ->
             let path' =  String.concat "_" (path @ [String.lowercase_ascii nt]) in
             let path'' = String.concat "_" path in
-            declare_smt_variables declared_variables (Utils.StringMap.singleton path' A.Int) "./examples/out/test";
-            assert_smt_constraint path'' "./examples/out/test" expr; 
+            declare_smt_variables declared_variables (Utils.StringMap.singleton path' A.Int) solver;
+            assert_smt_constraint path'' solver expr; 
             children := [SymbolicIntLeaf (path @ [String.lowercase_ascii nt])];
+            let model = get_smt_result ast solver in  
+            derivation_tree := instantiate_terminals model !derivation_tree; 
           | A.Dependency _ -> ()
         ) scs;
       | A.TypeAnnotation _ -> Utils.crash "Unsupported"
@@ -311,7 +343,5 @@ let dpll: A.ast -> string
       ) !frontier !children;
   done;
 
-  let model = get_smt_result ast "./examples/out/test" in  
-  derivation_tree := instantiate_terminals model !derivation_tree;
   derivation_tree := fill_unconstrained_nonterminals !derivation_tree;
   serialize_derivation_tree !derivation_tree
