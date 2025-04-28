@@ -197,7 +197,10 @@ let get_smt_result: A.ast -> string -> model_value Utils.StringMap.t
   let exit_status = Sys.command command in
   if exit_status <> 0 then
     failwith (Printf.sprintf "cvc5 failed with exit status %d on file %s" exit_status filename);
-  let result = Parsing.parse_sygus output_filename ast |> Result.get_ok in
+  let ic = open_in output_filename in
+  let file_contents = really_input_string ic (in_channel_length ic) in
+  close_in ic;
+  let result = Parsing.parse_sygus file_contents ast |> Result.get_ok in
   Sys.remove output_filename;
   model_of_sygus_ast result
 
@@ -207,7 +210,7 @@ let rec instantiate_terminals: model_value Utils.StringMap.t -> derivation_tree 
   match derivation_tree with 
   | ConcreteIntLeaf _ -> derivation_tree 
   | SymbolicIntLeaf path -> 
-    let path' = List.fold_left (^) "" path in
+    let path' = String.concat "_" path in
     let value = match Utils.StringMap.find path' model with 
     | ConcreteInt int -> int 
     in
@@ -240,7 +243,7 @@ let rec serialize_derivation_tree: derivation_tree -> string
 | ConcreteIntLeaf (_, i) -> string_of_int i 
 | Node (_, _, _, children) -> 
   let children = List.map serialize_derivation_tree !children in 
-  List.fold_left (^) "" children
+  String.concat "" children
 
 (* TODO: Handle semantic constraints *)
 let dpll: A.ast -> string
@@ -273,15 +276,15 @@ let dpll: A.ast -> string
       ) ast in 
       match grammar_rule with 
       | A.TypeAnnotation (_nt, Int, []) -> 
-        children := [SymbolicIntLeaf (path @ [nt])]
+        children := [SymbolicIntLeaf (path @ [String.lowercase_ascii nt])]
       | A.TypeAnnotation (_nt, Int, scs) -> 
         List.iter (fun sc -> match sc with 
           | A.SyGuSExpr expr ->
-            let path' = List.fold_left (^) "" (path @ [String.lowercase_ascii nt]) in
-            let path'' = List.fold_left (^) "" path in
+            let path' =  String.concat "_" (path @ [String.lowercase_ascii nt]) in
+            let path'' = String.concat "_" path in
             declare_smt_variables declared_variables (Utils.StringMap.singleton path' A.Int) "./examples/out/test";
             assert_smt_constraint path'' "./examples/out/test" expr; 
-            children := [SymbolicIntLeaf (path @ [nt])];
+            children := [SymbolicIntLeaf (path @ [String.lowercase_ascii nt])];
           | A.Dependency _ -> ()
         ) scs;
       | A.TypeAnnotation _ -> Utils.crash "Unsupported"

@@ -25,10 +25,11 @@ let parse_sygus: string -> Ast.ast -> (SygusAst.sygus_ast, string) result
       Error (Printexc.to_string e)
   in 
   match ast, sygus_ast with 
-  | ProdRule _ :: _, _ -> sygus_ast 
+  | ProdRule _ :: _, Error e -> print_endline e; sygus_ast
+  | ProdRule _ :: _, Ok _ -> sygus_ast 
   (* Sygus files with top-level type annotations lose their constructor name *)
   | TypeAnnotation (nt, _, _) :: _, Ok sygus_ast -> 
     let constructor = String.lowercase_ascii nt ^ "_con0" in
     Ok (SygusAst.Node (constructor, [sygus_ast]))
-  | _, Error e -> Error e
-  | [], _ -> assert false
+  | _, Error e -> print_endline e; sygus_ast
+  | _, Ok _ -> sygus_ast

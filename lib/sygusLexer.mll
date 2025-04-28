@@ -24,6 +24,7 @@
     "BitVec", BITVEC ;
     "str", STR ;
     "infeasible", INFEASIBLE ;
+    "sat", SAT ;
   ] 
 }
 

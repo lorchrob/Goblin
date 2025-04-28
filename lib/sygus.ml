@@ -179,7 +179,8 @@ and pp_print_expr: ?nt_prefix:string -> TC.context -> Format.formatter -> A.expr
   | NTExpr (nt_ctx, [nt]) ->
     (* TODO: Use a representation that prevents name clashes with user names *)
     let nts = List.map (fun (str, idx) -> String.lowercase_ascii str, idx) (nt_ctx @ [nt]) in
-    Format.pp_print_string ppf nt_prefix;
+    (if not (String.equal nt_prefix "") then
+      Format.pp_print_string ppf (nt_prefix ^ "_"));
     Lib.pp_print_list pp_print_nt_helper "_" ppf nts
   | A.Match (nt_ctx, nt, cases)  -> pp_print_match ppf ctx nt_ctx nt cases
   | NTExpr _ -> Utils.crash "Reached impossible case in pp_print_expr"

@@ -23,6 +23,7 @@ open SygusAst
 %token BITVEC
 %token STR
 %token INFEASIBLE
+%token SAT
 
 %token<bool list> BITS
 %token<string> ID
@@ -34,7 +35,15 @@ open SygusAst
 
 %%
 
-s: d = sygus_term; EOF { d } ;
+s: 
+| d = sygus_term; EOF { d } 
+| model = sygus_model; EOF { model } 
+
+sygus_model: 
+| SAT; LPAREN; values = list(model_value); RPAREN; { Node ("smt_model", values) }
+
+model_value:
+| LPAREN; DEFINE; HYPHEN; FUN; id = ID; LPAREN; RPAREN; il_ty; t = lisp_term; RPAREN; { Node (id, [t]) }
 	
 sygus_term:
 | LPAREN; LPAREN; DEFINE; HYPHEN; FUN; TOP; LPAREN; RPAREN; top_type; t = lisp_term; RPAREN; RPAREN;
