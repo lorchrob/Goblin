@@ -140,9 +140,8 @@ type model_value =
 type derivation_tree = 
 | SymbolicIntLeaf of string list (* path to this node *)
 | ConcreteIntLeaf of string list * int (* path to this node, value of the leaf *)
-(* label, index, path to this node, children *)
-(* The index is of which production rule option you chose, to enable backtracking *)
-| Node of string * int option ref * string list * derivation_tree list ref
+(* label, visited set, path to this node, children *)
+| Node of string * Utils.IntSet.t ref * string list * derivation_tree list ref
 
 module DTSet = Set.Make(struct
   type t = derivation_tree ref
@@ -287,7 +286,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> string
   | ProdRule (nt, _) -> nt
   in 
   (* Set up the key data structures *)
-  let derivation_tree = ref (Node (start_symbol, ref None, [start_symbol], ref [])) in 
+  let derivation_tree = ref (Node (start_symbol, ref Utils.IntSet.empty, [start_symbol], ref [])) in 
   let frontier = ref (DTSet.singleton derivation_tree) in 
   let declared_variables = ref Utils.StringSet.empty in 
 
@@ -312,6 +311,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> string
       | A.TypeAnnotation (_, Int, []) -> 
         children := [SymbolicIntLeaf (path @ [nt])]
       | A.TypeAnnotation (_, Int, scs) -> 
+        (* Assert semantic constraints for type annotations *)
         List.iter (fun sc -> match sc with 
         | A.SyGuSExpr expr ->
           let path' = String.concat "_" path |> String.lowercase_ascii in
@@ -331,6 +331,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> string
         | A.Rhs (ges, scs) -> 
           List.iter (fun sc -> match sc with 
           | A.SyGuSExpr expr ->
+            (* Assert semantic constraints for production rules *)
             let path' =  String.concat "_" path |> String.lowercase_ascii in
             let expr_variables = A.get_nts_from_expr2 expr in
             let ty_ctx = List.fold_left (fun acc nt -> 
@@ -349,7 +350,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> string
           ) scs;
           children := List.map (fun ge -> match ge with 
           | A.Nonterminal nt -> 
-            Node (nt, ref None, path @ [nt], ref []) 
+            Node (nt, ref Utils.IntSet.empty, path @ [nt], ref []) 
           | StubbedNonterminal _ -> Utils.crash "Unexpected case in dpll"
           ) ges;
       in
