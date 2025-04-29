@@ -11,7 +11,9 @@ _ :: Int
 (* 
   TODO:
   * Make sure paths are unique
-
+  * Handle dependent terms (later in pipeline)
+  * Backtracking
+  * Make sure ambiguous references handled properly
 *)
 
 (* 
@@ -153,6 +155,8 @@ let random_int_in_range: int -> int -> int
 
 let issue_solver_command: string -> solver_instance -> unit 
 = fun cmd_string solver -> 
+  Format.fprintf Format.std_formatter "Issuing %s\n" 
+    cmd_string;
   output_string solver.out_channel cmd_string;
   flush solver.out_channel
 
@@ -223,7 +227,6 @@ let rec model_of_sygus_ast: SygusAst.sygus_ast -> model_value Utils.StringMap.t
       Utils.StringMap.merge Lib.union_keys acc map  
     ) Utils.StringMap.empty children
   | IntLeaf _ -> Utils.crash "Unexpected case in model_of_sygus_ast"
-  
 
 let get_smt_result: A.ast -> solver_instance -> model_value Utils.StringMap.t 
 = fun ast solver -> 
@@ -238,7 +241,8 @@ let rec instantiate_terminals: model_value Utils.StringMap.t -> derivation_tree 
   match derivation_tree with 
   | ConcreteIntLeaf (path, _) 
   | SymbolicIntLeaf path -> 
-    let path' = String.concat "_" path in
+    let path' = String.concat "_" (Utils.init path) |> String.lowercase_ascii in
+    print_endline path'; 
     let value = match Utils.StringMap.find path' model with 
     | ConcreteInt int -> int 
     in
@@ -274,8 +278,8 @@ let rec serialize_derivation_tree: derivation_tree -> string
   String.concat "" children
 
 (* TODO: Handle semantic constraints *)
-let dpll: A.ast -> string
-= fun ast -> 
+let dpll: A.il_type Utils.StringMap.t -> A.ast -> string
+= fun ctx ast -> 
   Random.self_init (); 
 
   let start_symbol = match List.hd ast with 
@@ -283,7 +287,7 @@ let dpll: A.ast -> string
   | ProdRule (nt, _) -> nt
   in 
   (* Set up the key data structures *)
-  let derivation_tree = ref (Node (start_symbol, ref None, [], ref [])) in 
+  let derivation_tree = ref (Node (start_symbol, ref None, [start_symbol], ref [])) in 
   let frontier = ref (DTSet.singleton derivation_tree) in 
   let declared_variables = ref Utils.StringSet.empty in 
 
@@ -305,27 +309,45 @@ let dpll: A.ast -> string
       | TypeAnnotation (nt2, _, _) -> String.equal nt nt2
       ) ast in 
       match grammar_rule with 
-      | A.TypeAnnotation (_nt, Int, []) -> 
-        children := [SymbolicIntLeaf (path @ [String.lowercase_ascii nt])]
-      | A.TypeAnnotation (_nt, Int, scs) -> 
+      | A.TypeAnnotation (_, Int, []) -> 
+        children := [SymbolicIntLeaf (path @ [nt])]
+      | A.TypeAnnotation (_, Int, scs) -> 
         List.iter (fun sc -> match sc with 
-          | A.SyGuSExpr expr ->
-            let path' =  String.concat "_" (path @ [String.lowercase_ascii nt]) in
-            let path'' = String.concat "_" path in
-            declare_smt_variables declared_variables (Utils.StringMap.singleton path' A.Int) solver;
-            assert_smt_constraint path'' solver expr; 
-            children := [SymbolicIntLeaf (path @ [String.lowercase_ascii nt])];
-            let model = get_smt_result ast solver in  
-            derivation_tree := instantiate_terminals model !derivation_tree; 
-          | A.Dependency _ -> ()
-        ) scs;
+        | A.SyGuSExpr expr ->
+          let path' = String.concat "_" path |> String.lowercase_ascii in
+          let path'' = String.concat "_" (Utils.init path) |> String.lowercase_ascii in
+          declare_smt_variables declared_variables (Utils.StringMap.singleton path' A.Int) solver;
+          assert_smt_constraint path'' solver expr; 
+          children := [SymbolicIntLeaf (path @ [nt])];
+          let model = get_smt_result ast solver in  
+          derivation_tree := instantiate_terminals model !derivation_tree; 
+        | A.Dependency _ -> ()
+        ) scs
       | A.TypeAnnotation _ -> Utils.crash "Unsupported"
-      | A.ProdRule (_nt, rhss) -> 
+      | A.ProdRule (_, rhss) -> 
         let chosen_rule = List.hd rhss in
-        children := match chosen_rule with 
+        match chosen_rule with 
         | A.StubbedRhs _ -> Utils.crash "Unexpected case in dpll";
-        | A.Rhs (ges, _scs) -> 
-          List.map (fun ge -> match ge with 
+        | A.Rhs (ges, scs) -> 
+          List.iter (fun sc -> match sc with 
+          | A.SyGuSExpr expr ->
+            let path' =  String.concat "_" path |> String.lowercase_ascii in
+            let expr_variables = A.get_nts_from_expr2 expr in
+            let ty_ctx = List.fold_left (fun acc nt -> 
+              let ty = Utils.StringMap.find (List.rev nt |> List.hd |> fst) ctx in 
+              let str = Format.asprintf "%a" (Lib.pp_print_list Sygus.pp_print_nt_helper "_") nt in
+              let str = path' ^ "_" ^ str in 
+              Utils.StringMap.add str ty acc
+            ) Utils.StringMap.empty expr_variables in
+            declare_smt_variables declared_variables ty_ctx solver;
+            assert_smt_constraint path' solver expr; 
+            let _model = get_smt_result ast solver in
+            ()  
+            (* don't instantiate yet -- we haven't hit the leaf nodes *)
+            (* derivation_tree := instantiate_terminals model !derivation_tree;  *)
+          | A.Dependency _ -> ()
+          ) scs;
+          children := List.map (fun ge -> match ge with 
           | A.Nonterminal nt -> 
             Node (nt, ref None, path @ [nt], ref []) 
           | StubbedNonterminal _ -> Utils.crash "Unexpected case in dpll"

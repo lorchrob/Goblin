@@ -96,3 +96,4 @@ val nts_of_rhs: prod_rule_rhs -> string list
 val expr_contains_dangling_nt: Utils.SILSet.t -> expr -> bool 
 val ast_constrains_nt: ast -> string -> bool
 val prepend_nt_to_dot_exprs: string -> expr -> expr
+val get_nts_from_expr2: expr -> (string * int option) list list

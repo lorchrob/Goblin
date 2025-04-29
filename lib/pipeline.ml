@@ -40,7 +40,7 @@ let main_pipeline filename =
   Utils.debug_print Ast.pp_print_ast ppf ast;
 
   (if !Flags.selected_engine = Flags.DPLL then 
-    let result = Dpll.dpll ast in 
+    let result = Dpll.dpll ctx ast in 
     print_endline result; 
     Utils.crash "Exiting early :D");
 

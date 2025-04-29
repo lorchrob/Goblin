@@ -94,6 +94,7 @@ type element =
 type ast = element list
 
 (* This function is used before desugaring dot expressions *)
+(* TODO: Why is this function returning a string list rather than a string list list? *)
 let rec get_nts_from_expr: expr -> string list 
 = fun expr -> 
   let r = get_nts_from_expr in
@@ -103,6 +104,28 @@ let rec get_nts_from_expr: expr -> string list
     | CaseStub _ -> []
     | Case (_, expr) -> r expr
     ) cases |> List.flatten)
+  | BinOp (expr1, _, expr2) -> 
+    r expr1 @ r expr2
+  | UnOp (_, expr) -> 
+    r expr
+  | CompOp (expr1, _, expr2) -> 
+    r expr1 @ r expr2
+  | Length expr -> 
+    r expr
+  | BVConst _ 
+  | BLConst _ 
+  | BConst _ 
+  | BVCast _  
+  | StrConst _
+  | IntConst _ -> []
+
+(* This function is used before desugaring dot expressions *)
+let rec get_nts_from_expr2: expr -> (string * int option) list list
+= fun expr -> 
+  let r = get_nts_from_expr2 in
+  match expr with 
+  | NTExpr (_, nts) -> [nts]
+  | Match _ -> Utils.crash "Unexpected case in get_nts_from_expr2"
   | BinOp (expr1, _, expr2) -> 
     r expr1 @ r expr2
   | UnOp (_, expr) -> 
