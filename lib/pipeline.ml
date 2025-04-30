@@ -42,7 +42,7 @@ let main_pipeline filename =
   (if !Flags.selected_engine = Flags.DPLL then 
     let result = Dpll.dpll ctx ast in 
     print_endline result; 
-    Utils.crash "Exiting early :D");
+    exit 0);
 
   (* Step 7: Divide and conquer *)
   Utils.debug_print Format.pp_print_string ppf "\n\nDivide and conquer:\n";

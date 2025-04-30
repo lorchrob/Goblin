@@ -154,8 +154,7 @@ let random_int_in_range: int -> int -> int
 
 let issue_solver_command: string -> solver_instance -> unit 
 = fun cmd_string solver -> 
-  Format.fprintf Format.std_formatter "Issuing %s\n" 
-    cmd_string;
+  Utils.debug_print Format.pp_print_string Format.std_formatter ("Issuing " ^ cmd_string ^ "\n");
   output_string solver.out_channel cmd_string;
   flush solver.out_channel
 
@@ -241,7 +240,6 @@ let rec instantiate_terminals: model_value Utils.StringMap.t -> derivation_tree 
   | ConcreteIntLeaf (path, _) 
   | SymbolicIntLeaf path -> 
     let path' = String.concat "_" (Utils.init path) |> String.lowercase_ascii in
-    print_endline path'; 
     let value = match Utils.StringMap.find path' model with 
     | ConcreteInt int -> int 
     in
