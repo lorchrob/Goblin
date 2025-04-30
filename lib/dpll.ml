@@ -139,6 +139,7 @@ type model_value =
 
 type derivation_tree = 
 | SymbolicIntLeaf of string list (* path to this node *)
+| DependentTermLeaf of string 
 | ConcreteIntLeaf of string list * int (* path to this node, value of the leaf *)
 (* label, visited set, path to this node, children *)
 | Node of string * Utils.IntSet.t ref * string list * derivation_tree list ref
@@ -244,9 +245,11 @@ let rec instantiate_terminals: model_value Utils.StringMap.t -> derivation_tree 
     | ConcreteInt int -> int 
     in
     ConcreteIntLeaf (path, value)
+  | DependentTermLeaf _ -> derivation_tree
   | Node (nt, idx, uid, children) -> 
     children := List.map r !children;
     Node (nt, idx, uid, children)
+  
 
 let rec fill_unconstrained_nonterminals: derivation_tree -> derivation_tree 
 = fun derivation_tree -> 
@@ -255,6 +258,7 @@ let rec fill_unconstrained_nonterminals: derivation_tree -> derivation_tree
   | ConcreteIntLeaf _ -> derivation_tree 
   | SymbolicIntLeaf path -> 
     ConcreteIntLeaf (path, random_int_in_range (-100) 100)
+  | DependentTermLeaf _ -> derivation_tree
   | Node (nt, idx, uid, children) -> 
     children := List.map r !children;
     Node (nt, idx, uid, children)
@@ -262,20 +266,31 @@ let rec fill_unconstrained_nonterminals: derivation_tree -> derivation_tree
 let rec is_complete derivation_tree = match derivation_tree with
 | SymbolicIntLeaf _ -> false 
 | ConcreteIntLeaf _ -> true 
+| DependentTermLeaf _ -> true
 | Node (_, _, _, children) -> 
   let children = List.map is_complete !children in
-  List.length children > 0 && List.fold_left (&&) true children
+  List.length children > 0 && List.fold_left (&&) true children 
 
 let rec serialize_derivation_tree: derivation_tree -> string 
 = fun derivation_tree -> match derivation_tree with
 | SymbolicIntLeaf _ -> Utils.crash "Encountered symbolic leaf during serialization in serialize_derivation_tree"
 | ConcreteIntLeaf (_, i) -> string_of_int i 
+| DependentTermLeaf nt -> nt ^ "con" (* Match the sygus encoding format *)
 | Node (_, _, _, children) -> 
   let children = List.map serialize_derivation_tree !children in 
   String.concat "" children
 
+let rec sygus_ast_of_derivation_tree: derivation_tree -> SA.sygus_ast 
+= fun derivation_tree -> match derivation_tree with
+| DependentTermLeaf nt -> VarLeaf (String.lowercase_ascii (nt ^ "_con")) (* Match sygus encoding format *)
+| SymbolicIntLeaf path -> VarLeaf (String.concat "" path)
+| ConcreteIntLeaf (_, i) -> IntLeaf i
+| Node (nt, _, _, children) -> 
+  let children = List.map sygus_ast_of_derivation_tree !children in 
+  Node (nt, children)
+
 (* TODO: Handle semantic constraints *)
-let dpll: A.il_type Utils.StringMap.t -> A.ast -> string
+let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
 = fun ctx ast -> 
   Random.self_init (); 
 
@@ -297,7 +312,8 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> string
     (* Expand the chosen frontier node *)
     let _ = match !node_to_expand with 
     | SymbolicIntLeaf _
-    | ConcreteIntLeaf _ -> () (* Nothing to expand *)
+    | ConcreteIntLeaf _ 
+    | DependentTermLeaf _ -> () (* Nothing to expand *)
     | Node (_, _, _, children) when not (List.length !children = 0) -> 
       Utils.crash "Trying to expand a node that already has children in dpll"
     | Node (nt, _idx, path, children) -> 
@@ -325,7 +341,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> string
       | A.ProdRule (_, rhss) -> 
         let chosen_rule = List.hd rhss in
         match chosen_rule with 
-        | A.StubbedRhs _ -> Utils.crash "Unexpected case in dpll";
+        | A.StubbedRhs _ -> Utils.crash "Unexpected case in dpll 1";
         | A.Rhs (ges, scs) -> 
           List.iter (fun sc -> match sc with 
           | A.SyGuSExpr expr ->
@@ -348,8 +364,8 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> string
           ) scs;
           children := List.map (fun ge -> match ge with 
           | A.Nonterminal nt -> 
-            Node (nt, ref Utils.IntSet.empty, path @ [nt], ref []) 
-          | StubbedNonterminal _ -> Utils.crash "Unexpected case in dpll"
+            Node (nt, ref Utils.IntSet.empty, path @ [nt], ref [])  
+          | StubbedNonterminal (_, nt) -> DependentTermLeaf nt
           ) ges;
       in
 
@@ -357,7 +373,8 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> string
     frontier := DTSet.remove node_to_expand !frontier;
     frontier := match !node_to_expand with 
     | SymbolicIntLeaf _ 
-    | ConcreteIntLeaf _ -> !frontier
+    | ConcreteIntLeaf _ 
+    | DependentTermLeaf _ -> !frontier
     | Node (_, _, _, children) -> 
       List.fold_left (fun acc child ->
         DTSet.add (ref child) acc
@@ -365,4 +382,5 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> string
   done;
 
   derivation_tree := fill_unconstrained_nonterminals !derivation_tree;
-  serialize_derivation_tree !derivation_tree
+  (* Convert to sygus AST for later processing in the pipeline *)
+  sygus_ast_of_derivation_tree !derivation_tree
