@@ -25,6 +25,7 @@
     "str", STR ;
     "infeasible", INFEASIBLE ;
     "sat", SAT ;
+    "unsat", UNSAT ;
   ] 
 }
 

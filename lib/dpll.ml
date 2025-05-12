@@ -1,6 +1,7 @@
 module A = Ast
 module SA = SygusAst
 
+let (let*) = Res.(>>=)
 (*
 A -> B C { B.F < C.J } | D E
 B -> F G | H I
@@ -217,23 +218,23 @@ let assert_smt_constraint: string -> solver_instance -> Ast.expr -> unit
   issue_solver_command assert_cmd solver; 
   ()
 
-let rec model_of_sygus_ast: SygusAst.sygus_ast -> model_value Utils.StringMap.t 
+let rec model_of_sygus_ast: SygusAst.sygus_ast -> (model_value Utils.StringMap.t, unit) result
 = fun sygus_ast -> 
-  let r = model_of_sygus_ast in 
   match sygus_ast with 
+  | VarLeaf var when var = "unsat" -> Error ()
   | VarLeaf _ 
   | BLLeaf _ 
   | BVLeaf _ -> Utils.crash "Unsupported case in model_of_sygus_ast"
   | Node (constructor, [IntLeaf value]) -> 
-    Utils.StringMap.singleton constructor (ConcreteInt value)
+    Ok (Utils.StringMap.singleton constructor (ConcreteInt value))
   | Node (_, children) -> 
-    List.fold_left (fun acc child -> 
-      let map = r child in 
-      Utils.StringMap.merge Lib.union_keys acc map  
-    ) Utils.StringMap.empty children
+    (Res.seq_chain (fun acc child -> 
+      let* map = model_of_sygus_ast child in 
+      Ok (Utils.StringMap.merge Lib.union_keys acc map)  
+    ) Utils.StringMap.empty children)
   | IntLeaf _ -> Utils.crash "Unexpected case in model_of_sygus_ast"
 
-let get_smt_result: A.ast -> solver_instance -> model_value Utils.StringMap.t 
+let get_smt_result: A.ast -> solver_instance -> (model_value Utils.StringMap.t, unit) result
 = fun ast solver -> 
   issue_solver_command "(check-sat)\n(get-model)\n" solver;
   let response = read_get_model_response solver in
@@ -338,13 +339,14 @@ let constraint_is_applicable expr derivation_tree ast =
 
 let assert_and_remove_applicable_constraints constraint_set derivation_tree ast path solver =
   let constraints_to_remove = 
-  ConstraintSet.fold (fun expr acc -> 
-    if constraint_is_applicable expr derivation_tree ast then (
-      (* declare_smt_variables declared_variables (Utils.StringMap.singleton path' A.Int) solver; *)
-      assert_smt_constraint path solver expr;
-      acc
-    ) else acc
-  )  !constraint_set ConstraintSet.empty in
+    ConstraintSet.fold (fun expr acc -> 
+      if constraint_is_applicable expr derivation_tree ast then (
+        (* declare_smt_variables declared_variables (Utils.StringMap.singleton path' A.Int) solver; *)
+        assert_smt_constraint path solver expr;
+        ConstraintSet.add expr acc
+      ) else acc
+    )  !constraint_set ConstraintSet.empty 
+  in
   constraint_set := ConstraintSet.diff !constraint_set constraints_to_remove;
   !constraint_set
 
@@ -357,6 +359,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
   | A.TypeAnnotation (nt, _, _) -> nt
   | ProdRule (nt, _) -> nt
   in 
+
   (*** Set up the key data structures ***)
   (* Incremental construction of output term so far *)
   let derivation_tree = ref (Node (start_symbol, ref Utils.IntSet.empty, [start_symbol], ref [])) in 
@@ -375,21 +378,24 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
     let node_to_expand = DTSet.min_elt !frontier in
 
     (* Expand the chosen frontier node *)
-    let _ = match !node_to_expand with 
+    let expand = match !node_to_expand with 
     | SymbolicIntLeaf _
     | ConcreteIntLeaf _ 
-    | DependentTermLeaf _ -> () (* Nothing to expand *)
-    | Node (_, _, _, children) when not (List.length !children = 0) -> 
-      Utils.crash "Trying to expand a node that already has children in dpll"
-    | Node (nt, _idx, path, children) -> 
+    | DependentTermLeaf _ -> true (* nothing else to do *)
+    | Node (nt, _, _, children) when not (List.length !children = 0) -> 
+      Utils.crash ("Trying to expand node " ^ nt ^ " that already has children in dpll")
+    | Node (nt, visited, path, children) -> 
       let grammar_rule = List.find (fun element -> match element with 
       | A.ProdRule (nt2, _) 
       | TypeAnnotation (nt2, _, _) -> String.equal nt nt2
       ) ast in 
       match grammar_rule with 
       | A.TypeAnnotation (_, Int, []) -> 
-        children := [SymbolicIntLeaf (path @ [nt])]
+        visited := Utils.IntSet.add 0 !visited;
+        children := [SymbolicIntLeaf (path @ [nt])];
+        true
       | A.TypeAnnotation (_, Int, scs) -> 
+        visited := Utils.IntSet.add 0 !visited;
         (* Assert semantic constraints for type annotations *)
         List.iter (fun sc -> match sc with 
         | A.SyGuSExpr expr ->
@@ -399,18 +405,23 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
           (* assert_smt_constraint path'' solver expr;  *)
           constraints_to_assert := ConstraintSet.add expr !constraints_to_assert;
           constraints_to_assert := assert_and_remove_applicable_constraints constraints_to_assert !derivation_tree ast path'' solver;
-          children := [SymbolicIntLeaf (path @ [nt])];
           let model = get_smt_result ast solver in  
-          derivation_tree := instantiate_terminals model !derivation_tree; 
+          (match model with 
+          | Ok model -> 
+            children := [SymbolicIntLeaf (path @ [nt])];
+            derivation_tree := instantiate_terminals model !derivation_tree; 
+          | Error () -> ())
         | A.Dependency _ -> ()
-        ) scs
+        ) scs;
+        true
       | A.TypeAnnotation _ -> Utils.crash "Unsupported"
       | A.ProdRule (_, rhss) -> 
-        let chosen_rule = List.hd rhss in
+        let idx, chosen_rule = Utils.fresh_random_element !visited rhss in
+        visited := Utils.IntSet.add idx !visited;
         match chosen_rule with 
         | A.StubbedRhs _ -> Utils.crash "Unexpected case in dpll 1";
         | A.Rhs (ges, scs) -> 
-          List.iter (fun sc -> match sc with 
+          let expand = List.fold_left (fun acc sc -> match sc with 
           | A.SyGuSExpr expr ->
             (* Assert semantic constraints for production rules *)
             let path' =  String.concat "_" path |> String.lowercase_ascii in
@@ -425,29 +436,39 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
             (* assert_smt_constraint path' solver expr;  *)
             constraints_to_assert := ConstraintSet.add expr !constraints_to_assert;
             constraints_to_assert := assert_and_remove_applicable_constraints constraints_to_assert !derivation_tree ast path' solver;
-            let _model = get_smt_result ast solver in
-            ()  
+            let model = get_smt_result ast solver in
+            (match model with 
+            | Ok _ -> acc
+            | Error () -> false) 
             (* don't instantiate yet -- we haven't hit the leaf nodes *)
             (* derivation_tree := instantiate_terminals model !derivation_tree;  *)
-          | A.Dependency _ -> ()
-          ) scs;
-          children := List.map (fun ge -> match ge with 
-          | A.Nonterminal nt -> 
-            Node (nt, ref Utils.IntSet.empty, path @ [nt], ref [])  
-          | StubbedNonterminal (_, nt) -> DependentTermLeaf nt
-          ) ges;
+          | A.Dependency _ -> acc
+          ) true scs in
+          (* Only expand the tree if the new constraints were SAT; otherwise, just go to next iteration (we updated the visited set) *)
+          if expand then 
+            children := List.map (fun ge -> match ge with 
+            | A.Nonterminal nt -> 
+              Node (nt, ref Utils.IntSet.empty, path @ [nt], ref [])  
+            | StubbedNonterminal (_, nt) -> DependentTermLeaf nt
+            ) ges;
+          expand
       in
-
+    
     (* Update the frontier *)
-    frontier := DTSet.remove node_to_expand !frontier;
-    frontier := match !node_to_expand with 
-    | SymbolicIntLeaf _ 
-    | ConcreteIntLeaf _ 
-    | DependentTermLeaf _ -> !frontier
-    | Node (_, _, _, children) -> 
-      List.fold_left (fun acc child ->
-        DTSet.add (ref child) acc
-      ) !frontier !children;
+    (* Only expand the frontier if the new constraints were SAT; otherwise, just go to next iteration (we updated the visited set) *)
+    if expand then (
+      frontier := DTSet.remove node_to_expand !frontier;
+      frontier := match !node_to_expand with 
+      | SymbolicIntLeaf _ 
+      | ConcreteIntLeaf _ 
+      | DependentTermLeaf _ -> !frontier
+      | Node (_, _, _, children) -> 
+        List.fold_left (fun acc child ->
+          DTSet.add (ref child) acc
+        ) !frontier !children;
+    );
+    Format.fprintf Format.std_formatter "Constraints to assert: %a\n"
+      (Lib.pp_print_list A.pp_print_expr " ") (ConstraintSet.elements !constraints_to_assert);
   done;
 
   derivation_tree := fill_unconstrained_nonterminals !derivation_tree;

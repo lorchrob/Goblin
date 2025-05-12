@@ -24,6 +24,7 @@ open SygusAst
 %token STR
 %token INFEASIBLE
 %token SAT
+%token UNSAT
 
 %token<bool list> BITS
 %token<string> ID
@@ -38,6 +39,7 @@ open SygusAst
 s: 
 | d = sygus_term; EOF { d } 
 | model = sygus_model; EOF { model } 
+| UNSAT; EOF { VarLeaf "unsat" }
 
 sygus_model: 
 | SAT; LPAREN; values = list(model_value); RPAREN; { Node ("smt_model", values) }

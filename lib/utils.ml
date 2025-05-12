@@ -131,10 +131,19 @@ let find_command_in_path cmd =
     crash "drop"
   | (_ :: xs, n) -> drop xs (n - 1);;
 
-
 let prefixes lst =
   let rec aux acc = function
     | [] -> List.rev acc
     | x :: xs -> aux ((match acc with [] -> [x] | p :: _ -> (p @ [x])) :: acc) xs
   in
   aux [] lst *)
+
+let rec fresh_random_element exclude lst =
+  let len = List.length lst in
+  if len = 0 then
+    invalid_arg "random_element: empty list"
+  else
+    let idx = Random.int len in
+    if IntSet.cardinal exclude = List.length lst then (print_endline "unsat"; exit 0);
+    if IntSet.mem idx exclude then fresh_random_element exclude lst 
+    else idx, List.nth lst idx
