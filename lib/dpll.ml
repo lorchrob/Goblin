@@ -209,13 +209,25 @@ let initialize_cvc5 () : solver_instance =
 (* TODO: Check result for unsat and backtrack if necessary *)
 let assert_smt_constraint: string -> solver_instance -> Ast.expr -> unit 
 = fun nt_prefix solver expr ->
-  let push_cmd = Format.asprintf "(push %d)" !assertion_level in
   let assert_cmd = 
     Format.asprintf "(assert %a)\n" (Sygus.pp_print_expr ~nt_prefix:nt_prefix Utils.StringMap.empty) expr 
   in
+  issue_solver_command assert_cmd solver; 
+  ()
+
+let new_decision_level: solver_instance -> unit 
+= fun solver ->
+  let push_cmd = Format.asprintf "(push %d)" !assertion_level in
   assertion_level := !assertion_level + 1;
   issue_solver_command push_cmd solver; 
-  issue_solver_command assert_cmd solver; 
+  ()
+
+let backtrack_decision_level: solver_instance -> unit 
+= fun solver ->
+  if !assertion_level = 0 then (print_endline "unsat"; exit 0);
+  let pop_cmd = Format.asprintf "(pop 1)" in
+  assertion_level := !assertion_level - 1;
+  issue_solver_command pop_cmd solver; 
   ()
 
 let rec model_of_sygus_ast: SygusAst.sygus_ast -> (model_value Utils.StringMap.t, unit) result
@@ -377,12 +389,22 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
   while not (DTSet.is_empty !frontier) do 
     let node_to_expand = DTSet.min_elt !frontier in
 
-    (* Expand the chosen frontier node *)
+    
     (* TODO: Make sure there are no constraints in constraints_to_assert hanging around that still 
        need to be asserted. When one of these constraints is asserted after some delay, have 
-       to figure out some backtracking logic. *)
+       to figure out some backtracking logic. 
+       Need to mix in some pops. 
+       
+       Backtracking:
+       After every __decision__ (real decision), push constraints at new (incremented) decision level. 
+       
+       If unsat, pop constraints (decrementing decision level), and backtrack to the most recent decision to flip on the derivation tree. 
+       
+       If unsat at decision level 0, then globally unsat. *)
+
     (* constraints_to_assert := assert_and_remove_applicable_constraints constraints_to_assert !derivation_tree ast path' solver; *)
 
+    (* Expand the chosen frontier node *)
     let expand = match !node_to_expand with 
     | SymbolicIntLeaf _
     | ConcreteIntLeaf _ 
@@ -415,12 +437,15 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
           | Ok model -> 
             children := [SymbolicIntLeaf (path @ [nt])];
             derivation_tree := instantiate_terminals model !derivation_tree; 
-          | Error () -> ())
+          | Error () -> 
+            backtrack_decision_level solver)
         | A.Dependency _ -> ()
         ) scs;
         true
       | A.TypeAnnotation _ -> Utils.crash "Unsupported"
       | A.ProdRule (_, rhss) -> 
+        (* At every real choice, increase the decision level *)
+        if (List.length rhss - Utils.IntSet.cardinal !visited) > 1 then new_decision_level solver;
         let idx, chosen_rule = Utils.fresh_random_element !visited rhss in
         visited := Utils.IntSet.add idx !visited;
         match chosen_rule with 
@@ -443,7 +468,9 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
             let model = get_smt_result ast solver in
             (match model with 
             | Ok _ -> acc
-            | Error () -> false) 
+            | Error () -> 
+              backtrack_decision_level solver;
+              false) 
             (* don't instantiate yet -- we haven't hit the leaf nodes *)
             (* derivation_tree := instantiate_terminals model !derivation_tree;  *)
           | A.Dependency _ -> acc
