@@ -378,6 +378,11 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
     let node_to_expand = DTSet.min_elt !frontier in
 
     (* Expand the chosen frontier node *)
+    (* TODO: Make sure there are no constraints in constraints_to_assert hanging around that still 
+       need to be asserted. When one of these constraints is asserted after some delay, have 
+       to figure out some backtracking logic. *)
+    (* constraints_to_assert := assert_and_remove_applicable_constraints constraints_to_assert !derivation_tree ast path' solver; *)
+
     let expand = match !node_to_expand with 
     | SymbolicIntLeaf _
     | ConcreteIntLeaf _ 
@@ -385,6 +390,8 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
     | Node (nt, _, _, children) when not (List.length !children = 0) -> 
       Utils.crash ("Trying to expand node " ^ nt ^ " that already has children in dpll")
     | Node (nt, visited, path, children) -> 
+      let path' = String.concat "_" path |> String.lowercase_ascii in
+      let path'' = String.concat "_" (Utils.init path) |> String.lowercase_ascii in
       let grammar_rule = List.find (fun element -> match element with 
       | A.ProdRule (nt2, _) 
       | TypeAnnotation (nt2, _, _) -> String.equal nt nt2
@@ -399,8 +406,6 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
         (* Assert semantic constraints for type annotations *)
         List.iter (fun sc -> match sc with 
         | A.SyGuSExpr expr ->
-          let path' = String.concat "_" path |> String.lowercase_ascii in
-          let path'' = String.concat "_" (Utils.init path) |> String.lowercase_ascii in
           declare_smt_variables declared_variables (Utils.StringMap.singleton path' A.Int) solver;
           (* assert_smt_constraint path'' solver expr;  *)
           constraints_to_assert := ConstraintSet.add expr !constraints_to_assert;
@@ -424,7 +429,6 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
           let expand = List.fold_left (fun acc sc -> match sc with 
           | A.SyGuSExpr expr ->
             (* Assert semantic constraints for production rules *)
-            let path' =  String.concat "_" path |> String.lowercase_ascii in
             let expr_variables = A.get_nts_from_expr2 expr in
             let ty_ctx = List.fold_left (fun acc nt -> 
               let ty = Utils.StringMap.find (List.rev nt |> List.hd |> fst) ctx in 
@@ -467,8 +471,9 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
           DTSet.add (ref child) acc
         ) !frontier !children;
     );
-    Format.fprintf Format.std_formatter "Constraints to assert: %a\n"
-      (Lib.pp_print_list A.pp_print_expr " ") (ConstraintSet.elements !constraints_to_assert);
+    (* Format.fprintf Format.std_formatter "Constraints to assert: %a\n"
+      (Lib.pp_print_list A.pp_print_expr " ") (ConstraintSet.elements !constraints_to_assert); *)
+    ()
   done;
 
   derivation_tree := fill_unconstrained_nonterminals !derivation_tree;
