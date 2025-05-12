@@ -50,7 +50,7 @@ let find_indices lst =
 let gen_match_info ctx (nt1, idx1) (nt2, _idx2) nt_ctx = 
   let rules = match SM.find nt1 ctx with 
   | A.ADT rules -> rules 
-  | _ -> Utils.crash "Internal error: sygus.ml (nt_to_match)" 
+  | _ -> Utils.crash "sygus.ml (nt_to_match)" 
   in
   let rules' = List.filter (fun rule -> 
     List.mem nt2 rule   
@@ -132,7 +132,7 @@ let rec pull_up_match_exprs: A.expr -> A.expr =
       | A.CaseStub nts -> CaseStub nts
     ) cases in
     Match (nt_ctx, nt, cases) 
-  | NTExpr _ (* -> Utils.crash "internal error: ntExprToMatch (pull_up_match_exprs)" *)
+  | NTExpr _ (* -> Utils.crash "ntExprToMatch (pull_up_match_exprs)" *)
   | BVConst _ 
   | BLConst _ 
   | BConst _ 
@@ -384,7 +384,7 @@ fun ctx expr ->
       let matches_so_far, expr = r matches_so_far expr in 
       matches_so_far,
       BVCast (len, expr)
-    | NTExpr _ (* -> Utils.crash "internal error: ntExprToMatch (nt_to_match)" *)
+    | NTExpr _ (* -> Utils.crash "ntExprToMatch (nt_to_match)" *)
     | BVConst _ 
     | BLConst _ 
     | BConst _ 

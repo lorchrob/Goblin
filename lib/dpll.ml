@@ -14,6 +14,7 @@ _ :: Int
   * Handle dependent terms (later in pipeline)
   * Backtracking
   * Make sure ambiguous references handled properly
+  * IDS
 *)
 
 (* 
@@ -149,6 +150,11 @@ module DTSet = Set.Make(struct
   let compare = Stdlib.compare
 end)
 
+module ConstraintSet = Set.Make(struct
+  type t = A.expr
+  let compare = Stdlib.compare
+end)
+
 let random_int_in_range: int -> int -> int
 = fun min max ->
   min + Random.int (max - min + 1) 
@@ -250,7 +256,6 @@ let rec instantiate_terminals: model_value Utils.StringMap.t -> derivation_tree 
     children := List.map r !children;
     Node (nt, idx, uid, children)
   
-
 let rec fill_unconstrained_nonterminals: derivation_tree -> derivation_tree 
 = fun derivation_tree -> 
   let r = fill_unconstrained_nonterminals in 
@@ -289,6 +294,60 @@ let rec sygus_ast_of_derivation_tree: derivation_tree -> SA.sygus_ast
   let children = List.map sygus_ast_of_derivation_tree !children in 
   Node (nt, children)
 
+(* Determine whether an nt, in dot notation, will __necessarily__ be reached 
+   in a given derivation_tree *)
+let rec nt_will_be_reached derivation_tree ast nt = 
+  let rec nt_will_be_reached_ast nt = match nt with 
+  | [] -> true 
+  | (str, _) :: nts -> 
+    let rule = List.find (fun element -> match element with
+    | A.TypeAnnotation (nt, _, _) 
+    | A.ProdRule (nt, _) -> nt = str
+    ) ast in 
+    match rule with 
+    | ProdRule (_, rhss) -> 
+      (* There are multiple options. Conservatively say the nt may not be reached. 
+         TODO: This is a safe approximation. A more exact analysis would see if the nt is reachable in all cases. *)
+      if List.length rhss <> 1 then false 
+      else 
+        nt_will_be_reached_ast nts
+    | _ -> true
+  in
+  match nt with 
+  | [] -> true 
+  | (str, _) :: nts -> match derivation_tree with 
+    | Node (_, _, _, children) -> 
+      if !children = [] then 
+        nt_will_be_reached_ast nt
+      else
+        let child = List.find (fun child -> match child with 
+        | Node (nt2, _, _, _) -> str = nt2
+        | _ -> Utils.crash "Reached leaf in nt_will_be_reached"
+        ) !children in 
+        nt_will_be_reached child ast nts
+    | _ -> true
+
+(* Determine if a constraint necessarily applies to a given derivation tree. 
+   It may not apply if the nonterminals referenced by the constraint are avoidable 
+   by selecting other production rule options in the AST. *)
+let constraint_is_applicable expr derivation_tree ast = 
+  let nts = A.get_nts_from_expr2 expr in
+  List.fold_left (fun acc nt -> 
+    acc && nt_will_be_reached derivation_tree ast nt
+  ) true nts
+
+let assert_and_remove_applicable_constraints constraint_set derivation_tree ast path solver =
+  let constraints_to_remove = 
+  ConstraintSet.fold (fun expr acc -> 
+    if constraint_is_applicable expr derivation_tree ast then (
+      (* declare_smt_variables declared_variables (Utils.StringMap.singleton path' A.Int) solver; *)
+      assert_smt_constraint path solver expr;
+      acc
+    ) else acc
+  )  !constraint_set ConstraintSet.empty in
+  constraint_set := ConstraintSet.diff !constraint_set constraints_to_remove;
+  !constraint_set
+
 (* TODO: Handle semantic constraints *)
 let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
 = fun ctx ast -> 
@@ -298,11 +357,17 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
   | A.TypeAnnotation (nt, _, _) -> nt
   | ProdRule (nt, _) -> nt
   in 
-  (* Set up the key data structures *)
+  (*** Set up the key data structures ***)
+  (* Incremental construction of output term so far *)
   let derivation_tree = ref (Node (start_symbol, ref Utils.IntSet.empty, [start_symbol], ref [])) in 
+  (* Tree nodes left to explore *)
   let frontier = ref (DTSet.singleton derivation_tree) in 
+  (* Track declared (SMT-level) variables to avoid double declaration *)
   let declared_variables = ref Utils.StringSet.empty in 
-
+  (* Keep around constraints we may not need to assert *)
+  let constraints_to_assert = ref ConstraintSet.empty in 
+  (* Set of paths through the tree to help determine when to push constraints from constraints_to_assert *)
+  (* let provenance_list = _ in *) (* Challenge: backtracking affects provenance list *)
   let solver = initialize_cvc5 () in
 
   (* Iteratively expand the frontier and instantiate the derivation tree leaves *)
@@ -331,7 +396,9 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
           let path' = String.concat "_" path |> String.lowercase_ascii in
           let path'' = String.concat "_" (Utils.init path) |> String.lowercase_ascii in
           declare_smt_variables declared_variables (Utils.StringMap.singleton path' A.Int) solver;
-          assert_smt_constraint path'' solver expr; 
+          (* assert_smt_constraint path'' solver expr;  *)
+          constraints_to_assert := ConstraintSet.add expr !constraints_to_assert;
+          constraints_to_assert := assert_and_remove_applicable_constraints constraints_to_assert !derivation_tree ast path'' solver;
           children := [SymbolicIntLeaf (path @ [nt])];
           let model = get_smt_result ast solver in  
           derivation_tree := instantiate_terminals model !derivation_tree; 
@@ -355,7 +422,9 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
               Utils.StringMap.add str ty acc
             ) Utils.StringMap.empty expr_variables in
             declare_smt_variables declared_variables ty_ctx solver;
-            assert_smt_constraint path' solver expr; 
+            (* assert_smt_constraint path' solver expr;  *)
+            constraints_to_assert := ConstraintSet.add expr !constraints_to_assert;
+            constraints_to_assert := assert_and_remove_applicable_constraints constraints_to_assert !derivation_tree ast path' solver;
             let _model = get_smt_result ast solver in
             ()  
             (* don't instantiate yet -- we haven't hit the leaf nodes *)

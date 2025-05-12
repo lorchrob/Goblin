@@ -155,7 +155,7 @@ let serialize_bytes: endianness -> sygus_ast -> bytes * bytes
       (var_leaf_data, new_metadata, offset + var_leaf_length)
       
     | IntLeaf _ -> 
-      Utils.crash "Internal error: serializing final packet, but encountered leaf variable (possibly uncomputed dependent term)"
+      Utils.crash "serializing final packet, but encountered leaf variable (possibly uncomputed dependent term)"
   in
   let initial_metadata = {
     var_leaf_count = 0;

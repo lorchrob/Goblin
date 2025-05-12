@@ -1,7 +1,7 @@
 module SA = SygusAst
 module A = Ast
 
-let eval_fail index = Utils.crash ("Internal error: evaluation error #" ^ string_of_int index)
+let eval_fail index = Utils.crash ("evaluation error #" ^ string_of_int index)
 
 let remove_stub input = 
   let open Str in
@@ -61,10 +61,10 @@ let rec compute_dep: A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -> 
 = fun dep_map sygus_ast element var -> 
   match Utils.StringMap.find_opt (process_constructor_str var) dep_map with 
   | None -> 
-    Utils.crash ("Internal error: Hanging identifier '" ^ var ^ "' when computing dependencies")
+    Utils.crash ("Hanging identifier '" ^ var ^ "' when computing dependencies")
   | Some sc -> (
     match sc with 
-    | SyGuSExpr _ -> Utils.crash "Internal error: Encountered SyGuSExpr when computing dependencies"
+    | SyGuSExpr _ -> Utils.crash "Encountered SyGuSExpr when computing dependencies"
     | Dependency (_, expr) -> 
       evaluate ~dep_map sygus_ast element expr |> List.hd |> expr_to_sygus_ast
   )
@@ -307,8 +307,8 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -
   | _ -> eval_fail 27
  )
 | BVConst _ | BLConst _ | IntConst _ | BConst _ | StrConst _ -> [expr]
-| NTExpr _ -> Utils.crash "Internal error: Complicated NTExprs not yet supported in dependency computation"
-| Match _ -> Utils.crash "Internal error: Match not yet supported in dependency computation"
+| NTExpr _ -> Utils.crash "Complicated NTExprs not yet supported in dependency computation"
+| Match _ -> Utils.crash "Match not yet supported in dependency computation"
 
 
 let rec compute_deps: A.semantic_constraint Utils.StringMap.t -> A.ast -> SA.sygus_ast -> SA.sygus_ast 
@@ -326,7 +326,7 @@ let rec compute_deps: A.semantic_constraint Utils.StringMap.t -> A.ast -> SA.syg
     ) ast in
     let element = match element with 
     | None -> 
-      Utils.crash "Internal error in computeDeps.ml"
+      Utils.crash "computeDeps.ml"
     | Some element -> element 
     in
     if Utils.StringMap.mem (remove_suffix var |> String.uppercase_ascii) dep_map

@@ -29,10 +29,17 @@ let main_pipeline filename =
   Utils.debug_print Format.pp_print_string ppf "\nResolving grammar ambiguities complete:\n";
   Utils.debug_print Ast.pp_print_ast ppf ast;
 
-  (* Step 5: Convert NTExprs to Match expressions *)
-  let ast = Utils.recurse_until_fixpoint ast (=) (NtExprToMatch.convert_nt_exprs_to_matches ctx) in
-  Utils.debug_print Format.pp_print_string ppf "\nDesugaring NTExprs complete:\n";
-  Utils.debug_print Ast.pp_print_ast ppf ast;
+  let ast = if not (!Flags.selected_engine = Flags.DPLL) then (
+    print_endline "got here";
+    (* Step 5: Convert NTExprs to Match expressions *)
+    let ast = Utils.recurse_until_fixpoint ast (=) (NtExprToMatch.convert_nt_exprs_to_matches ctx) in
+    Utils.debug_print Format.pp_print_string ppf "\nDesugaring NTExprs complete:\n";
+    Utils.debug_print Ast.pp_print_ast ppf ast;
+    ast
+  )
+  else 
+    ast
+  in
 
   (* Step 6: Abstract away dependent terms in the grammar *)
   Utils.debug_print Format.pp_print_string ppf "\nDependent term abstraction:\n";

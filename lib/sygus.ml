@@ -24,7 +24,7 @@ let pp_print_ty: Format.formatter -> A.il_type -> unit
 | BitVector len -> Format.fprintf ppf "(_ BitVec %d)" len
 | BitList -> Format.fprintf ppf "(Seq Bool)"
 | MachineInt width -> Format.fprintf ppf "(_ BitVec %d)" (Lib.pow 2 width)
-| ADT _ -> Utils.crash "Internal error: sygus.ml (pp_print_ty)"
+| ADT _ -> Utils.crash "sygus.ml (pp_print_ty)"
 
 let pp_print_constructor: TC.context -> Ast.semantic_constraint Utils.StringMap.t -> Ast.ast ->  Format.formatter -> A.grammar_element -> unit 
 = fun ctx dep_map ast ppf ge -> match ge with 
@@ -72,7 +72,7 @@ let pp_print_datatypes: Format.formatter -> TC.context -> Ast.semantic_constrain
     Format.fprintf ppf "(declare-datatype %s (\n\t(%s)\n))\n"
       (String.uppercase_ascii stub_id)
       ((String.lowercase_ascii stub_id) ^ "_con")
-  | SyGuSExpr _ -> Utils.crash "Internal error: dependency map contains a SyGuSExpr"
+  | SyGuSExpr _ -> Utils.crash "dependency map contains a SyGuSExpr"
   ) dep_map;
   List.iter (fun element -> match element with 
   | A.TypeAnnotation _ -> ()
@@ -129,14 +129,14 @@ Utils.StringMap.iter (fun stub_id dep -> match dep with
   Format.fprintf ppf "\t(%s %s)"
   (String.lowercase_ascii stub_id) 
   (String.uppercase_ascii stub_id) 
-| SyGuSExpr _ -> Utils.crash "Internal error: dependency map contains a SyGuSExpr"
+| SyGuSExpr _ -> Utils.crash "dependency map contains a SyGuSExpr"
 ) dep_map
 
 let rec pp_print_match: Format.formatter -> TC.context -> (string * int option) list -> string * int option -> A.case list -> unit 
 = fun ppf ctx nt_ctx (nt, idx) cases -> 
   let adt_cases = match StringMap.find nt ctx with 
   | ADT rules -> rules
-  | _ -> Utils.crash "Internal error: sygus.ml (pp_print_match)" 
+  | _ -> Utils.crash "sygus.ml (pp_print_match)" 
   in
   let match_rules = List.map (fun case -> match case with 
   | A.Case (nts, expr) -> nts, expr 
@@ -183,7 +183,10 @@ and pp_print_expr: ?nt_prefix:string -> TC.context -> Format.formatter -> A.expr
       Format.pp_print_string ppf (nt_prefix ^ "_"));
     Lib.pp_print_list pp_print_nt_helper "_" ppf nts
   | A.Match (nt_ctx, nt, cases)  -> pp_print_match ppf ctx nt_ctx nt cases
-  | NTExpr _ -> Utils.crash "Reached impossible case in pp_print_expr"
+  | NTExpr (nts1, nts2) -> 
+    let nt_ctx = nts1 @ Utils.init nts2 in 
+    let nt = nts2 |> List.rev |> List.hd in 
+    r ppf (Ast.NTExpr (nt_ctx, [nt]))
   | BinOp (expr1, BVXor, expr2) -> 
     Format.fprintf ppf "(and (or %a %a) (not (and %a %a)))"
       r expr1 
@@ -360,7 +363,7 @@ let pp_print_rules: Ast.semantic_constraint Utils.StringMap.t -> Format.formatte
       (String.lowercase_ascii stub_id) 
       (String.uppercase_ascii stub_id) 
       ((String.lowercase_ascii stub_id) ^ "_con")
-  | SyGuSExpr _ -> Utils.crash "Internal error: dependency map contains a SyGuSExpr"
+  | SyGuSExpr _ -> Utils.crash "dependency map contains a SyGuSExpr"
   ) dep_map
 
 let pp_print_grammar: Format.formatter -> Ast.semantic_constraint Utils.StringMap.t -> A.ast -> unit 

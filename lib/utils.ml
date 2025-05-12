@@ -105,7 +105,7 @@ let warning_print pp formatter value =
     Format.ifprintf formatter "%a" pp value
 
 let crash message = 
-  failwith message
+  failwith ("Internal error: " ^ message)
 
 let find_command_in_path cmd =
   match Sys.getenv_opt "PATH" with
@@ -128,7 +128,7 @@ let find_command_in_path cmd =
   | (xs, 0) -> xs
   | ([], x) -> 
     if x = 0 then [] else
-    crash "Internal error: drop"
+    crash "drop"
   | (_ :: xs, n) -> drop xs (n - 1);;
 
 
