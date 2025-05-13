@@ -389,10 +389,12 @@ let assert_and_remove_applicable_constraints constraint_set derivation_tree ast 
   constraint_set := ConstraintSet.diff !constraint_set constraints_to_remove;
   !constraint_set
 
-let backtrack_derivation_tree derivation_tree = match derivation_tree with 
-| Node (_, _, _, children) -> 
-  children := []
-| _ -> Utils.crash "Unexpected case in backtrack_derivation_tree"
+let backtrack_derivation_tree decision_stack = 
+  if B.Stack.is_empty decision_stack then (print_endline "unsat"; exit 0);
+  match !(B.Stack.pop decision_stack) with 
+  | Node (_, _, _, children) -> 
+    children := []
+  | _ -> Utils.crash "Unexpected case in backtrack_derivation_tree"
 
 let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
 = fun ctx ast -> 
@@ -479,7 +481,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
             derivation_tree := instantiate_terminals model !derivation_tree; 
           | Error () -> 
             backtrack_decision_level solver;
-            backtrack_derivation_tree !(B.Stack.pop decision_stack))
+            backtrack_derivation_tree decision_stack)
         | A.Dependency _ -> ()
         ) scs;
         true
@@ -531,7 +533,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
           | Error () -> (* unsat *)
             if !Flags.debug then Format.pp_print_string Format.std_formatter "it was UNSAT, backtracking\n"; 
             backtrack_decision_level solver;
-            backtrack_derivation_tree !(B.Stack.pop decision_stack);
+            backtrack_derivation_tree decision_stack;
             false) 
           in
           expand
