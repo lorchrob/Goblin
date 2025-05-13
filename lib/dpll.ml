@@ -13,6 +13,7 @@ _ :: Int
 (* 
   TODO:
   * When backtracking, make sure the frontier is properly updated
+    * Naive solution: recalculate the frontier from scratch at every iteration
   * Handle dependent terms (later in pipeline)
   * Make sure ambiguous references handled properly
   * IDS
@@ -171,7 +172,7 @@ let random_int_in_range: int -> int -> int
 
 let issue_solver_command: string -> solver_instance -> unit 
 = fun cmd_string solver -> 
-  Format.pp_print_string Format.std_formatter ("Issuing " ^ cmd_string ^ "\n");
+  if !Flags.debug then Format.pp_print_string Format.std_formatter ("Issuing " ^ cmd_string ^ "\n");
   output_string solver.out_channel cmd_string;
   flush solver.out_channel
 
@@ -261,11 +262,11 @@ let get_smt_result: A.ast -> solver_instance -> (model_value Utils.StringMap.t, 
 = fun ast solver -> 
   issue_solver_command "(check-sat)\n" solver;
   let response = read_check_sat_response solver in
-  Format.fprintf Format.std_formatter "Solver response: %s\n" response;
+  if !Flags.debug then Format.fprintf Format.std_formatter "Solver response: %s\n" response;
   if response = "sat" then (
     issue_solver_command "(get-model)\n" solver;
     let response = read_get_model_response solver in
-    Format.fprintf Format.std_formatter "Solver response: %s\n" response;
+    if !Flags.debug then Format.fprintf Format.std_formatter "Solver response: %s\n" response;
     let result = Parsing.parse_sygus response ast |> Result.get_ok in
     model_of_sygus_ast result
   ) 
@@ -330,12 +331,13 @@ let rec sygus_ast_of_derivation_tree: derivation_tree -> SA.sygus_ast
 (* Determine whether an nt, in dot notation, will __necessarily__ be reached 
    in a given derivation_tree *)
 let rec nt_will_be_reached derivation_tree ast nt = 
-  let rec nt_will_be_reached_ast nt = match nt with 
+  (* at each step, check if the rest of nt is reachable from head *)
+  let rec nt_will_be_reached_ast nt head = match nt with 
   | [] -> true 
-  | (str, _) :: nts -> 
+  | (new_head, _) :: nts -> 
     let rule = List.find (fun element -> match element with
-    | A.TypeAnnotation (nt, _, _) 
-    | A.ProdRule (nt, _) -> nt = str
+    | A.TypeAnnotation (nt2, _, _) 
+    | A.ProdRule (nt2, _) -> nt2 = head
     ) ast in 
     match rule with 
     | ProdRule (_, rhss) -> 
@@ -343,21 +345,23 @@ let rec nt_will_be_reached derivation_tree ast nt =
          TODO: This is a safe approximation. A more exact analysis would see if the nt is reachable in all cases. *)
       if List.length rhss <> 1 then false 
       else 
-        nt_will_be_reached_ast nts
+        nt_will_be_reached_ast nts new_head
     | _ -> true
   in
   match nt with 
   | [] -> true 
   | (str, _) :: nts -> match derivation_tree with 
-    | Node (_, _, _, children) -> 
-      if !children = [] then 
-        nt_will_be_reached_ast nt
-      else
-        let child = List.find (fun child -> match child with 
+    | Node (head, _, _, children) -> 
+      if !children = [] then nt_will_be_reached_ast nt head
+      else (
+        match List.find_opt (fun child -> match child with 
         | Node (nt2, _, _, _) -> str = nt2
-        | _ -> Utils.crash "Reached leaf in nt_will_be_reached"
-        ) !children in 
-        nt_will_be_reached child ast nts
+        | SymbolicIntLeaf path -> str = Utils.last path
+        | ConcreteIntLeaf (path, _) -> str = Utils.last path
+        | DependentTermLeaf nt2 -> str = nt2
+        ) !children with 
+        | Some child -> nt_will_be_reached child ast nts
+        | None -> false)
     | _ -> true
 
 (* Determine if a constraint necessarily applies to a given derivation tree. 
@@ -374,6 +378,9 @@ let assert_and_remove_applicable_constraints constraint_set derivation_tree ast 
     ConstraintSet.fold (fun expr acc -> 
       if constraint_is_applicable expr derivation_tree ast then (
         (* declare_smt_variables declared_variables (Utils.StringMap.singleton path' A.Int) solver; *)
+        if !Flags.debug then Format.fprintf Format.std_formatter "Constraint %a is applicable in derivation tree %a\n"
+          A.pp_print_expr expr 
+          pp_print_derivation_tree derivation_tree;
         assert_smt_constraint path solver expr;
         ConstraintSet.add expr acc
       ) else acc
@@ -414,11 +421,11 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
 
   (* Iteratively expand the frontier and instantiate the derivation tree leaves *)
   while not (DTSet.is_empty !frontier) do 
-    Format.fprintf Format.std_formatter "------------------------\n";
-    Format.fprintf Format.std_formatter "Constraints to assert: %a\n"
-    (Lib.pp_print_list A.pp_print_expr " ") (ConstraintSet.elements !constraints_to_assert);
-    Format.fprintf Format.std_formatter "Derivation tree: %a\n"
-    pp_print_derivation_tree !derivation_tree;
+    if !Flags.debug then Format.fprintf Format.std_formatter "------------------------\n";
+    if !Flags.debug then Format.fprintf Format.std_formatter "Constraints to assert: %a\n"
+      (Lib.pp_print_list A.pp_print_expr " ") (ConstraintSet.elements !constraints_to_assert);
+    if !Flags.debug then Format.fprintf Format.std_formatter "Derivation tree: %a\n"
+      pp_print_derivation_tree !derivation_tree;
 
     let node_to_expand = DTSet.min_elt !frontier in
 
@@ -484,13 +491,18 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
           B.Stack.push (ref node) decision_stack;
         );
         let idx, chosen_rule = Utils.fresh_random_element !visited rhss in
-        Format.fprintf Format.std_formatter "Chose rule index %d, rule %a\n" 
+        if !Flags.debug then Format.fprintf Format.std_formatter "Chose rule index %d, rule %a\n" 
           idx
           A.pp_print_prod_rule_rhs chosen_rule;
         visited := Utils.IntSet.add idx !visited;
         match chosen_rule with 
         | A.StubbedRhs _ -> Utils.crash "Unexpected case in dpll 1";
         | A.Rhs (ges, scs) -> 
+          children := List.map (fun ge -> match ge with 
+          | A.Nonterminal nt -> 
+            Node (nt, ref Utils.IntSet.empty, path @ [nt], ref [])  
+          | StubbedNonterminal (_, nt) -> DependentTermLeaf nt
+          ) ges;
           List.iter (fun sc -> match sc with 
           | A.SyGuSExpr expr ->
             (* Assert semantic constraints for production rules *)
@@ -515,23 +527,16 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
           let model = get_smt_result ast solver in
           let expand = (match model with 
           | Ok _ -> 
-            Format.pp_print_string Format.std_formatter "it was SAT\n"; true (* sat *)
+            if !Flags.debug then Format.pp_print_string Format.std_formatter "it was SAT\n"; true (* sat *)
           | Error () -> (* unsat *)
-            Format.pp_print_string Format.std_formatter "it was UNSAT, backtracking\n"; 
+            if !Flags.debug then Format.pp_print_string Format.std_formatter "it was UNSAT, backtracking\n"; 
             backtrack_decision_level solver;
             backtrack_derivation_tree !(B.Stack.pop decision_stack);
             false) 
           in
-
-          (* Only expand the tree if the new constraints were SAT; otherwise, just go to next iteration (we updated the visited set and undid the last decision) *)
-          if expand then 
-            children := List.map (fun ge -> match ge with 
-            | A.Nonterminal nt -> 
-              Node (nt, ref Utils.IntSet.empty, path @ [nt], ref [])  
-            | StubbedNonterminal (_, nt) -> DependentTermLeaf nt
-            ) ges;
           expand
       in
+
     
     (* Update the frontier *)
     (* Only expand the frontier if the new constraints were SAT; otherwise, just go to next iteration (we updated the visited set) *)
@@ -549,10 +554,10 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
     ()
   done;
 
-  Format.fprintf Format.std_formatter "Constraints to assert: %a\n"
-  (Lib.pp_print_list A.pp_print_expr " ") (ConstraintSet.elements !constraints_to_assert);
-  Format.fprintf Format.std_formatter "Derivation tree: %a\n"
-  pp_print_derivation_tree !derivation_tree;
+  if !Flags.debug then Format.fprintf Format.std_formatter "Constraints to assert: %a\n"
+    (Lib.pp_print_list A.pp_print_expr " ") (ConstraintSet.elements !constraints_to_assert);
+  if !Flags.debug then Format.fprintf Format.std_formatter "Derivation tree: %a\n"
+    pp_print_derivation_tree !derivation_tree;
 
   derivation_tree := fill_unconstrained_nonterminals !derivation_tree;
   (* Convert to sygus AST for later processing in the pipeline *)
