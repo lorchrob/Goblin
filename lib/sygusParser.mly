@@ -23,7 +23,6 @@ open SygusAst
 %token BITVEC
 %token STR
 %token INFEASIBLE
-%token SAT
 %token UNSAT
 
 %token<bool list> BITS
@@ -42,7 +41,7 @@ s:
 | UNSAT; EOF { VarLeaf "unsat" }
 
 sygus_model: 
-| SAT; LPAREN; values = list(model_value); RPAREN; { Node ("smt_model", values) }
+| LPAREN; values = list(model_value); RPAREN; { Node ("smt_model", values) }
 
 model_value:
 | LPAREN; DEFINE; HYPHEN; FUN; id = ID; LPAREN; RPAREN; il_ty; t = lisp_term; RPAREN; { Node (id, [t]) }

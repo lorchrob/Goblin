@@ -1,5 +1,6 @@
 module A = Ast
 module SA = SygusAst
+module B = Batteries
 
 let (let*) = Res.(>>=)
 (*
@@ -11,9 +12,8 @@ _ :: Int
 
 (* 
   TODO:
-  * Make sure paths are unique
+  * When backtracking, make sure the frontier is properly updated
   * Handle dependent terms (later in pipeline)
-  * Backtracking
   * Make sure ambiguous references handled properly
   * IDS
 *)
@@ -146,6 +146,15 @@ type derivation_tree =
 (* label, visited set, path to this node, children *)
 | Node of string * Utils.IntSet.t ref * string list * derivation_tree list ref
 
+let rec pp_print_derivation_tree ppf derivation_tree = match derivation_tree with 
+| SymbolicIntLeaf _ -> Format.pp_print_string ppf "sym_leaf"
+| DependentTermLeaf _ -> Format.pp_print_string ppf "dep_sym_leaf"
+| ConcreteIntLeaf (_, int) -> Format.pp_print_int ppf int 
+| Node (nt, _, _, children) -> 
+  Format.fprintf ppf "(%a %a)"
+    Format.pp_print_string nt 
+    (Lib.pp_print_list pp_print_derivation_tree " ") !children
+
 module DTSet = Set.Make(struct
   type t = derivation_tree ref
   let compare = Stdlib.compare
@@ -162,7 +171,7 @@ let random_int_in_range: int -> int -> int
 
 let issue_solver_command: string -> solver_instance -> unit 
 = fun cmd_string solver -> 
-  Utils.debug_print Format.pp_print_string Format.std_formatter ("Issuing " ^ cmd_string ^ "\n");
+  Format.pp_print_string Format.std_formatter ("Issuing " ^ cmd_string ^ "\n");
   output_string solver.out_channel cmd_string;
   flush solver.out_channel
 
@@ -176,6 +185,9 @@ let declare_smt_variables: Utils.StringSet.t ref -> A.il_type Utils.StringMap.t 
       declared_variables := Utils.StringSet.add var !declared_variables;
       issue_solver_command declaration_string solver
   ) ctx 
+
+let read_check_sat_response solver = 
+    input_line solver.in_channel
 
 let read_get_model_response solver =
   let rec loop acc parens =
@@ -206,7 +218,6 @@ let initialize_cvc5 () : solver_instance =
   issue_solver_command set_logic_command solver;
   solver
 
-(* TODO: Check result for unsat and backtrack if necessary *)
 let assert_smt_constraint: string -> solver_instance -> Ast.expr -> unit 
 = fun nt_prefix solver expr ->
   let assert_cmd = 
@@ -248,10 +259,19 @@ let rec model_of_sygus_ast: SygusAst.sygus_ast -> (model_value Utils.StringMap.t
 
 let get_smt_result: A.ast -> solver_instance -> (model_value Utils.StringMap.t, unit) result
 = fun ast solver -> 
-  issue_solver_command "(check-sat)\n(get-model)\n" solver;
-  let response = read_get_model_response solver in
-  let result = Parsing.parse_sygus response ast |> Result.get_ok in
-  model_of_sygus_ast result
+  issue_solver_command "(check-sat)\n" solver;
+  let response = read_check_sat_response solver in
+  Format.fprintf Format.std_formatter "Solver response: %s\n" response;
+  if response = "sat" then (
+    issue_solver_command "(get-model)\n" solver;
+    let response = read_get_model_response solver in
+    Format.fprintf Format.std_formatter "Solver response: %s\n" response;
+    let result = Parsing.parse_sygus response ast |> Result.get_ok in
+    model_of_sygus_ast result
+  ) 
+  else
+    let result = Parsing.parse_sygus "unsat" ast |> Result.get_ok in
+    model_of_sygus_ast result
 
 let rec instantiate_terminals: model_value Utils.StringMap.t -> derivation_tree -> derivation_tree 
 = fun model derivation_tree -> 
@@ -362,7 +382,11 @@ let assert_and_remove_applicable_constraints constraint_set derivation_tree ast 
   constraint_set := ConstraintSet.diff !constraint_set constraints_to_remove;
   !constraint_set
 
-(* TODO: Handle semantic constraints *)
+let backtrack_derivation_tree derivation_tree = match derivation_tree with 
+| Node (_, _, _, children) -> 
+  children := []
+| _ -> Utils.crash "Unexpected case in backtrack_derivation_tree"
+
 let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
 = fun ctx ast -> 
   Random.self_init (); 
@@ -383,26 +407,35 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
   let constraints_to_assert = ref ConstraintSet.empty in 
   (* Set of paths through the tree to help determine when to push constraints from constraints_to_assert *)
   (* let provenance_list = _ in *) (* Challenge: backtracking affects provenance list *)
+  (* Keep track of all decisions so we can easily backtrack in the derivation tree *)
+  let decision_stack : derivation_tree ref Stack.t = B.Stack.create () in 
+  (* Solver object *)
   let solver = initialize_cvc5 () in
 
   (* Iteratively expand the frontier and instantiate the derivation tree leaves *)
   while not (DTSet.is_empty !frontier) do 
+    Format.fprintf Format.std_formatter "------------------------\n";
+    Format.fprintf Format.std_formatter "Constraints to assert: %a\n"
+    (Lib.pp_print_list A.pp_print_expr " ") (ConstraintSet.elements !constraints_to_assert);
+    Format.fprintf Format.std_formatter "Derivation tree: %a\n"
+    pp_print_derivation_tree !derivation_tree;
+
     let node_to_expand = DTSet.min_elt !frontier in
 
-    
     (* TODO: Make sure there are no constraints in constraints_to_assert hanging around that still 
        need to be asserted. When one of these constraints is asserted after some delay, have 
        to figure out some backtracking logic. 
        Need to mix in some pops. 
        
+       Maybe try to assert all constraints_to_assert after any new decision. 
+       In principle, only new decisions should "unlock" new constraints.
+
        Backtracking:
        After every __decision__ (real decision), push constraints at new (incremented) decision level. 
        
        If unsat, pop constraints (decrementing decision level), and backtrack to the most recent decision to flip on the derivation tree. 
        
        If unsat at decision level 0, then globally unsat. *)
-
-    (* constraints_to_assert := assert_and_remove_applicable_constraints constraints_to_assert !derivation_tree ast path' solver; *)
 
     (* Expand the chosen frontier node *)
     let expand = match !node_to_expand with 
@@ -411,7 +444,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
     | DependentTermLeaf _ -> true (* nothing else to do *)
     | Node (nt, _, _, children) when not (List.length !children = 0) -> 
       Utils.crash ("Trying to expand node " ^ nt ^ " that already has children in dpll")
-    | Node (nt, visited, path, children) -> 
+    | Node (nt, visited, path, children) as node -> 
       let path' = String.concat "_" path |> String.lowercase_ascii in
       let path'' = String.concat "_" (Utils.init path) |> String.lowercase_ascii in
       let grammar_rule = List.find (fun element -> match element with 
@@ -438,20 +471,27 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
             children := [SymbolicIntLeaf (path @ [nt])];
             derivation_tree := instantiate_terminals model !derivation_tree; 
           | Error () -> 
-            backtrack_decision_level solver)
+            backtrack_decision_level solver;
+            backtrack_derivation_tree !(B.Stack.pop decision_stack))
         | A.Dependency _ -> ()
         ) scs;
         true
       | A.TypeAnnotation _ -> Utils.crash "Unsupported"
       | A.ProdRule (_, rhss) -> 
         (* At every real choice, increase the decision level *)
-        if (List.length rhss - Utils.IntSet.cardinal !visited) > 1 then new_decision_level solver;
+        if (List.length rhss - Utils.IntSet.cardinal !visited) > 1 then (
+          new_decision_level solver;
+          B.Stack.push (ref node) decision_stack;
+        );
         let idx, chosen_rule = Utils.fresh_random_element !visited rhss in
+        Format.fprintf Format.std_formatter "Chose rule index %d, rule %a\n" 
+          idx
+          A.pp_print_prod_rule_rhs chosen_rule;
         visited := Utils.IntSet.add idx !visited;
         match chosen_rule with 
         | A.StubbedRhs _ -> Utils.crash "Unexpected case in dpll 1";
         | A.Rhs (ges, scs) -> 
-          let expand = List.fold_left (fun acc sc -> match sc with 
+          List.iter (fun sc -> match sc with 
           | A.SyGuSExpr expr ->
             (* Assert semantic constraints for production rules *)
             let expr_variables = A.get_nts_from_expr2 expr in
@@ -464,18 +504,26 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
             declare_smt_variables declared_variables ty_ctx solver;
             (* assert_smt_constraint path' solver expr;  *)
             constraints_to_assert := ConstraintSet.add expr !constraints_to_assert;
-            constraints_to_assert := assert_and_remove_applicable_constraints constraints_to_assert !derivation_tree ast path' solver;
-            let model = get_smt_result ast solver in
-            (match model with 
-            | Ok _ -> acc
-            | Error () -> 
-              backtrack_decision_level solver;
-              false) 
             (* don't instantiate yet -- we haven't hit the leaf nodes *)
             (* derivation_tree := instantiate_terminals model !derivation_tree;  *)
-          | A.Dependency _ -> acc
-          ) true scs in
-          (* Only expand the tree if the new constraints were SAT; otherwise, just go to next iteration (we updated the visited set) *)
+          | A.Dependency _ -> ()
+          ) scs;
+
+          (* Assert the constraints from this choice (and also try to assert constraints hanging around from earlier on,
+             but maybe weren't definitely applicable until this decision) *)
+          constraints_to_assert := assert_and_remove_applicable_constraints constraints_to_assert !derivation_tree ast path'' solver;
+          let model = get_smt_result ast solver in
+          let expand = (match model with 
+          | Ok _ -> 
+            Format.pp_print_string Format.std_formatter "it was SAT\n"; true (* sat *)
+          | Error () -> (* unsat *)
+            Format.pp_print_string Format.std_formatter "it was UNSAT, backtracking\n"; 
+            backtrack_decision_level solver;
+            backtrack_derivation_tree !(B.Stack.pop decision_stack);
+            false) 
+          in
+
+          (* Only expand the tree if the new constraints were SAT; otherwise, just go to next iteration (we updated the visited set and undid the last decision) *)
           if expand then 
             children := List.map (fun ge -> match ge with 
             | A.Nonterminal nt -> 
@@ -498,10 +546,13 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
           DTSet.add (ref child) acc
         ) !frontier !children;
     );
-    (* Format.fprintf Format.std_formatter "Constraints to assert: %a\n"
-      (Lib.pp_print_list A.pp_print_expr " ") (ConstraintSet.elements !constraints_to_assert); *)
     ()
   done;
+
+  Format.fprintf Format.std_formatter "Constraints to assert: %a\n"
+  (Lib.pp_print_list A.pp_print_expr " ") (ConstraintSet.elements !constraints_to_assert);
+  Format.fprintf Format.std_formatter "Derivation tree: %a\n"
+  pp_print_derivation_tree !derivation_tree;
 
   derivation_tree := fill_unconstrained_nonterminals !derivation_tree;
   (* Convert to sygus AST for later processing in the pipeline *)
