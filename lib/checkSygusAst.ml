@@ -12,11 +12,25 @@ let (let*) = Res.(>>=)
   2. Sygus_ast respects every semantic constraint in ast (semantic well-formedness)
 *)
 
+(* Hacky helper function because in the sygus implementation, we use the generated 
+   constructor names in the sygus ast. *)
+let extract_prefix s =
+  let re = Str.regexp "^\\(.*\\)_con[0-9]*$" in
+  if Str.string_match re s 0 then
+    Str.matched_group 1 s
+  else
+    s
+
+let str_eq_ci s1 s2 =
+  String.lowercase_ascii s1 = String.lowercase_ascii s2
+
 let check_start_symbol: Ast.ast -> SygusAst.sygus_ast -> (unit, string) result 
 = fun ast sygus_ast -> match ast, sygus_ast with 
 | A.ProdRule (nt, _) :: _, SA.Node (constructor, _) -> 
-  if nt = constructor then Ok () else 
-  Error ("Sygus AST root constructor '" ^ constructor ^ "' does not match the AST start symbol")
+  if str_eq_ci nt (extract_prefix constructor) 
+    then Ok () 
+  else 
+  Error ("Sygus AST root constructor '" ^ constructor ^ "' does not match the AST start symbol '" ^ nt ^ "'")
 | A.TypeAnnotation _ :: _, _ -> Utils.crash "Unexpected case in check_start_symbol"
 | _ -> Error "Sygus AST root node is a leaf node"
 
@@ -27,11 +41,11 @@ let rec check_syntax_semantics: Ast.ast -> SygusAst.sygus_ast -> (unit, string) 
     let nt_rhss = List.find_map (fun element -> match element with
     | A.TypeAnnotation _ -> None 
     | A.ProdRule (nt, rhss) -> 
-      if constructor = nt 
+      if str_eq_ci (extract_prefix constructor) nt 
       then Some (nt, rhss)
       else None
     ) ast in 
-    if nt_rhss = None then Error "Dangling constructor identifier" else 
+    if nt_rhss = None then Error ("Dangling constructor identifier " ^ constructor) else 
     let nt, rhss = Option.get nt_rhss in 
     (* Find the matching production rule from ast, if one exists *)
     let rhs = List.find_opt (fun rhs -> match rhs with 
@@ -42,7 +56,7 @@ let rec check_syntax_semantics: Ast.ast -> SygusAst.sygus_ast -> (unit, string) 
         List.for_all2 (fun child ge ->  
           match child, ge with 
           | _, A.StubbedNonterminal _ -> false 
-          | SA.Node (constructor, _), Nonterminal nt -> constructor = nt
+          | SA.Node (constructor, _), Nonterminal nt -> str_eq_ci (extract_prefix constructor) nt
           | _, _ -> true
         ) children ges
     ) rhss in 

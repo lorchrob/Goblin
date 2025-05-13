@@ -144,6 +144,6 @@ let rec fresh_random_element exclude lst =
     invalid_arg "random_element: empty list"
   else
     let idx = Random.int len in
-    if IntSet.cardinal exclude = List.length lst then (print_endline "unsat"; exit 0);
+    if IntSet.cardinal exclude = List.length lst then (print_endline "infeasible"; exit 0);
     if IntSet.mem idx exclude then fresh_random_element exclude lst 
     else idx, List.nth lst idx

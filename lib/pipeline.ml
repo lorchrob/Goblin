@@ -30,7 +30,6 @@ let main_pipeline filename =
   Utils.debug_print Ast.pp_print_ast ppf ast;
 
   let ast = if not (!Flags.selected_engine = Flags.DPLL) then (
-    print_endline "got here";
     (* Step 5: Convert NTExprs to Match expressions *)
     let ast = Utils.recurse_until_fixpoint ast (=) (NtExprToMatch.convert_nt_exprs_to_matches ctx) in
     Utils.debug_print Format.pp_print_string ppf "\nDesugaring NTExprs complete:\n";
@@ -59,7 +58,7 @@ let main_pipeline filename =
     Utils.debug_print Format.pp_print_string ppf "\nSerializing:\n";
     let output = Utils.capture_output SygusAst.serialize sygus_ast in 
     Format.pp_print_string ppf output; 
-    output) 
+    sygus_ast, output) 
   else (
     (* Step 7: Divide and conquer *)
     Utils.debug_print Format.pp_print_string ppf "\n\nDivide and conquer:\n";
@@ -120,8 +119,8 @@ let main_pipeline filename =
       Utils.debug_print Format.pp_print_string ppf "\nSerializing:\n";
       let output = Utils.capture_output SygusAst.serialize sygus_ast in 
       Format.pp_print_string ppf output; 
-      output
-    ) else "")
+      sygus_ast, output
+    ) else VarLeaf "", "")
 
 let rec collect_results results =
   match results with

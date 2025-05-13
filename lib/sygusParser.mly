@@ -38,7 +38,7 @@ open SygusAst
 s: 
 | d = sygus_term; EOF { d } 
 | model = sygus_model; EOF { model } 
-| UNSAT; EOF { VarLeaf "unsat" }
+| UNSAT; EOF { VarLeaf "infeasible" }
 
 sygus_model: 
 | LPAREN; values = list(model_value); RPAREN; { Node ("smt_model", values) }

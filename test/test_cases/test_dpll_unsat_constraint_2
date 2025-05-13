@@ -1,0 +1,5 @@
+<S> ::= <A> { <A>.<B> = <A>.<C> land lnot (<A>.<B> = <A>.<C>); false; }  ;
+<A> ::= <D> | <B> <C> ;
+<B> :: Int ;
+<C> :: Int ;
+<D> :: Int ;

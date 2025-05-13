@@ -236,7 +236,7 @@ let new_decision_level: solver_instance -> unit
 
 let backtrack_decision_level: solver_instance -> unit 
 = fun solver ->
-  if !assertion_level = 0 then (print_endline "unsat"; exit 0);
+  if !assertion_level = 0 then (print_endline "infeasible"; exit 0);
   let pop_cmd = Format.asprintf "(pop 1)" in
   assertion_level := !assertion_level - 1;
   issue_solver_command pop_cmd solver; 
@@ -245,7 +245,7 @@ let backtrack_decision_level: solver_instance -> unit
 let rec model_of_sygus_ast: SygusAst.sygus_ast -> (model_value Utils.StringMap.t, unit) result
 = fun sygus_ast -> 
   match sygus_ast with 
-  | VarLeaf var when var = "unsat" -> Error ()
+  | VarLeaf var when var = "infeasible" -> Error ()
   | VarLeaf _ 
   | BLLeaf _ 
   | BVLeaf _ -> Utils.crash "Unsupported case in model_of_sygus_ast"
@@ -281,10 +281,9 @@ let rec instantiate_terminals: model_value Utils.StringMap.t -> derivation_tree 
   | ConcreteIntLeaf (path, _) 
   | SymbolicIntLeaf path -> 
     let path' = String.concat "_" (Utils.init path) |> String.lowercase_ascii in
-    let value = match Utils.StringMap.find path' model with 
-    | ConcreteInt int -> int 
-    in
-    ConcreteIntLeaf (path, value)
+    (match Utils.StringMap.find_opt path' model with 
+    | Some (ConcreteInt int) -> ConcreteIntLeaf (path, int)
+    | None -> SymbolicIntLeaf path (* Model contain unconstrained variables not present in this derivation tree *))
   | DependentTermLeaf _ -> derivation_tree
   | Node (nt, idx, uid, children) -> 
     children := List.map r !children;
@@ -303,8 +302,8 @@ let rec fill_unconstrained_nonterminals: derivation_tree -> derivation_tree
     Node (nt, idx, uid, children)
 
 let rec is_complete derivation_tree = match derivation_tree with
-| SymbolicIntLeaf _ -> false 
-| ConcreteIntLeaf _ -> true 
+| SymbolicIntLeaf _ 
+| ConcreteIntLeaf _ 
 | DependentTermLeaf _ -> true
 | Node (_, _, _, children) -> 
   let children = List.map is_complete !children in
@@ -327,6 +326,18 @@ let rec sygus_ast_of_derivation_tree: derivation_tree -> SA.sygus_ast
 | Node (nt, _, _, children) -> 
   let children = List.map sygus_ast_of_derivation_tree !children in 
   Node (nt, children)
+
+(* Naive computation of frontier *)
+let rec compute_new_frontier derivation_tree = match derivation_tree with 
+| SymbolicIntLeaf _ 
+| ConcreteIntLeaf _ 
+| DependentTermLeaf _ -> DTSet.empty
+| Node (_, _, _, children) as node -> 
+  if !children = [] then DTSet.singleton (ref node) else
+  List.fold_left (fun acc child -> 
+    DTSet.union acc (compute_new_frontier child)
+  ) DTSet.empty !children 
+
 
 (* Determine whether an nt, in dot notation, will __necessarily__ be reached 
    in a given derivation_tree *)
@@ -390,7 +401,7 @@ let assert_and_remove_applicable_constraints constraint_set derivation_tree ast 
   !constraint_set
 
 let backtrack_derivation_tree decision_stack = 
-  if B.Stack.is_empty decision_stack then (print_endline "unsat"; exit 0);
+  if B.Stack.is_empty decision_stack then (print_endline "infeasible"; exit 0);
   match !(B.Stack.pop decision_stack) with 
   | Node (_, _, _, children) -> 
     children := []
@@ -422,12 +433,19 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
   let solver = initialize_cvc5 () in
 
   (* Iteratively expand the frontier and instantiate the derivation tree leaves *)
-  while not (DTSet.is_empty !frontier) do 
+  while not (is_complete !derivation_tree) do 
+    (* It is unclear how to efficiently update the frontier with backtracking in general. 
+    IT seems straightforward with DPLL-style backtracking, but not backjumping. So for now, 
+    we compute it naively. *)
+    frontier := compute_new_frontier !derivation_tree;
+
     if !Flags.debug then Format.fprintf Format.std_formatter "------------------------\n";
     if !Flags.debug then Format.fprintf Format.std_formatter "Constraints to assert: %a\n"
       (Lib.pp_print_list A.pp_print_expr " ") (ConstraintSet.elements !constraints_to_assert);
     if !Flags.debug then Format.fprintf Format.std_formatter "Derivation tree: %a\n"
       pp_print_derivation_tree !derivation_tree;
+    if !Flags.debug then Format.fprintf Format.std_formatter "Frontier: %a\n"
+      (Lib.pp_print_list pp_print_derivation_tree "; ") (DTSet.elements !frontier |> List.map (fun p -> !p));
 
     let node_to_expand = DTSet.min_elt !frontier in
 
@@ -447,10 +465,10 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
        If unsat at decision level 0, then globally unsat. *)
 
     (* Expand the chosen frontier node *)
-    let expand = match !node_to_expand with 
+    match !node_to_expand with 
     | SymbolicIntLeaf _
     | ConcreteIntLeaf _ 
-    | DependentTermLeaf _ -> true (* nothing else to do *)
+    | DependentTermLeaf _ -> () (* nothing else to do *)
     | Node (nt, _, _, children) when not (List.length !children = 0) -> 
       Utils.crash ("Trying to expand node " ^ nt ^ " that already has children in dpll")
     | Node (nt, visited, path, children) as node -> 
@@ -464,7 +482,6 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
       | A.TypeAnnotation (_, Int, []) -> 
         visited := Utils.IntSet.add 0 !visited;
         children := [SymbolicIntLeaf (path @ [nt])];
-        true
       | A.TypeAnnotation (_, Int, scs) -> 
         visited := Utils.IntSet.add 0 !visited;
         (* Assert semantic constraints for type annotations *)
@@ -484,7 +501,6 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
             backtrack_derivation_tree decision_stack)
         | A.Dependency _ -> ()
         ) scs;
-        true
       | A.TypeAnnotation _ -> Utils.crash "Unsupported"
       | A.ProdRule (_, rhss) -> 
         (* At every real choice, increase the decision level *)
@@ -527,22 +543,18 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
              but maybe weren't definitely applicable until this decision) *)
           constraints_to_assert := assert_and_remove_applicable_constraints constraints_to_assert !derivation_tree ast path'' solver;
           let model = get_smt_result ast solver in
-          let expand = (match model with 
-          | Ok _ -> 
-            if !Flags.debug then Format.pp_print_string Format.std_formatter "it was SAT\n"; true (* sat *)
+          (match model with 
+          | Ok _ -> (* sat *)
+            if !Flags.debug then Format.pp_print_string Format.std_formatter "it was SAT, waiting to expand before instantiating in derivation tree\n"; 
           | Error () -> (* unsat *)
             if !Flags.debug then Format.pp_print_string Format.std_formatter "it was UNSAT, backtracking\n"; 
             backtrack_decision_level solver;
-            backtrack_derivation_tree decision_stack;
-            false) 
-          in
-          expand
-      in
+            backtrack_derivation_tree decision_stack); 
 
     
     (* Update the frontier *)
     (* Only expand the frontier if the new constraints were SAT; otherwise, just go to next iteration (we updated the visited set) *)
-    if expand then (
+    (* if expand then (
       frontier := DTSet.remove node_to_expand !frontier;
       frontier := match !node_to_expand with 
       | SymbolicIntLeaf _ 
@@ -552,14 +564,24 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
         List.fold_left (fun acc child ->
           DTSet.add (ref child) acc
         ) !frontier !children;
-    );
-    ()
+    ); *)
   done;
 
   if !Flags.debug then Format.fprintf Format.std_formatter "Constraints to assert: %a\n"
     (Lib.pp_print_list A.pp_print_expr " ") (ConstraintSet.elements !constraints_to_assert);
   if !Flags.debug then Format.fprintf Format.std_formatter "Derivation tree: %a\n"
     pp_print_derivation_tree !derivation_tree;
+
+  (* Handle any remaining constraints from last iteration of the loop *)
+  let model = get_smt_result ast solver in
+  (match model with 
+  | Ok model -> (* sat *)
+    if !Flags.debug then Format.pp_print_string Format.std_formatter "it was SAT, instantiating in derivation tree\n"; 
+    derivation_tree := instantiate_terminals model !derivation_tree; 
+  | Error () -> (* unsat *)
+    if !Flags.debug then Format.pp_print_string Format.std_formatter "it was UNSAT, backtracking\n"; 
+    backtrack_decision_level solver;
+    backtrack_derivation_tree decision_stack); 
 
   derivation_tree := fill_unconstrained_nonterminals !derivation_tree;
   (* Convert to sygus AST for later processing in the pipeline *)
