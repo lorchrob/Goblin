@@ -1,4 +1,5 @@
-(*!! TODO: Race engines *)
+(*!! TODO: Race engines. 
+     TODO: Parallelize divide and conquer (DAC) engines. *)
 
 let main_pipeline filename = 
   let ppf = Format.std_formatter in
@@ -21,6 +22,7 @@ let main_pipeline filename =
   let ast = TypeChecker.check_types ctx ast in
   Utils.debug_print Format.pp_print_string ppf "\nType checking complete:\n";
 
+  (* Step 3: Use the selected engine *)
   if !Flags.selected_engine = DpllMono then 
     DpllMono.dpll ppf ctx ast
   else if !Flags.selected_engine = DpllDac then 
