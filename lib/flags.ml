@@ -1,13 +1,14 @@
 type engine = 
-  | SyGuS 
-  | DPLL
+  | SygusDac 
+  | DpllDac
+  | DpllMono
 
 let debug = ref false
 let no_warnings = ref true
 let only_parse = ref false
 let daniyal = ref false
 let filename = ref None
-let selected_engine = ref SyGuS
+let selected_engine = ref SygusDac
 
 let parse_args () = 
   let open Cmdliner in
@@ -15,13 +16,15 @@ let parse_args () =
   (* Convert string to engine variant *)
   let engine_conv =
     let parse = function
-      | "sygus" -> Ok SyGuS
-      | "dpll" -> Ok DPLL
-      | s -> Error (`Msg ("Invalid engine: " ^ s))
+    | "sygus_dac" -> Ok SygusDac
+    | "dpll_dac" -> Ok DpllDac
+    | "dpll_mono" -> Ok DpllMono
+    | s -> Error (`Msg ("Invalid engine: " ^ s))
     in
     let print fmt = function
-      | SyGuS -> Format.fprintf fmt "sygus"
-      | DPLL -> Format.fprintf fmt "dpll"
+    | SygusDac -> Format.fprintf fmt "sygus_dac"
+    | DpllDac -> Format.fprintf fmt "dpll_dac"
+    | DpllMono -> Format.fprintf fmt "dpll_mono"
     in
     Arg.conv (parse, print)
   in
@@ -53,7 +56,7 @@ let parse_args () =
 
   let engine_flag =
     let doc = "Select the engine to use (sygus or dpll)" in
-    Arg.(value & opt engine_conv SyGuS & info ["e"; "engine"] ~docv:"ENGINE" ~doc)
+    Arg.(value & opt engine_conv SygusDac & info ["e"; "engine"] ~docv:"ENGINE" ~doc)
   in
 
   let set_flags new_debug new_no_warnings new_only_parse new_daniyal new_filename new_engine =

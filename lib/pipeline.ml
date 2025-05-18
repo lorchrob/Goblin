@@ -21,9 +21,14 @@ let main_pipeline filename =
   let ast = TypeChecker.check_types ctx ast in
   Utils.debug_print Format.pp_print_string ppf "\nType checking complete:\n";
 
-  if !Flags.selected_engine = DPLL then 
+  if !Flags.selected_engine = DpllMono then 
     DpllMono.dpll ppf ctx ast
-  else SygusDac.sygus ppf ctx ast
+  else if !Flags.selected_engine = DpllDac then 
+    DpllDac.dpll ppf ctx ast |> Option.get
+  else if !Flags.selected_engine = SygusDac then 
+    SygusDac.sygus ppf ctx ast
+  else
+    Utils.crash "No engine is enabled"
 
 let rec collect_results results =
   match results with
