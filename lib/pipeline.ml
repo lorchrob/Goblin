@@ -1,3 +1,5 @@
+(*!! TODO: Race engines *)
+
 let main_pipeline filename = 
   let ppf = Format.std_formatter in
   let input_string = Utils.read_file filename in 
@@ -20,8 +22,8 @@ let main_pipeline filename =
   Utils.debug_print Format.pp_print_string ppf "\nType checking complete:\n";
 
   if !Flags.selected_engine = DPLL then 
-    DpllEngine.dpll ppf ctx ast
-  else SygusEngine.sygus ppf ctx ast
+    DpllMono.dpll ppf ctx ast
+  else SygusDac.sygus ppf ctx ast
 
 let rec collect_results results =
   match results with

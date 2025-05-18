@@ -1,3 +1,6 @@
+(* SygusMono is redundant. If SygusMono is possible (only top-level constraints), 
+   then SygusMono is equivalent to SygusDac. *)
+
 let sygus ppf ctx ast =
   (* Step 3: Merge overlapping constraints *)
   Utils.debug_print Format.pp_print_string ppf "\nMerge overlapping constraints:\n";

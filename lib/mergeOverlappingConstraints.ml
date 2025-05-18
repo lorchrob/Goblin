@@ -102,6 +102,24 @@ let merge: A.ast -> A.element -> A.ast
     (* If no overlapping constraint, no action is required *)
     else ast @ [element]
 
+let detect: A.ast -> A.element -> bool
+= fun ast element -> match element with 
+  | A.TypeAnnotation (_, _, []) -> false 
+  | A.TypeAnnotation (nt, _, _ :: _) -> 
+    A.ast_constrains_nt ast nt 
+  | A.ProdRule (nt, rhss) -> 
+    let scs = List.concat_map (fun rhs -> match rhs with 
+    | A.StubbedRhs _ -> []
+    | A.Rhs (_, scs) -> scs
+    ) rhss in
+    A.ast_constrains_nt ast nt && List.length scs > 0
+
+let detect_overlapping_constraints: A.ast -> bool 
+= fun ast -> 
+  List.fold_left (fun acc element -> 
+    acc || detect ast element
+  ) false ast
+
 let merge_overlapping_constraints: A.ast -> A.ast 
 = fun ast ->
   List.fold_left merge [] ast
