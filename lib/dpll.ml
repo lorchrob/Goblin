@@ -421,7 +421,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
   let derivation_tree = ref (Node (start_symbol, ref Utils.IntSet.empty, [start_symbol], ref [])) in 
   (* Tree nodes left to explore *)
   let frontier = ref (DTSet.singleton derivation_tree) in 
-  (* Track declared (SMT-level) variables to avoid double declaration *)
+  (* Track declared (SMT-level) variables to avoid redeclaration *)
   let declared_variables = ref Utils.StringSet.empty in 
   (* Keep around constraints we may not need to assert *)
   let constraints_to_assert = ref ConstraintSet.empty in 
@@ -447,7 +447,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
     if !Flags.debug then Format.fprintf Format.std_formatter "Frontier: %a\n"
       (Lib.pp_print_list pp_print_derivation_tree "; ") (DTSet.elements !frontier |> List.map (fun p -> !p));
 
-    let node_to_expand = DTSet.min_elt !frontier in
+    let node_to_expand = DTSet.choose !frontier in
 
     (* TODO: Make sure there are no constraints in constraints_to_assert hanging around that still 
        need to be asserted. When one of these constraints is asserted after some delay, have 

@@ -8,3 +8,5 @@
  (modules parser sygusParser))
 
 (ocamllex lexer sygusLexer)
+
+(include_subdirs unqualified)
