@@ -54,7 +54,8 @@ let rec sygus_ast_to_expr: SA.sygus_ast -> A.expr list
 | IntLeaf i -> [IntConst i]
 | BVLeaf (len, bits) -> [BVConst (len, bits)]
 | BLLeaf bits -> [BLConst bits]
-| VarLeaf s -> [PhConst s ]
+| VarLeaf s -> [PhConst s]
+| StrLeaf s -> [StrConst s]
 | BoolLeaf b -> [BConst b]
 | Node (_, sygus_asts) -> List.map sygus_ast_to_expr sygus_asts |> List.flatten
 
@@ -75,7 +76,7 @@ let rec compute_dep: A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -> 
 and evaluate_sygus_ast: A.semantic_constraint Utils.StringMap.t -> A.element -> SA.sygus_ast -> SA.sygus_ast 
 = fun dep_map element sygus_ast ->
   match sygus_ast with 
-| IntLeaf _ | BVLeaf _ | BLLeaf _ | BoolLeaf _ -> sygus_ast
+| IntLeaf _ | BVLeaf _ | BLLeaf _ | BoolLeaf _ | StrLeaf _ -> sygus_ast
 | VarLeaf var ->
   if Utils.StringMap.mem (remove_suffix var |> String.uppercase_ascii) dep_map 
     then
@@ -105,7 +106,7 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -
   | A.ProdRule _ -> Utils.crash "Unexpected case in evaluate"
   in (
   match sygus_ast with 
-  | VarLeaf _ | BVLeaf _ | IntLeaf _ | BLLeaf _ | BoolLeaf _ -> 
+  | VarLeaf _ | BVLeaf _ | IntLeaf _ | BLLeaf _ | BoolLeaf _ | StrLeaf _ -> 
     sygus_ast_to_expr sygus_ast
   | Node (_, subterms) -> 
     let child_sygus_ast = List.nth subterms child_index in 
@@ -139,6 +140,11 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -
 | UnOp (BVNot, expr) -> (
   match call expr with 
   | [BVConst (len, b)] -> [BVConst (len, List.map not b)]
+  | _ -> eval_fail 9
+  )
+| StrLength expr -> (
+  match call expr with 
+  | [StrConst str ] -> [IntConst (String.length str)]
   | _ -> eval_fail 9
   )
 | BinOp (expr1, BVAnd, expr2) -> 
@@ -219,6 +225,13 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -
   | [IntConst i1], [IntConst i2] -> [IntConst (i1 / i2)] 
   | _ -> eval_fail 20
   )
+| BinOp (expr1, StrConcat, expr2) ->
+  let expr1 = call expr1 in 
+  let expr2 = call expr2 in (
+  match expr1, expr2 with 
+  | [StrConst str1], [StrConst str2] -> [StrConst (str1 ^ str2)] 
+  | _ -> eval_fail 20
+  )
 | CompOp (expr1, Lt, expr2) -> 
   let expr1 = call expr1 in 
   let expr2 = call expr2 in (
@@ -289,6 +302,16 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -
     [BConst (bvult bv2 bv1 || bv1 = bv2)] 
   | _ -> eval_fail 12
   )
+| CompOp (expr1, StrPrefix, expr2) -> 
+  let expr1 = call expr1 in 
+  let expr2 = call expr2 in (
+  match expr1, expr2 with 
+  | [StrConst str1], [StrConst str2] ->
+    let len1 = String.length str1 in
+    let len2 = String.length str2 in
+    [BConst (len1 <= len2 && String.sub str2 0 len1 = str1)] 
+  | _ -> eval_fail 12
+  )
 | Length expr -> (
   let exprs = call expr in 
   List.fold_left (fun acc expr ->
@@ -307,7 +330,7 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -
   | [IntConst i] -> [A.il_int_to_bitvector len i]
   | _ -> eval_fail 27
  )
-| BVConst _ | BLConst _ | IntConst _ | BConst _ | PhConst _ -> [expr]
+| BVConst _ | BLConst _ | IntConst _ | BConst _ | PhConst _ | StrConst _ -> [expr]
 | NTExpr _ -> Utils.crash "Complicated NTExprs not yet supported in dependency computation"
 | Match _ -> Utils.crash "Match not yet supported in dependency computation"
 
@@ -337,4 +360,4 @@ let rec compute_deps: A.semantic_constraint Utils.StringMap.t -> A.ast -> SA.syg
   | _ -> subterm
   ) subterms in 
   Node (constructor, subterms)
-| BVLeaf _ | BLLeaf _ | IntLeaf _ | BoolLeaf _ -> sygus_ast
+| BVLeaf _ | BLLeaf _ | IntLeaf _ | BoolLeaf _ | StrLeaf _ -> sygus_ast

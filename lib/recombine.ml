@@ -16,7 +16,7 @@ let extract_stub str =
 let replace_stub: string -> SygusAst.sygus_ast list -> SygusAst.sygus_ast option
 = fun possible_stub sygus_asts ->
   List.find_opt (fun sygus_ast -> match sygus_ast with 
-  | SygusAst.IntLeaf _ | BVLeaf _ | BLLeaf _ | VarLeaf _ | BoolLeaf _ -> false 
+  | SygusAst.IntLeaf _ | BVLeaf _ | BLLeaf _ | VarLeaf _ | BoolLeaf _ | StrLeaf _ -> false 
   | Node (constructor, _) -> 
     (* To compare stubs, we only need the stub ID prefix "_stubN"*)
     ((extract_stub possible_stub = extract_stub constructor) && 
@@ -30,7 +30,7 @@ let replace_stub: string -> SygusAst.sygus_ast list -> SygusAst.sygus_ast option
 let rec recombine: SygusAst.sygus_ast list -> SygusAst.sygus_ast 
 = fun sygus_asts -> match sygus_asts with 
 | [] -> assert false
-| IntLeaf _ :: _ | BVLeaf _ :: _ | BLLeaf _ :: _ | BoolLeaf _ :: _ -> List.hd sygus_asts
+| IntLeaf _ :: _ | BVLeaf _ :: _ | BLLeaf _ :: _ | BoolLeaf _ :: _ | StrLeaf _ :: _ -> List.hd sygus_asts
 | Node (constructor, children) :: sygus_asts ->
   let children = List.map (fun sygus_ast -> recombine (sygus_ast :: sygus_asts)) children in
   Node (constructor, children)

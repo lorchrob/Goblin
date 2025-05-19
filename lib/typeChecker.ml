@@ -60,6 +60,9 @@ let rec infer_type_expr: context -> mode -> expr -> il_type option
     Utils.crash error_message
   | None -> None
   )
+| StrLength (expr) -> 
+  let _ = check_type_expr ctx mode String expr in 
+  Some Int
 | BinOp (expr1, BVAnd, expr2) 
 | BinOp (expr1, BVOr, expr2) 
 | BinOp (expr1, BVXor, expr2) -> 
@@ -109,12 +112,20 @@ let rec infer_type_expr: context -> mode -> expr -> il_type option
   let _ = check_type_expr ctx mode Int expr1 in 
   let _ = check_type_expr ctx mode Int expr2 in
   Some Int
+| BinOp (expr1, StrConcat, expr2) -> 
+  let _ = check_type_expr ctx mode String expr1 in 
+  let _ = check_type_expr ctx mode String expr2 in
+  Some String
 | CompOp (expr1, Lt, expr2) 
 | CompOp (expr1, Lte, expr2) 
 | CompOp (expr1, Gt, expr2) 
 | CompOp (expr1, Gte, expr2) ->
   let _ = check_type_expr ctx mode Int expr1 in 
   let _ = check_type_expr ctx mode Int expr2 in
+  Some Bool
+| CompOp (expr1, StrPrefix, expr2) ->
+  let _ = check_type_expr ctx mode String expr1 in 
+  let _ = check_type_expr ctx mode String expr2 in
   Some Bool
 | CompOp (expr1, BVLt, expr2) 
 | CompOp (expr1, BVLte, expr2) 
@@ -214,6 +225,7 @@ let rec infer_type_expr: context -> mode -> expr -> il_type option
 | BLConst _ -> Some BitList 
 | BConst _ -> Some Bool
 | IntConst _ -> Some Int
+| StrConst _ -> Some String
 | PhConst _ -> 
   if mode = Dep then Some Placeholder
   else 

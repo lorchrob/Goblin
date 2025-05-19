@@ -88,6 +88,9 @@ let rec generate_all_possible_exprs: TC.context -> string list -> A.expr -> A.ex
     let exprs2 = r expr2 in 
     let pairs = cartesian_product exprs1 exprs2 in
     List.map (fun (e1, e2) -> A.CompOp (e1, op, e2)) pairs
+  | StrLength expr -> 
+    let exprs = r expr in 
+    List.map (fun e -> A.StrLength (e)) exprs
   | Length expr -> 
     let exprs = r expr in 
     List.map (fun e -> A.Length (e)) exprs
@@ -96,7 +99,8 @@ let rec generate_all_possible_exprs: TC.context -> string list -> A.expr -> A.ex
   | BConst _ 
   | BVCast _  
   | PhConst _
-  | IntConst _ -> [expr]
+  | IntConst _ 
+  | StrConst _ -> [expr]
 
 let process_sc: TC.context -> string list -> A.semantic_constraint -> A.semantic_constraint 
 = fun ctx nts sc -> match sc with 

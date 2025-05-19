@@ -103,6 +103,7 @@ let pp_print_binop: Format.formatter -> A.bin_operator -> unit
 | Minus -> Format.fprintf ppf "-"
 | Times -> Format.fprintf ppf "*"
 | Div -> Format.fprintf ppf "/"
+| StrConcat -> Format.fprintf ppf "str.++"
 
 let pp_print_compop: Format.formatter -> A.comp_operator -> unit 
 = fun ppf op -> match op with 
@@ -112,6 +113,7 @@ let pp_print_compop: Format.formatter -> A.comp_operator -> unit
 | Gte -> Format.fprintf ppf ">="
 | Eq -> Format.fprintf ppf "="
 | _ -> assert false
+
 
 let pp_print_nt_decs: Ast.semantic_constraint Utils.StringMap.t -> Format.formatter -> A.ast -> unit 
 = fun dep_map ppf ast -> List.iter (fun element -> match element with 
@@ -218,6 +220,10 @@ and pp_print_expr: ?nt_prefix:string -> TC.context -> Format.formatter -> A.expr
       r expr1 
       r expr2
       r expr1 
+  | CompOp (expr1, StrPrefix, expr2) -> 
+    Format.fprintf ppf "(str.prefixof %a %a)"
+      r expr1
+      r expr2 
   | CompOp (expr1, op, expr2) -> 
     Format.fprintf ppf "(%a %a %a)"
       pp_print_compop op 
@@ -226,6 +232,9 @@ and pp_print_expr: ?nt_prefix:string -> TC.context -> Format.formatter -> A.expr
   | UnOp (op, expr) -> 
     Format.fprintf ppf "(%a %a)"
       pp_print_unop op 
+      r expr
+  | StrLength expr -> 
+    Format.fprintf ppf "(str.len %a)"
       r expr
   | Length expr -> 
     Format.fprintf ppf "(seq.len %a)"
@@ -236,6 +245,7 @@ and pp_print_expr: ?nt_prefix:string -> TC.context -> Format.formatter -> A.expr
       (Lib.pp_print_list Format.pp_print_int "") bits
   | BConst b ->  Format.fprintf ppf "%b" b
   | IntConst i -> Format.fprintf ppf "%d" i
+  | StrConst str -> Format.pp_print_string ppf str
   | PhConst _ -> Utils.crash "Error: String constants can only be in dependencies (of the form 'nonterminal <- string_literal')"
   | BLConst _ -> Utils.crash "BitList literals not yet fully supported"
   | BVCast _ -> Utils.crash "Integer to bitvector casts in semantic constraints that aren't preprocessable are not supported"

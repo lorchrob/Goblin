@@ -10,6 +10,7 @@ type comp_operator =
 | BVLte
 | BVGt 
 | BVGte
+| StrPrefix
 
 type bin_operator =
 | BVAnd
@@ -25,6 +26,7 @@ type bin_operator =
 | Minus
 | Times
 | Div
+| StrConcat
 
 type case = 
 (* A case is a list of <context, nonterminal> pairs (denoting a pattern) and the corresponding expression *)
@@ -36,6 +38,7 @@ and expr =
 | UnOp of unary_operator * expr
 | CompOp of expr * comp_operator * expr
 | Length of expr
+| StrLength of expr
 | BVCast of int * expr
 (* First string list track the context of the nonterminal being matched 
    Int options are for clarifying ambiguous dot notation references, as in NTExpr *)
@@ -59,6 +62,7 @@ and expr =
 | BConst of bool
 | IntConst of int
 | PhConst of string
+| StrConst of string
 
 type semantic_constraint =
 | Dependency of string * expr

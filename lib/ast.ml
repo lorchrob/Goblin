@@ -14,6 +14,7 @@ type comp_operator =
 | BVLte
 | BVGt 
 | BVGte
+| StrPrefix
 
 type bin_operator = 
 | BVAnd 
@@ -29,6 +30,7 @@ type bin_operator =
 | Minus 
 | Times 
 | Div
+| StrConcat
 
 type case = 
 (* A case is a list of <context, nonterminal> pairs (denoting a pattern) and the corresponding expression *)
@@ -41,6 +43,7 @@ expr =
 | UnOp of unary_operator * expr
 | CompOp of expr * comp_operator * expr 
 | Length of expr
+| StrLength of expr
 | BVCast of int * expr
 (* First string list track the context of the nonterminal being matched 
    Int options are for clarifying ambiguous dot notation references, as in NTExpr *)
@@ -64,6 +67,7 @@ expr =
 | BConst of bool
 | IntConst of int 
 | PhConst of string
+| StrConst of string
 
 type semantic_constraint = 
 | Dependency of string * expr (* <nonterminal> <- <expression> *)
@@ -110,6 +114,7 @@ let rec get_nts_from_expr: expr -> string list
     r expr
   | CompOp (expr1, _, expr2) -> 
     r expr1 @ r expr2
+  | StrLength expr
   | Length expr -> 
     r expr
   | BVConst _ 
@@ -117,7 +122,8 @@ let rec get_nts_from_expr: expr -> string list
   | BConst _ 
   | BVCast _  
   | PhConst _
-  | IntConst _ -> []
+  | IntConst _ 
+  | StrConst _ -> []
 
 (* This function is used before desugaring dot expressions *)
 let rec get_nts_from_expr2: expr -> (string * int option) list list
@@ -132,6 +138,7 @@ let rec get_nts_from_expr2: expr -> (string * int option) list list
     r expr
   | CompOp (expr1, _, expr2) -> 
     r expr1 @ r expr2
+  | StrLength expr
   | Length expr -> 
     r expr
   | BVConst _ 
@@ -139,7 +146,8 @@ let rec get_nts_from_expr2: expr -> (string * int option) list list
   | BConst _ 
   | BVCast _  
   | PhConst _
-  | IntConst _ -> []
+  | IntConst _ 
+  | StrConst _ -> []
 
 (* For when you want to process simple NTs after translation of dot to match expressions *)
 let rec get_nts_from_expr_after_desugaring_dot_notation: expr -> (string * int option) list list 
@@ -160,6 +168,7 @@ let rec get_nts_from_expr_after_desugaring_dot_notation: expr -> (string * int o
     r expr
   | CompOp (expr1, _, expr2) -> 
     r expr1 @ r expr2
+  | StrLength expr
   | Length expr -> 
     r expr
   | BVConst _ 
@@ -167,7 +176,8 @@ let rec get_nts_from_expr_after_desugaring_dot_notation: expr -> (string * int o
   | BConst _ 
   | BVCast _  
   | PhConst _
-  | IntConst _ -> []
+  | IntConst _ 
+  | StrConst _ -> []
 
 let pp_print_nt_helper_dots: Format.formatter -> string * int option -> unit 
 = fun ppf (nt, idx) -> 
@@ -209,6 +219,7 @@ let pp_print_bin_op: Format.formatter -> bin_operator -> unit
 | Minus -> Format.fprintf ppf "-"
 | Times -> Format.fprintf ppf "*"
 | Div -> Format.fprintf ppf "/"
+| StrConcat -> Format.fprintf ppf ("str.++")
 
 let pp_print_unary_op: Format.formatter -> unary_operator -> unit 
 = fun ppf op -> match op with 
@@ -228,6 +239,7 @@ let pp_print_comp_op: Format.formatter -> comp_operator -> unit
 | BVLte -> Format.fprintf ppf  "bvlte"
 | BVGt -> Format.fprintf ppf  "bvgt"
 | BVGte -> Format.fprintf ppf  "bvgte"
+| StrPrefix -> Format.fprintf ppf "str.prefixof"
 
 (* let pp_print_bit: Format.formatter -> bool ->  *)
 
@@ -262,6 +274,9 @@ and pp_print_expr: Format.formatter -> expr -> unit
     pp_print_expr expr1 
     pp_print_comp_op op 
     pp_print_expr expr2
+| StrLength expr -> 
+  Format.fprintf ppf "str_length(%a)"
+    pp_print_expr expr 
 | Length expr -> 
   Format.fprintf ppf "length(%a)"
     pp_print_expr expr 
@@ -289,7 +304,8 @@ and pp_print_expr: Format.formatter -> expr -> unit
     (Lib.pp_print_list Format.pp_print_int "") bits
 | BConst b -> Format.fprintf ppf "%b" b
 | IntConst i -> Format.fprintf ppf "%d" i
-| PhConst s -> Format.fprintf ppf "\"%s\"" s
+| PhConst s -> Format.fprintf ppf "%S" s
+| StrConst s -> Format.fprintf ppf "%s" s
 
 let pp_print_semantic_constraint: Format.formatter -> semantic_constraint -> unit 
 = fun ppf sc -> match sc with 
@@ -398,6 +414,7 @@ let rec expr_contains_dangling_nt: Utils.SILSet.t -> expr -> bool
     r expr
   | CompOp (expr1, _, expr2) -> 
     r expr1 || r expr2
+  | StrLength expr
   | Length expr -> 
     r expr
   | BVConst _ 
@@ -405,7 +422,8 @@ let rec expr_contains_dangling_nt: Utils.SILSet.t -> expr -> bool
   | BConst _ 
   | BVCast _  
   | PhConst _
-  | IntConst _ -> false
+  | IntConst _ 
+  | StrConst _ -> false
   | Match _ -> 
     Utils.crash "Encountered Match in expr_contains_dangling_nt. 
     Shouldn't be possible, as this function should only process base expressions."
@@ -442,6 +460,7 @@ let rec prepend_nt_to_dot_exprs: string -> expr -> expr
   | BinOp (expr1, op, expr2) -> BinOp (r expr1, op, r expr2) 
   | UnOp (op, expr) -> UnOp (op, r expr) 
   | CompOp (expr1, op, expr2) -> CompOp (r expr1, op, r expr2) 
+  | StrLength expr -> StrLength (r expr)
   | Length expr -> Length (r expr) 
   | Match _ -> Utils.crash "Unexpected case 1 in prepend_nt_to_dot_exprs"
   | NTExpr _ -> Utils.crash "Unexpected case 2 in prepend_nt_to_dot_exprs" 
@@ -449,4 +468,5 @@ let rec prepend_nt_to_dot_exprs: string -> expr -> expr
   | BLConst _ 
   | BConst _ 
   | IntConst _ 
-  | PhConst _ -> expr
+  | PhConst _ 
+  | StrConst _ -> expr

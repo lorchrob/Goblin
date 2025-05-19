@@ -10,6 +10,7 @@ let rec calculate_casts: expr -> expr
 | BinOp (expr1, op, expr2) -> BinOp (calculate_casts expr1, op, calculate_casts expr2) 
 | UnOp (op, expr) -> UnOp (op, calculate_casts expr) 
 | CompOp (expr1, op, expr2) -> CompOp (calculate_casts expr1, op, calculate_casts expr2) 
+| StrLength expr -> StrLength (calculate_casts expr) 
 | Length expr -> Length (calculate_casts expr) 
 | Match (nt_ctx, nt, cases) -> 
   let cases = List.map (fun case -> match case with 
@@ -22,7 +23,8 @@ let rec calculate_casts: expr -> expr
 | BLConst _ 
 | BConst _ 
 | IntConst _ 
-| PhConst _ -> expr
+| PhConst _ 
+| StrConst _ -> expr
 
 let stub_grammar_element: TypeChecker.context -> semantic_constraint list -> grammar_element -> semantic_constraint option * grammar_element * TypeChecker.context
 = fun ctx scs ge -> match ge with 

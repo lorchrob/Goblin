@@ -5,12 +5,14 @@ open Ast
 %token BOOL
 %token INT
 %token PLACEHOLDER
+%token STRINGTYPE
 %token BITVECTOR
 %token INTTOBITVECTOR
 %token BITLIST
 // %token CASE
 // %token OF
 %token LENGTH
+%token STRLENGTH
 %token LAND
 %token LOR
 %token LXOR
@@ -47,6 +49,8 @@ open Ast
 %token BVLTE
 %token BVGT
 %token BVGTE
+%token STRPREFIX 
+%token STRCONCAT
 
 %token<int> INTEGER
 %token<bool list> BITS
@@ -62,7 +66,7 @@ open Ast
 %left BVOR BVXOR LOR LXOR
 %left LAND BVAND
 %left GT LTE EQ GTE LT BVGT BVLTE BVGTE BVLT 
-%left PLUS MINUS
+%left PLUS MINUS STRCONCAT
 %left TIMES DIV
 %nonassoc LNOT
 %nonassoc BVNOT 
@@ -101,6 +105,7 @@ il_type:
 | BOOL { Bool }
 | INT { Int }
 | PLACEHOLDER { Placeholder }
+| STRINGTYPE { String }
 | BITVECTOR; LPAREN; len = INTEGER; RPAREN; { BitVector (len) }
 | BITLIST { BitList }
 
@@ -131,6 +136,7 @@ expr:
 | e1 = expr; BVAND; e2 = expr { BinOp (e1, BVAnd, e2) }
 | e1 = expr; BVOR; e2 = expr { BinOp (e1, BVOr, e2) }
 | e1 = expr; BVXOR; e2 = expr { BinOp (e1, BVXor, e2) }
+| e1 = expr; STRCONCAT; e2 = expr { BinOp (e1, StrConcat, e2) }
 (* Comparison operations *)
 | e1 = expr; LT; e2 = expr { CompOp (e1, Lt, e2) }
 | e1 = expr; LTE; e2 = expr { CompOp (e1, Lte, e2) }
@@ -157,6 +163,8 @@ expr:
 | INTTOBITVECTOR; 
   LPAREN; width = INTEGER; COMMA; e = expr; RPAREN; { BVCast (width, e) }
 | LENGTH; LPAREN; e = expr; RPAREN; { Length (e) }
+| STRLENGTH; LPAREN; e = expr; RPAREN; { StrLength (e) }
+| STRPREFIX; LPAREN; e1 = expr; COMMA; e2 = expr; RPAREN; { CompOp (e1, StrPrefix, e2) }
 (* Case expressions *)
 // | CASE; e = nt_expr; OF; cs = case_list { Match (e, cs) }
 (* Variables *)

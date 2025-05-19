@@ -1,0 +1,4 @@
+<S> ::= <A> <B> <C> { is_prefix(<A>, <B> ++ <C>); lnot (<A> = <B> ++ <C>); str_length(<A>) < str_length (<B>) + str_length(<C>); }  ;
+<A> :: String;
+<B> :: String;
+<C> :: String;

@@ -226,6 +226,11 @@ let repeated_nt_dependency () =
   let output = String.trim (main_pipeline input |> snd) in
   check string "repeated_nt_dependency" output "33" 
 
+let test_strings () = 
+  let input = "../../../test/test_cases/test_strings" in
+  let output = String.trim (main_pipeline input |> snd) in
+  check string "strings" output "A" 
+
 let () = 
   run "My_module" [
     "test_sc", [test_case "Semantic constraint" `Quick test_sc];
@@ -261,4 +266,5 @@ let () =
     "test_check_sygus_ast_4", [test_case "test_check_sygus_ast_4" `Quick test_check_sygus_ast_4];
     "test_check_sygus_ast_5", [test_case "test_check_sygus_ast_5" `Quick test_check_sygus_ast_5];
     (* "test_dpll_unsat_constraint", [test_case "test_dpll_unsat_constraint" `Quick test_dpll_unsat_constraint]; *)
+    "test_strings", [test_case "test_strings" `Quick test_strings];
   ]

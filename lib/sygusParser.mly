@@ -22,8 +22,10 @@ open SygusAst
 %token UNDERSCORE
 %token BITVEC
 %token STR
+%token STRING
 %token INFEASIBLE
 %token UNSAT
+%token<string> STRCONST
 
 %token<bool list> BITS
 %token<string> ID
@@ -59,6 +61,7 @@ top_type:
 il_ty:
 | INT; {}
 | BOOL; {}
+| STRING; {}
 | LPAREN; CAPSEQ; BOOL; RPAREN; {}
 | LPAREN; UNDERSCORE; BITVEC; INTEGER; RPAREN; {}
 
@@ -75,6 +78,8 @@ lisp_term:
   { IntLeaf i }
 | LPAREN; HYPHEN; i = INTEGER; RPAREN; 
   { IntLeaf (-i) }
+| str = STRCONST;
+  { StrLeaf str }
 
 bit_list:
 | LPAREN; AS; SEQ; DOT; EMPTY; LPAREN; CAPSEQ; BOOL; RPAREN; RPAREN; 

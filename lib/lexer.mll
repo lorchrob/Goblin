@@ -12,10 +12,12 @@
     "Bool", BOOL ;
     "Int", INT ;
     "Placeholder", PLACEHOLDER ;
+    "String", STRINGTYPE ; 
     "BitVector", BITVECTOR ;
     "int_to_bitvector", INTTOBITVECTOR ;
     "BitList", BITLIST ; 
     "length", LENGTH ;
+    "str_length", STRLENGTH ;
     "land", LAND ;
     "lor", LOR ;
     "lxor", LXOR ;
@@ -68,6 +70,8 @@ rule read =
   | "," { COMMA }
   | ";" { SEMICOLON }
   | "." { DOT }
+  | "++" { STRCONCAT }
+  | "is_prefix" { STRPREFIX }
   | "0b" { read_bits lexbuf }
   | '"'[^ '"']*'"' as s   { STRING (String.sub s 1 (String.length s - 2)) }
   | int as p { INTEGER (int_of_string p) }

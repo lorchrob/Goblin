@@ -147,3 +147,16 @@ let rec fresh_random_element exclude lst =
     if IntSet.cardinal exclude = List.length lst then (print_endline "infeasible"; exit 0);
     if IntSet.mem idx exclude then fresh_random_element exclude lst 
     else idx, List.nth lst idx
+
+let random_bools n =
+  let rec aux i acc =
+    if i = 0 then acc
+    else aux (i - 1) ((Random.bool ()) :: acc)
+  in
+  aux n []
+
+let random_string n =
+  let gen_char () =
+    Char.chr (Random.int (126 - 32 + 1) + 32)  (* Range: 32 to 126 *)
+  in
+  String.init n (fun _ -> gen_char ())
