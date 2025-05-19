@@ -138,23 +138,37 @@ type solver_instance = {
 }
 
 type model_value = 
-(* | ConcreteBool of bool *)
+| ConcreteBool of bool
 | ConcreteInt of int
-(* | ConcretePlaceholder of string
+| ConcretePlaceholder of string
 | ConcreteBitVector of int * bool list
-| ConcreteBitList of bool list *)
+| ConcreteBitList of bool list
 
 type derivation_tree = 
 | SymbolicIntLeaf of string list (* path to this node *)
 | DependentTermLeaf of string 
-| ConcreteIntLeaf of string list * int (* path to this node, value of the leaf *)
+| ConcreteBoolLeaf of string list * bool (* path to this node, value of the leaf *)
+| ConcreteIntLeaf of string list * int 
+| ConcretePlaceholderLeaf of string list * string 
+| ConcreteBitVectorLeaf of string list * int * bool list 
+| ConcreteBitListLeaf of string list * bool list
 (* label, visited set, path to this node, children *)
 | Node of string * Utils.IntSet.t ref * string list * derivation_tree list ref
 
 let rec pp_print_derivation_tree ppf derivation_tree = match derivation_tree with 
 | SymbolicIntLeaf _ -> Format.pp_print_string ppf "sym_leaf"
 | DependentTermLeaf _ -> Format.pp_print_string ppf "dep_sym_leaf"
+| ConcreteBoolLeaf (_, b) -> Format.pp_print_bool ppf b 
 | ConcreteIntLeaf (_, int) -> Format.pp_print_int ppf int 
+| ConcretePlaceholderLeaf (_, ph) -> Format.pp_print_string ppf ph 
+| ConcreteBitVectorLeaf (_, _, bits) -> 
+  let bits = List.map Bool.to_int bits in
+  Format.fprintf ppf "0b%a"
+    (Lib.pp_print_list Format.pp_print_int "") bits
+| ConcreteBitListLeaf (_, bits) -> 
+    let bits = List.map Bool.to_int bits in
+  Format.fprintf ppf "(BitList 0b%a)"
+    (Lib.pp_print_list Format.pp_print_int "") bits
 | Node (nt, _, _, children) -> 
   Format.fprintf ppf "(%a %a)"
     Format.pp_print_string nt 
@@ -268,9 +282,7 @@ let rec model_of_sygus_ast: SygusAst.sygus_ast -> (model_value Utils.StringMap.t
 = fun sygus_ast -> 
   match sygus_ast with 
   | VarLeaf var when var = "infeasible" -> Error ()
-  | VarLeaf _ 
-  | BLLeaf _ 
-  | BVLeaf _ -> Utils.crash "Unsupported case in model_of_sygus_ast"
+  | VarLeaf _ | BLLeaf _ | BVLeaf _ | BoolLeaf _ -> Utils.crash "Unsupported case in model_of_sygus_ast"
   | Node (constructor, [IntLeaf value]) -> 
     Ok (Utils.StringMap.singleton constructor (ConcreteInt value))
   | Node (_, children) -> 
@@ -300,11 +312,16 @@ let rec instantiate_terminals: model_value Utils.StringMap.t -> derivation_tree 
 = fun model derivation_tree -> 
   let r = instantiate_terminals model in 
   match derivation_tree with 
-  | ConcreteIntLeaf (path, _) 
+  | ConcreteIntLeaf (path, _) | ConcreteBoolLeaf (path, _) | ConcreteBitListLeaf (path, _)
+  | ConcreteBitVectorLeaf (path, _, _) | ConcretePlaceholderLeaf (path, _)
   | SymbolicIntLeaf path -> 
     let path' = String.concat "_" (Utils.init path) |> String.lowercase_ascii in
     (match Utils.StringMap.find_opt path' model with 
     | Some (ConcreteInt int) -> ConcreteIntLeaf (path, int)
+    | Some (ConcreteBool bool) -> ConcreteBoolLeaf (path, bool)
+    | Some (ConcreteBitList bitlist) -> ConcreteBitListLeaf (path, bitlist)
+    | Some (ConcreteBitVector (len, bits)) -> ConcreteBitVectorLeaf (path, len, bits)
+    | Some (ConcretePlaceholder ph) -> ConcretePlaceholderLeaf (path, ph)
     | None -> SymbolicIntLeaf path (* Model contain unconstrained variables not present in this derivation tree *))
   | DependentTermLeaf _ -> derivation_tree
   | Node (nt, idx, uid, children) -> 
@@ -315,7 +332,8 @@ let rec fill_unconstrained_nonterminals: derivation_tree -> derivation_tree
 = fun derivation_tree -> 
   let r = fill_unconstrained_nonterminals in 
   match derivation_tree with 
-  | ConcreteIntLeaf _ -> derivation_tree 
+  | ConcreteIntLeaf _ | ConcreteBitListLeaf _ | ConcreteBitVectorLeaf _ 
+  | ConcreteBoolLeaf _ | ConcretePlaceholderLeaf _ -> derivation_tree 
   | SymbolicIntLeaf path -> 
     ConcreteIntLeaf (path, random_int_in_range (-100) 100)
   | DependentTermLeaf _ -> derivation_tree
@@ -324,36 +342,31 @@ let rec fill_unconstrained_nonterminals: derivation_tree -> derivation_tree
     Node (nt, idx, uid, children)
 
 let rec is_complete derivation_tree = match derivation_tree with
-| SymbolicIntLeaf _ 
-| ConcreteIntLeaf _ 
-| DependentTermLeaf _ -> true
+| SymbolicIntLeaf _ | ConcreteIntLeaf _ | DependentTermLeaf _ 
+| ConcreteBitListLeaf _ | ConcreteBitVectorLeaf _ | ConcreteBoolLeaf _ 
+| ConcretePlaceholderLeaf _ -> true
 | Node (_, _, _, children) -> 
   let children = List.map is_complete !children in
   List.length children > 0 && List.fold_left (&&) true children 
-
-let rec serialize_derivation_tree: derivation_tree -> string 
-= fun derivation_tree -> match derivation_tree with
-| SymbolicIntLeaf _ -> Utils.crash "Encountered symbolic leaf during serialization in serialize_derivation_tree"
-| ConcreteIntLeaf (_, i) -> string_of_int i 
-| DependentTermLeaf nt -> nt ^ "con" (* Match the sygus encoding format *)
-| Node (_, _, _, children) -> 
-  let children = List.map serialize_derivation_tree !children in 
-  String.concat "" children
 
 let rec sygus_ast_of_derivation_tree: derivation_tree -> SA.sygus_ast 
 = fun derivation_tree -> match derivation_tree with
 | DependentTermLeaf nt -> VarLeaf (String.lowercase_ascii (nt ^ "_con")) (* Match sygus encoding format *)
 | SymbolicIntLeaf path -> VarLeaf (String.concat "" path)
 | ConcreteIntLeaf (_, i) -> IntLeaf i
+| ConcreteBitListLeaf (_, bits) -> BLLeaf bits 
+| ConcreteBitVectorLeaf (_, len, bits) -> BVLeaf (len, bits)
+| ConcretePlaceholderLeaf (_, ph) -> VarLeaf ph 
+| ConcreteBoolLeaf (_, b) -> BoolLeaf b
 | Node (nt, _, _, children) -> 
   let children = List.map sygus_ast_of_derivation_tree !children in 
   Node (nt, children)
 
 (* Naive computation of frontier *)
 let rec compute_new_frontier derivation_tree = match derivation_tree with 
-| SymbolicIntLeaf _ 
-| ConcreteIntLeaf _ 
-| DependentTermLeaf _ -> DTSet.empty
+| SymbolicIntLeaf _ | ConcreteIntLeaf _ | DependentTermLeaf _ 
+| ConcreteBoolLeaf _ | ConcreteBitListLeaf _ | ConcreteBitVectorLeaf _ 
+| ConcretePlaceholderLeaf _ -> DTSet.empty
 | Node (_, _, _, children) as node -> 
   if !children = [] then DTSet.singleton (ref node) else
   List.fold_left (fun acc child -> 
@@ -390,7 +403,8 @@ let rec nt_will_be_reached derivation_tree ast nt =
         match List.find_opt (fun child -> match child with 
         | Node (nt2, _, _, _) -> str = nt2
         | SymbolicIntLeaf path -> str = Utils.last path
-        | ConcreteIntLeaf (path, _) -> str = Utils.last path
+        | ConcreteIntLeaf (path, _) | ConcreteBoolLeaf (path, _) | ConcreteBitListLeaf (path, _) 
+        | ConcreteBitVectorLeaf (path, _, _) | ConcretePlaceholderLeaf (path, _) -> str = Utils.last path
         | DependentTermLeaf nt2 -> str = nt2
         ) !children with 
         | Some child -> nt_will_be_reached child ast nts
@@ -496,9 +510,9 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
 
     (* Expand the chosen frontier node *)
     match !node_to_expand with 
-    | SymbolicIntLeaf _
-    | ConcreteIntLeaf _ 
-    | DependentTermLeaf _ -> () (* nothing else to do *)
+    | SymbolicIntLeaf _ | ConcreteIntLeaf _ | DependentTermLeaf _ 
+    | ConcreteBitListLeaf _ | ConcreteBitVectorLeaf _ | ConcreteBoolLeaf _ 
+    | ConcretePlaceholderLeaf _ -> () (* nothing else to do *)
     | Node (nt, _, _, children) when not (List.length !children = 0) -> 
       Utils.crash ("Trying to expand node " ^ nt ^ " that already has children in dpll")
     | Node (nt, visited, path, children) as node -> 

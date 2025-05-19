@@ -1,8 +1,10 @@
+(* TODO: Distinguish between strings, placeholders, dep terms in sygus_ast type *)
 type sygus_ast = 
 | Node of string * sygus_ast list 
 | BVLeaf of int * bool list 
 | IntLeaf of int
 | BLLeaf of bool list
+| BoolLeaf of bool
 | VarLeaf of string (* DANIYAL: Placeholder can go here *)
 
 type endianness = 
@@ -22,6 +24,7 @@ let pp_print_sygus_ast: Format.formatter -> sygus_ast -> unit
     (Lib.pp_print_list Format.pp_print_int "") bits
   | VarLeaf id -> Format.pp_print_string ppf id;
   | IntLeaf d -> Format.pp_print_int ppf d;
+  | BoolLeaf b -> Format.pp_print_bool ppf b;
   (* This is kind of cheating, but I don't feel like matching cvc5 format exactly *)
   | BLLeaf bits -> 
     let bits = List.map Bool.to_int bits in
@@ -44,6 +47,7 @@ let serialize: Format.formatter -> sygus_ast -> unit
     (Lib.pp_print_list Format.pp_print_int "") bits
   | VarLeaf s -> Format.pp_print_string ppf s
   | IntLeaf i -> Format.pp_print_int ppf i
+  | BoolLeaf b -> Format.pp_print_bool ppf b
   in 
   Format.fprintf ppf "%a\n" 
   pp_print_sygus_ast' sygus_ast
@@ -154,8 +158,8 @@ let serialize_bytes: endianness -> sygus_ast -> bytes * bytes
       } in
       (var_leaf_data, new_metadata, offset + var_leaf_length)
       
-    | IntLeaf _ -> 
-      Utils.crash "serializing final packet, but encountered leaf variable (possibly uncomputed dependent term)"
+    | BoolLeaf _ -> Utils.crash "serializing final packet, unhandled case 1"
+    | IntLeaf _ -> Utils.crash "serializing final packet, unhandled case 2"
   in
   let initial_metadata = {
     var_leaf_count = 0;
