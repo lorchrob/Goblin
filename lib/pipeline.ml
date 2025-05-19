@@ -1,5 +1,4 @@
-(*!! TODO: Support non-int types in DPLL engine
-     TODO: Race engines 
+(*!! TODO: Race engines 
         then engine flag should refer to set of enabled engines
         have to support optional return types if the engine is not always applicable
      TODO: Parallelize divide and conquer (DAC) engines. 

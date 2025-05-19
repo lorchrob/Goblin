@@ -64,7 +64,7 @@ type semantic_constraint =
 | Dependency of string * expr
 | SyGuSExpr of expr
 
-type il_type = Bool | Int | Placeholder | BitVector of int | BitList | ADT of string list list
+type il_type = Bool | Int | Placeholder | String | BitVector of int | BitList | ADT of string list list
 
 type grammar_element =
 | Nonterminal of string

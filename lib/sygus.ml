@@ -21,6 +21,7 @@ let pp_print_ty: Format.formatter -> A.il_type -> unit
 (* NOTE: Strings should only be present for dependency computations. 
    If it's here, it is a grammar element that would be pruned anyway. *)
 | Placeholder -> Format.fprintf ppf "Int"
+| String -> Format.fprintf ppf "String"
 | BitVector len -> Format.fprintf ppf "(_ BitVec %d)" len
 | BitList -> Format.fprintf ppf "(Seq Bool)"
 | ADT _ -> Utils.crash "sygus.ml (pp_print_ty)"

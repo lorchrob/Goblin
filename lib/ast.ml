@@ -73,6 +73,7 @@ type il_type =
 | Bool 
 | Int 
 | Placeholder
+| String
 | BitVector of int 
 | BitList
 | ADT of string list list
@@ -305,6 +306,7 @@ let pp_print_ty: Format.formatter -> il_type -> unit
 | Bool -> Format.fprintf ppf "Bool"
 | Int -> Format.fprintf ppf "Int"
 | Placeholder -> Format.fprintf ppf "Placeholder"
+| String -> Format.fprintf ppf "String"
 | BitList -> Format.fprintf ppf "BitList" 
 | BitVector width -> Format.fprintf ppf "BitVector(%d)" width
 | ADT rules -> 
