@@ -27,6 +27,7 @@ let dpll ppf ctx ast =
         then [SygusAst.VarLeaf "infeasible"]
         else sygus_asts
       in
+      Utils.debug_print Format.pp_print_string ppf "\nOutputs from DPLL engines:\n";
       List.iter (Utils.debug_print SygusAst.pp_print_sygus_ast ppf) sygus_asts;
 
       (* Step 4: Recombine to single AST *)

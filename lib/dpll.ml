@@ -538,7 +538,8 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
           A.pp_print_prod_rule_rhs chosen_rule;
         visited := Utils.IntSet.add idx !visited;
         match chosen_rule with 
-        | A.StubbedRhs _ -> Utils.crash "Unexpected case in dpll 1";
+        | A.StubbedRhs str -> 
+          children := [DependentTermLeaf str]
         | A.Rhs (ges, scs) -> 
           children := List.map (fun ge -> match ge with 
           | A.Nonterminal nt -> 

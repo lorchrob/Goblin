@@ -1,9 +1,16 @@
 let extract_stub str =
+  let str = String.lowercase_ascii str in
   let open Str in
-  let re = regexp "^\\(_stub[0-9]+\\).*" in
-  if string_match re str 0 then
-    matched_group 1 str
-  else
+  (* Remove optional trailing "_con" or "_con123" *)
+  let str =
+    global_replace (regexp "_con[0-9]*$") "" str
+  in
+  (* Remove prefix "_stub" *)
+  try
+    let re = regexp "_stub\\([0-9]+\\)" in
+    let _ = search_forward re str 0 in
+    matched_group 0 str
+  with Not_found ->
     ""
 
 let replace_stub: string -> SygusAst.sygus_ast list -> SygusAst.sygus_ast option
