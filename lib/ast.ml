@@ -124,7 +124,7 @@ let rec get_nts_from_expr2: expr -> (string * int option) list list
 = fun expr -> 
   let r = get_nts_from_expr2 in
   match expr with 
-  | NTExpr (_, nts) -> [nts]
+  | NTExpr (nts1, nts2) -> [nts1 @ nts2]
   | Match _ -> Utils.crash "Unexpected case in get_nts_from_expr2"
   | BinOp (expr1, _, expr2) -> 
     r expr1 @ r expr2

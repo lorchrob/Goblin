@@ -219,13 +219,31 @@ let initialize_cvc5 () : solver_instance =
   issue_solver_command set_logic_command solver;
   solver
 
-let assert_smt_constraint: string -> solver_instance -> Ast.expr -> unit 
-= fun nt_prefix solver expr ->
+let assert_smt_constraint: solver_instance -> Ast.expr -> unit 
+= fun solver expr ->
   let assert_cmd = 
-    Format.asprintf "(assert %a)\n" (Sygus.pp_print_expr ~nt_prefix:nt_prefix Utils.StringMap.empty) expr 
+    Format.asprintf "(assert %a)\n" (Sygus.pp_print_expr Utils.StringMap.empty) expr 
   in
   issue_solver_command assert_cmd solver; 
   ()
+
+(* State expression nonterminals in terms of absolute paths from 
+   the root of the derivation tree *)
+let rec universalize_expr prefix expr = 
+  let r = universalize_expr prefix in
+  match expr with
+  | A.NTExpr (nts1, nts2) -> A.NTExpr (nts1, List.map (fun id -> id, None) prefix @ nts2)
+  | BVCast (len, expr) -> BVCast (len, r expr)
+  | BinOp (expr1, op, expr2) -> BinOp (r expr1, op, r expr2) 
+  | UnOp (op, expr) -> UnOp (op, r expr) 
+  | CompOp (expr1, op, expr2) -> CompOp (r expr1, op, r expr2) 
+  | Length expr -> Length (r expr) 
+  | Match _ -> Utils.crash "Unexpected case in universalize_expr"
+  | BVConst _ 
+  | BLConst _ 
+  | BConst _ 
+  | IntConst _ 
+  | StrConst _ -> expr
 
 let new_decision_level: solver_instance -> unit 
 = fun solver ->
@@ -354,7 +372,7 @@ let rec nt_will_be_reached derivation_tree ast nt =
     | ProdRule (_, rhss) -> 
       (* There are multiple options. Conservatively say the nt may not be reached. 
          TODO: This is a safe approximation. A more exact analysis would see if the nt is reachable in all cases. *)
-      if List.length rhss <> 1 then false 
+      if List.length rhss <> 1 then false
       else 
         nt_will_be_reached_ast nts new_head
     | _ -> true
@@ -372,7 +390,10 @@ let rec nt_will_be_reached derivation_tree ast nt =
         | DependentTermLeaf nt2 -> str = nt2
         ) !children with 
         | Some child -> nt_will_be_reached child ast nts
-        | None -> false)
+        | None -> 
+          if !Flags.debug then Format.fprintf Format.std_formatter "Could not find child %s from node %s\n"
+            str head;
+          false)
     | _ -> true
 
 (* Determine if a constraint necessarily applies to a given derivation tree. 
@@ -381,10 +402,10 @@ let rec nt_will_be_reached derivation_tree ast nt =
 let constraint_is_applicable expr derivation_tree ast = 
   let nts = A.get_nts_from_expr2 expr in
   List.fold_left (fun acc nt -> 
-    acc && nt_will_be_reached derivation_tree ast nt
+    acc && nt_will_be_reached derivation_tree ast (List.tl nt)
   ) true nts
 
-let assert_and_remove_applicable_constraints constraint_set derivation_tree ast path solver =
+let assert_and_remove_applicable_constraints constraint_set derivation_tree ast solver =
   let constraints_to_remove = 
     ConstraintSet.fold (fun expr acc -> 
       if constraint_is_applicable expr derivation_tree ast then (
@@ -392,9 +413,14 @@ let assert_and_remove_applicable_constraints constraint_set derivation_tree ast 
         if !Flags.debug then Format.fprintf Format.std_formatter "Constraint %a is applicable in derivation tree %a\n"
           A.pp_print_expr expr 
           pp_print_derivation_tree derivation_tree;
-        assert_smt_constraint path solver expr;
+        assert_smt_constraint solver expr;
         ConstraintSet.add expr acc
-      ) else acc
+      ) else (
+        (if !Flags.debug then Format.fprintf Format.std_formatter "Constraint %a is not applicable in derivation tree %a\n"
+          A.pp_print_expr expr 
+          pp_print_derivation_tree derivation_tree);
+        acc
+      )
     )  !constraint_set ConstraintSet.empty 
   in
   constraint_set := ConstraintSet.diff !constraint_set constraints_to_remove;
@@ -473,7 +499,6 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
       Utils.crash ("Trying to expand node " ^ nt ^ " that already has children in dpll")
     | Node (nt, visited, path, children) as node -> 
       let path' = String.concat "_" path |> String.lowercase_ascii in
-      let path'' = String.concat "_" (Utils.init path) |> String.lowercase_ascii in
       let grammar_rule = List.find (fun element -> match element with 
       | A.ProdRule (nt2, _) 
       | TypeAnnotation (nt2, _, _) -> String.equal nt nt2
@@ -488,9 +513,8 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
         List.iter (fun sc -> match sc with 
         | A.SyGuSExpr expr ->
           declare_smt_variables declared_variables (Utils.StringMap.singleton path' A.Int) solver;
-          (* assert_smt_constraint path'' solver expr;  *)
-          constraints_to_assert := ConstraintSet.add expr !constraints_to_assert;
-          constraints_to_assert := assert_and_remove_applicable_constraints constraints_to_assert !derivation_tree ast path'' solver;
+          constraints_to_assert := ConstraintSet.add (universalize_expr path expr) !constraints_to_assert;
+          constraints_to_assert := assert_and_remove_applicable_constraints constraints_to_assert !derivation_tree ast solver;
           let model = get_smt_result ast solver in  
           (match model with 
           | Ok model -> 
@@ -532,8 +556,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
               Utils.StringMap.add str ty acc
             ) Utils.StringMap.empty expr_variables in
             declare_smt_variables declared_variables ty_ctx solver;
-            (* assert_smt_constraint path' solver expr;  *)
-            constraints_to_assert := ConstraintSet.add expr !constraints_to_assert;
+            constraints_to_assert := ConstraintSet.add (universalize_expr path expr) !constraints_to_assert;
             (* don't instantiate yet -- we haven't hit the leaf nodes *)
             (* derivation_tree := instantiate_terminals model !derivation_tree;  *)
           | A.Dependency _ -> ()
@@ -541,7 +564,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
 
           (* Assert the constraints from this choice (and also try to assert constraints hanging around from earlier on,
              but maybe weren't definitely applicable until this decision) *)
-          constraints_to_assert := assert_and_remove_applicable_constraints constraints_to_assert !derivation_tree ast path'' solver;
+          constraints_to_assert := assert_and_remove_applicable_constraints constraints_to_assert !derivation_tree ast solver;
           let model = get_smt_result ast solver in
           (match model with 
           | Ok _ -> (* sat *)

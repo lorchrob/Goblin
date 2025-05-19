@@ -1,5 +1,12 @@
-(*!! TODO: Race engines. 
-     TODO: Parallelize divide and conquer (DAC) engines. *)
+(*!! TODO: debug test4 and test5 in dpll_mono, then dpll_dac
+        Should immediately "universalize" expressions by stating NTs in terms of paths from the start symbol,
+        then when you assert it, it doesn't depend on the current location in the search
+     TODO: Support non-int types in DPLL engine
+     TODO: Race engines 
+        then engine flag should refer to set of enabled engines
+        have to support optional return types if the engine is not always applicable
+     TODO: Parallelize divide and conquer (DAC) engines. 
+     TODO: Support string constraints (separate placeholder from string type in type system) *)
 
 let main_pipeline filename = 
   let ppf = Format.std_formatter in
