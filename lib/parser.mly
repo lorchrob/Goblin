@@ -4,11 +4,10 @@ open Ast
 
 %token BOOL
 %token INT
-%token STR
+%token PLACEHOLDER
 %token BITVECTOR
 %token INTTOBITVECTOR
 %token BITLIST
-%token MACHINEINT
 // %token CASE
 // %token OF
 %token LENGTH
@@ -101,10 +100,9 @@ rhs:
 il_type: 
 | BOOL { Bool }
 | INT { Int }
-| STR { String }
+| PLACEHOLDER { Placeholder }
 | BITVECTOR; LPAREN; len = INTEGER; RPAREN; { BitVector (len) }
 | BITLIST { BitList }
-| MACHINEINT; LPAREN; width = INTEGER; RPAREN; { MachineInt (width) }
 
 semantic_constraints:
 | LCURLY; scs = semantic_constraint_list; RCURLY; { scs }
@@ -150,7 +148,7 @@ expr:
 | LNOT; e = expr { UnOp (LNot, e) }
 (* Concrete constants *)
 | i = INTEGER; { IntConst (i) }
-| s = STRING; { StrConst (s) }
+| s = STRING; { PhConst (s) }
 | TRUE; { BConst (true) }
 | FALSE; { BConst (false) }
 | bv = BITS { BVConst (List.length bv, bv) }

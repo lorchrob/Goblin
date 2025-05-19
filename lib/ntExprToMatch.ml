@@ -137,7 +137,7 @@ let rec pull_up_match_exprs: A.expr -> A.expr =
   | BLConst _ 
   | BConst _ 
   | IntConst _ 
-  | StrConst _ -> expr
+  | PhConst _ -> expr
 
 (* Recursively generate match expressions for the "top level" of each NT expr, 
    until all the NTExprs have no more dots. If we encounter the same "top level" NT 
@@ -389,7 +389,7 @@ fun ctx expr ->
     | BLConst _ 
     | BConst _ 
     | IntConst _ 
-    | StrConst _ -> matches_so_far, expr
+    | PhConst _ -> matches_so_far, expr
   in snd (helper ctx SILSet.empty expr)
 
 (* Say a production rule has multiple options with the same nonterminal, e.g., 
@@ -463,7 +463,7 @@ let filter_out_dangling_nts expr =
   | BLConst _ 
   | BConst _ 
   | IntConst _ 
-  | StrConst _ -> expr
+  | PhConst _ -> expr
   in 
   helper SILSet.empty expr
 

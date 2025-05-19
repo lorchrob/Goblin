@@ -11,13 +11,10 @@
   let keyword_table = mk_hashtbl [
     "Bool", BOOL ;
     "Int", INT ;
-    "String", STR ;
+    "Placeholder", PLACEHOLDER ;
     "BitVector", BITVECTOR ;
     "int_to_bitvector", INTTOBITVECTOR ;
     "BitList", BITLIST ; 
-    "MachineInt", MACHINEINT ;
-    (* "case", CASE ; *)
-    (* "of", OF ; *)
     "length", LENGTH ;
     "land", LAND ;
     "lor", LOR ;

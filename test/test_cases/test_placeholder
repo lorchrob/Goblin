@@ -2,4 +2,4 @@
 { <AUTH_ALGO> <- "placeholder"; };
 
 <STATUS_CODE> :: BitVector(16);
-<AUTH_ALGO> :: String;
+<AUTH_ALGO> :: Placeholder;

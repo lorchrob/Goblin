@@ -1,6 +1,4 @@
-(*!! TODO: debug test4 and test5 in dpll_mono, then dpll_dac
-        Should immediately "universalize" expressions by stating NTs in terms of paths from the start symbol,
-        then when you assert it, it doesn't depend on the current location in the search
+(*!! TODO: 
      TODO: Support non-int types in DPLL engine
      TODO: Race engines 
         then engine flag should refer to set of enabled engines

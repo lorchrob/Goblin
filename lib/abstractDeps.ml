@@ -22,7 +22,7 @@ let rec calculate_casts: expr -> expr
 | BLConst _ 
 | BConst _ 
 | IntConst _ 
-| StrConst _ -> expr
+| PhConst _ -> expr
 
 let stub_grammar_element: TypeChecker.context -> semantic_constraint list -> grammar_element -> semantic_constraint option * grammar_element * TypeChecker.context
 = fun ctx scs ge -> match ge with 

@@ -138,7 +138,11 @@ type solver_instance = {
 }
 
 type model_value = 
+(* | ConcreteBool of bool *)
 | ConcreteInt of int
+(* | ConcretePlaceholder of string
+| ConcreteBitVector of int * bool list
+| ConcreteBitList of bool list *)
 
 type derivation_tree = 
 | SymbolicIntLeaf of string list (* path to this node *)
@@ -243,7 +247,7 @@ let rec universalize_expr prefix expr =
   | BLConst _ 
   | BConst _ 
   | IntConst _ 
-  | StrConst _ -> expr
+  | PhConst _ -> expr
 
 let new_decision_level: solver_instance -> unit 
 = fun solver ->

@@ -43,7 +43,7 @@ let process_constructor_str: string -> string
 let expr_to_sygus_ast: A.expr -> SA.sygus_ast 
 = fun expr -> match expr with 
 | IntConst i -> IntLeaf i 
-| StrConst s -> VarLeaf s
+| PhConst s -> VarLeaf s
 | BVConst (len, bits) -> BVLeaf (len, bits)
 | BLConst bits -> BLLeaf bits 
 | _ -> eval_fail 1
@@ -54,7 +54,7 @@ let rec sygus_ast_to_expr: SA.sygus_ast -> A.expr list
 | IntLeaf i -> [IntConst i]
 | BVLeaf (len, bits) -> [BVConst (len, bits)]
 | BLLeaf bits -> [BLConst bits]
-| VarLeaf s -> [StrConst s ]
+| VarLeaf s -> [PhConst s ]
 | Node (_, sygus_asts) -> List.map sygus_ast_to_expr sygus_asts |> List.flatten
 
 let rec compute_dep: A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -> A.element -> string -> SA.sygus_ast
@@ -294,7 +294,7 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -
     match acc, expr with 
     | [(A.IntConst i)], A.BLConst bits -> [IntConst (i + (List.length bits))]
     | [(A.IntConst i)], A.BVConst (_, bits) -> [IntConst (i + (List.length bits))]
-    | [(A.IntConst i)], A.StrConst str -> 
+    | [(A.IntConst i)], A.PhConst str -> 
       if str = "<AC_TOKEN>" || str = "<SCALAR>" then [IntConst (i + 32*8)] 
       else if str = "<ELEMENT>" then [IntConst (i + 64*8)]
       else Utils.crash "Tried to compute length of unknown placeholder"
@@ -306,7 +306,7 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -
   | [IntConst i] -> [A.il_int_to_bitvector len i]
   | _ -> eval_fail 27
  )
-| BVConst _ | BLConst _ | IntConst _ | BConst _ | StrConst _ -> [expr]
+| BVConst _ | BLConst _ | IntConst _ | BConst _ | PhConst _ -> [expr]
 | NTExpr _ -> Utils.crash "Complicated NTExprs not yet supported in dependency computation"
 | Match _ -> Utils.crash "Match not yet supported in dependency computation"
 

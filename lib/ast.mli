@@ -58,13 +58,13 @@ and expr =
 | BLConst of bool list
 | BConst of bool
 | IntConst of int
-| StrConst of string
+| PhConst of string
 
 type semantic_constraint =
 | Dependency of string * expr
 | SyGuSExpr of expr
 
-type il_type = Bool | Int | String | BitVector of int | BitList | MachineInt of int | ADT of string list list
+type il_type = Bool | Int | Placeholder | BitVector of int | BitList | ADT of string list list
 
 type grammar_element =
 | Nonterminal of string

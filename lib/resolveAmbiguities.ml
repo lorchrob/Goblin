@@ -95,7 +95,7 @@ let rec generate_all_possible_exprs: TC.context -> string list -> A.expr -> A.ex
   | BLConst _ 
   | BConst _ 
   | BVCast _  
-  | StrConst _
+  | PhConst _
   | IntConst _ -> [expr]
 
 let process_sc: TC.context -> string list -> A.semantic_constraint -> A.semantic_constraint 

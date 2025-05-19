@@ -20,10 +20,9 @@ let pp_print_ty: Format.formatter -> A.il_type -> unit
 | Bool -> Format.fprintf ppf "Bool"
 (* NOTE: Strings should only be present for dependency computations. 
    If it's here, it is a grammar element that would be pruned anyway. *)
-| String -> Format.fprintf ppf "Int"
+| Placeholder -> Format.fprintf ppf "Int"
 | BitVector len -> Format.fprintf ppf "(_ BitVec %d)" len
 | BitList -> Format.fprintf ppf "(Seq Bool)"
-| MachineInt width -> Format.fprintf ppf "(_ BitVec %d)" (Lib.pow 2 width)
 | ADT _ -> Utils.crash "sygus.ml (pp_print_ty)"
 
 let pp_print_constructor: TC.context -> Ast.semantic_constraint Utils.StringMap.t -> Ast.ast ->  Format.formatter -> A.grammar_element -> unit 
@@ -236,7 +235,7 @@ and pp_print_expr: ?nt_prefix:string -> TC.context -> Format.formatter -> A.expr
       (Lib.pp_print_list Format.pp_print_int "") bits
   | BConst b ->  Format.fprintf ppf "%b" b
   | IntConst i -> Format.fprintf ppf "%d" i
-  | StrConst _ -> Utils.crash "Error: String constants can only be in dependencies (of the form 'nonterminal <- string_literal')"
+  | PhConst _ -> Utils.crash "Error: String constants can only be in dependencies (of the form 'nonterminal <- string_literal')"
   | BLConst _ -> Utils.crash "BitList literals not yet fully supported"
   | BVCast _ -> Utils.crash "Integer to bitvector casts in semantic constraints that aren't preprocessable are not supported"
 

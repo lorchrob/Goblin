@@ -63,7 +63,7 @@ expr =
 | BLConst of bool list
 | BConst of bool
 | IntConst of int 
-| StrConst of string
+| PhConst of string
 
 type semantic_constraint = 
 | Dependency of string * expr (* <nonterminal> <- <expression> *)
@@ -72,10 +72,9 @@ type semantic_constraint =
 type il_type = 
 | Bool 
 | Int 
-| String
+| Placeholder
 | BitVector of int 
 | BitList
-| MachineInt of int
 | ADT of string list list
 
 type grammar_element = 
@@ -116,7 +115,7 @@ let rec get_nts_from_expr: expr -> string list
   | BLConst _ 
   | BConst _ 
   | BVCast _  
-  | StrConst _
+  | PhConst _
   | IntConst _ -> []
 
 (* This function is used before desugaring dot expressions *)
@@ -138,7 +137,7 @@ let rec get_nts_from_expr2: expr -> (string * int option) list list
   | BLConst _ 
   | BConst _ 
   | BVCast _  
-  | StrConst _
+  | PhConst _
   | IntConst _ -> []
 
 (* For when you want to process simple NTs after translation of dot to match expressions *)
@@ -166,7 +165,7 @@ let rec get_nts_from_expr_after_desugaring_dot_notation: expr -> (string * int o
   | BLConst _ 
   | BConst _ 
   | BVCast _  
-  | StrConst _
+  | PhConst _
   | IntConst _ -> []
 
 let pp_print_nt_helper_dots: Format.formatter -> string * int option -> unit 
@@ -289,7 +288,7 @@ and pp_print_expr: Format.formatter -> expr -> unit
     (Lib.pp_print_list Format.pp_print_int "") bits
 | BConst b -> Format.fprintf ppf "%b" b
 | IntConst i -> Format.fprintf ppf "%d" i
-| StrConst s -> Format.fprintf ppf "\"%s\"" s
+| PhConst s -> Format.fprintf ppf "\"%s\"" s
 
 let pp_print_semantic_constraint: Format.formatter -> semantic_constraint -> unit 
 = fun ppf sc -> match sc with 
@@ -305,10 +304,9 @@ let pp_print_ty: Format.formatter -> il_type -> unit
 = fun ppf ty -> match ty with 
 | Bool -> Format.fprintf ppf "Bool"
 | Int -> Format.fprintf ppf "Int"
-| String -> Format.fprintf ppf "String"
+| Placeholder -> Format.fprintf ppf "Placeholder"
 | BitList -> Format.fprintf ppf "BitList" 
 | BitVector width -> Format.fprintf ppf "BitVector(%d)" width
-| MachineInt width -> Format.fprintf ppf "MachineInt(%d)" width
 | ADT rules -> 
   Format.fprintf ppf "ADT: %a"
     (Lib.pp_print_list (Lib.pp_print_list Format.pp_print_string " ") "; ") rules
@@ -404,7 +402,7 @@ let rec expr_contains_dangling_nt: Utils.SILSet.t -> expr -> bool
   | BLConst _ 
   | BConst _ 
   | BVCast _  
-  | StrConst _
+  | PhConst _
   | IntConst _ -> false
   | Match _ -> 
     Utils.crash "Encountered Match in expr_contains_dangling_nt. 
@@ -449,4 +447,4 @@ let rec prepend_nt_to_dot_exprs: string -> expr -> expr
   | BLConst _ 
   | BConst _ 
   | IntConst _ 
-  | StrConst _ -> expr
+  | PhConst _ -> expr

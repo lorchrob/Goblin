@@ -214,8 +214,8 @@ let rec infer_type_expr: context -> mode -> expr -> il_type option
 | BLConst _ -> Some BitList 
 | BConst _ -> Some Bool
 | IntConst _ -> Some Int
-| StrConst _ -> 
-  if mode = Dep then Some String
+| PhConst _ -> 
+  if mode = Dep then Some Placeholder
   else 
     let error_message = "String constants can only be in dependencies (of the form 'nonterminal <- string_literal')" in 
     Utils.crash error_message
