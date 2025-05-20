@@ -31,13 +31,6 @@ let main_pipeline filename =
   let ast = TypeChecker.check_types ctx ast in
   Utils.debug_print Format.pp_print_string ppf "\nType checking complete:\n";
 
-  let safe_f f name () =
-    try f ()
-    with exn ->
-      Printf.eprintf "Function %s threw: %s\n%!" name (Printexc.to_string exn);
-      raise exn
-  in
-
   (* Step 3: Run engine(s) *)
   let sygus_ast = 
     match !Flags.selected_engine with 
@@ -47,10 +40,11 @@ let main_pipeline filename =
     | Some SygusDac -> SygusDac.sygus ppf ctx ast
     (* Race mode *)
     | None -> 
-      Parallelism.race3
-        (safe_f (fun () -> Option.get (DpllDac.dpll ppf ctx ast)) "f_1")
-        (safe_f (fun () -> DpllMono.dpll ppf ctx ast) "f_2")
-        (safe_f (fun () -> SygusDac.sygus ppf ctx ast) "f_3")
+      Parallelism.race_n [
+        (fun () -> Option.get (DpllDac.dpll ppf ctx ast)), "dpll_dac" ;
+        (fun () -> DpllMono.dpll ppf ctx ast), "dpll_mono" ;
+        (fun () -> SygusDac.sygus ppf ctx ast), "sygus_dac" ;
+      ]
   in
 
   (* Step 3: Serialize! *)
