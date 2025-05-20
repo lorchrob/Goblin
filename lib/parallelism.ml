@@ -72,6 +72,10 @@ let parallel_map (f : 'a -> 'b) (xs : 'a list) : 'b list =
   ) chunks in
   List.concat (List.map Domain.join tasks)
 
+let safe_kill pid =
+  try Unix.kill pid Sys.sigterm
+  with Unix.Unix_error (Unix.ESRCH, _, _) -> ()
+
 (* Run two commands in parallel and report which finishes first. TODO: Review this code *)
 let race_commands cmd1 cmd2 =
   let pid1 = Unix.create_process "bash" [| "bash"; "-c"; cmd1 |] Unix.stdin Unix.stdout Unix.stderr in
@@ -82,7 +86,7 @@ let race_commands cmd1 cmd2 =
   let wait_and_set pid other result_val =
     let _, _ = Unix.waitpid [] pid in
     if Atomic.compare_and_set result None (Some result_val) then (
-      ignore (Unix.kill other Sys.sigterm)
+      ignore (safe_kill other)
     )
   in
 

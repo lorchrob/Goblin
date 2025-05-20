@@ -46,7 +46,7 @@ let dac ppf ctx ast =
   Utils.debug_print Lib.pp_print_newline ppf ();
    
   (* Step 5: Race leaf-level solvers *)
-  let sygus_asts = List.map  (fun ast -> 
+  let sygus_asts = Parallelism.parallel_map  (fun ast -> 
     Parallelism.race_n [
       (fun () -> sygus_leaf ppf ctx ast dep_map), "sygus_leaf" ;
       (fun () -> Dpll.dpll ctx ast), "dpll_leaf" ;

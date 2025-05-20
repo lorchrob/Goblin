@@ -39,7 +39,7 @@ let sygus ppf ctx ast =
     (* Step 6.2: Call sygus engine *)
     Utils.debug_print Format.pp_print_string ppf "Calling SyGuS:";
     Utils.debug_print Lib.pp_print_newline ppf ();
-    let sygus_outputs = List.map  (Sygus.call_sygus ctx dep_map) asts in
+    let sygus_outputs = Parallelism.parallel_map  (Sygus.call_sygus ctx dep_map) asts in
     List.iter (Utils.debug_print Format.pp_print_string ppf) sygus_outputs;
     
     (* Step 7: Parse SyGuS output *)

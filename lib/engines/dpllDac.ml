@@ -21,7 +21,7 @@ let dpll ppf ctx ast =
     if not !Flags.only_parse then (
       (* Step 3: DPLL engine *)
       Utils.debug_print Format.pp_print_string ppf "\nStarting DPLL engine:\n";
-      let sygus_asts = List.map (Dpll.dpll ctx) asts in 
+      let sygus_asts = Parallelism.parallel_map (Dpll.dpll ctx) asts in 
       let sygus_asts = 
       if List.mem (SygusAst.VarLeaf "infeasible") sygus_asts 
         then [SygusAst.VarLeaf "infeasible"]

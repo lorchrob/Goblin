@@ -418,10 +418,10 @@ fun ctx dep_map ast ->
   | TypeAnnotation (nt, _, _) :: _ -> nt
   | _ -> assert false
   in
-  ignore (Unix.system "mkdir sygus_debug 2> /dev/null");
-  let input_filename = "./sygus_debug/" ^ top_nt ^ ".smt2" in
-  let output_filename = "./sygus_debug/" ^ top_nt ^ "_out.smt2" in
-  let output_filename2 = "./sygus_debug/" ^ top_nt ^ "_out2.smt2" in
+  
+  let input_filename = Filename.temp_file (top_nt ^ "_input_") ".smt2" in
+  let output_filename = Filename.temp_file (top_nt ^ "_out1_") ".smt2" in
+  let output_filename2 = Filename.temp_file (top_nt ^ "_out2_") ".smt2" in
 
   (* Create sygus input file *)
   let oc = open_out input_filename in
