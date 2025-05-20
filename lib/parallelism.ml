@@ -40,3 +40,62 @@ let race_n: ((unit -> 'a) * string) list -> 'a
   List.iter Domain.join ds;
 
   winner
+
+(* Helper to split a list into n chunks. TODO: Review this function, and the next one *)
+let split_into_chunks n lst =
+  let len = List.length lst in
+  let base_size = len / n in
+  let remainder = len mod n in
+
+  let rec take acc i lst =
+    if i = 0 then (List.rev acc, lst)
+    else match lst with
+      | [] -> (List.rev acc, [])
+      | x :: xs -> take (x :: acc) (i - 1) xs
+  in
+
+  let rec build_chunks i lst =
+    if i >= n || lst = [] then []
+    else
+      let chunk_size = base_size + if i < remainder then 1 else 0 in
+      let (chunk, rest) = take [] chunk_size lst in
+      chunk :: build_chunks (i + 1) rest
+  in
+  build_chunks 0 lst
+
+(* Parallel map, but with a bounded level of parallelism *)
+let parallel_map (f : 'a -> 'b) (xs : 'a list) : 'b list =
+  let num_domains = min (Domain.recommended_domain_count ()) (List.length xs) in
+  let chunks = split_into_chunks num_domains xs in
+  let tasks = List.map (fun chunk ->
+    Domain.spawn (fun () -> List.map f chunk)
+  ) chunks in
+  List.concat (List.map Domain.join tasks)
+
+(* Run two commands in parallel and report which finishes first. TODO: Review this code *)
+let race_commands cmd1 cmd2 =
+  let pid1 = Unix.create_process "bash" [| "bash"; "-c"; cmd1 |] Unix.stdin Unix.stdout Unix.stderr in
+  let pid2 = Unix.create_process "bash" [| "bash"; "-c"; cmd2 |] Unix.stdin Unix.stdout Unix.stderr in
+
+  let result = Atomic.make None in
+
+  let wait_and_set pid other result_val =
+    let _, _ = Unix.waitpid [] pid in
+    if Atomic.compare_and_set result None (Some result_val) then (
+      ignore (Unix.kill other Sys.sigterm)
+    )
+  in
+
+  let t1 = Thread.create (fun () -> wait_and_set pid1 pid2 true) () in
+  let t2 = Thread.create (fun () -> wait_and_set pid2 pid1 false) () in
+
+  let rec wait () =
+    match Atomic.get result with
+    | Some x -> x
+    | None -> Thread.delay 0.01; wait ()
+  in
+
+  let winner = wait () in
+  Thread.join t1;
+  Thread.join t2;
+  winner

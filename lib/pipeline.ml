@@ -1,8 +1,5 @@
-(*!! TODO: Race engines 
-        then engine flag should refer to set of enabled engines
-        have to support optional return types if the engine is not always applicable
-     TODO: Parallelize divide and conquer (DAC) engines. 
-     TODO: divide-and-conquer where you race sygus and dpll on leaf problems
+(*!! TODO: Parallelize solving leaf problems on divide and conquer (DAC) engines. 
+     TODO: Fail gracefully on sygus_dac and mixed_dac
      TODO: Support dependency computation w/ dot notation
      TODO: Support dependency overlapping with sygus expr 
      TODO: Experimental evaluation
@@ -38,12 +35,14 @@ let main_pipeline filename =
     | Some DpllMono -> DpllMono.dpll ppf ctx ast
     | Some DpllDac -> DpllDac.dpll ppf ctx ast |> Option.get
     | Some SygusDac -> SygusDac.sygus ppf ctx ast
+    | Some MixedDac -> MixedDac.dac ppf ctx ast
     (* Race mode *)
     | None -> 
       Parallelism.race_n [
         (fun () -> Option.get (DpllDac.dpll ppf ctx ast)), "dpll_dac" ;
         (fun () -> DpllMono.dpll ppf ctx ast), "dpll_mono" ;
         (fun () -> SygusDac.sygus ppf ctx ast), "sygus_dac" ;
+        (fun () -> MixedDac.dac ppf ctx ast), "mixed_dac" ;
       ]
   in
 

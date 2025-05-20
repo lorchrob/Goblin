@@ -2,6 +2,7 @@ type engine =
   | SygusDac 
   | DpllDac
   | DpllMono
+  | MixedDac
 
 let debug = ref false
 let no_warnings = ref true
@@ -20,12 +21,14 @@ let parse_args () =
     | "sygus_dac" -> Ok SygusDac
     | "dpll_dac" -> Ok DpllDac
     | "dpll_mono" -> Ok DpllMono
+    | "mixed_dac" -> Ok MixedDac
     | s -> Error (`Msg ("Invalid engine: " ^ s))
     in
-    let print fmt = function
-    | SygusDac -> Format.fprintf fmt "sygus_dac"
-    | DpllDac -> Format.fprintf fmt "dpll_dac"
-    | DpllMono -> Format.fprintf fmt "dpll_mono"
+    let print ppf = function
+    | SygusDac -> Format.fprintf ppf "sygus_dac"
+    | DpllDac -> Format.fprintf ppf "dpll_dac"
+    | DpllMono -> Format.fprintf ppf "dpll_mono"
+    | MixedDac -> Format.fprintf ppf "mixed_dac"
     in
     Arg.conv (parse, print)
   in
@@ -61,7 +64,7 @@ let parse_args () =
   in
 
   let engine_flag =
-    let doc = "Select a single engine to use (dpll_mono, dpll_dac, or sygus_dac)" in
+    let doc = "Select a single engine to use (dpll_mono, dpll_dac, sygus_dac, or mixed_dac)" in
     Arg.(value & opt (some engine_conv) None & info ["e"; "engine"] ~docv:"ENGINE" ~doc)
   in
 

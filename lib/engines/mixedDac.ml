@@ -1,0 +1,77 @@
+
+let sygus_leaf: Format.formatter -> TypeChecker.context -> Ast.ast -> Ast.semantic_constraint Utils.StringMap.t -> SygusAst.sygus_ast
+= fun ppf ctx ast dep_map ->
+  if not !Flags.only_parse then (
+    (* Step 1: Convert NTExprs to Match expressions *)
+    let ast = Utils.recurse_until_fixpoint ast (=) (NtExprToMatch.convert_nt_exprs_to_matches ctx) in
+    Utils.debug_print Format.pp_print_string ppf "\nDesugaring NTExprs complete:\n";
+    Utils.debug_print Ast.pp_print_ast ppf ast;
+
+    (* Step 2: Call sygus engine *)
+    Utils.debug_print Format.pp_print_string ppf "Calling SyGuS:";
+    Utils.debug_print Lib.pp_print_newline ppf ();
+    let sygus_output = Sygus.call_sygus ctx dep_map ast in
+    Utils.debug_print Format.pp_print_string ppf sygus_output;
+    
+    (* Step 3: Parse SyGuS output *)
+    Utils.debug_print Format.pp_print_string ppf "\nParsing SyGuS output:\n";
+    let sygus_ast = Parsing.parse_sygus sygus_output ast in
+    let sygus_ast = Result.get_ok sygus_ast in
+    Utils.debug_print Format.pp_print_string ppf "\nSyGuS ASTs:\n";
+    Format.pp_print_flush ppf ();
+
+    sygus_ast
+  ) else VarLeaf ""
+
+let dac ppf ctx ast =
+  (* Step 1: Merge overlapping constraints *)
+  Utils.debug_print Format.pp_print_string ppf "\nMerge overlapping constraints:\n";
+  let ast = MergeOverlappingConstraints.merge_overlapping_constraints ast in
+  Utils.debug_print Ast.pp_print_ast ppf ast;
+
+  (* Step 2: Resolve ambiguities in constraints *)
+  let ast = ResolveAmbiguities.resolve_ambiguities ctx ast in
+  Utils.debug_print Format.pp_print_string ppf "\nResolving grammar ambiguities complete:\n";
+  Utils.debug_print Ast.pp_print_ast ppf ast;
+
+  (* Step 3: Abstract away dependent terms in the grammar *)
+  Utils.debug_print Format.pp_print_string ppf "\nDependent term abstraction:\n";
+  let dep_map, ast, ctx = AbstractDeps.abstract_dependencies ctx ast in 
+  Utils.debug_print Ast.pp_print_ast ppf ast;
+
+  (* Step 4: Divide and conquer *)
+  Utils.debug_print Format.pp_print_string ppf "\n\nDivide and conquer:\n";
+  let asts = DivideAndConquer.split_ast ast in 
+  List.iter (fun ast -> Utils.debug_print Ast.pp_print_ast ppf ast; Utils.debug_print Lib.pp_print_newline ppf ()) asts;
+  Utils.debug_print Lib.pp_print_newline ppf ();
+   
+  (* Step 5: Race leaf-level solvers *)
+  let sygus_asts = List.map  (fun ast -> 
+    Parallelism.race_n [
+      (fun () -> sygus_leaf ppf ctx ast dep_map), "sygus_leaf" ;
+      (fun () -> Dpll.dpll ctx ast), "dpll_leaf" ;
+    ]
+  ) asts in
+
+  (* Step 6: Recombine to single AST *)
+  Utils.debug_print Format.pp_print_string ppf "\nRecombining to single AST:\n";
+  let sygus_ast = Recombine.recombine sygus_asts in 
+  Utils.debug_print SygusAst.pp_print_sygus_ast ppf sygus_ast;
+
+  Format.pp_print_flush ppf ();
+
+  (* Step 7: Compute dependencies *)
+  Utils.debug_print Format.pp_print_string ppf "\nComputing dependencies:\n";
+  let sygus_ast = 
+    if not (List.mem (SygusAst.VarLeaf "infeasible") sygus_asts)
+    then ComputeDeps.compute_deps dep_map ast sygus_ast 
+    else SygusAst.VarLeaf "infeasible"
+  in  
+  Utils.debug_print SygusAst.pp_print_sygus_ast ppf sygus_ast;
+
+  (* Step 8: Bit flip mutations for BitList terms *)
+  Utils.debug_print Format.pp_print_string ppf "\nBit flip mutations:\n";
+  let sygus_ast = BitFlips.flip_bits sygus_ast in 
+  Utils.debug_print SygusAst.pp_print_sygus_ast ppf sygus_ast;
+
+  sygus_ast
