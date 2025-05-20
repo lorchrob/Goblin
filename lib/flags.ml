@@ -8,7 +8,7 @@ let no_warnings = ref true
 let only_parse = ref false
 let daniyal = ref false
 let filename = ref None
-let selected_engine = ref SygusDac
+let selected_engine = ref None
 
 let parse_args () = 
   let open Cmdliner in
@@ -55,8 +55,8 @@ let parse_args () =
   in
 
   let engine_flag =
-    let doc = "Select the engine to use (sygus or dpll)" in
-    Arg.(value & opt engine_conv SygusDac & info ["e"; "engine"] ~docv:"ENGINE" ~doc)
+    let doc = "Select a single engine to use (dpll_mono, dpll_dac, or sygus_dac)" in
+    Arg.(value & opt (some engine_conv) None & info ["e"; "engine"] ~docv:"ENGINE" ~doc)
   in
 
   let set_flags new_debug new_no_warnings new_only_parse new_daniyal new_filename new_engine =

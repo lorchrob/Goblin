@@ -77,9 +77,5 @@ let sygus ppf ctx ast =
     let sygus_ast = BitFlips.flip_bits sygus_ast in 
     Utils.debug_print SygusAst.pp_print_sygus_ast ppf sygus_ast;
 
-    (* Step 11: Serialize! *)
-    Utils.debug_print Format.pp_print_string ppf "\nSerializing:\n";
-    let output = Utils.capture_output SygusAst.serialize sygus_ast in 
-    Format.pp_print_string ppf output; 
-    sygus_ast, output
-  ) else VarLeaf "", ""
+    sygus_ast
+  ) else VarLeaf ""

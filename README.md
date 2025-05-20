@@ -2,7 +2,8 @@
 
 Required opam packages:
 
-* `opam install menhir alcotest ppx_bitstring yojson ocamlgraph lwt lwt_ppx`
+* in OCaml >= 5: `opam install menhirLib cmdliner ocamlgraph bitstring yojson lwt batteries ppx_bitstring alcotest lwt_ppx`
+
 
 Other dependencies:
 

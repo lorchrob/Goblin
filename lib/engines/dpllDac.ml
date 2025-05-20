@@ -40,11 +40,7 @@ let dpll ppf ctx ast =
       let sygus_ast = ComputeDeps.compute_deps dep_map ast sygus_ast in  
       Utils.debug_print SygusAst.pp_print_sygus_ast ppf sygus_ast; 
 
-      (* Step 6: Serialize! *)
-      Utils.debug_print Format.pp_print_string ppf "\nSerializing:\n";
-      let output = Utils.capture_output SygusAst.serialize sygus_ast in 
-      Format.pp_print_string ppf output; 
-      Some (sygus_ast, output)
-    ) else Some (VarLeaf "", "")) 
+      Some sygus_ast
+    ) else Some (VarLeaf "")) 
 
   else None

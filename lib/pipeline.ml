@@ -2,9 +2,15 @@
         then engine flag should refer to set of enabled engines
         have to support optional return types if the engine is not always applicable
      TODO: Parallelize divide and conquer (DAC) engines. 
-     TODO: Support string constraints (separate placeholder from string type in type system) *)
+     TODO: divide-and-conquer where you race sygus and dpll on leaf problems
+     TODO: Support dependency computation w/ dot notation
+     TODO: Support dependency overlapping with sygus expr 
+     TODO: Experimental evaluation
+     TODO: Write paper *)
 
 let main_pipeline filename = 
+  Printexc.record_backtrace true;
+
   let ppf = Format.std_formatter in
   let input_string = Utils.read_file filename in 
 
@@ -25,15 +31,26 @@ let main_pipeline filename =
   let ast = TypeChecker.check_types ctx ast in
   Utils.debug_print Format.pp_print_string ppf "\nType checking complete:\n";
 
-  (* Step 3: Use the selected engine *)
-  if !Flags.selected_engine = DpllMono then 
-    DpllMono.dpll ppf ctx ast
-  else if !Flags.selected_engine = DpllDac then 
-    DpllDac.dpll ppf ctx ast |> Option.get
-  else if !Flags.selected_engine = SygusDac then 
-    SygusDac.sygus ppf ctx ast
-  else
-    Utils.crash "No engine is enabled"
+  (* Step 3: Run engine(s) *)
+  let sygus_ast = 
+    match !Flags.selected_engine with 
+    (* Single engine mode *)
+    | Some DpllMono -> DpllMono.dpll ppf ctx ast
+    | Some DpllDac -> DpllDac.dpll ppf ctx ast |> Option.get
+    | Some SygusDac -> SygusDac.sygus ppf ctx ast
+    (* Race mode *)
+    | None -> 
+      Parallelism.race3
+        (fun () -> Option.get (DpllDac.dpll ppf ctx ast))
+        (fun () -> DpllMono.dpll ppf ctx ast)
+        (fun () -> SygusDac.sygus ppf ctx ast)
+  in
+
+  (* Step 4: Serialize! *)
+  Utils.debug_print Format.pp_print_string ppf "\nSerializing:\n";
+  let output = Utils.capture_output SygusAst.serialize sygus_ast in 
+  Format.pp_print_string ppf output; 
+  sygus_ast, output
 
 let rec collect_results results =
   match results with
