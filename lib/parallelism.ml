@@ -1,3 +1,5 @@
+exception AllReturnedNone
+
 let safe_f f name () =
     try f ()
     with exn ->
@@ -40,6 +42,47 @@ let race_n: ((unit -> 'a) * string) list -> 'a
   List.iter Domain.join ds;
 
   winner
+
+let race_n_opt: ((unit -> 'a option) * string) list -> 'a =
+  fun funs ->
+    let result = Atomic.make None in
+    let remaining = Atomic.make (List.length funs) in
+
+    let run id f =
+      Domain.spawn (fun () ->
+        try
+          match f () with
+          | Some r ->
+              ignore (Atomic.compare_and_set result None (Some (id, r)))
+          | None ->
+              ignore (Atomic.fetch_and_add remaining (-1))
+        with exn ->
+          Printf.eprintf "Domain %s crashed with: %s\n%s\n%!"
+            id
+            (Printexc.to_string exn)
+            (Printexc.get_backtrace ());
+          ignore (Atomic.fetch_and_add remaining (-1));
+          raise exn
+      )
+    in
+
+    let ds = List.map (fun (f, id) -> run id f) funs in
+
+    let rec wait () =
+      match Atomic.get result with
+      | Some (id, r) -> (id, r)
+      | None ->
+        if Atomic.get remaining = 0 then raise AllReturnedNone
+        else (Domain.cpu_relax (); wait ())
+    in
+
+    let (winner_id, winner) = wait () in
+
+    if !Flags.show_winner then Printf.printf "Function %s won the race!\n%!" winner_id;
+
+    List.iter Domain.join ds;
+
+    winner
 
 (* Helper to split a list into n chunks. TODO: Review this function, and the next one *)
 let split_into_chunks n lst =

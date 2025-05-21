@@ -15,6 +15,7 @@ let dpll ppf ctx ast =
     (* Step 3: Divide and conquer *)
     Utils.debug_print Format.pp_print_string ppf "\n\nDivide and conquer:\n";
     let asts = DivideAndConquer.split_ast ast in 
+    match asts with | None -> None | Some asts -> 
     List.iter (fun ast -> Utils.debug_print Ast.pp_print_ast ppf ast; Utils.debug_print Lib.pp_print_newline ppf ()) asts;
     Utils.debug_print Lib.pp_print_newline ppf ();
 
@@ -41,6 +42,6 @@ let dpll ppf ctx ast =
       Utils.debug_print SygusAst.pp_print_sygus_ast ppf sygus_ast; 
 
       Some sygus_ast
-    ) else Some (VarLeaf "")) 
+    ) else Some (VarLeaf ""))
 
   else None

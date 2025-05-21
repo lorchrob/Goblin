@@ -1,1 +1,1 @@
-val split_ast : Ast.ast -> Ast.ast list
+val split_ast : Ast.ast -> Ast.ast list option

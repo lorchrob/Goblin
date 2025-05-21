@@ -1,12 +1,18 @@
-(*!! TODO: Parallelize solving leaf problems on divide and conquer (DAC) engines. 
-     TODO: Fail gracefully on sygus_dac and mixed_dac
+(*!! 
+     TODO: Support ambiguous dot notation references in the dpll modules
      TODO: Support dependency computation w/ dot notation
      TODO: Support dependency overlapping with sygus expr 
-     TODO: Experimental evaluation
-     TODO: Write paper *)
+     TODO: Experimental evaluation (debug examples first)
+     TODO: Fix make test
+     TODO: More fine-grained check if divide and conquer engines are usable. Right now,
+           rejecting all recursive grammars. But really this only is necessary for sygus_dac.
+     TODO: Write paper 
+     
+     FUTURE: I think we could support arbitrary recursive functions in the dpll engines (at least, dpll_mono) 
+             by simply unrolling the function definition as far as you need on the fly *)
 
 let main_pipeline filename = 
-  Printexc.record_backtrace true;
+  (* Printexc.record_backtrace true; *)
 
   let ppf = Format.std_formatter in
   let input_string = Utils.read_file filename in 
@@ -33,17 +39,29 @@ let main_pipeline filename =
     match !Flags.selected_engine with 
     (* Single engine mode *)
     | Some DpllMono -> DpllMono.dpll ppf ctx ast
-    | Some DpllDac -> DpllDac.dpll ppf ctx ast |> Option.get
-    | Some SygusDac -> SygusDac.sygus ppf ctx ast
-    | Some MixedDac -> MixedDac.dac ppf ctx ast
+    | Some DpllDac -> 
+      (match DpllDac.dpll ppf ctx ast with
+      | Some result -> result 
+      | None -> Utils.crash "dpll_dac engine not applicable to this input")
+    | Some SygusDac -> 
+      (match SygusDac.sygus ppf ctx ast with  
+      | Some result -> result 
+      | None -> Utils.crash "sygus_dac engine not applicable to this input")
+    | Some MixedDac -> 
+      (match MixedDac.dac ppf ctx ast with
+      | Some result -> result 
+      | None -> Utils.crash "mixed_dac engine not applicable to this input")
     (* Race mode *)
     | None -> 
-      Parallelism.race_n [
-        (fun () -> Option.get (DpllDac.dpll ppf ctx ast)), "dpll_dac" ;
-        (fun () -> DpllMono.dpll ppf ctx ast), "dpll_mono" ;
-        (fun () -> SygusDac.sygus ppf ctx ast), "sygus_dac" ;
-        (fun () -> MixedDac.dac ppf ctx ast), "mixed_dac" ;
-      ]
+      try 
+        Parallelism.race_n_opt [
+          (fun () -> DpllDac.dpll ppf ctx ast), "dpll_dac" ;
+          (fun () -> Some (DpllMono.dpll ppf ctx ast)), "dpll_mono" ;
+          (fun () -> (SygusDac.sygus ppf ctx ast)), "sygus_dac" ;
+          (fun () -> (MixedDac.dac ppf ctx ast)), "mixed_dac" ;
+        ]
+      with Parallelism.AllReturnedNone -> 
+        Utils.crash "Internal error: No engine produced a result"
   in
 
   (* Step 3: Serialize! *)
@@ -86,7 +104,7 @@ let sygusGrammarToPacket ast =
   let dep_map, ast, ctx = AbstractDeps.abstract_dependencies ctx ast in 
 
   (* Step 7: Divide and conquer *)
-  let asts = DivideAndConquer.split_ast ast in 
+  let asts = DivideAndConquer.split_ast ast |> Option.get in 
 
   if not !Flags.only_parse then (
     (* Step 8: Call sygus engine *)

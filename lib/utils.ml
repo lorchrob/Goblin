@@ -160,3 +160,12 @@ let random_string n =
     Char.chr (Random.int (126 - 32 + 1) + 32)  (* Range: 32 to 126 *)
   in
   String.init n (fun _ -> gen_char ())
+
+let sequence_option (xs : 'a option list) : 'a list option =
+  List.fold_right
+    (fun opt acc ->
+       match opt, acc with
+       | Some x, Some xs -> Some (x :: xs)
+       | _, _ -> None)
+    xs
+    (Some [])

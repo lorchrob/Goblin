@@ -49,12 +49,12 @@ let rec split_ast': ast -> ast list
     new_ast :: (List.map split_ast' subproblems |> List.flatten)
     |> List.filter (fun ast -> ast <> [])
 
-let split_ast: ast -> ast list 
+let split_ast: ast -> ast list option
 = fun ast -> 
   let asts = split_ast' ast in 
   let asts = List.map (fun ast -> match ast with 
-    | ProdRule (sym, _) :: _-> TopologicalSort.dead_rule_removal ast sym |> Option.get
-    | TypeAnnotation (sym, ges, scs) :: _ -> [TypeAnnotation (sym, ges, scs)]
+    | ProdRule (sym, _) :: _-> TopologicalSort.dead_rule_removal ast sym 
+    | TypeAnnotation (sym, ges, scs) :: _ -> Some [TypeAnnotation (sym, ges, scs)]
     | _ -> Utils.crash "Unexpected case in split_ast"
   ) asts in 
-  asts
+  Utils.sequence_option asts

@@ -42,7 +42,7 @@ let dac ppf ctx ast =
   (* Step 4: Divide and conquer *)
   Utils.debug_print Format.pp_print_string ppf "\n\nDivide and conquer:\n";
   let asts = DivideAndConquer.split_ast ast in 
-  List.iter (fun ast -> Utils.debug_print Ast.pp_print_ast ppf ast; Utils.debug_print Lib.pp_print_newline ppf ()) asts;
+  match asts with | None -> None | Some asts -> List.iter (fun ast -> Utils.debug_print Ast.pp_print_ast ppf ast; Utils.debug_print Lib.pp_print_newline ppf ()) asts;
   Utils.debug_print Lib.pp_print_newline ppf ();
    
   (* Step 5: Race leaf-level solvers *)
@@ -74,4 +74,4 @@ let dac ppf ctx ast =
   let sygus_ast = BitFlips.flip_bits sygus_ast in 
   Utils.debug_print SygusAst.pp_print_sygus_ast ppf sygus_ast;
 
-  sygus_ast
+  Some sygus_ast
