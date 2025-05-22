@@ -244,7 +244,7 @@ let map_provenance_to_string (p : provenance) : string =
   | ValidPacket NOTHING -> Utils.crash "unexpected symbol.."
   | RawPacket _ -> Utils.crash "handle the raw packet case"
   
-let callDriver x =
+(* let callDriver x =
   let message_file = "sync/message.txt" in
   let response_file = "sync/response.txt" in
   let placeholder_replaced_file = "sync/placeholders-replace.pkt" in
@@ -274,7 +274,7 @@ let callDriver x =
     let driver_result = wait_for_python_response response_file in
     driver_call_time := ((Unix.gettimeofday ()) -. driver_start_time) ;
     driver_calls := !driver_calls + 1 ;
-    (driver_result, oracle_result)
+    (driver_result, oracle_result) *)
 
 let rec scoreFunction (pktStatus : (provenance * output) list) (mutatedPopulation : child list) : ((provenance list list) * (child list)) =
   print_endline "SCORING FUNCTION -- SCORING POPULATION" ;
@@ -444,10 +444,10 @@ let rec mutationList sampleFunction (mutationOps : mutationOperations) (n : int)
     0 -> []
   | _ -> sampleFunction mutationOps :: mutationList sampleFunction mutationOps (n - 1)
 
-let rec sendPacketsToState (p : provenance list) : unit = 
+(* let rec sendPacketsToState (p : provenance list) : unit = 
   match p with
     [] -> ()
-  | x :: xs -> let _ = callDriver x in sendPacketsToState xs
+  | x :: xs -> let _ = callDriver x in sendPacketsToState xs *)
 
 let save_time_info filename trace_length =
   let _ = Unix.system ("touch " ^ filename) in
@@ -483,7 +483,7 @@ let rec save_queue_info queues =
     save_queue_info xs
   | [] -> ()
     
-let sendPacket (c : child) : (provenance * output) * state =
+(* let sendPacket (c : child) : (provenance * output) * state =
   let stateTransition = fst c |> fst in
   print_endline "\n\n\nGRAMMAR TO SYGUS:" ;
   pp_print_ast Format.std_formatter (fst c |> snd) ;
@@ -507,7 +507,7 @@ let sendPacket (c : child) : (provenance * output) * state =
         sygus_fail_calls := !sygus_fail_calls + 1 ;
         ((ValidPacket NOTHING, EXPECTED_OUTPUT), IGNORE_)
     )
-  | None -> ((ValidPacket NOTHING, EXPECTED_OUTPUT), IGNORE_)
+  | None -> ((ValidPacket NOTHING, EXPECTED_OUTPUT), IGNORE_) *)
 
 let bytes_to_hex (b: bytes) : string =
   let hex_of_byte byte =
@@ -565,7 +565,9 @@ let callDriver_new packets packet =
   ) *)
   | RawPacket y ->
     (* write_symbol_to_file "sync/trace-length.txt" (Printf.sprintf "%d" ((List.length packets) + 1)) ;  *)
-    write_trace_to_file (packets @ [(bytes_to_hex y)]);
+    let bytes_to_send = bytes_to_hex y in
+    write_trace_to_file (packets @ [bytes_to_send]);
+    parse_packet (Bitstring.bitstring_of_string (Bytes.to_string y)) ;
     (* write_symbol_to_file message_file (packets ^ (Bytes.to_string y) ^ ", "); *)
     print_endline "write to file successful.." ;
     (* let bin_placeholders = wait_for_python_bin_response placeholder_replaced_file in *)
@@ -899,6 +901,6 @@ let runFuzzer grammar_list =
   let confirmed_queue = CONFIRMED([([ValidPacket COMMIT], commit_grammar), 0.0; ([ValidPacket COMMIT], confirm_grammar), 0.0; ([ValidPacket COMMIT], commit_confirm_grammar), 0.0;]) in
   let accepted_queue = ACCEPTED([([ValidPacket COMMIT; ValidPacket CONFIRM], commit_grammar), 0.0; ([ValidPacket COMMIT; ValidPacket CONFIRM], confirm_grammar), 0.0; ([ValidPacket COMMIT; ValidPacket CONFIRM], commit_confirm_grammar), 0.0;]) in
 
-  let _ = fuzzingAlgorithm 10000 [nothing_queue; confirmed_queue; accepted_queue] [] 100 0 1150 100 100 [ CorrectPacket;  Modify; Add;CrossOver;Delete;] [nothing_queue; confirmed_queue; accepted_queue] in
+  let _ = fuzzingAlgorithm 10000 [nothing_queue; confirmed_queue; accepted_queue] [] 100 0 1150 100 100 [ Modify; Add;CrossOver;Delete;] [nothing_queue; confirmed_queue; accepted_queue] in
   ()
   (* CorrectPacket;  Modify; Add;CrossOver;*)
