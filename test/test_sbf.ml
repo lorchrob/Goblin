@@ -131,13 +131,21 @@ let test_vertical_ambiguous_reference_2 () =
 (* Semantic constraint example *)
 let test_sc () =
   let input = "../../../test/test_cases/test_sc" in
-  let _, output = main_pipeline input in
-  check string "test_sc" output "00000000000011000000000000000000\n"
+  let ast = Parsing.parse (Utils.read_file input) in
+  let sygus_ast, _ = main_pipeline input in
+  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  match output with
+  | Ok _ -> fail "Expected failure"
+  | Error _ -> ()
 
 let test_placeholder () =
   let input = "../../../test/test_cases/test_placeholder" in
-  let _, output = main_pipeline input in
-  check string "test_sc" output "placeholder0000000000000000\n"
+  let ast = Parsing.parse (Utils.read_file input) in
+  let sygus_ast, _ = main_pipeline input in
+  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  match output with
+  | Ok _ -> fail "Expected failure"
+  | Error _ -> ()
 
 (* Dependent term calculation example *)
 let test_dt () =

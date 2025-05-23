@@ -203,7 +203,7 @@ let declare_smt_variables: Utils.StringSet.t ref -> A.il_type Utils.StringMap.t 
     if Utils.StringSet.mem var !declared_variables then 
       () 
     else 
-      let declaration_string = Format.asprintf "(declare-fun %s () %a)\n" var A.pp_print_ty ty in
+      let declaration_string = Format.asprintf "(declare-fun %s () %a)\n" var Sygus.pp_print_ty ty in
       declared_variables := Utils.StringSet.add var !declared_variables;
       issue_solver_command declaration_string solver
   ) ctx 
