@@ -40,7 +40,7 @@ int_to_bitvector(16, 19) bvlte <GROUP_ID> land
 <STATUS_CODE> :: BitVector(16);
 
 
-<AC_TOKEN> :: String 
+<AC_TOKEN> :: Placeholder 
 { <AC_TOKEN> <- "<AC_TOKEN>"; };
 
 <PASSWORD_IDENTIFIER> ::= <PASSWD_ELEMENT_ID> <PASSWD_ID_LENGTH> <PASSWD_ELEMENT_ID_EXTENSION> <PASSWD_ID> 
@@ -95,14 +95,14 @@ lnot (length(<AC_TOKEN_ELEMENT>) >= 0);
 
 <AC_TOKEN_ELEMENT> :: BitList;
 
-<SCALAR>     :: String  
+<SCALAR>     :: Placeholder  
 { <SCALAR> <- "<SCALAR>"; };
 
-<ELEMENT> :: String 
+<ELEMENT> :: Placeholder 
 {<ELEMENT> <- "<ELEMENT>"; };
 
-<CONFIRM_HASH> :: String 
+<CONFIRM_HASH> :: Placeholder 
 { <CONFIRM_HASH> <- "<CONFIRM_HASH>"; };
 
-<SEND_CONFIRM_COUNTER> :: String
+<SEND_CONFIRM_COUNTER> :: Placeholder
 { <SEND_CONFIRM_COUNTER> <- "<SEND_CONFIRM_COUNTER>"; };
