@@ -1,14 +1,14 @@
 :- use_module(library(clpfd)).
 
 % S -> A B { A.C > B }
-s(s(A, B)) :-
+s(s1(A, B)) :-
     a(A),
     b(B),
-    A = a(C, _),
+    A = a1(C, _),
     C #> B.
 
 % A -> C D
-a(a(C, D)) :-
+a(a1(C, D)) :-
     c(C),
     d(D).
 

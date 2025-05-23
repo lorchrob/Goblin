@@ -69,9 +69,9 @@ let rec check_syntax_semantics: Ast.ast -> SygusAst.sygus_ast -> (unit, string) 
        if all are satisfied *)
     let scs = List.map (fun sc -> match sc with 
     | A.SyGuSExpr expr -> 
-      ComputeDeps.evaluate sygus_ast (ProdRule (nt, rhss)) expr
+      ComputeDeps.evaluate sygus_ast ast (ProdRule (nt, rhss)) expr
     | Dependency (nt, expr) -> 
-      ComputeDeps.evaluate sygus_ast (ProdRule (nt, rhss)) (A.CompOp (NTExpr ([], [nt, None]), Eq, expr))
+      ComputeDeps.evaluate sygus_ast ast (ProdRule (nt, rhss)) (A.CompOp (NTExpr ([], [nt, None]), Eq, expr))
     ) scs in
     let b = List.exists (fun sc -> match sc with 
     | [A.BConst false] -> true 

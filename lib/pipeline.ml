@@ -1,12 +1,14 @@
 (*!! 
-     TODO: Support ambiguous dot notation references in the dpll modules
-     TODO: Support dependency computation w/ dot notation
      TODO: Support dependency overlapping with sygus expr 
      TODO: Experimental evaluation (debug examples first)
-     TODO: Fix make test
+     TODO: Write paper 
+
+     TODO: Fix make test 
+     TODO: Debug test14
+     TODO: Support ambiguous dot notation references in the dpll modules
+     TODO: Support ambiguous dot notation references in dependency computation
      TODO: More fine-grained check if divide and conquer engines are usable. Right now,
            rejecting all recursive grammars. But really this only is necessary for sygus_dac.
-     TODO: Write paper 
      
      FUTURE: I think we could support arbitrary recursive functions in the dpll engines (at least, dpll_mono) 
              by simply unrolling the function definition as far as you need on the fly *)

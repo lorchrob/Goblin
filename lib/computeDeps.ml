@@ -59,8 +59,8 @@ let rec sygus_ast_to_expr: SA.sygus_ast -> A.expr list
 | BoolLeaf b -> [BConst b]
 | Node (_, sygus_asts) -> List.map sygus_ast_to_expr sygus_asts |> List.flatten
 
-let rec compute_dep: A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -> A.element -> string -> SA.sygus_ast
-= fun dep_map sygus_ast element var -> 
+let rec compute_dep: A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -> A.ast -> A.element -> string -> SA.sygus_ast
+= fun dep_map sygus_ast ast element var -> 
   match Utils.StringMap.find_opt (process_constructor_str var) dep_map with 
   | None -> 
     Utils.crash ("Hanging identifier '" ^ var ^ "' when computing dependencies")
@@ -68,34 +68,35 @@ let rec compute_dep: A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -> 
     match sc with 
     | SyGuSExpr _ -> Utils.crash "Encountered SyGuSExpr when computing dependencies"
     | Dependency (_, expr) -> 
-      evaluate ~dep_map sygus_ast element expr |> List.hd |> expr_to_sygus_ast
+      evaluate ~dep_map sygus_ast ast element expr |> List.hd |> expr_to_sygus_ast
   )
 
 (* NOTE: This code assumes that the dependent term is a bitvector. If we wanted to make it general,
          we would have to have composite il_types to track the various nesting. *)
-and evaluate_sygus_ast: A.semantic_constraint Utils.StringMap.t -> A.element -> SA.sygus_ast -> SA.sygus_ast 
-= fun dep_map element sygus_ast ->
+and evaluate_sygus_ast: A.semantic_constraint Utils.StringMap.t -> A.element -> A.ast -> SA.sygus_ast  -> SA.sygus_ast 
+= fun dep_map element ast sygus_ast ->
   match sygus_ast with 
 | IntLeaf _ | BVLeaf _ | BLLeaf _ | BoolLeaf _ | StrLeaf _ -> sygus_ast
 | VarLeaf var ->
   if Utils.StringMap.mem (remove_suffix var |> String.uppercase_ascii) dep_map 
     then
-      let sygus_ast = compute_dep dep_map sygus_ast element var in 
-      evaluate_sygus_ast dep_map element sygus_ast
+      let sygus_ast = compute_dep dep_map sygus_ast ast element var in 
+      evaluate_sygus_ast dep_map element ast sygus_ast
     else sygus_ast
 | Node (cons, subterms) -> 
-  let subterms = List.map (evaluate_sygus_ast dep_map element) subterms in 
+  let subterms = List.map (evaluate_sygus_ast dep_map element ast) subterms in 
   Node (cons, subterms)
 
 
-and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -> A.element -> A.expr -> A.expr list
-= fun ?(dep_map=Utils.StringMap.empty) sygus_ast element expr -> 
-  let call = evaluate ~dep_map sygus_ast element in
+and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -> A.ast -> A.element -> A.expr -> A.expr list
+= fun ?(dep_map=Utils.StringMap.empty) sygus_ast ast element expr -> 
+  let call = evaluate ~dep_map sygus_ast ast element in
   match expr with 
-| NTExpr (_, [id, _]) -> (* TODO: Consider the index *)
+| NTExpr (_, []) -> Utils.crash "Unexpected case in evaluate"
+| NTExpr (_, (id, _) :: rest) -> (* TODO: Consider the index *)
   let child_index = match element with 
   | A.TypeAnnotation _ -> Utils.crash "Unexpected case in evaluate" 
-  | A.ProdRule (_, (Rhs (ges, _)) :: _) ->
+  | A.ProdRule (_, (Rhs (ges, _)) :: _) -> (* TODO: Should we really be ignoring the other production rule options? *)
     (try  
       Utils.find_index (fun ge -> match ge with 
       | A.Nonterminal nt -> id = nt 
@@ -116,11 +117,18 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -
          Could loop infinitely! Maybe use a cache to see if we've tried to compute this before? *)
       if Utils.StringMap.mem (remove_suffix var |> String.uppercase_ascii) dep_map 
       then 
-        let sygus_ast = compute_dep dep_map sygus_ast element var in 
-        evaluate_sygus_ast dep_map element sygus_ast |> sygus_ast_to_expr
+        let sygus_ast = compute_dep dep_map sygus_ast ast element var in 
+        evaluate_sygus_ast dep_map element ast sygus_ast |> sygus_ast_to_expr
       else sygus_ast |> sygus_ast_to_expr
+    | Node _ when rest <> [] -> 
+      (* Evaluate dot notation *)
+      let element = List.find (fun element -> match element with 
+      | A.ProdRule (nt, _) -> id = nt
+      | TypeAnnotation _ -> false
+      ) ast in
+      evaluate ~dep_map child_sygus_ast ast element (NTExpr ([], rest))
     | _ ->
-      evaluate_sygus_ast dep_map element child_sygus_ast |> sygus_ast_to_expr
+      evaluate_sygus_ast dep_map element ast child_sygus_ast |> sygus_ast_to_expr
   )
 | UnOp (UPlus, expr) -> (
   match call expr with 
@@ -331,7 +339,6 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -
   | _ -> eval_fail 27
  )
 | BVConst _ | BLConst _ | IntConst _ | BConst _ | PhConst _ | StrConst _ -> [expr]
-| NTExpr _ -> Utils.crash "Complicated NTExprs not yet supported in dependency computation"
 | Match _ -> Utils.crash "Match not yet supported in dependency computation"
 
 
@@ -355,7 +362,7 @@ let rec compute_deps: A.semantic_constraint Utils.StringMap.t -> A.ast -> SA.syg
     in
     if Utils.StringMap.mem (remove_suffix var |> String.uppercase_ascii) dep_map
     then 
-      compute_dep dep_map sygus_ast element var 
+      compute_dep dep_map sygus_ast ast element var 
     else sygus_ast 
   | _ -> subterm
   ) subterms in 
