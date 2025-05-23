@@ -4,7 +4,6 @@
      TODO: Write paper 
 
      TODO: Fix make test 
-     TODO: Debug test14
      TODO: Support ambiguous dot notation references in the dpll modules
      TODO: Support ambiguous dot notation references in dependency computation
      TODO: More fine-grained check if divide and conquer engines are usable. Right now,

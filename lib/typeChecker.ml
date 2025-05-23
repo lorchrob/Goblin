@@ -8,7 +8,7 @@ type mode =
 
 
 let type_checker_error mode error_msg = match mode with 
-| SyGuS -> Utils.crash error_msg 
+| SyGuS -> Utils.error error_msg 
 | Dep -> 
   let msg = Format.asprintf "<WARNING> %s\n " error_msg in
   Utils.warning_print Format.pp_print_string Format.std_formatter msg
@@ -57,7 +57,7 @@ let rec infer_type_expr: context -> mode -> expr -> il_type option
     let inf_ty_str = Utils.capture_output Ast.pp_print_ty inf_ty in
     let exp_ty_str = Utils.capture_output Ast.pp_print_ty Int in 
     let error_message = "Type checking error: expression " ^ expr_str ^ " has type " ^ inf_ty_str ^ " but has expected type " ^ exp_ty_str in
-    Utils.crash error_message
+    Utils.error error_message
   | None -> None
   )
 | StrLength (expr) -> 
@@ -75,26 +75,26 @@ let rec infer_type_expr: context -> mode -> expr -> il_type option
       let inf_ty_str1 = Utils.capture_output Ast.pp_print_ty (BitVector len1) in
       let inf_ty_str2 = Utils.capture_output Ast.pp_print_ty (BitVector len2) in 
       let error_message = "Type checking error: BitVector operation " ^ expr_str ^ " has one operand of type " ^ inf_ty_str1 ^ " and another of type " ^ inf_ty_str2 in
-      Utils.crash error_message
+      Utils.error error_message
     else Some (BitVector len1)
   | Some BitVector len, Some inf_ty2 -> 
     let expr_str = Utils.capture_output Ast.pp_print_expr expr2 in
     let inf_ty_str = Utils.capture_output Ast.pp_print_ty inf_ty2 in
     let exp_ty_str = Utils.capture_output Ast.pp_print_ty (BitVector len) in 
     let error_message = "Type checking error: expression " ^ expr_str ^ " has type " ^ inf_ty_str ^ " but has expected type " ^ exp_ty_str in
-    Utils.crash error_message
+    Utils.error error_message
   | Some inf_ty1, Some BitVector len ->
     let expr_str = Utils.capture_output Ast.pp_print_expr expr1 in
     let inf_ty_str = Utils.capture_output Ast.pp_print_ty inf_ty1 in
     let exp_ty_str = Utils.capture_output Ast.pp_print_ty (BitVector len) in 
     let error_message = "Type checking error: expression " ^ expr_str ^ " has type " ^ inf_ty_str ^ " but has expected type " ^ exp_ty_str in
-    Utils.crash error_message
+    Utils.error error_message
   | Some inf_ty1, _ -> 
     let expr_str = Utils.capture_output Ast.pp_print_expr expr1 in
     let inf_ty_str = Utils.capture_output Ast.pp_print_ty inf_ty1 in
     let exp_ty_str = "BitVector" in 
     let error_message = "Type checking error: expression " ^ expr_str ^ " has type " ^ inf_ty_str ^ " but has expected type " ^ exp_ty_str in
-    Utils.crash error_message
+    Utils.error error_message
   | _ -> None
   )
 | BinOp (expr1, GLAnd, expr2) 
@@ -140,26 +140,26 @@ let rec infer_type_expr: context -> mode -> expr -> il_type option
       let inf_ty_str1 = Utils.capture_output Ast.pp_print_ty (BitVector len1) in
       let inf_ty_str2 = Utils.capture_output Ast.pp_print_ty (BitVector len2) in 
       let error_message = "Type checking error: BitVector operation " ^ expr_str ^ " has one operand of type " ^ inf_ty_str1 ^ " and another of type " ^ inf_ty_str2 in
-      Utils.crash error_message
+      Utils.error error_message
     else Some Bool
   | Some BitVector len, Some inf_ty2 -> 
     let expr_str = Utils.capture_output Ast.pp_print_expr expr2 in
     let inf_ty_str = Utils.capture_output Ast.pp_print_ty inf_ty2 in
     let exp_ty_str = Utils.capture_output Ast.pp_print_ty (BitVector len) in 
     let error_message = "Type checking error: expression " ^ expr_str ^ " has type " ^ inf_ty_str ^ " but has expected type " ^ exp_ty_str in
-    Utils.crash error_message
+    Utils.error error_message
   | Some inf_ty1, Some BitVector len ->
     let expr_str = Utils.capture_output Ast.pp_print_expr expr1 in
     let inf_ty_str = Utils.capture_output Ast.pp_print_ty inf_ty1 in
     let exp_ty_str = Utils.capture_output Ast.pp_print_ty (BitVector len) in 
     let error_message = "Type checking error: expression " ^ expr_str ^ " has type " ^ inf_ty_str ^ " but has expected type " ^ exp_ty_str in
-    Utils.crash error_message
+    Utils.error error_message
   | Some inf_ty1, _ -> 
     let expr_str = Utils.capture_output Ast.pp_print_expr expr1 in
     let inf_ty_str = Utils.capture_output Ast.pp_print_ty inf_ty1 in
     let exp_ty_str = "BitVector" in 
     let error_message = "Type checking error: expression " ^ expr_str ^ " has type " ^ inf_ty_str ^ " but has expected type " ^ exp_ty_str in
-    Utils.crash error_message
+    Utils.error error_message
   | _ -> None
   )
 | CompOp (expr1, Eq, expr2) -> 
@@ -173,7 +173,7 @@ let rec infer_type_expr: context -> mode -> expr -> il_type option
       let inf_ty_str1 = Utils.capture_output Ast.pp_print_ty inf_ty1 in
       let inf_ty_str2 = Utils.capture_output Ast.pp_print_ty inf_ty2 in 
       let error_message = "Type checking error: expression " ^ expr_str ^ " has one operand of type " ^ inf_ty_str1 ^ " and another operand of type " ^ inf_ty_str2 in
-      Utils.crash error_message
+      Utils.error error_message
     else Some Bool
   | _ -> None
   )
@@ -185,14 +185,14 @@ let rec infer_type_expr: context -> mode -> expr -> il_type option
       let inf_ty_str1 = Utils.capture_output Ast.pp_print_ty inf_ty in
       let exp_ty_str = Utils.capture_output Ast.pp_print_ty Bool in 
       let error_message = "Type checking error: expression " ^ expr_str ^ " has one operand of type " ^ inf_ty_str1 ^ " and another operand of type " ^ exp_ty_str in
-      Utils.crash error_message
+      Utils.error error_message
   else 
     let inf_tys = List.map (fun (_, expr) -> infer_type_expr ctx mode expr) cases in 
     if not (Lib.all_equal inf_tys) 
     then 
       let expr_str = Utils.capture_output Ast.pp_print_expr expr in
       let error_message = "Type checking error: case expression " ^ expr_str ^ " has cases of differing types" in
-      Utils.crash error_message
+      Utils.error error_message
     else List.hd inf_tys *)
 | Length expr -> (
   let inf_ty = infer_type_expr ctx mode expr in
@@ -209,7 +209,7 @@ let rec infer_type_expr: context -> mode -> expr -> il_type option
     let expr_str = Utils.capture_output Ast.pp_print_expr expr in 
     let inf_ty_str = Utils.capture_output Ast.pp_print_ty inf_ty in
     let error_message = "Type checking error: Input to length function " ^ expr_str ^ " has type " ^ inf_ty_str ^ " but must have type Int or BitVector" in 
-    Utils.crash error_message
+    Utils.error error_message
   | None -> None
   )
 | BVCast (len, expr)  -> 
@@ -219,7 +219,7 @@ let rec infer_type_expr: context -> mode -> expr -> il_type option
   let len2 = List.length bits in
   if len1 != len2 then 
     let error_message = "Type checking error: BitVector constant with expected length " ^ string_of_int len1 ^ " has actual length " ^ string_of_int len2 in 
-    Utils.crash error_message
+    Utils.error error_message
   else
     Some (BitVector len1) 
 | BLConst _ -> Some BitList 
@@ -230,7 +230,7 @@ let rec infer_type_expr: context -> mode -> expr -> il_type option
   if mode = Dep then Some Placeholder
   else 
     let error_message = "String constants can only be in dependencies (of the form 'nonterminal <- string_literal')" in 
-    Utils.crash error_message
+    Utils.error error_message
 
 and check_type_expr: context -> mode -> il_type -> expr -> expr 
 = fun ctx mode exp_ty expr -> 
@@ -243,7 +243,7 @@ and check_type_expr: context -> mode -> il_type -> expr -> expr
       let inf_ty_str = Utils.capture_output Ast.pp_print_ty inf_ty in
       let exp_ty_str = Utils.capture_output Ast.pp_print_ty exp_ty in 
       let error_message = "Type checking error: expression " ^ expr_str ^ " has type " ^ inf_ty_str ^ " but has expected type " ^ exp_ty_str in
-      Utils.crash error_message
+      Utils.error error_message
     else expr
   
 let check_prod_rhs ctx rhss = match rhss with 
@@ -253,7 +253,7 @@ let check_prod_rhs ctx rhss = match rhss with
     let exp_ty = 
       match Utils.StringMap.find_opt nt2 ctx with 
       | None -> 
-        Utils.crash "Dependency LHS must be a nonterminal with a primitive (non-inductive) type"
+        Utils.error "Dependency LHS must be a nonterminal with a primitive (non-inductive) type"
       | Some exp_ty -> exp_ty 
     in
     let expr = check_type_expr ctx Dep exp_ty expr in 
@@ -278,7 +278,7 @@ let check_types: context -> ast -> ast
       let exp_ty = 
         match Utils.StringMap.find_opt nt2 ctx with 
         | None -> 
-          Utils.crash "Dependency LHS must be a nonterminal with a primitive (non-inductive) type"
+          Utils.error "Dependency LHS must be a nonterminal with a primitive (non-inductive) type"
         | Some exp_ty -> exp_ty 
       in
       let expr = check_type_expr ctx Dep exp_ty expr in 

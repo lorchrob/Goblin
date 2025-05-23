@@ -250,10 +250,14 @@ let assert_smt_constraint: solver_instance -> Ast.expr -> unit
 
 (* State expression nonterminals in terms of absolute paths from 
    the root of the derivation tree *)
-let rec universalize_expr prefix expr = 
-  let r = universalize_expr prefix in
+let rec universalize_expr is_type_annotation prefix expr = 
+  let r = universalize_expr is_type_annotation prefix in
   match expr with
-  | A.NTExpr (nts1, nts2) -> A.NTExpr (nts1, List.map (fun id -> id, None) prefix @ nts2)
+  | A.NTExpr (nts1, nts2) -> 
+    (* In the derivation tree structure, type annotation NTs have a duplicate at the end of the path. 
+       Remove it. *)
+    let prefix = if is_type_annotation then Utils.init prefix else prefix in
+    A.NTExpr (nts1, List.map (fun id -> id, None) prefix @ nts2)
   | BVCast (len, expr) -> BVCast (len, r expr)
   | BinOp (expr1, op, expr2) -> BinOp (r expr1, op, r expr2) 
   | UnOp (op, expr) -> UnOp (op, r expr) 
@@ -575,7 +579,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
         List.iter (fun sc -> match sc with 
         | A.SyGuSExpr expr ->
           declare_smt_variables declared_variables (Utils.StringMap.singleton path' ty) solver; 
-          constraints_to_assert := ConstraintSet.add (universalize_expr path expr) !constraints_to_assert;
+          constraints_to_assert := ConstraintSet.add (universalize_expr true path expr) !constraints_to_assert;
           constraints_to_assert := assert_and_remove_applicable_constraints constraints_to_assert !derivation_tree ast solver;
           let model = get_smt_result ast solver in  
           (match model with 
@@ -618,7 +622,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
               Utils.StringMap.add str ty acc
             ) Utils.StringMap.empty expr_variables in
             declare_smt_variables declared_variables ty_ctx solver;
-            constraints_to_assert := ConstraintSet.add (universalize_expr path expr) !constraints_to_assert;
+            constraints_to_assert := ConstraintSet.add (universalize_expr false path expr) !constraints_to_assert;
             (* don't instantiate yet -- we haven't hit the leaf nodes *)
             (* derivation_tree := instantiate_terminals model !derivation_tree;  *)
           | A.Dependency _ -> ()

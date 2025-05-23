@@ -35,7 +35,7 @@ let build_prm: ast -> prod_rule_map
       match Utils.StringMap.find_opt nt acc with 
       | Some mem -> 
         if (Utils.StringSet.is_empty mem) then 
-          Utils.crash ("Nonterminal " ^ nt ^ " has both a type annotation and a production rule")
+          Utils.error ("Nonterminal " ^ nt ^ " has both a type annotation and a production rule")
         else Utils.StringMap.add nt (Utils.StringSet.union mem grammar_elements) acc 
       | None -> 
         Utils.StringMap.add nt grammar_elements acc     
@@ -45,7 +45,7 @@ let build_prm: ast -> prod_rule_map
   | TypeAnnotation (nt, _, _) -> 
     match Utils.StringMap.find_opt nt acc with 
     | Some _ -> 
-      Utils.crash ("Nonterminal " ^ nt ^ " either has two type annotations, or has both a type annotation and a production rule")
+      Utils.error ("Nonterminal " ^ nt ^ " either has two type annotations, or has both a type annotation and a production rule")
     | None -> 
       Utils.StringMap.add nt Utils.StringSet.empty acc 
   ) Utils.StringMap.empty ast in 
@@ -65,7 +65,7 @@ let rec check_dangling_identifiers: Utils.StringSet.t -> expr -> expr
   let call = check_dangling_identifiers nt_set in 
   let check_d_ids_nt_expr nt_expr = 
     List.iter (fun nt -> match Utils.StringSet.find_opt nt nt_set with 
-    | None -> Utils.crash ("Dangling identifier " ^ nt)
+    | None -> Utils.error ("Dangling identifier " ^ nt)
     | Some _ -> ()
     ) nt_expr
   in
@@ -94,7 +94,7 @@ let rec check_nt_expr_refs: prod_rule_map -> (string * int option) list -> (stri
   if (not (Utils.StringSet.mem nt2 (Utils.StringMap.find nt1 prm))) 
   then 
     let sub_expr_str = Utils.capture_output Ast.pp_print_nt_with_dots [(nt1, idx1); (nt2, idx2)] in
-    Utils.crash ("Dot notation " ^ sub_expr_str ^ " is an invalid reference" )
+    Utils.error ("Dot notation " ^ sub_expr_str ^ " is an invalid reference" )
   else (nt1, idx1) :: check_nt_expr_refs prm ((nt2, idx2) :: tl)
 | _ -> nt_expr
 
@@ -106,7 +106,7 @@ let rec check_prod_rule_nt_exprs: prod_rule_map -> Utils.StringSet.t -> expr -> 
   match expr with 
   | NTExpr (nt_context, nt_expr) -> 
     if (not (Utils.StringSet.mem (List.hd nt_expr |> fst) nts)) 
-    then Utils.crash ("Nonterminal " ^  (List.hd nt_expr |> fst) ^ " not found in current production rule or type annotation")
+    then Utils.error ("Nonterminal " ^  (List.hd nt_expr |> fst) ^ " not found in current production rule or type annotation")
     else
       let nt_expr = check_nt_expr_refs prm nt_expr in 
       NTExpr (nt_context, nt_expr) 
@@ -132,7 +132,7 @@ let rec check_type_annot_nt_exprs: prod_rule_map -> Utils.StringSet.t -> expr ->
   match expr with 
   | NTExpr (nt_context, nt_expr) -> 
     if (not (Utils.StringSet.mem (List.hd nt_expr |> fst) nts)) 
-    then Utils.crash ("Nonterminal " ^  (List.hd nt_expr |> fst) ^ " not found in current production rule or type annotation")
+    then Utils.error ("Nonterminal " ^  (List.hd nt_expr |> fst) ^ " not found in current production rule or type annotation")
     else
       let nt_expr = check_nt_expr_refs prm nt_expr in 
       NTExpr (nt_context, nt_expr) 
@@ -156,8 +156,8 @@ let check_syntax_prod_rule: prod_rule_map -> Utils.StringSet.t -> prod_rule_rhs 
   let ges' = List.map Ast.grammar_element_to_string ges in
   let scs = List.map (fun sc -> match sc with 
   | Dependency (nt2, expr) -> 
-    if (not (Utils.StringSet.mem nt2 nt_set)) then Utils.crash ("Dangling identifier " ^ nt2) else
-    if (not (List.mem nt2 ges')) then Utils.crash ("Dependency LHS identifier " ^ nt2 ^ " is not present on the RHS of the corresponding production rule") else
+    if (not (Utils.StringSet.mem nt2 nt_set)) then Utils.error ("Dangling identifier " ^ nt2) else
+    if (not (List.mem nt2 ges')) then Utils.error ("Dependency LHS identifier " ^ nt2 ^ " is not present on the RHS of the corresponding production rule") else
     let expr = check_dangling_identifiers nt_set expr in 
     let expr = check_prod_rule_nt_exprs prm (Utils.StringSet.of_list ges') expr in
     Dependency (nt2, expr)
@@ -190,11 +190,11 @@ let rhss_contains_nt nt rhss =
       ProdRule (nt, rhss)
     | _ -> element
   ) ast 
-  | None -> Utils.crash "Recursive grammars are not supported" *)
+  | None -> Utils.error "Recursive grammars are not supported" *)
 
 let check_vacuity: ast -> ast 
 = fun ast -> 
-  if ast = [] then Utils.crash "Grammar is empty after dead rule removal"
+  if ast = [] then Utils.error "Grammar is empty after dead rule removal"
   else ast
 
 let remove_circular_deps: ast -> ast 
@@ -283,8 +283,8 @@ let check_syntax: prod_rule_map -> Utils.StringSet.t -> ast -> ast
   | TypeAnnotation (nt, ty, scs) -> 
     let scs = List.map (fun sc -> match sc with 
     | Dependency (nt2, expr) ->
-      if (not (Utils.StringSet.mem nt2 nt_set)) then Utils.crash ("Dangling identifier " ^ nt2) else
-      if (not (nt2 = nt)) then Utils.crash ("Dependency LHS identifier " ^ nt2 ^ " is not present in the corresponding type annotation") else
+      if (not (Utils.StringSet.mem nt2 nt_set)) then Utils.error ("Dangling identifier " ^ nt2) else
+      if (not (nt2 = nt)) then Utils.error ("Dependency LHS identifier " ^ nt2 ^ " is not present in the corresponding type annotation") else
       let expr = check_dangling_identifiers nt_set expr in 
       let expr = check_type_annot_nt_exprs prm (Utils.StringSet.singleton nt) expr in
       Dependency (nt2, expr) 

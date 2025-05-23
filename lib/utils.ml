@@ -107,6 +107,9 @@ let warning_print pp formatter value =
 let crash message = 
   failwith ("Internal error: " ^ message)
 
+let error message = 
+  failwith ("User error: " ^ message)
+
 let find_command_in_path cmd =
   match Sys.getenv_opt "PATH" with
   | None -> crash "$PATH is not set"

@@ -1,8 +1,12 @@
 # WiFi SAE Packet Generator
 
+## Dependencies
+
+OCaml **version >= 5**
+
 Required opam packages:
 
-* in OCaml >= 5: `opam install menhirLib cmdliner ocamlgraph bitstring yojson lwt batteries ppx_bitstring alcotest lwt_ppx`
+* `opam install menhirLib cmdliner ocamlgraph bitstring yojson lwt batteries ppx_bitstring alcotest lwt_ppx`
 
 
 Other dependencies:
