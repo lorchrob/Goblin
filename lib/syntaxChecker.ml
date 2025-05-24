@@ -181,16 +181,13 @@ let rhss_contains_nt nt rhss =
   | StubbedRhs _ -> ()
   ) rhss
 
-(* let check_if_recursive: ast -> ast 
+let sort_ast: ast -> ast 
 = fun ast -> 
   match TopologicalSort.canonicalize ast with 
-  | Some ast -> List.map (fun element -> match element with
-    | ProdRule (nt, rhss) -> 
-      let _ = rhss_contains_nt nt rhss in
-      ProdRule (nt, rhss)
-    | _ -> element
-  ) ast 
-  | None -> Utils.error "Recursive grammars are not supported" *)
+  | Some ast -> ast
+  (* In recursive grammars, ast does not need to be sorted, 
+     as we cannot use the divide and conquer engines. *)
+  | None -> ast
 
 let check_vacuity: ast -> ast 
 = fun ast -> 
@@ -272,7 +269,7 @@ let check_sygus_exprs_for_dep_terms: ast -> ast
 
 let check_syntax: prod_rule_map -> Utils.StringSet.t -> ast -> ast 
 = fun prm nt_set ast -> 
-  (* let ast = check_if_recursive ast in *)
+  let ast = sort_ast ast in
   let ast = Utils.recurse_until_fixpoint ast (=) remove_circular_deps in
   let ast = Utils.recurse_until_fixpoint ast (=) check_sygus_exprs_for_dep_terms in
   let ast = check_vacuity ast in
