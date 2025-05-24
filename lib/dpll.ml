@@ -11,12 +11,7 @@ _ :: Int
 *)
 
 (* 
-  TODO:
-  * When backtracking, make sure the frontier is properly updated
-    * Naive solution: recalculate the frontier from scratch at every iteration
-  * Handle dependent terms (later in pipeline)
-  * Make sure ambiguous references handled properly
-  * IDS
+  TODO: IDS
 *)
 
 (* 
@@ -540,21 +535,6 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
       (Lib.pp_print_list pp_print_derivation_tree "; ") (DTSet.elements !frontier |> List.map (fun p -> !p));
 
     let node_to_expand = DTSet.choose !frontier in
-
-    (* TODO: Make sure there are no constraints in constraints_to_assert hanging around that still 
-       need to be asserted. When one of these constraints is asserted after some delay, have 
-       to figure out some backtracking logic. 
-       Need to mix in some pops. 
-       
-       Maybe try to assert all constraints_to_assert after any new decision. 
-       In principle, only new decisions should "unlock" new constraints.
-
-       Backtracking:
-       After every __decision__ (real decision), push constraints at new (incremented) decision level. 
-       
-       If unsat, pop constraints (decrementing decision level), and backtrack to the most recent decision to flip on the derivation tree. 
-       
-       If unsat at decision level 0, then globally unsat. *)
 
     (* Expand the chosen frontier node *)
     match !node_to_expand with 

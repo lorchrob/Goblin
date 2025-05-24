@@ -172,3 +172,16 @@ let sequence_option (xs : 'a option list) : 'a list option =
        | _, _ -> None)
     xs
     (Some [])
+
+let extract_base_name str =
+  let str = String.lowercase_ascii str in
+  let open Str in
+  (* Remove optional trailing "_con" or "_con123" *)
+  let str =
+    global_replace (regexp "_con[0-9]*$") "" str
+  in
+  (* Remove prefix "_stub" *)
+  let str =
+    global_replace (regexp "_stub[0-9]*$") "" str
+  in
+  str

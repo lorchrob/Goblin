@@ -18,3 +18,10 @@ let () =
     let _ = Pipeline.main_pipeline filename in
 
     ()
+     (* let input = "./test/test_cases/overlapping_constraints_2" in
+  let ast = Parsing.parse (Utils.read_file input) in
+  let sygus_ast, _ = Pipeline.main_pipeline input in
+  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  match output with
+  | Ok _ -> ()  
+  | Error msg -> Utils.crash msg *)

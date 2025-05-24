@@ -3,6 +3,7 @@ module A = Ast
 
 let eval_fail index = Utils.crash ("evaluation error #" ^ string_of_int index)
 
+(* TODO: Replace with Utils.extract_base_name *)
 let remove_stub input = 
   let open Str in
   let re = regexp "^_stub[0-9]+_\\(.*\\)$" in
@@ -93,10 +94,14 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -
   let call = evaluate ~dep_map sygus_ast ast element in
   match expr with 
 | NTExpr (_, []) -> Utils.crash "Unexpected case in evaluate"
-| NTExpr (_, (id, _) :: rest) -> (* TODO: Consider the index *)
+| NTExpr (_, (id, _) :: rest) -> (*!! TODO: Consider the index *)
   let child_index = match element with 
   | A.TypeAnnotation _ -> Utils.crash "Unexpected case in evaluate" 
-  | A.ProdRule (_, (Rhs (ges, _)) :: _) -> (* TODO: Should we really be ignoring the other production rule options? *)
+  | A.ProdRule (_, rhss) -> 
+    let ges = List.concat_map (fun rhs -> match rhs with 
+    | A.Rhs (ges, _) -> ges
+    | StubbedRhs _ -> []
+    ) rhss in
     (try  
       Utils.find_index (fun ge -> match ge with 
       | A.Nonterminal nt -> id = nt 
@@ -104,10 +109,9 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -
       ) ges 
     with Not_found ->
       Utils.crash ("Dangling identifier " ^ id ^ " in semantic constraint"))
-  | A.ProdRule _ -> Utils.crash "Unexpected case in evaluate"
   in (
   match sygus_ast with 
-  | VarLeaf _ | BVLeaf _ | IntLeaf _ | BLLeaf _ | BoolLeaf _ | StrLeaf _ -> 
+  | VarLeaf _ | BVLeaf _ | IntLeaf _ | BLLeaf _ | BoolLeaf _ | StrLeaf _  -> 
     sygus_ast_to_expr sygus_ast
   | Node (_, subterms) -> 
     let child_sygus_ast = List.nth subterms child_index in 
@@ -276,6 +280,8 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -
   | [BConst b1], [BConst b2] -> [BConst (b1 = b2)]
   | [BVConst (_, bv1)], [BVConst (_, bv2)] -> [BConst (bv1 = bv2)]
   | [BLConst bl1], [BLConst bl2] -> [BConst (bl1 = bl2)]
+  | [StrConst str1], [StrConst str2]
+  | [PhConst str1], [PhConst str2] -> [BConst (String.equal str1 str2)]
   | _ -> eval_fail 25
   )
 | CompOp (expr1, BVLt, expr2) -> 
@@ -357,7 +363,7 @@ let rec compute_deps: A.semantic_constraint Utils.StringMap.t -> A.ast -> SA.syg
     ) ast in
     let element = match element with 
     | None -> 
-      Utils.crash "computeDeps.ml"
+      Utils.crash "compute_deps"
     | Some element -> element 
     in
     if Utils.StringMap.mem (remove_suffix var |> String.uppercase_ascii) dep_map

@@ -23,11 +23,6 @@ let merge: A.ast -> A.element -> A.ast
   | A.TypeAnnotation (nt, ty, scs) -> 
     (* If a prior AST rule constrains the NT, we need to push up the constraints *)
     if A.ast_constrains_nt ast nt then 
-      let _ = List.iter (fun sc -> match sc with 
-      | A.SyGuSExpr _ -> ()
-      | Dependency _ -> 
-        Utils.crash "Unsupported case in merge. This grammar has some nonterminal that is a computed term (of the form <nt> <- expr) and is also referenced elsewhere in some constraint. This is currently unsupported, but will be supported in the future."
-      ) scs in 
       let ast = List.fold_left (fun acc element -> match element with
       | A.TypeAnnotation _ -> acc @ [element]
       | A.ProdRule (nt2, rhss) -> 
@@ -74,9 +69,12 @@ let merge: A.ast -> A.element -> A.ast
     if A.ast_constrains_nt ast nt then 
       (* To push the scs up a level, we need to prepend a dot notation reference *)
       let scs = List.map (fun sc -> match sc with 
-      | A.SyGuSExpr expr -> A.SyGuSExpr (A.prepend_nt_to_dot_exprs nt expr)
-      | Dependency _ -> 
-        Utils.crash "Unsupported case in merge. This grammar has some nonterminal that is a computed term (of the form <nt> <- expr) and is also referenced elsewhere in some constraint. This is currently unsupported, but will be supported in the future."
+      | A.SyGuSExpr expr -> 
+        A.SyGuSExpr (A.prepend_nt_to_dot_exprs nt expr)
+      | Dependency (nt2, expr) -> (*!! TODO: Again -- indices matter *)
+        (* Since there is overlap, replace dependency with equality constraint.
+           We can't ignore what it overlaps with, in case it is unsat. *)
+        A.SyGuSExpr (A.prepend_nt_to_dot_exprs nt (A.CompOp (NTExpr([], [nt2, None]), Eq, expr)))
       ) scs in 
       let ast = List.fold_left (fun acc element -> match element with
       | A.TypeAnnotation _ -> acc @ [element]
