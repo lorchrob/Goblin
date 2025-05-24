@@ -359,7 +359,7 @@ let rec compute_deps: A.semantic_constraint Utils.StringMap.t -> A.ast -> SA.syg
     let element = List.find_opt (fun element -> match element with 
     | A.TypeAnnotation (nt, _, _)  
     | ProdRule (nt, _) -> 
-      nt = (constructor |> remove_stub |> remove_suffix)
+      Utils.str_eq_ci nt (Utils.extract_base_name constructor)
     ) ast in
     let element = match element with 
     | None -> 

@@ -185,3 +185,6 @@ let extract_base_name str =
     global_replace (Str.regexp "^_stub[0-9]*_") "" str
   in
   str
+
+let str_eq_ci s1 s2 =
+  String.lowercase_ascii s1 = String.lowercase_ascii s2

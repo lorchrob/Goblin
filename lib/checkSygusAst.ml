@@ -15,13 +15,10 @@ let (let*) = Res.(>>=)
 (* Hacky helper function because in the sygus implementation, we use the generated 
    constructor names in the sygus ast. *)
 
-let str_eq_ci s1 s2 =
-  String.lowercase_ascii s1 = String.lowercase_ascii s2
-
 let check_start_symbol: Ast.ast -> SygusAst.sygus_ast -> (unit, string) result 
 = fun ast sygus_ast -> match ast, sygus_ast with 
 | A.ProdRule (nt, _) :: _, SA.Node (constructor, _) -> 
-  if str_eq_ci nt (Utils.extract_base_name constructor) 
+  if Utils.str_eq_ci nt (Utils.extract_base_name constructor) 
     then Ok () 
   else 
   Error ("Sygus AST root constructor '" ^ constructor ^ "' does not match the AST start symbol '" ^ nt ^ "'")
@@ -37,7 +34,7 @@ let rec check_syntax_semantics: Ast.ast -> SygusAst.sygus_ast -> (unit, string) 
     let skip_condition = 
       match children with 
       | [Node (constructor2, _)] ->
-        str_eq_ci constructor (Utils.extract_base_name constructor2)
+        Utils.str_eq_ci constructor (Utils.extract_base_name constructor2)
       | _ -> false
     in
     if skip_condition then check_syntax_semantics ast (List.hd children) else
@@ -46,11 +43,11 @@ let rec check_syntax_semantics: Ast.ast -> SygusAst.sygus_ast -> (unit, string) 
     (* Find this node's corresponding AST element *) 
     let nt_rhss = List.find_map (fun element -> match element with
     | A.TypeAnnotation (nt, _, _) -> 
-      if str_eq_ci (Utils.extract_base_name constructor) nt 
+      if Utils.str_eq_ci (Utils.extract_base_name constructor) nt 
       then Some (nt, []) 
       else None
     | A.ProdRule (nt, rhss) -> 
-      if str_eq_ci (Utils.extract_base_name constructor) nt 
+      if Utils.str_eq_ci (Utils.extract_base_name constructor) nt 
       then Some (nt, rhss)
       else None
     ) ast in 
@@ -65,7 +62,7 @@ let rec check_syntax_semantics: Ast.ast -> SygusAst.sygus_ast -> (unit, string) 
         List.for_all2 (fun child ge ->  
           match child, ge with 
           | _, A.StubbedNonterminal _ -> false 
-          | SA.Node (constructor, _), Nonterminal nt -> str_eq_ci (Utils.extract_base_name constructor) nt
+          | SA.Node (constructor, _), Nonterminal nt -> Utils.str_eq_ci (Utils.extract_base_name constructor) nt
           | _, _ -> true
         ) children ges
     ) rhss in 

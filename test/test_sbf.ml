@@ -338,8 +338,8 @@ let () =
     "test_dt4", [test_case "Dependent term 4" `Quick test_dt4];
     "test_dt5", [test_case "Dependent term 5" `Quick test_dt5];
     "test_dt6", [test_case "Dependent term 6" `Quick test_dt6];
-    (* "test_dynamic_typing", [test_case "Dynamic typing" `Quick test_dynamic_typing]; *)
-    (* "test_recombine", [test_case "Recombine" `Quick test_recombine]; *)
+    "test_dynamic_typing", [test_case "Dynamic typing" `Quick test_dynamic_typing];
+    "test_recombine", [test_case "Recombine" `Quick test_recombine];
     (* "test_dot_notation", [test_case "Test dot notation" `Quick test_dot_notation]; *)
     (* "test_vertical_ambiguous_reference_1", [test_case "test_vertical_ambiguous_reference_1" `Quick test_vertical_ambiguous_reference_1]; *)
     (* "test_vertical_ambiguous_reference_2", [test_case "test_vertical_ambiguous_reference_2" `Quick test_vertical_ambiguous_reference_2]; *)

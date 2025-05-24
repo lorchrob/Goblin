@@ -10,16 +10,16 @@ let () =
     GrammarFuzzing.runFuzzer [commit_grammar; confirm_grammar; commit_confirm_grammar;]
 
   else
-    (* let filename = match !Flags.filename with 
+    let filename = match !Flags.filename with 
     | Some filename -> filename 
     | None -> Utils.error "You must specify an input filename with --file <filename>"
     in
-    
+     
     let _ = Pipeline.main_pipeline filename in
 
-    () *)
+    ()
 
-    let input = "./test/test_cases/test_dc" in
+    (* let input = "./test/test_cases/test_mult_prod_rules" in
     let ast = Parsing.parse (Utils.read_file input) in
     let sygus_ast, _ = Pipeline.main_pipeline input in
     Format.fprintf Format.std_formatter "AST: %a\n" Ast.pp_print_ast ast;
@@ -27,4 +27,4 @@ let () =
     let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
     match output with
     | Ok _ -> ()  
-    | Error msg -> Utils.crash msg
+    | Error msg -> Utils.crash msg *)
