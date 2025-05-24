@@ -121,11 +121,20 @@ let detect: A.ast -> A.element -> bool
     ) rhss in
     A.ast_constrains_nt ast nt && List.length scs > 0
 
+(* For now, this function (in an ugly way) does double duty. 
+   The detection of overlapping constraints assumes the 
+   input grammar is sorted. So we try to sort it; 
+   if it's recursive, we conservatively return false. 
+   TODO: Something better :) *)
 let detect_overlapping_constraints: A.ast -> bool 
 = fun ast -> 
-  List.fold_left (fun acc element -> 
-    acc || detect ast element
-  ) false ast
+  match TopologicalSort.canonicalize ast with
+  | Some ast -> 
+    A.pp_print_ast Format.std_formatter ast;
+    List.fold_left (fun (acc_ast, acc_bool) element -> 
+    acc_ast @ [element], acc_bool || (detect acc_ast element)
+    ) ([], false) ast |> snd
+  | None -> true
 
 let merge_overlapping_constraints: A.ast -> A.ast 
 = fun ast ->

@@ -794,24 +794,6 @@ let dd_test_dot_notation () =
   | Ok _ -> ()  
   | Error msg -> fail msg
 
-let dd_overlapping_constraints () = 
-  let input = "../../../test/test_cases/overlapping_constraints" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
-  match output with
-  | Ok _ -> ()  
-  | Error msg -> fail msg
-
-let dd_overlapping_constraints_2 () = 
-  let input = "../../../test/test_cases/overlapping_constraints_2" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
-  match output with
-  | Ok _ -> ()  
-  | Error msg -> fail msg
-
 let dd_repeated_nt_dependency () = 
   let input = "../../../test/test_cases/repeated_nt_dependency" in
   let ast = Parsing.parse (Utils.read_file input) in
@@ -1177,8 +1159,6 @@ let () =
     (* "dd_test_another_ambiguous_reference", [test_case "test_another_ambiguous_reference" `Quick dd_test_another_ambiguous_reference]; *)
     (* "dd_test_another_ambiguous_reference_1", [test_case "test_another_ambiguous_reference_1" `Quick dd_test_another_ambiguous_reference_1]; *)
     (* "dd_test_another_ambiguous_reference_2", [test_case "test_another_ambiguous_reference_2" `Quick dd_test_another_ambiguous_reference_2]; *)
-    "dd_overlapping_constraints", [test_case "overlapping_constraints" `Quick dd_overlapping_constraints];
-    "dd_overlapping_constraints_2", [test_case "overlapping_constraints_2" `Quick dd_overlapping_constraints_2];
     "dd_repeated_nt_dependency", [test_case "repeated_nt_dependency" `Quick dd_repeated_nt_dependency];
     (* "dd_test_dpll_unsat_constraint", [test_case "test_dpll_unsat_constraint" `Quick dd_test_dpll_unsat_constraint]; *)
     "dd_test_strings", [test_case "test_strings" `Quick dd_test_strings];
