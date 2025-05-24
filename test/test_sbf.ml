@@ -1089,14 +1089,14 @@ let () =
     "sd_test_dynamic_typing", [test_case "Dynamic typing" `Quick sd_test_dynamic_typing];
     "sd_test_recombine", [test_case "Recombine" `Quick sd_test_recombine];
     (* "sd_test_dot_notation", [test_case "Test dot notation" `Quick sd_test_dot_notation]; *)
-    (* "sd_test_vertical_ambiguous_reference_1", [test_case "test_vertical_ambiguous_reference_1" `Quick sd_test_vertical_ambiguous_reference_1]; *)
-    (* "sd_test_vertical_ambiguous_reference_2", [test_case "test_vertical_ambiguous_reference_2" `Quick sd_test_vertical_ambiguous_reference_2]; *)
-    (* "sd_test_horizontal_ambiguous_reference_1", [test_case "test_horizontal_ambiguous_reference_1" `Quick sd_test_horizontal_ambiguous_reference_1]; *)
+    "sd_test_vertical_ambiguous_reference_1", [test_case "test_vertical_ambiguous_reference_1" `Quick sd_test_vertical_ambiguous_reference_1];
+    "sd_test_vertical_ambiguous_reference_2", [test_case "test_vertical_ambiguous_reference_2" `Quick sd_test_vertical_ambiguous_reference_2];
+    "sd_test_horizontal_ambiguous_reference_1", [test_case "test_horizontal_ambiguous_reference_1" `Quick sd_test_horizontal_ambiguous_reference_1];
     "sd_test_cyclic_dependencies", [test_case "test_cyclic_dependencies" `Quick sd_test_cyclic_dependencies];
     "sd_test_dot_notation_2", [test_case "test_dot_notation_2" `Quick sd_test_dot_notation_2];
-    (* "sd_test_another_ambiguous_reference", [test_case "test_another_ambiguous_reference" `Quick sd_test_another_ambiguous_reference]; *)
-    (* "sd_test_another_ambiguous_reference_1", [test_case "test_another_ambiguous_reference_1" `Quick sd_test_another_ambiguous_reference_1]; *)
-    (* "sd_test_another_ambiguous_reference_2", [test_case "test_another_ambiguous_reference_2" `Quick sd_test_another_ambiguous_reference_2]; *)
+    "sd_test_another_ambiguous_reference", [test_case "test_another_ambiguous_reference" `Quick sd_test_another_ambiguous_reference];
+    "sd_test_another_ambiguous_reference_1", [test_case "test_another_ambiguous_reference_1" `Quick sd_test_another_ambiguous_reference_1];
+    "sd_test_another_ambiguous_reference_2", [test_case "test_another_ambiguous_reference_2" `Quick sd_test_another_ambiguous_reference_2];
     "sd_overlapping_constraints", [test_case "overlapping_constraints" `Quick sd_overlapping_constraints];
     "sd_overlapping_constraints_2", [test_case "overlapping_constraints_2" `Quick sd_overlapping_constraints_2];
     "sd_repeated_nt_dependency", [test_case "repeated_nt_dependency" `Quick sd_repeated_nt_dependency];
