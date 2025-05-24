@@ -9,7 +9,7 @@
      FUTURE: I think we could support arbitrary recursive functions in the dpll engines (at least, dpll_mono) 
              by simply unrolling the function definition as far as you need on the fly *)
 
-let main_pipeline filename = 
+let main_pipeline ?(engine: Flags.engine option = None) filename = 
   (* Printexc.record_backtrace true; *)
 
   let ppf = Format.std_formatter in
@@ -34,23 +34,25 @@ let main_pipeline filename =
 
   (* Step 3: Run engine(s) *)
   let sygus_ast = 
-    match !Flags.selected_engine with 
-    (* Single engine mode *)
-    | Some DpllMono -> DpllMono.dpll ppf ctx ast
-    | Some DpllDac -> 
+    match engine, !Flags.selected_engine with 
+    (* Single engine mode.
+       Two means of selecting engines -- command-line arg (default for users), 
+       or passing a functional argument (for testing) *)
+    | Some DpllMono, _ | _, Some DpllMono -> DpllMono.dpll ppf ctx ast
+    | Some DpllDac, _ | _, Some DpllDac -> 
       (match DpllDac.dpll ppf ctx ast with
       | Some result -> result 
       | None -> Utils.crash "dpll_dac engine not applicable to this input")
-    | Some SygusDac -> 
+    | Some SygusDac, _ | _, Some SygusDac -> 
       (match SygusDac.sygus ppf ctx ast with  
       | Some result -> result 
       | None -> Utils.crash "sygus_dac engine not applicable to this input")
-    | Some MixedDac -> 
+    | Some MixedDac, _ | _, Some MixedDac -> 
       (match MixedDac.dac ppf ctx ast with
       | Some result -> result 
       | None -> Utils.crash "mixed_dac engine not applicable to this input")
     (* Race mode *)
-    | None -> 
+    | None, None -> 
       try 
         Parallelism.race_n_opt [
           (fun () -> DpllDac.dpll ppf ctx ast), "dpll_dac" ;
