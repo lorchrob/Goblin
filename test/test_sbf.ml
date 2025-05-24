@@ -326,7 +326,7 @@ let test_strings () =
 let () = 
   run "My_module" [
     "test_sc", [test_case "Semantic constraint" `Quick test_sc];
-    (* "test_placeholder", [test_case "Placeholder" `Quick test_placeholder]; *)
+    "test_placeholder", [test_case "Placeholder" `Quick test_placeholder];
     "test_dt", [test_case "Dependent term" `Quick test_dt];
     "test_dt2", [test_case "Dependent term 2" `Quick test_dt2];
     "test_dc", [test_case "Divide and conquer" `Quick test_dc];

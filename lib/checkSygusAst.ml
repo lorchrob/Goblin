@@ -31,6 +31,17 @@ let check_start_symbol: Ast.ast -> SygusAst.sygus_ast -> (unit, string) result
 let rec check_syntax_semantics: Ast.ast -> SygusAst.sygus_ast -> (unit, string) result 
 = fun ast sygus_ast -> match sygus_ast with 
   | Node (constructor, children) -> 
+    (* In dpll divide and conquer module, 
+       we get an extra nesting of stub and concrete NTs 
+       for some reason. *)
+    let skip_condition = 
+      match children with 
+      | [Node (constructor2, _)] ->
+        str_eq_ci constructor (Utils.extract_base_name constructor2)
+      | _ -> false
+    in
+    if skip_condition then check_syntax_semantics ast (List.hd children) else
+      
     let* _ = R.seq (List.map (check_syntax_semantics ast) children) in
     (* Find this node's corresponding AST element *) 
     let nt_rhss = List.find_map (fun element -> match element with

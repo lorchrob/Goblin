@@ -123,7 +123,7 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -
       then 
         let sygus_ast = compute_dep dep_map sygus_ast ast element var in 
         evaluate_sygus_ast dep_map element ast sygus_ast |> sygus_ast_to_expr
-      else sygus_ast |> sygus_ast_to_expr
+      else child_sygus_ast |> sygus_ast_to_expr
     | Node _ when rest <> [] -> 
       (* Evaluate dot notation *)
       let element = List.find (fun element -> match element with 
@@ -180,7 +180,7 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -
   | [BVConst (len, bv1)], [BVConst (_, bv2)] -> [BVConst (len, List.map2 (fun a b -> (a || b) && not (a && b)) bv1 bv2)] 
   | _ -> eval_fail 12
   )
-|  BinOp (expr1, GLAnd, expr2)
+| BinOp (expr1, GLAnd, expr2)
 | BinOp (expr1, LAnd, expr2) -> 
   let expr1 = call expr1 in 
   let expr2 = call expr2 in (

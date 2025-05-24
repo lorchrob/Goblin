@@ -10,18 +10,21 @@ let () =
     GrammarFuzzing.runFuzzer [commit_grammar; confirm_grammar; commit_confirm_grammar;]
 
   else
-    let filename = match !Flags.filename with 
+    (* let filename = match !Flags.filename with 
     | Some filename -> filename 
     | None -> Utils.error "You must specify an input filename with --file <filename>"
     in
     
     let _ = Pipeline.main_pipeline filename in
 
-    ()
-     (* let input = "./test/test_cases/overlapping_constraints_2" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = Pipeline.main_pipeline input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
-  match output with
-  | Ok _ -> ()  
-  | Error msg -> Utils.crash msg *)
+    () *)
+
+    let input = "./test/test_cases/test_dc" in
+    let ast = Parsing.parse (Utils.read_file input) in
+    let sygus_ast, _ = Pipeline.main_pipeline input in
+    Format.fprintf Format.std_formatter "AST: %a\n" Ast.pp_print_ast ast;
+    Format.fprintf Format.std_formatter "SyGuS AST: %a\n" SygusAst.pp_print_sygus_ast sygus_ast;
+    let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+    match output with
+    | Ok _ -> ()  
+    | Error msg -> Utils.crash msg

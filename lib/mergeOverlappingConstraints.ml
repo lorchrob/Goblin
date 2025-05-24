@@ -1,5 +1,14 @@
 module A = Ast
 
+(*!! TODO: 
+  * This module needs a refresh of notion of "overlap". 
+  * If rule2 contains <A>.<B>.<C> (where <A> is the LHS of the rule!),
+    there is an overlap iff
+    rule1 contains <stuff>.<A>.<B>.<C> 
+    (i.e., rule 2's NT is a suffix or, more generally, substring of rule 1's NT)
+
+*)
+
 (* For AST element 'element', if it has a semantic constraint, see if some other 
    production rule also constraints the same nonterminal. If so, remove the semantic constraint(s) 
    from this element up the grammar to where it is first constrained. 

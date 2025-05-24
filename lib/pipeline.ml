@@ -1,8 +1,7 @@
-(*!! TODO: Support dependency overlapping with sygus expr 
+(*!! TODO: Bug fixes (make test and test cases in examples)
      TODO: Experimental evaluation (debug examples first)
      TODO: Write paper 
 
-     TODO: Fix make test, including TODO in checkSygusAst
      TODO: Expand testing to test all engines individually, and in parallel, for each test case
      TODO: More fine-grained check if divide and conquer engines are usable. Right now,
            rejecting all recursive grammars. But really this only is necessary for sygus_dac.

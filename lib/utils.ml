@@ -182,6 +182,6 @@ let extract_base_name str =
   in
   (* Remove prefix "_stub" *)
   let str =
-    global_replace (regexp "_stub[0-9]*$") "" str
+    global_replace (Str.regexp "^_stub[0-9]*_") "" str
   in
   str
