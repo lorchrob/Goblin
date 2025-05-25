@@ -117,7 +117,7 @@ semantic_constraint_list:
 | sc = semantic_constraint; SEMICOLON; scs = semantic_constraint_list; { sc :: scs }
 
 grammar_element:
-| nt = nonterminal { Nonterminal(nt) }
+| nt = nonterminal { Nonterminal(nt, None) }
 
 semantic_constraint:
 | nt = nonterminal; ASSIGN; e = expr { Dependency (nt, e) }

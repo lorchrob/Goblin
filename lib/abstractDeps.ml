@@ -29,7 +29,7 @@ let rec calculate_casts: expr -> expr
 let stub_grammar_element: TypeChecker.context -> semantic_constraint list -> grammar_element -> semantic_constraint option * grammar_element * TypeChecker.context
 = fun ctx scs ge -> match ge with 
 | StubbedNonterminal _ -> None, ge, ctx 
-| Nonterminal nt -> (
+| Nonterminal (nt, _) -> (
   match List.find_opt (fun sc -> match sc with
   | SyGuSExpr _ -> false 
   | Dependency (nt2, _) -> nt = nt2

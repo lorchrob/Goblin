@@ -39,7 +39,7 @@ let merge: A.ast -> A.element -> A.ast
         | A.StubbedRhs _ -> rhs 
         | A.Rhs (ges, scs2) -> 
           if List.exists (fun ge -> match ge with 
-          | A.Nonterminal nt3 -> nt = nt3  
+          | A.Nonterminal (nt3, _) -> nt = nt3  
           | A.StubbedNonterminal _ -> false
           ) ges 
           then A.Rhs (ges, scs @ scs2) (* Push up the constraints *)
@@ -92,7 +92,7 @@ let merge: A.ast -> A.element -> A.ast
         | A.StubbedRhs _ -> rhs 
         | A.Rhs (ges, scs2) -> 
           if List.exists (fun ge -> match ge with 
-          | A.Nonterminal nt3 -> nt = nt3  
+          | A.Nonterminal (nt3, _) -> nt = nt3  
           | A.StubbedNonterminal _ -> false
           ) ges 
           then 
@@ -130,7 +130,6 @@ let detect_overlapping_constraints: A.ast -> bool
 = fun ast -> 
   match TopologicalSort.canonicalize ast with
   | Some ast -> 
-    A.pp_print_ast Format.std_formatter ast;
     List.fold_left (fun (acc_ast, acc_bool) element -> 
     acc_ast @ [element], acc_bool || (detect acc_ast element)
     ) ([], false) ast |> snd

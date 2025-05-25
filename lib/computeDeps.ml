@@ -94,7 +94,7 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -
   let call = evaluate ~dep_map sygus_ast ast element in
   match expr with 
 | NTExpr (_, []) -> Utils.crash "Unexpected case in evaluate"
-| NTExpr (_, (id, _) :: rest) -> (*!! TODO: Consider the index *)
+| NTExpr (_, id :: rest) -> (*!! TODO: Consider the index *)
   let child_index = match element with 
   | A.TypeAnnotation _ -> Utils.crash "Unexpected case in evaluate" 
   | A.ProdRule (_, rhss) -> 
@@ -104,11 +104,11 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -
     ) rhss in
     (try  
       Utils.find_index (fun ge -> match ge with 
-      | A.Nonterminal nt -> id = nt 
-      | StubbedNonterminal (nt, _) -> id = nt;
+      | A.Nonterminal (nt, idx) -> id = (nt, idx) 
+      | StubbedNonterminal (nt, _) -> (fst id) = nt;
       ) ges 
     with Not_found ->
-      Utils.crash ("Dangling identifier " ^ id ^ " in semantic constraint"))
+      Utils.crash ("Dangling identifier " ^ (fst id) ^ " in semantic constraint"))
   in (
   match sygus_ast with 
   | VarLeaf _ | BVLeaf _ | IntLeaf _ | BLLeaf _ | BoolLeaf _ | StrLeaf _  -> 
@@ -127,7 +127,7 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -
     | Node _ when rest <> [] -> 
       (* Evaluate dot notation *)
       let element = List.find (fun element -> match element with 
-      | A.ProdRule (nt, _) -> id = nt
+      | A.ProdRule (nt, _) -> (fst id) = nt
       | TypeAnnotation _ -> false
       ) ast in
       evaluate ~dep_map child_sygus_ast ast element (NTExpr ([], rest))

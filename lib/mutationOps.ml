@@ -11,7 +11,7 @@ let random_element (lst: 'a list) : 'a =
 let rec isNonTerminalPresent nt_name prod_options = 
     match prod_options with 
     | [] -> false 
-    | Rhs(ge_list, _) :: xs -> (List.mem (Nonterminal nt_name) ge_list) || (isNonTerminalPresent nt_name xs) 
+    | Rhs(ge_list, _) :: xs -> (List.mem (Nonterminal (nt_name, None)) ge_list) || (isNonTerminalPresent nt_name xs) 
     | _ :: ys -> isNonTerminalPresent nt_name ys 
 
 let rec removeFromList nt lst =
@@ -22,8 +22,8 @@ let rec removeFromList nt lst =
 let apply_add_s1_to_rule production_options nt = 
     List.map (fun rhs_prod_rul -> match rhs_prod_rul with 
     | Rhs(geList, scList) -> 
-        if List.mem (Nonterminal nt) geList
-            then Rhs(geList @ [Nonterminal(nt)], scList) 
+        if List.mem (Nonterminal (nt, None)) geList
+            then Rhs(geList @ [Nonterminal(nt, None)], scList) 
         else Rhs(geList, scList)
     | StubbedRhs(s) -> StubbedRhs(s) 
     ) production_options 
@@ -36,8 +36,8 @@ let rec find_random_production_rule (grammar : ast) : element option =
 
 let rec grammar_element_addition (geList : grammar_element list) (nt : string) (insertion_index : int) : grammar_element list = 
     match insertion_index, geList with
-    | _, [] -> [Nonterminal nt]
-    | 0, xs -> (Nonterminal nt) :: xs
+    | _, [] -> [Nonterminal (nt, None)]
+    | 0, xs -> (Nonterminal (nt, None)) :: xs
     | count, x :: xs -> x :: (grammar_element_addition xs nt (count - 1))
      
 let rec mutation_add_s1 (g : ast) (nt : string) (pr : element option) : ast * bool = 
@@ -122,7 +122,7 @@ let rec apply_delete_to_rule nt production_options =
     | [] -> [] 
     | Rhs(geList, scList) :: xs -> 
         if (List.length geList) > 1 then
-            let deleteFromGrammarElementList = removeFromList (Nonterminal nt) geList in
+            let deleteFromGrammarElementList = removeFromList (Nonterminal (nt, None)) geList in
             let deleteFromConstraintList = remove_constraints nt scList in
             Rhs(deleteFromGrammarElementList, deleteFromConstraintList) :: xs 
         else Rhs(geList, scList) :: xs
@@ -262,7 +262,7 @@ let mutation_crossover (rhs1 : prod_rule_rhs) (rhs2 : prod_rule_rhs) : (prod_rul
         let crossoverList1 = replace_element geList1 randomGe1 randomGe2 in
         let crossoverList2 = replace_element geList2 randomGe2 randomGe1 in (
             match randomGe1, randomGe2 with
-            | (Nonterminal a), (Nonterminal b) -> 
+            | (Nonterminal (a, _)), (Nonterminal (b, _)) -> 
                 (Rhs(crossoverList1, (remove_constraints a scList1)), Rhs(crossoverList2, (remove_constraints b scList2)))
             | (Nonterminal _, (StubbedNonterminal (_, _))) -> Utils.crash "unexpected crossover"
             | ((StubbedNonterminal (_, _)), _) -> Utils.crash "unexpected crossover"

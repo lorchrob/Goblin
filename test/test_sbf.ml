@@ -1165,32 +1165,32 @@ let () =
 
     (***** MIXED_DAC TESTS *****)
     "md_test_sc", [test_case "Semantic constraint" `Quick md_test_sc];
-    "test_placeholder", [test_case "Placeholder" `Quick md_test_placeholder];
-    "test_dt", [test_case "Dependent term" `Quick md_test_dt];
-    "test_dt2", [test_case "Dependent term 2" `Quick md_test_dt2];
-    "test_dc", [test_case "Divide and conquer" `Quick md_test_dc];
-    "test_bl", [test_case "Bit list" `Quick md_test_bl];
-    (* "test_mult_prod_rules", [test_case "Test example with nonterminal with multiple prod rules, with semantic constraints" `Quick md_test_mult_prod_rules]; *)
-    "test_ty_annot_sc2", [test_case "Top level type annotation with semantic constraint 2" `Quick md_test_ty_annot_sc2];
-    "test_bv_len", [test_case "Top length function on bitvector" `Quick md_test_bv_len];
-    "test_dt3", [test_case "Dependent term 3" `Quick md_test_dt3];
-    "test_dt4", [test_case "Dependent term 4" `Quick md_test_dt4];
-    "test_dt5", [test_case "Dependent term 5" `Quick md_test_dt5];
-    "test_dt6", [test_case "Dependent term 6" `Quick md_test_dt6];
-    "test_dynamic_typing", [test_case "Dynamic typing" `Quick md_test_dynamic_typing];
-    "test_recombine", [test_case "Recombine" `Quick md_test_recombine];
-    (* "test_dot_notation", [test_case "Test dot notation" `Quick md_test_dot_notation]; *)
-    (* "test_vertical_ambiguous_reference_1", [test_case "test_vertical_ambiguous_reference_1" `Quick md_test_vertical_ambiguous_reference_1]; *)
-    (* "test_vertical_ambiguous_reference_2", [test_case "test_vertical_ambiguous_reference_2" `Quick md_test_vertical_ambiguous_reference_2]; *)
-    (* "test_horizontal_ambiguous_reference_1", [test_case "test_horizontal_ambiguous_reference_1" `Quick md_test_horizontal_ambiguous_reference_1]; *)
-    "test_cyclic_dependencies", [test_case "test_cyclic_dependencies" `Quick md_test_cyclic_dependencies];
-    "test_dot_notation_2", [test_case "test_dot_notation_2" `Quick md_test_dot_notation_2];
-    (* "test_another_ambiguous_reference", [test_case "test_another_ambiguous_reference" `Quick md_test_another_ambiguous_reference]; *)
-    (* "test_another_ambiguous_reference_1", [test_case "test_another_ambiguous_reference_1" `Quick md_test_another_ambiguous_reference_1]; *)
-    (* "test_another_ambiguous_reference_2", [test_case "test_another_ambiguous_reference_2" `Quick md_test_another_ambiguous_reference_2]; *)
-    "overlapping_constraints", [test_case "overlapping_constraints" `Quick md_overlapping_constraints];
-    "overlapping_constraints_2", [test_case "overlapping_constraints_2" `Quick md_overlapping_constraints_2];
-    "repeated_nt_dependency", [test_case "repeated_nt_dependency" `Quick md_repeated_nt_dependency];
-    (* "test_dpll_unsat_constraint", [test_case "test_dpll_unsat_constraint" `Quick md_test_dpll_unsat_constraint]; *)
-    "test_strings", [test_case "test_strings" `Quick md_test_strings];
+    "md_test_placeholder", [test_case "Placeholder" `Quick md_test_placeholder];
+    "md_test_dt", [test_case "Dependent term" `Quick md_test_dt];
+    "md_test_dt2", [test_case "Dependent term 2" `Quick md_test_dt2];
+    "md_test_dc", [test_case "Divide and conquer" `Quick md_test_dc];
+    "md_test_bl", [test_case "Bit list" `Quick md_test_bl];
+    (* "md_test_mult_prod_rules", [test_case "Test example with nonterminal with multiple prod rules, with semantic constraints" `Quick md_test_mult_prod_rules]; *)
+    "md_test_ty_annot_sc2", [test_case "Top level type annotation with semantic constraint 2" `Quick md_test_ty_annot_sc2];
+    "md_test_bv_len", [test_case "Top length function on bitvector" `Quick md_test_bv_len];
+    "md_test_dt3", [test_case "Dependent term 3" `Quick md_test_dt3];
+    "md_test_dt4", [test_case "Dependent term 4" `Quick md_test_dt4];
+    "md_test_dt5", [test_case "Dependent term 5" `Quick md_test_dt5];
+    "md_test_dt6", [test_case "Dependent term 6" `Quick md_test_dt6];
+    "md_test_dynamic_typing", [test_case "Dynamic typing" `Quick md_test_dynamic_typing];
+    "md_test_recombine", [test_case "Recombine" `Quick md_test_recombine];
+    (* "md_test_dot_notation", [test_case "Test dot notation" `Quick md_test_dot_notation]; *)
+    (* "md_test_vertical_ambiguous_reference_1", [test_case "test_vertical_ambiguous_reference_1" `Quick md_test_vertical_ambiguous_reference_1]; *)
+    (* "md_test_vertical_ambiguous_reference_2", [test_case "test_vertical_ambiguous_reference_2" `Quick md_test_vertical_ambiguous_reference_2]; *)
+    (* "md_test_horizontal_ambiguous_reference_1", [test_case "test_horizontal_ambiguous_reference_1" `Quick md_test_horizontal_ambiguous_reference_1]; *)
+    "md_test_cyclic_dependencies", [test_case "test_cyclic_dependencies" `Quick md_test_cyclic_dependencies];
+    "md_test_dot_notation_2", [test_case "test_dot_notation_2" `Quick md_test_dot_notation_2];
+    (* "md_test_another_ambiguous_reference", [test_case "test_another_ambiguous_reference" `Quick md_test_another_ambiguous_reference]; *)
+    (* "md_test_another_ambiguous_reference_1", [test_case "test_another_ambiguous_reference_1" `Quick md_test_another_ambiguous_reference_1]; *)
+    (* "md_test_another_ambiguous_reference_2", [test_case "test_another_ambiguous_reference_2" `Quick md_test_another_ambiguous_reference_2]; *)
+    "md_overlapping_constraints", [test_case "overlapping_constraints" `Quick md_overlapping_constraints];
+    "md_overlapping_constraints_2", [test_case "overlapping_constraints_2" `Quick md_overlapping_constraints_2];
+    "md_repeated_nt_dependency", [test_case "repeated_nt_dependency" `Quick md_repeated_nt_dependency];
+    (* "md_test_dpll_unsat_constraint", [test_case "test_dpll_unsat_constraint" `Quick md_test_dpll_unsat_constraint]; *)
+    "md_test_strings", [test_case "test_strings" `Quick md_test_strings];
   ]

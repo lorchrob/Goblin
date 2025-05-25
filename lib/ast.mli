@@ -71,7 +71,7 @@ type semantic_constraint =
 type il_type = Bool | Int | Placeholder | String | BitVector of int | BitList | ADT of string list list
 
 type grammar_element =
-| Nonterminal of string
+| Nonterminal of string * int option
 | StubbedNonterminal of string * string
 
 type prod_rule_rhs = 

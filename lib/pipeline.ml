@@ -15,24 +15,29 @@ let main_pipeline ?(engine: Flags.engine option = None) filename =
   let ppf = Format.std_formatter in
   let input_string = Utils.read_file filename in 
 
-  (* Step 0: Parse user input *)
+  (* Parse user input *)
   Utils.debug_print Format.pp_print_string ppf "Lexing and parsing complete:\n";
   let ast = Parsing.parse input_string in 
   Utils.debug_print Ast.pp_print_ast ppf ast;
 
-  (* Step 1: Syntactic checks *)
+  (* Syntactic checks *)
   let prm = SyntaxChecker.build_prm ast in
   let nt_set = SyntaxChecker.build_nt_set ast in
   let ast = SyntaxChecker.check_syntax prm nt_set ast in 
   Utils.debug_print Format.pp_print_string ppf "\nSyntactic checks complete:\n";
   Utils.debug_print Ast.pp_print_ast ppf ast;
 
-  (* Step 2: Type checking *)
+  (* Type checking *)
   let ast, ctx = TypeChecker.build_context ast in
   let ast = TypeChecker.check_types ctx ast in
   Utils.debug_print Format.pp_print_string ppf "\nType checking complete:\n";
 
-  (* Step 3: Run engine(s) *)
+  (* Populate nonterminal indices *)
+  Utils.debug_print Format.pp_print_string ppf "\nPopulating indices:\n";
+  let ast = PopulateIndices.populate_indices ast in
+  Utils.debug_print Ast.pp_print_ast ppf ast;
+
+  (* Run engine(s) *)
   let sygus_ast = 
     match engine, !Flags.selected_engine with 
     (* Single engine mode.
@@ -64,7 +69,7 @@ let main_pipeline ?(engine: Flags.engine option = None) filename =
         Utils.crash "Internal error: No engine produced a result"
   in
 
-  (* Step 3: Serialize! *)
+  (* Serialize! *)
   Utils.debug_print Format.pp_print_string ppf "\nSerializing:\n";
   let output = Utils.capture_output SygusAst.serialize sygus_ast in 
   Format.pp_print_string ppf output; 
@@ -82,35 +87,35 @@ let rec collect_results results =
 let sygusGrammarToPacket ast = 
   (* let ast = sortAst input_grammar in *)
 
-  (* Step 1: Syntactic checks *)
+  (* Syntactic checks *)
   let prm = SyntaxChecker.build_prm ast in
   let nt_set = SyntaxChecker.build_nt_set ast in
   let ast = SyntaxChecker.check_syntax prm nt_set ast in 
 
-  (* Step 2: Type checking *)
+  (* Type checking *)
   let ast, ctx = TypeChecker.build_context ast in
   let ast = TypeChecker.check_types ctx ast in
 
-  (* Step 3: Merge overlapping constraints *)
+  (* Merge overlapping constraints *)
   (* let ast = MergeOverlappingConstraints.merge_overlapping_constraints ast in *)
 
-  (* Step 4: Resolve ambiguities in constraints *)
+  (* Resolve ambiguities in constraints *)
   let ast = ResolveAmbiguities.resolve_ambiguities ctx ast in
 
-  (* Step 5: Convert NTExprs to Match expressions *)
+  (* Convert NTExprs to Match expressions *)
   let ast = NtExprToMatch.convert_nt_exprs_to_matches ctx ast in
 
-  (* Step 6: Abstract away dependent terms in the grammar *)
+  (* Abstract away dependent terms in the grammar *)
   let dep_map, ast, ctx = AbstractDeps.abstract_dependencies ctx ast in 
 
-  (* Step 7: Divide and conquer *)
+  (* Divide and conquer *)
   let asts = DivideAndConquer.split_ast ast |> Option.get in 
 
   if not !Flags.only_parse then (
-    (* Step 8: Call sygus engine *)
+    (* Call sygus engine *)
     let sygus_outputs = List.map (Sygus.call_sygus ctx dep_map) asts in
 
-    (* Step 9: Parse SyGuS output. *)
+    (* Parse SyGuS output. *)
     let sygus_asts = List.map2 Parsing.parse_sygus sygus_outputs asts in
     match collect_results sygus_asts with
     | Error e -> Error e
@@ -122,20 +127,20 @@ let sygusGrammarToPacket ast =
         else sygus_asts
       in
 
-      (* Step 10: Recombine to single AST *)
+      (* Recombine to single AST *)
       let sygus_ast = Recombine.recombine sygus_asts in 
 
-      (* Step 11: Compute dependencies *)
+      (* Compute dependencies *)
       let sygus_ast = 
         if not (List.mem (SygusAst.VarLeaf "infeasible") sygus_asts)
         then ComputeDeps.compute_deps dep_map ast sygus_ast 
         else SygusAst.VarLeaf "infeasible"
       in  
 
-      (* Step 12: Bit flip mutations *)
+      (* Bit flip mutations *)
       let sygus_ast = BitFlips.flip_bits sygus_ast in
 
-      (* Step 13: Serialize! *)
+      (* Serialize! *)
       let output = SygusAst.serialize_bytes SygusAst.Big sygus_ast in 
       Ok output) 
     else 

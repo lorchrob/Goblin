@@ -62,7 +62,7 @@ let rec check_syntax_semantics: Ast.ast -> SygusAst.sygus_ast -> (unit, string) 
         List.for_all2 (fun child ge ->  
           match child, ge with 
           | _, A.StubbedNonterminal _ -> false 
-          | SA.Node (constructor, _), Nonterminal nt -> Utils.str_eq_ci (Utils.extract_base_name constructor) nt
+          | SA.Node (constructor, _), Nonterminal (nt, _) -> Utils.str_eq_ci (Utils.extract_base_name constructor) nt
           | _, _ -> true
         ) children ges
     ) rhss in 

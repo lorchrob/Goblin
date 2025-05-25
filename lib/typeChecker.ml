@@ -19,7 +19,7 @@ let build_context: ast -> ast * context
   | ProdRule (nt, rhss) -> 
     let options = List.map (fun rhs -> match rhs with
       | Rhs (ges, _) -> List.fold_left (fun acc ge -> match ge with 
-        | Nonterminal nt 
+        | Nonterminal (nt, _) 
         | StubbedNonterminal (nt, _) -> nt :: acc
       ) [] ges |> List.rev
       | StubbedRhs _ -> []

@@ -83,7 +83,7 @@ type il_type =
 | ADT of string list list
 
 type grammar_element = 
-| Nonterminal of string 
+| Nonterminal of string * int option
 | StubbedNonterminal of string * string (* Ignore *)
 
 type prod_rule_rhs = 
@@ -331,7 +331,7 @@ let pp_print_ty: Format.formatter -> il_type -> unit
 
 let pp_print_grammar_element: Format.formatter -> grammar_element ->  unit 
 = fun ppf g_el -> match g_el with 
-| Nonterminal nt -> pp_print_nt_with_dots ppf [nt, None]
+| Nonterminal (nt, idx) -> pp_print_nt_with_dots ppf [nt, idx]
 | StubbedNonterminal (_, stub_id) -> Format.pp_print_string ppf stub_id
 
 let pp_print_prod_rule_rhs: Format.formatter -> prod_rule_rhs -> unit 
@@ -387,7 +387,7 @@ let il_int_to_bitvector: int -> int -> expr
 
 let grammar_element_to_string: grammar_element -> string 
 = fun grammar_element -> match grammar_element with 
-  | Nonterminal nt2 -> nt2
+  | Nonterminal (nt2, _) -> nt2
   | StubbedNonterminal (_, stub_id) -> stub_id
 
 (* Used before divide and conquer *)
@@ -395,7 +395,7 @@ let nts_of_rhs: prod_rule_rhs -> string list
 = fun rhs -> match rhs with 
 | Rhs (ges, _) -> 
   List.map (fun ge -> match ge with 
-  | Nonterminal nt -> nt 
+  | Nonterminal (nt, _) -> nt 
   | StubbedNonterminal _ -> assert false
   ) ges
 | StubbedRhs _ -> assert false

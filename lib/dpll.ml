@@ -141,16 +141,16 @@ type model_value =
 | ConcreteBitList of bool list
 
 type derivation_tree = 
-| SymbolicLeaf of A.il_type * string list (* path to this node *)
+| SymbolicLeaf of A.il_type * (string * int option) list (* path to this node *)
 | DependentTermLeaf of string 
-| ConcreteBoolLeaf of string list * bool (* path to this node, value of the leaf *)
-| ConcreteIntLeaf of string list * int 
-| ConcretePlaceholderLeaf of string list * string 
-| ConcreteStringLeaf of string list * string
-| ConcreteBitVectorLeaf of string list * int * bool list 
-| ConcreteBitListLeaf of string list * bool list
+| ConcreteBoolLeaf of (string * int option) list * bool (* path to this node, value of the leaf *)
+| ConcreteIntLeaf of (string * int option) list * int 
+| ConcretePlaceholderLeaf of (string * int option) list * string 
+| ConcreteStringLeaf of (string * int option) list * string
+| ConcreteBitVectorLeaf of (string * int option) list * int * bool list 
+| ConcreteBitListLeaf of (string * int option) list * bool list
 (* label, visited set, path to this node, children *)
-| Node of string * Utils.IntSet.t ref * string list * derivation_tree list ref
+| Node of string * Utils.IntSet.t ref * (string * int option) list * derivation_tree list ref
 
 let rec pp_print_derivation_tree ppf derivation_tree = match derivation_tree with 
 | SymbolicLeaf _ -> Format.pp_print_string ppf "sym_leaf"
@@ -245,14 +245,15 @@ let assert_smt_constraint: solver_instance -> Ast.expr -> unit
 
 (* State expression nonterminals in terms of absolute paths from 
    the root of the derivation tree *)
-let rec universalize_expr is_type_annotation prefix expr = 
+let rec universalize_expr: bool -> (string * int option) list -> Ast.expr -> Ast.expr
+= fun is_type_annotation prefix expr ->
   let r = universalize_expr is_type_annotation prefix in
   match expr with
   | A.NTExpr (nts1, nts2) -> 
     (* In the derivation tree structure, type annotation NTs have a duplicate at the end of the path. 
        Remove it. *)
     let prefix = if is_type_annotation then Utils.init prefix else prefix in
-    A.NTExpr (nts1, List.map (fun id -> id, None) prefix @ nts2)
+    A.NTExpr (nts1, prefix @ nts2)
   | BVCast (len, expr) -> BVCast (len, r expr)
   | BinOp (expr1, op, expr2) -> BinOp (r expr1, op, r expr2) 
   | UnOp (op, expr) -> UnOp (op, r expr) 
@@ -329,13 +330,20 @@ let ty_of_concrete_leaf leaf = match leaf with
 | ConcreteBoolLeaf _ -> Bool 
 | _ -> Utils.crash "Unexpected case in ty_of_concrete_leaf"
 
+let string_of_path path = 
+  let path = List.map (fun (nt, idx) -> match idx with 
+  | None -> nt
+  | Some idx -> Format.asprintf "%s%d" nt idx
+  ) path in 
+  String.concat "_" path
+
 let rec instantiate_terminals: model_value Utils.StringMap.t -> derivation_tree -> derivation_tree 
 = fun model derivation_tree -> 
   let r = instantiate_terminals model in 
   match derivation_tree with 
   | ConcreteIntLeaf (path, _) | ConcreteBoolLeaf (path, _) | ConcreteBitListLeaf (path, _)
   | ConcreteBitVectorLeaf (path, _, _) | ConcretePlaceholderLeaf (path, _) | ConcreteStringLeaf (path, _) -> 
-    let path' = String.concat "_" (Utils.init path) |> String.lowercase_ascii in
+    let path' = string_of_path (Utils.init path) |> String.lowercase_ascii in
     (match Utils.StringMap.find_opt path' model with 
     | Some (ConcreteInt int) -> ConcreteIntLeaf (path, int)
     | Some (ConcreteBool bool) -> ConcreteBoolLeaf (path, bool)
@@ -345,7 +353,7 @@ let rec instantiate_terminals: model_value Utils.StringMap.t -> derivation_tree 
     | Some (ConcretePlaceholder ph) -> ConcretePlaceholderLeaf (path, ph)
     | None -> SymbolicLeaf (ty_of_concrete_leaf derivation_tree, path) (* Model contain unconstrained variables not present in this derivation tree *))
   | SymbolicLeaf (ty, path) -> 
-    let path' = String.concat "_" (Utils.init path) |> String.lowercase_ascii in
+    let path' = string_of_path (Utils.init path) |> String.lowercase_ascii in
     (match Utils.StringMap.find_opt path' model with 
     | Some (ConcreteInt int) -> ConcreteIntLeaf (path, int)
     | Some (ConcreteBool bool) -> ConcreteBoolLeaf (path, bool)
@@ -394,7 +402,7 @@ let rec is_complete derivation_tree = match derivation_tree with
 let rec sygus_ast_of_derivation_tree: derivation_tree -> SA.sygus_ast 
 = fun derivation_tree -> match derivation_tree with
 | DependentTermLeaf nt -> VarLeaf (String.lowercase_ascii (nt ^ "_con")) (* Match sygus encoding format *)
-| SymbolicLeaf (_, path) -> VarLeaf (String.concat "" path)
+| SymbolicLeaf (_, path) -> VarLeaf (String.concat "" (List.map fst path))
 | ConcreteIntLeaf (_, i) -> IntLeaf i
 | ConcreteBitListLeaf (_, bits) -> BLLeaf bits 
 | ConcreteBitVectorLeaf (_, len, bits) -> BVLeaf (len, bits)
@@ -445,9 +453,9 @@ let rec nt_will_be_reached derivation_tree ast nt =
       else (
         match List.find_opt (fun child -> match child with 
         | Node (nt2, _, _, _) -> str = nt2
-        | SymbolicLeaf (_, path) -> str = Utils.last path
+        | SymbolicLeaf (_, path) -> str = (fst (Utils.last path))
         | ConcreteIntLeaf (path, _) | ConcreteBoolLeaf (path, _) | ConcreteBitListLeaf (path, _) 
-        | ConcreteBitVectorLeaf (path, _, _) | ConcretePlaceholderLeaf (path, _) | ConcreteStringLeaf (path, _) -> str = Utils.last path
+        | ConcreteBitVectorLeaf (path, _, _) | ConcretePlaceholderLeaf (path, _) | ConcreteStringLeaf (path, _) -> str = fst (Utils.last path)
         | DependentTermLeaf nt2 -> str = nt2
         ) !children with 
         | Some child -> nt_will_be_reached child ast nts
@@ -505,7 +513,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
 
   (*** Set up the key data structures ***)
   (* Incremental construction of output term so far *)
-  let derivation_tree = ref (Node (start_symbol, ref Utils.IntSet.empty, [start_symbol], ref [])) in 
+  let derivation_tree = ref (Node (start_symbol, ref Utils.IntSet.empty, [start_symbol, None], ref [])) in 
   (* Tree nodes left to explore *)
   let frontier = ref (DTSet.singleton derivation_tree) in 
   (* Track declared (SMT-level) variables to avoid redeclaration *)
@@ -544,7 +552,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
     | Node (nt, _, _, children) when not (List.length !children = 0) -> 
       Utils.crash ("Trying to expand node " ^ nt ^ " that already has children in dpll")
     | Node (nt, visited, path, children) as node -> 
-      let path' = String.concat "_" path |> String.lowercase_ascii in
+      let path' = string_of_path path |> String.lowercase_ascii in
       let grammar_rule = List.find (fun element -> match element with 
       | A.ProdRule (nt2, _) 
       | TypeAnnotation (nt2, _, _) -> String.equal nt nt2
@@ -552,7 +560,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
       match grammar_rule with 
       | A.TypeAnnotation (_, ty, []) -> 
         visited := Utils.IntSet.add 0 !visited;
-        children := [SymbolicLeaf (ty, path @ [nt])];
+        children := [SymbolicLeaf (ty, path @ [nt, None])];
       | A.TypeAnnotation (_, ty, scs) -> 
         visited := Utils.IntSet.add 0 !visited;
         (* Assert semantic constraints for type annotations *)
@@ -564,7 +572,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
           let model = get_smt_result ast solver in  
           (match model with 
           | Ok model -> 
-            children := [SymbolicLeaf (ty, path @ [nt])]; 
+            children := [SymbolicLeaf (ty, path @ [nt, None])]; 
             derivation_tree := instantiate_terminals model !derivation_tree; 
           | Error () -> 
             backtrack_decision_level solver;
@@ -587,8 +595,8 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
           children := [DependentTermLeaf str]
         | A.Rhs (ges, scs) -> 
           children := List.map (fun ge -> match ge with 
-          | A.Nonterminal nt -> 
-            Node (nt, ref Utils.IntSet.empty, path @ [nt], ref [])  
+          | A.Nonterminal (nt, idx_opt) ->
+            Node (nt, ref Utils.IntSet.empty, path @ [nt, idx_opt], ref [])  
           | StubbedNonterminal (_, nt) -> DependentTermLeaf nt
           ) ges;
           List.iter (fun sc -> match sc with 

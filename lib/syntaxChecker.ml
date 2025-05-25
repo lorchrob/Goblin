@@ -172,7 +172,7 @@ let check_syntax_prod_rule: prod_rule_map -> Utils.StringSet.t -> prod_rule_rhs 
 let rhss_contains_nt nt rhss = 
   List.iter (fun rhs -> match rhs with 
   | Rhs (ges, _) -> List.iter (fun ge -> match ge with 
-    | Nonterminal nt2
+    | Nonterminal (nt2, _)
     | StubbedNonterminal (nt2, _) -> 
       if nt = nt2 then 
         Utils.warning_print Format.pp_print_string Format.std_formatter "Warning: Grammar is recursive. Constraints on recursive production rules may not be respected.\n"
