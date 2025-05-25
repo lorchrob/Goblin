@@ -80,9 +80,11 @@ let merge: A.ast -> A.element -> A.ast
       let scs = List.map (fun sc -> match sc with 
       | A.SyGuSExpr expr -> 
         A.SyGuSExpr (A.prepend_nt_to_dot_exprs nt expr)
-      | Dependency (nt2, expr) -> (*!! TODO: Again -- indices matter *)
+      | Dependency (nt2, expr) -> 
         (* Since there is overlap, replace dependency with equality constraint.
            We can't ignore what it overlaps with, in case it is unsat. *)
+        (* We can place None in the index because this pipeline step happens before 
+           resolveAmbiguities. *)
         A.SyGuSExpr (A.prepend_nt_to_dot_exprs nt (A.CompOp (NTExpr([], [nt2, None]), Eq, expr)))
       ) scs in 
       let ast = List.fold_left (fun acc element -> match element with

@@ -5,11 +5,7 @@
      TODO: Expand testing to test all engines individually, and in parallel, for each test case
      TODO: More fine-grained check if divide and conquer engines are usable. Right now,
            rejecting all recursive grammars. But really this only is necessary for sygus_dac.
-     
-     !! When lifting dependencies to equality constraints, need to make sure indices are handled properly. 
-        One way to do this is to include indices in the dependencies in the AST, 
-        and also disambiguate, just for the purpose of if they are lifted to equality constraints.  
-        Seems like this is already handled properly? Maybe?
+    
 
      FUTURE: I think we could support arbitrary recursive functions in the dpll engines (at least, dpll_mono) 
              by simply unrolling the function definition as far as you need on the fly *)

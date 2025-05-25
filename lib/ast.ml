@@ -405,9 +405,14 @@ let rec expr_contains_dangling_nt: Utils.SILSet.t -> expr -> bool
   let r = expr_contains_dangling_nt ctx in
   match expr with 
   | NTExpr (nt_ctx, nts) -> 
-    let nt_expr = Utils.init (nt_ctx @ nts) in  
-    (List.length nt_expr > 1) && 
-    not (Utils.SILSet.mem nt_expr ctx)
+    let nt_expr = nt_ctx @ nts in  
+    let res = (List.length nt_expr > 1) && 
+    not (Utils.SILSet.mem nt_expr ctx) in 
+    (* Format.fprintf Format.std_formatter "Set {%a}: Is %a a member?: %b\n"
+      (Lib.pp_print_list pp_print_nt_with_underscores ", ") (Utils.SILSet.elements ctx)
+      pp_print_nt_with_underscores nt_expr (Utils.SILSet.mem nt_expr ctx); *)
+    res
+    
   | BinOp (expr1, _, expr2) -> 
     r expr1 || r expr2
   | UnOp (_, expr) -> 
