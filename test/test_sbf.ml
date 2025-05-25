@@ -988,15 +988,6 @@ let md_test_dt6 () =
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
-
-(* let md_test_recombine () =
-  let input = "../../../test/test_cases/test_recombine" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some MixedDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
-  match output with
-  | Ok _ -> ()  
-  | Error msg -> fail msg *)
   
 let md_test_dynamic_typing () = 
   let input = "../../../test/test_cases/test_dynamic_typing" in
@@ -1646,7 +1637,6 @@ let () =
     "md_test_dt5", [test_case "Dependent term 5" `Quick md_test_dt5];
     "md_test_dt6", [test_case "Dependent term 6" `Quick md_test_dt6];
     "md_test_dynamic_typing", [test_case "Dynamic typing" `Quick md_test_dynamic_typing];
-    (* not applicable "md_test_recombine", [test_case "Recombine" `Quick md_test_recombine]; *)
     "md_test_dot_notation", [test_case "Test dot notation" `Quick md_test_dot_notation];
     "md_test_vertical_ambiguous_reference_1", [test_case "test_vertical_ambiguous_reference_1" `Quick md_test_vertical_ambiguous_reference_1];
     "md_test_vertical_ambiguous_reference_2", [test_case "test_vertical_ambiguous_reference_2" `Quick md_test_vertical_ambiguous_reference_2];

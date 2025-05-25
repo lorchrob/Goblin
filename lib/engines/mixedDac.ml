@@ -28,7 +28,7 @@ let dac ppf ctx ast =
     
   (* Step 1: Merge overlapping constraints *)
   Utils.debug_print Format.pp_print_string ppf "\nMerge overlapping constraints:\n";
-  let ast = MergeOverlappingConstraints.merge_overlapping_constraints ast in
+  let ast = Utils.recurse_until_fixpoint ast (=) MergeOverlappingConstraints.merge_overlapping_constraints in
   Utils.debug_print Ast.pp_print_ast ppf ast;
 
   (* Step 2: Resolve ambiguities in constraints *)

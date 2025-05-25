@@ -416,7 +416,6 @@ fun ctx ast expr ->
 let filter_out_dangling_nts expr = 
   let rec helper ctx expr = match expr with
   (* Generated conjunction. If expr1 or expr2 has dangling nts, remove it *)
-  (*!! If there is no GLAnd, still need to check the top-level expression... See examples/test18 *)
   | A.BinOp (expr1, GLAnd, expr2) -> 
     let expr1 = helper ctx expr1 in 
     let expr2 = helper ctx expr2 in
