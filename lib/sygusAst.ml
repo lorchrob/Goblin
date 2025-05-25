@@ -1,6 +1,10 @@
 (* TODO: Distinguish between strings, placeholders, dep terms in sygus_ast type *)
+(* Using sygus asts to represent two different things. 
+      1. Lisp-style terms compatible with any input grammar, and 
+      2. SMT solver models upon calling check-sat and get-model 
+         (essentially a single node with a list of leaf children) *)
 type sygus_ast = 
-| Node of string * sygus_ast list 
+| Node of (string * int option) * sygus_ast list 
 | BVLeaf of int * bool list 
 | IntLeaf of int
 | BLLeaf of bool list
@@ -15,9 +19,13 @@ type endianness =
 let pp_print_sygus_ast: Format.formatter -> sygus_ast -> unit 
 = fun ppf sygus_ast -> 
   let rec pp_print_sygus_ast' ppf sygus_ast = match sygus_ast with 
-  | Node (constructor, subterms) -> 
+  | Node ((constructor, Some idx), subterms) -> 
+    Format.fprintf ppf "(%s%d %a)"
+    constructor idx
+    (Lib.pp_print_list pp_print_sygus_ast' " ") subterms 
+  | Node ((constructor, None), subterms) -> 
     Format.fprintf ppf "(%s %a)"
-    constructor 
+    constructor
     (Lib.pp_print_list pp_print_sygus_ast' " ") subterms 
   | BVLeaf (_, bits) -> 
     let bits = List.map Bool.to_int bits in
@@ -137,7 +145,7 @@ let serialize_bytes: endianness -> sygus_ast -> bytes * bytes
 = fun endianness sygus_ast -> 
   let rec serialize_aux endianness sygus_ast offset acc_metadata =
     match sygus_ast with
-    | Node (id, subterms) ->
+    | Node ((id, _), subterms) ->
       let regex = Str.regexp "rg_id_list_con[0-9]+" in
       let is_match = Str.string_match regex id 0 in
       let endianness = if is_match then Little else Big in

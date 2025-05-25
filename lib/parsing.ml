@@ -30,6 +30,6 @@ let parse_sygus: string -> Ast.ast -> (SygusAst.sygus_ast, string) result
   (* Sygus files with top-level type annotations lose their constructor name *)
   | TypeAnnotation (nt, _, _) :: _, Ok sygus_ast -> 
     let constructor = String.lowercase_ascii nt ^ "_con0" in
-    Ok (SygusAst.Node (constructor, [sygus_ast]))
+    Ok (SygusAst.Node ((constructor, None), [sygus_ast]))
   | _, Error e -> print_endline e; sygus_ast
   | _, Ok _ -> sygus_ast

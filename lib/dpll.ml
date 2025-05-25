@@ -140,6 +140,14 @@ type model_value =
 | ConcreteBitVector of int * bool list
 | ConcreteBitList of bool list
 
+let pp_print_model_value ppf = function
+| ConcreteBool b -> Format.pp_print_bool ppf b
+| ConcreteInt i -> Format.pp_print_int ppf i 
+| ConcretePlaceholder str -> Format.pp_print_string ppf str
+| ConcreteString str -> Format.fprintf ppf "%S" str 
+| ConcreteBitVector _ -> Format.pp_print_string ppf "bitvector"
+| ConcreteBitList _ -> Format.pp_print_string ppf "bitlist"
+
 type derivation_tree = 
 | SymbolicLeaf of A.il_type * (string * int option) list (* path to this node *)
 | DependentTermLeaf of string 
@@ -288,23 +296,38 @@ let backtrack_decision_level: solver_instance -> unit
   issue_solver_command pop_cmd solver; 
   ()
 
+let string_of_constructor (str, idx) = match idx with 
+| None -> str 
+| Some idx -> str ^ (string_of_int idx)
+
 let rec model_of_sygus_ast: SygusAst.sygus_ast -> (model_value Utils.StringMap.t, unit) result
 = fun sygus_ast -> 
   match sygus_ast with 
   | VarLeaf var when var = "infeasible" -> Error ()
   | Node (constructor, [IntLeaf value]) -> 
-    Ok (Utils.StringMap.singleton constructor (ConcreteInt value))
+    Ok (Utils.StringMap.singleton (string_of_constructor constructor) (ConcreteInt value))
   | Node (constructor, [StrLeaf value]) -> 
-    Ok (Utils.StringMap.singleton constructor (ConcreteString value))
+    Ok (Utils.StringMap.singleton (string_of_constructor constructor) (ConcreteString value))
   | Node (constructor, [BoolLeaf value]) -> 
-    Ok (Utils.StringMap.singleton constructor (ConcreteBool value))
+    Ok (Utils.StringMap.singleton (string_of_constructor constructor) (ConcreteBool value))
   | Node (constructor, [BLLeaf value]) -> 
-    Ok (Utils.StringMap.singleton constructor (ConcreteBitList value))
+    Ok (Utils.StringMap.singleton (string_of_constructor constructor) (ConcreteBitList value))
     | Node (constructor, [BVLeaf (len, value)]) -> 
-    Ok (Utils.StringMap.singleton constructor (ConcreteBitVector (len, value)))
+    Ok (Utils.StringMap.singleton (string_of_constructor constructor) (ConcreteBitVector (len, value)))
   | Node (_, children) -> 
     (Res.seq_chain (fun acc child -> 
       let* map = model_of_sygus_ast child in 
+
+      (* List.iter (fun (k, v) -> 
+        Format.fprintf Format.std_formatter "%s: %a\n"
+          k pp_print_model_value v
+      ) (Utils.StringMap.bindings acc);
+
+      List.iter (fun (k, v) -> 
+        Format.fprintf Format.std_formatter "%s: %a\n"
+          k pp_print_model_value v
+      ) (Utils.StringMap.bindings map); *)
+
       Ok (Utils.StringMap.merge Lib.union_keys acc map)  
     ) Utils.StringMap.empty children)
   | VarLeaf _ | BLLeaf _ | BVLeaf _ 
@@ -414,7 +437,7 @@ let rec sygus_ast_of_derivation_tree: derivation_tree -> SA.sygus_ast
 | ConcretePlaceholderLeaf (_, ph) -> VarLeaf ph 
 | ConcreteStringLeaf (_, str) -> StrLeaf str
 | ConcreteBoolLeaf (_, b) -> BoolLeaf b
-| Node ((nt, _), _, _, children) -> 
+| Node (nt, _, _, children) -> 
   let children = List.map sygus_ast_of_derivation_tree !children in 
   Node (nt, children)
 

@@ -113,7 +113,7 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -
   match sygus_ast with 
   | VarLeaf _ | BVLeaf _ | IntLeaf _ | BLLeaf _ | BoolLeaf _ | StrLeaf _  -> 
     sygus_ast_to_expr sygus_ast
-  | Node (_, subterms) -> 
+  | Node (_, subterms) ->
     let child_sygus_ast = List.nth subterms child_index in 
     match child_sygus_ast with 
     | VarLeaf var -> 
@@ -351,7 +351,7 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -
 let rec compute_deps: A.semantic_constraint Utils.StringMap.t -> A.ast -> SA.sygus_ast -> SA.sygus_ast 
 = fun dep_map ast sygus_ast -> match sygus_ast with
 | VarLeaf _ -> eval_fail 28
-| Node (constructor, subterms) -> 
+| Node ((constructor, idx), subterms) -> 
   let subterms = 
   List.map (fun subterm -> match subterm with 
   | SygusAst.Node _ -> compute_deps dep_map ast subterm
@@ -372,5 +372,5 @@ let rec compute_deps: A.semantic_constraint Utils.StringMap.t -> A.ast -> SA.syg
     else sygus_ast 
   | _ -> subterm
   ) subterms in 
-  Node (constructor, subterms)
+  Node ((constructor, idx), subterms)
 | BVLeaf _ | BLLeaf _ | IntLeaf _ | BoolLeaf _ | StrLeaf _ -> sygus_ast

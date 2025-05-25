@@ -17,7 +17,7 @@ let (let*) = Res.(>>=)
 
 let check_start_symbol: Ast.ast -> SygusAst.sygus_ast -> (unit, string) result 
 = fun ast sygus_ast -> match ast, sygus_ast with 
-| A.ProdRule (nt, _) :: _, SA.Node (constructor, _) -> 
+| A.ProdRule (nt, _) :: _, SA.Node ((constructor, _), _) -> 
   if Utils.str_eq_ci nt (Utils.extract_base_name constructor) 
     then Ok () 
   else 
@@ -27,13 +27,13 @@ let check_start_symbol: Ast.ast -> SygusAst.sygus_ast -> (unit, string) result
 
 let rec check_syntax_semantics: Ast.ast -> SygusAst.sygus_ast -> (unit, string) result 
 = fun ast sygus_ast -> match sygus_ast with 
-  | Node (constructor, children) -> 
+  | Node ((constructor, _), children) -> 
     (* In dpll divide and conquer module, 
        we get an extra nesting of stub and concrete NTs 
        for some reason. *)
     let skip_condition = 
       match children with 
-      | [Node (constructor2, _)] ->
+      | [Node ((constructor2, _), _)] ->
         Utils.str_eq_ci constructor (Utils.extract_base_name constructor2)
       | _ -> false
     in
@@ -62,7 +62,7 @@ let rec check_syntax_semantics: Ast.ast -> SygusAst.sygus_ast -> (unit, string) 
         List.for_all2 (fun child ge ->  
           match child, ge with 
           | _, A.StubbedNonterminal _ -> false 
-          | SA.Node (constructor, _), Nonterminal (nt, _) -> Utils.str_eq_ci (Utils.extract_base_name constructor) nt
+          | SA.Node ((constructor, _), _), Nonterminal (nt, _) -> Utils.str_eq_ci (Utils.extract_base_name constructor) nt
           | _, _ -> true
         ) children ges
     ) rhss in 
@@ -70,11 +70,12 @@ let rec check_syntax_semantics: Ast.ast -> SygusAst.sygus_ast -> (unit, string) 
     let scs = match rhs with 
     | Some (StubbedRhs _) -> assert false 
     | Some (Rhs (_, scs)) -> scs 
-    | None -> [] (* TODO: Need to analyze scs in type annotation case *)
+    | None -> [] (*!! TODO: Need to analyze scs in type annotation case *)
     in 
     (* Evaluate each semantic constraint with concrete values from the sygus AST, and check 
        if all are satisfied *)
     let scs = List.map (fun sc -> match sc with 
+    (*!!! Need to check if the sc is applicable to this sygus ast *)
     | A.SyGuSExpr expr -> 
       ComputeDeps.evaluate sygus_ast ast (ProdRule (nt, rhss)) expr
     | Dependency (nt, expr) -> 

@@ -43,10 +43,12 @@ s:
 | UNSAT; EOF { VarLeaf "infeasible" }
 
 sygus_model: 
-| LPAREN; values = list(model_value); RPAREN; { Node ("smt_model", values) }
+| LPAREN; values = list(model_value); RPAREN; { Node (("smt_model", None), values) }
 
 model_value:
-| LPAREN; DEFINE; HYPHEN; FUN; id = ID; LPAREN; RPAREN; il_ty; t = lisp_term; RPAREN; { Node (id, [t]) }
+| LPAREN; DEFINE; HYPHEN; FUN; id = ID; LPAREN; RPAREN; il_ty; t = lisp_term; RPAREN;
+ { let id, idx = Utils.parse_str_nat_suffix id in
+  Node ((id, idx), [t]) }
 	
 sygus_term:
 | LPAREN; LPAREN; DEFINE; HYPHEN; FUN; TOP; LPAREN; RPAREN; top_type; t = lisp_term; RPAREN; RPAREN;
@@ -67,7 +69,8 @@ il_ty:
 
 lisp_term: 
 | LPAREN; id = ID; ts = list(lisp_term); RPAREN; 
-  { Node (id, ts) }
+  { let id, idx = Utils.parse_str_nat_suffix id in
+    Node ((id, idx), ts) }
 | bits = BITS; 
   { BVLeaf (List.length bits, bits) }
 | id = ID; 

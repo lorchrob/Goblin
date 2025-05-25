@@ -2,7 +2,7 @@ let replace_stub: string -> SygusAst.sygus_ast list -> SygusAst.sygus_ast option
 = fun possible_stub sygus_asts ->
   List.find_opt (fun sygus_ast -> match sygus_ast with 
   | SygusAst.IntLeaf _ | BVLeaf _ | BLLeaf _ | VarLeaf _ | BoolLeaf _ | StrLeaf _ -> false 
-  | Node (constructor, _) -> 
+  | Node ((constructor, _), _) -> 
     (* To compare stubs, we only need the stub ID prefix "_stubN"*)
     ((Utils.extract_base_name possible_stub = Utils.extract_base_name constructor) && 
      (Utils.extract_base_name possible_stub <> ""))

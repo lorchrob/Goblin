@@ -188,3 +188,21 @@ let extract_base_name str =
 
 let str_eq_ci s1 s2 =
   String.lowercase_ascii s1 = String.lowercase_ascii s2
+
+let parse_str_nat_suffix (s : string) : string * int option =
+  let len = String.length s in
+  let rec split_at_digit_suffix i =
+    if i < 0 then 0
+    else if Char.code s.[i] >= Char.code '0' && Char.code s.[i] <= Char.code '9'
+    then split_at_digit_suffix (i - 1)
+    else i + 1
+  in
+  let split_index = split_at_digit_suffix (len - 1) in
+  let prefix = String.sub s 0 split_index in
+  if split_index = len then
+    (prefix, None)
+  else
+    let suffix = String.sub s split_index (len - split_index) in
+    match int_of_string_opt suffix with
+    | Some n -> (prefix, Some n)
+    | None -> (s, None)  (* fallback, shouldn't normally happen *)

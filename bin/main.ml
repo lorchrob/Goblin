@@ -19,7 +19,7 @@ let () =
 
     ()
 
-    (* let input = "./test/test_cases/test_mult_prod_rules" in
+    (* let input = "./test/test_cases/test_dot_notation" in
     let ast = Parsing.parse (Utils.read_file input) in
     let sygus_ast, _ = Pipeline.main_pipeline input in
     Format.fprintf Format.std_formatter "AST: %a\n" Ast.pp_print_ast ast;
