@@ -1142,6 +1142,79 @@ let sd_test14 () =
   | Ok _ -> ()  
   | Error msg -> fail msg
 
+let sd_test17 () = 
+  let input = "../../../test/test_cases/test17" in
+  let ast = Parsing.parse (Utils.read_file input) in
+  let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
+  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  match output with
+  | Ok _ -> ()  
+  | Error msg -> fail msg
+
+let dm_test17 () = 
+  let input = "../../../test/test_cases/test17" in
+  let ast = Parsing.parse (Utils.read_file input) in
+  let sygus_ast, _ = main_pipeline ~engine:(Some DpllMono) input in
+  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  match output with
+  | Ok _ -> ()  
+  | Error msg -> fail msg
+
+let dd_test17 () = 
+  let input = "../../../test/test_cases/test17" in
+  let ast = Parsing.parse (Utils.read_file input) in
+  let sygus_ast, _ = main_pipeline ~engine:(Some DpllDac) input in
+  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  match output with
+  | Ok _ -> ()  
+  | Error msg -> fail msg
+
+let md_test17 () = 
+  let input = "../../../test/test_cases/test17" in
+  let ast = Parsing.parse (Utils.read_file input) in
+  let sygus_ast, _ = main_pipeline ~engine:(Some MixedDac) input in
+  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  match output with
+  | Ok _ -> ()  
+  | Error msg -> fail msg
+
+
+let sd_test18 () = 
+  let input = "../../../test/test_cases/test18" in
+  let ast = Parsing.parse (Utils.read_file input) in
+  let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
+  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  match output with
+  | Ok _ -> ()  
+  | Error msg -> fail msg
+
+let dm_test18 () = 
+  let input = "../../../test/test_cases/test18" in
+  let ast = Parsing.parse (Utils.read_file input) in
+  let sygus_ast, _ = main_pipeline ~engine:(Some DpllMono) input in
+  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  match output with
+  | Ok _ -> ()  
+  | Error msg -> fail msg
+
+let dd_test18 () = 
+  let input = "../../../test/test_cases/test18" in
+  let ast = Parsing.parse (Utils.read_file input) in
+  let sygus_ast, _ = main_pipeline ~engine:(Some DpllDac) input in
+  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  match output with
+  | Ok _ -> ()  
+  | Error msg -> fail msg
+
+let md_test18 () = 
+  let input = "../../../test/test_cases/test18" in
+  let ast = Parsing.parse (Utils.read_file input) in
+  let sygus_ast, _ = main_pipeline ~engine:(Some MixedDac) input in
+  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  match output with
+  | Ok _ -> ()  
+  | Error msg -> fail msg
+
 let dm_test2 () = 
   let input = "../../../test/test_cases/test2" in
   let ast = Parsing.parse (Utils.read_file input) in
@@ -1598,4 +1671,14 @@ let () =
     "sd_test9", [test_case "test9" `Quick sd_test9];
     "sd_test14", [test_case "test14" `Quick sd_test14];
     "sd_test11", [test_case "test11" `Quick sd_test11];
+
+    "sd_test17", [test_case "test17" `Quick sd_test17];
+    "dm_test17", [test_case "test17" `Quick dm_test17];
+    "dd_test17", [test_case "test17" `Quick dd_test17];
+    "md_test17", [test_case "test17" `Quick md_test17];
+
+    "sd_test18", [test_case "test18" `Quick sd_test18];
+    "dm_test18", [test_case "test18" `Quick dm_test18];
+    "dd_test18", [test_case "test18" `Quick dd_test18];
+    (* "md_test18", [test_case "test18" `Quick md_test18]; *)
   ]

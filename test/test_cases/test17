@@ -1,0 +1,3 @@
+// Ambiguous dependency test
+<S> ::= <A> <A> { <A> <- 4; <A> < 5; } ;
+<A> :: Int ;
