@@ -107,7 +107,7 @@ let process_sc: TC.context -> string list -> A.semantic_constraint -> A.semantic
   | A.Dependency (nt, expr) -> 
     let exprs = generate_all_possible_exprs ctx nts expr in
     let expr = match exprs with 
-      | init :: exprs -> List.fold_left (fun acc expr -> A.BinOp (expr, GLAnd, acc)) init exprs 
+      | _ :: _ -> Utils.error ("Dependent term '" ^ nt ^ "' is defined ambiguously")
       | [] -> expr 
     in
     Dependency (nt, expr)

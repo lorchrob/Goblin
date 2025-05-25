@@ -384,7 +384,7 @@ fun ctx ast expr ->
       let matches_so_far, expr = r matches_so_far expr in 
       matches_so_far,
       BVCast (len, expr)
-    | NTExpr _ (* -> Utils.crash "ntExprToMatch (nt_to_match)" *)
+    | NTExpr _ (* only reached through other rules *)
     | BVConst _ 
     | BLConst _ 
     | BConst _ 
@@ -475,11 +475,12 @@ let filter_out_dangling_nts expr =
 let process_sc: TC.context -> A.ast -> A.semantic_constraint -> A.semantic_constraint 
 = fun ctx ast sc -> match sc with 
   | A.Dependency (nt, expr) -> 
-    let expr = 
+    (* let expr = 
       Utils.recurse_until_fixpoint expr (=) 
       (fun expr -> nt_to_match ctx ast expr |> pull_up_match_exprs) 
     in 
-    let expr = filter_out_dangling_nts expr in
+    let expr = filter_out_dangling_nts expr in *)
+    (* Don't need to desugar for dependencies; they are computed outside of sygus *)
     Dependency (nt, expr)
   | SyGuSExpr expr -> 
     let expr = 
