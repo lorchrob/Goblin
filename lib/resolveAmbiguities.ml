@@ -119,6 +119,37 @@ let process_sc: TC.context -> string list -> A.semantic_constraint -> A.semantic
     in
     SyGuSExpr expr
 
+let process_sc_to_list: TC.context -> string list -> A.semantic_constraint -> A.semantic_constraint list
+= fun ctx nts sc -> match sc with 
+  | A.Dependency (nt, expr) -> 
+    let exprs = generate_all_possible_exprs ctx nts expr in 
+    List.map (fun expr -> A.Dependency (nt, expr)) exprs
+  | SyGuSExpr expr -> 
+    let exprs = generate_all_possible_exprs ctx nts expr in
+    List.map (fun expr -> A.SyGuSExpr expr) exprs
+
+(* Same as resolve_ambiguities, but we desugar to a list of 
+   semantic constraints rather than a conjunction of generated 
+   constraints. The conjunction makes more sense in the sygus encoding
+   (where we can encode the big conjunction with pattern matching 
+   over all the cases), 
+   while the list is required for the DPLL encoding where we explore one 
+   case at a time, ignoring constraints that aren't applicable in that case. *)
+let resolve_ambiguities_dpll: TC.context -> A.ast -> A.ast 
+= fun ctx ast -> List.map (fun element -> match element with
+| A.ProdRule (nt, rhss) -> 
+  let rhss = List.map (fun rhs -> match rhs with 
+  | A.Rhs (ges, scs) -> 
+    let scs = List.concat_map (process_sc_to_list ctx (A.nts_of_rhs rhs)) scs in
+    A.Rhs (ges, scs) 
+  | StubbedRhs _ -> rhs 
+  ) rhss in 
+  A.ProdRule (nt, rhss)
+| TypeAnnotation (nt, ty, scs) -> 
+  let scs = List.concat_map (process_sc_to_list ctx [nt]) scs in
+  TypeAnnotation (nt, ty, scs)
+) ast 
+
 let resolve_ambiguities: TC.context -> A.ast -> A.ast 
 = fun ctx ast -> List.map (fun element -> match element with
 | A.ProdRule (nt, rhss) -> 

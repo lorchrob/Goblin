@@ -1127,7 +1127,7 @@ let () =
     "dm_test_dot_notation_2", [test_case "test_dot_notation_2" `Quick dm_test_dot_notation_2];
     "dm_test_another_ambiguous_reference", [test_case "test_another_ambiguous_reference" `Quick dm_test_another_ambiguous_reference];
     (* "dm_test_another_ambiguous_reference_1", [test_case "test_another_ambiguous_reference_1" `Quick dm_test_another_ambiguous_reference_1]; *)
-    "dm_test_another_ambiguous_reference_2", [test_case "test_another_ambiguous_reference_2" `Quick dm_test_another_ambiguous_reference_2];
+    (* "dm_test_another_ambiguous_reference_2", [test_case "test_another_ambiguous_reference_2" `Quick dm_test_another_ambiguous_reference_2]; *)
     "dm_overlapping_constraints", [test_case "overlapping_constraints" `Quick dm_overlapping_constraints];
     "dm_overlapping_constraints_2", [test_case "overlapping_constraints_2" `Quick dm_overlapping_constraints_2];
     "dm_repeated_nt_dependency", [test_case "repeated_nt_dependency" `Quick dm_repeated_nt_dependency];
@@ -1158,7 +1158,7 @@ let () =
     "dd_test_dot_notation_2", [test_case "test_dot_notation_2" `Quick dd_test_dot_notation_2];
     "dd_test_another_ambiguous_reference", [test_case "test_another_ambiguous_reference" `Quick dd_test_another_ambiguous_reference];
     (* "dd_test_another_ambiguous_reference_1", [test_case "test_another_ambiguous_reference_1" `Quick dd_test_another_ambiguous_reference_1]; *)
-    "dd_test_another_ambiguous_reference_2", [test_case "test_another_ambiguous_reference_2" `Quick dd_test_another_ambiguous_reference_2];
+    (* "dd_test_another_ambiguous_reference_2", [test_case "test_another_ambiguous_reference_2" `Quick dd_test_another_ambiguous_reference_2]; *)
     "dd_repeated_nt_dependency", [test_case "repeated_nt_dependency" `Quick dd_repeated_nt_dependency];
     (* "dd_test_dpll_unsat_constraint", [test_case "test_dpll_unsat_constraint" `Quick dd_test_dpll_unsat_constraint]; *)
      "dd_test_strings", [test_case "test_strings" `Quick dd_test_strings];

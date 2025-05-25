@@ -150,7 +150,7 @@ type derivation_tree =
 | ConcreteBitVectorLeaf of (string * int option) list * int * bool list 
 | ConcreteBitListLeaf of (string * int option) list * bool list
 (* label, visited set, path to this node, children *)
-| Node of string * Utils.IntSet.t ref * (string * int option) list * derivation_tree list ref
+| Node of (string * int option) * Utils.IntSet.t ref * (string * int option) list * derivation_tree list ref
 
 let rec pp_print_derivation_tree ppf derivation_tree = match derivation_tree with 
 | SymbolicLeaf _ -> Format.pp_print_string ppf "sym_leaf"
@@ -167,7 +167,12 @@ let rec pp_print_derivation_tree ppf derivation_tree = match derivation_tree wit
     let bits = List.map Bool.to_int bits in
   Format.fprintf ppf "(BitList 0b%a)"
     (Lib.pp_print_list Format.pp_print_int "") bits
-| Node (nt, _, _, children) -> 
+| Node ((nt, Some idx), _, _, children) -> 
+  Format.fprintf ppf "(%a%d %a)"
+    Format.pp_print_string nt 
+    idx
+    (Lib.pp_print_list pp_print_derivation_tree " ") !children
+| Node ((nt, None), _, _, children) -> 
   Format.fprintf ppf "(%a %a)"
     Format.pp_print_string nt 
     (Lib.pp_print_list pp_print_derivation_tree " ") !children
@@ -409,7 +414,7 @@ let rec sygus_ast_of_derivation_tree: derivation_tree -> SA.sygus_ast
 | ConcretePlaceholderLeaf (_, ph) -> VarLeaf ph 
 | ConcreteStringLeaf (_, str) -> StrLeaf str
 | ConcreteBoolLeaf (_, b) -> BoolLeaf b
-| Node (nt, _, _, children) -> 
+| Node ((nt, _), _, _, children) -> 
   let children = List.map sygus_ast_of_derivation_tree !children in 
   Node (nt, children)
 
@@ -429,12 +434,13 @@ let rec compute_new_frontier derivation_tree = match derivation_tree with
    in a given derivation_tree *)
 let rec nt_will_be_reached derivation_tree ast nt = 
   (* at each step, check if the rest of nt is reachable from head *)
-  let rec nt_will_be_reached_ast nt head = match nt with 
+  let rec nt_will_be_reached_ast: (string * int option) list -> (string * int option) -> bool 
+  = fun nt head -> match nt with 
   | [] -> true 
-  | (new_head, _) :: nts -> 
+  | new_head :: nts -> 
     let rule = List.find (fun element -> match element with
     | A.TypeAnnotation (nt2, _, _) 
-    | A.ProdRule (nt2, _) -> nt2 = head
+    | A.ProdRule (nt2, _) -> nt2 = (fst head)
     ) ast in 
     match rule with 
     | ProdRule (_, rhss) -> 
@@ -447,21 +453,21 @@ let rec nt_will_be_reached derivation_tree ast nt =
   in
   match nt with 
   | [] -> true 
-  | (str, _) :: nts -> match derivation_tree with 
+  | str :: nts -> match derivation_tree with 
     | Node (head, _, _, children) -> 
       if !children = [] then nt_will_be_reached_ast nt head
       else (
         match List.find_opt (fun child -> match child with 
         | Node (nt2, _, _, _) -> str = nt2
-        | SymbolicLeaf (_, path) -> str = (fst (Utils.last path))
+        | SymbolicLeaf (_, path) -> str = (Utils.last path)
         | ConcreteIntLeaf (path, _) | ConcreteBoolLeaf (path, _) | ConcreteBitListLeaf (path, _) 
-        | ConcreteBitVectorLeaf (path, _, _) | ConcretePlaceholderLeaf (path, _) | ConcreteStringLeaf (path, _) -> str = fst (Utils.last path)
-        | DependentTermLeaf nt2 -> str = nt2
+        | ConcreteBitVectorLeaf (path, _, _) | ConcretePlaceholderLeaf (path, _) | ConcreteStringLeaf (path, _) -> str = (Utils.last path)
+        | DependentTermLeaf nt2 -> (fst str) = nt2
         ) !children with 
         | Some child -> nt_will_be_reached child ast nts
         | None -> 
           if !Flags.debug then Format.fprintf Format.std_formatter "Could not find child %s from node %s\n"
-            str head;
+            (fst str) (fst head);
           false)
     | _ -> true
 
@@ -513,7 +519,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
 
   (*** Set up the key data structures ***)
   (* Incremental construction of output term so far *)
-  let derivation_tree = ref (Node (start_symbol, ref Utils.IntSet.empty, [start_symbol, None], ref [])) in 
+  let derivation_tree = ref (Node ((start_symbol, None), ref Utils.IntSet.empty, [start_symbol, None], ref [])) in 
   (* Tree nodes left to explore *)
   let frontier = ref (DTSet.singleton derivation_tree) in 
   (* Track declared (SMT-level) variables to avoid redeclaration *)
@@ -550,17 +556,17 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
     | ConcreteBitListLeaf _ | ConcreteBitVectorLeaf _ | ConcreteBoolLeaf _ 
     | ConcretePlaceholderLeaf _ | ConcreteStringLeaf _  -> () (* nothing else to do *)
     | Node (nt, _, _, children) when not (List.length !children = 0) -> 
-      Utils.crash ("Trying to expand node " ^ nt ^ " that already has children in dpll")
+      Utils.crash ("Trying to expand node " ^ (fst nt) ^ " that already has children in dpll")
     | Node (nt, visited, path, children) as node -> 
       let path' = string_of_path path |> String.lowercase_ascii in
       let grammar_rule = List.find (fun element -> match element with 
       | A.ProdRule (nt2, _) 
-      | TypeAnnotation (nt2, _, _) -> String.equal nt nt2
+      | TypeAnnotation (nt2, _, _) -> String.equal (fst nt) nt2
       ) ast in 
       match grammar_rule with 
       | A.TypeAnnotation (_, ty, []) -> 
         visited := Utils.IntSet.add 0 !visited;
-        children := [SymbolicLeaf (ty, path @ [nt, None])];
+        children := [SymbolicLeaf (ty, path @ [nt])];
       | A.TypeAnnotation (_, ty, scs) -> 
         visited := Utils.IntSet.add 0 !visited;
         (* Assert semantic constraints for type annotations *)
@@ -572,7 +578,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
           let model = get_smt_result ast solver in  
           (match model with 
           | Ok model -> 
-            children := [SymbolicLeaf (ty, path @ [nt, None])]; 
+            children := [SymbolicLeaf (ty, path @ [nt])]; 
             derivation_tree := instantiate_terminals model !derivation_tree; 
           | Error () -> 
             backtrack_decision_level solver;
@@ -596,7 +602,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
         | A.Rhs (ges, scs) -> 
           children := List.map (fun ge -> match ge with 
           | A.Nonterminal (nt, idx_opt) ->
-            Node (nt, ref Utils.IntSet.empty, path @ [nt, idx_opt], ref [])  
+            Node ((nt, idx_opt), ref Utils.IntSet.empty, path @ [nt, idx_opt], ref [])  
           | StubbedNonterminal (_, nt) -> DependentTermLeaf nt
           ) ges;
           List.iter (fun sc -> match sc with 
