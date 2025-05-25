@@ -97,19 +97,22 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -
 | NTExpr (_, id :: rest) -> (*!! TODO: Consider the index *)
   let child_index = match element with 
   | A.TypeAnnotation _ -> Utils.crash "Unexpected case in evaluate" 
-  | A.ProdRule (_, rhss) -> 
-    let ges = List.concat_map (fun rhs -> match rhs with 
-    | A.Rhs (ges, _) -> ges
-    | StubbedRhs _ -> []
-    ) rhss in
-    (try  
-      Utils.find_index (fun ge -> match ge with 
-      | A.Nonterminal (nt, idx) -> id = (nt, idx) 
-      | StubbedNonterminal (nt, _) -> (fst id) = nt;
-      ) ges 
-    with Not_found ->
-      Utils.crash ("Dangling identifier " ^ (fst id) ^ " in semantic constraint"))
-  in (
+  | A.ProdRule (_, rhss) ->
+    (* Find child_index within the rule, not across all rules *) 
+      List.find_map (fun rhs -> match rhs with 
+      | A.StubbedRhs _ -> None 
+      | Rhs (ges, _) ->
+        Utils.find_index_opt (fun ge -> match ge with 
+        | A.Nonterminal (nt, idx) -> id = (nt, idx) 
+        | StubbedNonterminal (nt, _) -> (fst id) = nt;
+        ) ges
+      ) rhss
+  in 
+  let child_index = match child_index with 
+  | Some child_index -> child_index 
+  | None -> Utils.crash ("Dangling identifier " ^ (fst id) ^ " in semantic constraint") 
+  in
+  (
   match sygus_ast with 
   | VarLeaf _ | BVLeaf _ | IntLeaf _ | BLLeaf _ | BoolLeaf _ | StrLeaf _  -> 
     sygus_ast_to_expr sygus_ast

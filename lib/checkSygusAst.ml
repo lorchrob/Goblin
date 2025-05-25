@@ -25,6 +25,25 @@ let check_start_symbol: Ast.ast -> SygusAst.sygus_ast -> (unit, string) result
 | A.TypeAnnotation _ :: _, _ -> Utils.crash "Unexpected case in check_start_symbol"
 | _ -> Error "Sygus AST root node is a leaf node"
 
+let rec is_nt_applicable: SygusAst.sygus_ast -> (string * int option) list -> bool 
+= fun sygus_ast nt -> match sygus_ast, nt with
+  | Node (_, children), head :: tail -> 
+    let child = List.find_opt (fun child -> match child with 
+    | SA.Node (constructor, _) -> constructor = head
+    | _ -> false
+    ) children in 
+    (match child with 
+    | None -> false 
+    | Some child -> is_nt_applicable child tail
+    )
+  | _ -> true
+
+let is_sc_applicable: Ast.expr -> SygusAst.sygus_ast -> bool 
+= fun expr sygus_ast -> 
+  let nts = A.get_nts_from_expr2 expr in
+  let nts_are_applicable = List.map (is_nt_applicable sygus_ast) nts in 
+  List.for_all (fun a -> a) nts_are_applicable
+
 let rec check_syntax_semantics: Ast.ast -> SygusAst.sygus_ast -> (unit, string) result 
 = fun ast sygus_ast -> match sygus_ast with 
   | Node ((constructor, _), children) -> 
@@ -75,11 +94,33 @@ let rec check_syntax_semantics: Ast.ast -> SygusAst.sygus_ast -> (unit, string) 
     (* Evaluate each semantic constraint with concrete values from the sygus AST, and check 
        if all are satisfied *)
     let scs = List.map (fun sc -> match sc with 
-    (*!!! Need to check if the sc is applicable to this sygus ast *)
     | A.SyGuSExpr expr -> 
-      ComputeDeps.evaluate sygus_ast ast (ProdRule (nt, rhss)) expr
+      if is_sc_applicable expr sygus_ast then (
+        (if !Flags.debug then Format.fprintf Format.std_formatter "Constraint %a is applicable in %a"
+          A.pp_print_expr expr
+          SA.pp_print_sygus_ast sygus_ast
+          );
+        ComputeDeps.evaluate sygus_ast ast (ProdRule (nt, rhss)) expr)
+      else (
+        (if !Flags.debug then Format.fprintf Format.std_formatter "Constraint %a is not applicable in %a"
+          A.pp_print_expr expr
+          SA.pp_print_sygus_ast sygus_ast
+          );
+        [BConst true]) (* If sc is not applicable, it trivially holds *)
     | Dependency (nt, expr) -> 
-      ComputeDeps.evaluate sygus_ast ast (ProdRule (nt, rhss)) (A.CompOp (NTExpr ([], [nt, None]), Eq, expr))
+      let expr = A.CompOp (NTExpr ([], [nt, None]), Eq, expr) in
+      if is_sc_applicable expr sygus_ast then (
+        (if !Flags.debug then Format.fprintf Format.std_formatter "Constraint %a is applicable in %a"
+          A.pp_print_expr expr
+          SA.pp_print_sygus_ast sygus_ast
+          );
+        ComputeDeps.evaluate sygus_ast ast (ProdRule (nt, rhss)) expr)
+      else (
+        (if !Flags.debug then Format.fprintf Format.std_formatter "Constraint %a is not applicable in %a"
+          A.pp_print_expr expr
+          SA.pp_print_sygus_ast sygus_ast
+          );
+        [BConst true]) (* If sc is not applicable, it trivially holds *)
     ) scs in
     let b = List.exists (fun sc -> match sc with 
     | [A.BConst false] -> true 

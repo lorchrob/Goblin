@@ -170,15 +170,13 @@ let check_syntax_prod_rule: prod_rule_map -> Utils.StringSet.t -> prod_rule_rhs 
 | StubbedRhs _ -> assert false
 
 let rhss_contains_nt nt rhss = 
-  List.iter (fun rhs -> match rhs with 
-  | Rhs (ges, _) -> List.iter (fun ge -> match ge with 
+  List.exists (fun rhs -> match rhs with 
+  | Rhs (ges, _) -> List.exists (fun ge -> match ge with 
     | Nonterminal (nt2, _)
     | StubbedNonterminal (nt2, _) -> 
-      if nt = nt2 then 
-        Utils.warning_print Format.pp_print_string Format.std_formatter "Warning: Grammar is recursive. Constraints on recursive production rules may not be respected.\n"
-      else ()
+      nt = nt2
   ) ges
-  | StubbedRhs _ -> ()
+  | StubbedRhs _ -> false
   ) rhss
 
 let sort_ast: ast -> ast 
@@ -188,6 +186,17 @@ let sort_ast: ast -> ast
   (* In recursive grammars, ast does not need to be sorted, 
      as we cannot use the divide and conquer engines. *)
   | None -> ast
+
+let check_if_recursive: ast -> bool 
+= fun ast -> 
+  match TopologicalSort.canonicalize ast with 
+  | Some ast -> 
+    List.exists (fun element -> match element with
+    | ProdRule (nt, rhss) -> 
+      rhss_contains_nt nt rhss 
+    | _ -> false
+    ) ast
+  | None -> true
 
 let check_vacuity: ast -> ast 
 = fun ast -> 

@@ -260,14 +260,14 @@ let sd_test_dt6 () =
   | Ok _ -> ()  
   | Error msg -> fail msg
 
-let sd_test_recombine () =
+(* let sd_test_recombine () =
   let input = "../../../test/test_cases/test_recombine" in
   let ast = Parsing.parse (Utils.read_file input) in
   let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
-  | Error msg -> fail msg
+  | Error msg -> fail msg *)
   
 let sd_test_dynamic_typing () = 
   let input = "../../../test/test_cases/test_dynamic_typing" in
@@ -989,14 +989,14 @@ let md_test_dt6 () =
   | Ok _ -> ()  
   | Error msg -> fail msg
 
-let md_test_recombine () =
+(* let md_test_recombine () =
   let input = "../../../test/test_cases/test_recombine" in
   let ast = Parsing.parse (Utils.read_file input) in
   let sygus_ast, _ = main_pipeline ~engine:(Some MixedDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
-  | Error msg -> fail msg
+  | Error msg -> fail msg *)
   
 let md_test_dynamic_typing () = 
   let input = "../../../test/test_cases/test_dynamic_typing" in
@@ -1088,10 +1088,14 @@ let sd_test5 () =
   | Ok _ -> ()  
   | Error msg -> fail msg
 
-let sd_test6_infeasible () = 
-  let input = "../../../test/test_cases/test6_infeasible" in
-  let _, output = main_pipeline ~engine:(Some SygusDac) input in
-  check string "test_another_ambiguous_reference_1" output "infeasible\n"
+let sd_test6 () = 
+  let input = "../../../test/test_cases/test6" in
+  let ast = Parsing.parse (Utils.read_file input) in
+  let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
+  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  match output with
+  | Ok _ -> ()  
+  | Error msg -> fail msg
 
 let sd_test7 () = 
   let input = "../../../test/test_cases/test7" in
@@ -1111,8 +1115,8 @@ let sd_test8 () =
   | Ok _ -> ()  
   | Error msg -> fail msg
 
-let sd_test9_infeasible () = 
-  let input = "../../../test/test_cases/test9_infeasible" in
+let sd_test9 () = 
+  let input = "../../../test/test_cases/test9" in
   let ast = Parsing.parse (Utils.read_file input) in
   let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
@@ -1192,10 +1196,14 @@ let dm_test5 () =
   | Ok _ -> ()  
   | Error msg -> fail msg
 
-let dm_test6_infeasible () = 
-  let input = "../../../test/test_cases/test6_infeasible" in
-  let _, output = main_pipeline ~engine:(Some DpllMono) input in
-  check string "test_another_ambiguous_reference_1" output "infeasible\n"
+let dm_test6 () = 
+  let input = "../../../test/test_cases/test6" in
+  let ast = Parsing.parse (Utils.read_file input) in
+  let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
+  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  match output with
+  | Ok _ -> ()  
+  | Error msg -> fail msg
 
 let dm_test7 () = 
   let input = "../../../test/test_cases/test7" in
@@ -1296,10 +1304,14 @@ let dd_test5 () =
   | Ok _ -> ()  
   | Error msg -> fail msg
 
-let dd_test6_infeasible () = 
-  let input = "../../../test/test_cases/test6_infeasible" in
-  let _, output = main_pipeline ~engine:(Some DpllDac) input in
-  check string "test_another_ambiguous_reference_1" output "infeasible\n"
+let dd_test6 () = 
+  let input = "../../../test/test_cases/test6" in
+  let ast = Parsing.parse (Utils.read_file input) in
+  let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
+  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  match output with
+  | Ok _ -> ()  
+  | Error msg -> fail msg
 
 let dd_test7 () = 
   let input = "../../../test/test_cases/test7" in
@@ -1400,10 +1412,14 @@ let md_test5 () =
   | Ok _ -> ()  
   | Error msg -> fail msg
 
-let md_test6_infeasible () = 
-  let input = "../../../test/test_cases/test6_infeasible" in
-  let _, output = main_pipeline ~engine:(Some MixedDac) input in
-  check string "test_another_ambiguous_reference_1" output "infeasible\n"
+let md_test6 () = 
+  let input = "../../../test/test_cases/test6" in
+  let ast = Parsing.parse (Utils.read_file input) in
+  let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
+  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  match output with
+  | Ok _ -> ()  
+  | Error msg -> fail msg
 
 let md_test7 () = 
   let input = "../../../test/test_cases/test7" in
@@ -1482,7 +1498,7 @@ let () =
     "sd_test_dt2", [test_case "Dependent term 2" `Quick sd_test_dt2];
     "sd_test_dc", [test_case "Divide and conquer" `Quick sd_test_dc];
     "sd_test_bl", [test_case "Bit list" `Quick sd_test_bl];
-    (* "sd_test_mult_prod_rules", [test_case "Test example with nonterminal with multiple prod rules, with semantic constraints" `Quick sd_test_mult_prod_rules]; *)
+    "sd_test_mult_prod_rules", [test_case "Test example with nonterminal with multiple prod rules, with semantic constraints" `Quick sd_test_mult_prod_rules];
     "sd_test_ty_annot_sc2", [test_case "Top level type annotation with semantic constraint 2" `Quick sd_test_ty_annot_sc2];
     "sd_test_bv_len", [test_case "Top length function on bitvector" `Quick sd_test_bv_len];
     "sd_test_dt3", [test_case "Dependent term 3" `Quick sd_test_dt3];
@@ -1490,8 +1506,8 @@ let () =
     "sd_test_dt5", [test_case "Dependent term 5" `Quick sd_test_dt5];
     "sd_test_dt6", [test_case "Dependent term 6" `Quick sd_test_dt6];
     "sd_test_dynamic_typing", [test_case "Dynamic typing" `Quick sd_test_dynamic_typing];
-    "sd_test_recombine", [test_case "Recombine" `Quick sd_test_recombine];
-    (* "sd_test_dot_notation", [test_case "Test dot notation" `Quick sd_test_dot_notation]; *)
+    (* not applicable "sd_test_recombine", [test_case "Recombine" `Quick sd_test_recombine]; *)
+    "sd_test_dot_notation", [test_case "Test dot notation" `Quick sd_test_dot_notation];
     "sd_test_vertical_ambiguous_reference_1", [test_case "test_vertical_ambiguous_reference_1" `Quick sd_test_vertical_ambiguous_reference_1];
     "sd_test_vertical_ambiguous_reference_2", [test_case "test_vertical_ambiguous_reference_2" `Quick sd_test_vertical_ambiguous_reference_2];
     "sd_test_horizontal_ambiguous_reference_1", [test_case "test_horizontal_ambiguous_reference_1" `Quick sd_test_horizontal_ambiguous_reference_1];
@@ -1511,7 +1527,7 @@ let () =
     "dm_test_dt2", [test_case "Dependent term 2" `Quick dm_test_dt2];
     "dm_test_dc", [test_case "Divide and conquer" `Quick dm_test_dc];
     "dm_test_bl", [test_case "Bit list" `Quick dm_test_bl];
-     (* "dm_test_mult_prod_rules", [test_case "Test example with nonterminal with multiple prod rules, with semantic constraints" `Quick dm_test_mult_prod_rules]; *)
+     "dm_test_mult_prod_rules", [test_case "Test example with nonterminal with multiple prod rules, with semantic constraints" `Quick dm_test_mult_prod_rules];
     "dm_test_ty_annot_sc2", [test_case "Top level type annotation with semantic constraint 2" `Quick dm_test_ty_annot_sc2];
     "dm_test_bv_len", [test_case "Top length function on bitvector" `Quick dm_test_bv_len];
     "dm_test_dt3", [test_case "Dependent term 3" `Quick dm_test_dt3];
@@ -1520,7 +1536,7 @@ let () =
     "dm_test_dt6", [test_case "Dependent term 6" `Quick dm_test_dt6];
     "dm_test_dynamic_typing", [test_case "Dynamic typing" `Quick dm_test_dynamic_typing];
     "dm_test_recombine", [test_case "Recombine" `Quick dm_test_recombine];
-    (* "dm_test_dot_notation", [test_case "Test dot notation" `Quick dm_test_dot_notation]; *)
+    "dm_test_dot_notation", [test_case "Test dot notation" `Quick dm_test_dot_notation];
     "dm_test_vertical_ambiguous_reference_1", [test_case "test_vertical_ambiguous_reference_1" `Quick dm_test_vertical_ambiguous_reference_1];
     "dm_test_vertical_ambiguous_reference_2", [test_case "test_vertical_ambiguous_reference_2" `Quick dm_test_vertical_ambiguous_reference_2];
     "dm_test_horizontal_ambiguous_reference_1", [test_case "test_horizontal_ambiguous_reference_1" `Quick dm_test_horizontal_ambiguous_reference_1];
@@ -1540,7 +1556,7 @@ let () =
     "dd_test_dt2", [test_case "Dependent term 2" `Quick dd_test_dt2];
     "dd_test_dc", [test_case "Divide and conquer" `Quick dd_test_dc];
     "dd_test_bl", [test_case "Bit list" `Quick dd_test_bl];
-    (* "dd_test_mult_prod_rules", [test_case "Test example with nonterminal with multiple prod rules, with semantic constraints" `Quick dd_test_mult_prod_rules]; *)
+    "dd_test_mult_prod_rules", [test_case "Test example with nonterminal with multiple prod rules, with semantic constraints" `Quick dd_test_mult_prod_rules];
     "dd_test_ty_annot_sc2", [test_case "Top level type annotation with semantic constraint 2" `Quick dd_test_ty_annot_sc2];
     "dd_test_bv_len", [test_case "Top length function on bitvector" `Quick dd_test_bv_len];
     "dd_test_dt3", [test_case "Dependent term 3" `Quick dd_test_dt3];
@@ -1549,7 +1565,7 @@ let () =
     "dd_test_dt6", [test_case "Dependent term 6" `Quick dd_test_dt6];
     "dd_test_dynamic_typing", [test_case "Dynamic typing" `Quick dd_test_dynamic_typing];
     "dd_test_recombine", [test_case "Recombine" `Quick dd_test_recombine];
-    (* "dd_test_dot_notation", [test_case "Test dot notation" `Quick dd_test_dot_notation]; *)
+    "dd_test_dot_notation", [test_case "Test dot notation" `Quick dd_test_dot_notation];
     "dd_test_vertical_ambiguous_reference_1", [test_case "test_vertical_ambiguous_reference_1" `Quick dd_test_vertical_ambiguous_reference_1];
     "dd_test_vertical_ambiguous_reference_2", [test_case "test_vertical_ambiguous_reference_2" `Quick dd_test_vertical_ambiguous_reference_2];
     "dd_test_horizontal_ambiguous_reference_1", [test_case "test_horizontal_ambiguous_reference_1" `Quick dd_test_horizontal_ambiguous_reference_1];
@@ -1567,7 +1583,7 @@ let () =
     "md_test_dt2", [test_case "Dependent term 2" `Quick md_test_dt2];
     "md_test_dc", [test_case "Divide and conquer" `Quick md_test_dc];
     "md_test_bl", [test_case "Bit list" `Quick md_test_bl];
-    (* "md_test_mult_prod_rules", [test_case "Test example with nonterminal with multiple prod rules, with semantic constraints" `Quick md_test_mult_prod_rules]; *)
+    "md_test_mult_prod_rules", [test_case "Test example with nonterminal with multiple prod rules, with semantic constraints" `Quick md_test_mult_prod_rules];
     "md_test_ty_annot_sc2", [test_case "Top level type annotation with semantic constraint 2" `Quick md_test_ty_annot_sc2];
     "md_test_bv_len", [test_case "Top length function on bitvector" `Quick md_test_bv_len];
     "md_test_dt3", [test_case "Dependent term 3" `Quick md_test_dt3];
@@ -1575,8 +1591,8 @@ let () =
     "md_test_dt5", [test_case "Dependent term 5" `Quick md_test_dt5];
     "md_test_dt6", [test_case "Dependent term 6" `Quick md_test_dt6];
     "md_test_dynamic_typing", [test_case "Dynamic typing" `Quick md_test_dynamic_typing];
-    "md_test_recombine", [test_case "Recombine" `Quick md_test_recombine];
-    (* "md_test_dot_notation", [test_case "Test dot notation" `Quick md_test_dot_notation]; *)
+    (* not applicable "md_test_recombine", [test_case "Recombine" `Quick md_test_recombine]; *)
+    "md_test_dot_notation", [test_case "Test dot notation" `Quick md_test_dot_notation];
     "md_test_vertical_ambiguous_reference_1", [test_case "test_vertical_ambiguous_reference_1" `Quick md_test_vertical_ambiguous_reference_1];
     "md_test_vertical_ambiguous_reference_2", [test_case "test_vertical_ambiguous_reference_2" `Quick md_test_vertical_ambiguous_reference_2];
     "md_test_horizontal_ambiguous_reference_1", [test_case "test_horizontal_ambiguous_reference_1" `Quick md_test_horizontal_ambiguous_reference_1];
@@ -1590,16 +1606,16 @@ let () =
     "md_repeated_nt_dependency", [test_case "repeated_nt_dependency" `Quick md_repeated_nt_dependency];
     "md_test_strings", [test_case "test_strings" `Quick md_test_strings];
 
-    (* "sd_test2", [test_case "test2" `Quick sd_test2];
+    "sd_test2", [test_case "test2" `Quick sd_test2];
     "sd_test3", [test_case "test3" `Quick sd_test3];
     "sd_test4", [test_case "test4" `Quick sd_test4];
     "sd_test5", [test_case "test5" `Quick sd_test5];
-    "sd_test6_infeasible", [test_case "test6_infeasible" `Quick sd_test6_infeasible];
+    "sd_test6", [test_case "test6" `Quick sd_test6];
     "sd_test7", [test_case "test7" `Quick sd_test7];
     "sd_test8", [test_case "test8" `Quick sd_test8];
-    "sd_test9_infeasible", [test_case "test9_infeasible" `Quick sd_test9_infeasible];
+    "sd_test9", [test_case "test9" `Quick sd_test9];
     "sd_test14", [test_case "test14" `Quick sd_test14];
     "sd_test11", [test_case "test11" `Quick sd_test11];
     "sd_test12", [test_case "test12" `Quick sd_test12];
-    "sd_test13", [test_case "test13" `Quick sd_test13]; *)
+    "sd_test13", [test_case "test13" `Quick sd_test13];
   ]

@@ -450,8 +450,7 @@ let ast_constrains_nt: ast -> string -> bool
     ) rhss
   ) ast
 
-(*!! TODO: I think just using the string for nt might be unsound *)
-(* Use before desugaring NTs to match expressions*)
+(*!! Use before populating indices *)
 let rec prepend_nt_to_dot_exprs: string -> expr -> expr 
 = fun nt expr -> 
   let r = prepend_nt_to_dot_exprs nt in

@@ -47,15 +47,15 @@ let main_pipeline ?(engine: Flags.engine option = None) filename =
     | Some DpllDac, _ | _, Some DpllDac -> 
       (match DpllDac.dpll ppf ctx ast with
       | Some result -> result 
-      | None -> Utils.crash "dpll_dac engine not applicable to this input")
+      | None -> Utils.error "dpll_dac engine not applicable to this input")
     | Some SygusDac, _ | _, Some SygusDac -> 
       (match SygusDac.sygus ppf ctx ast with  
       | Some result -> result 
-      | None -> Utils.crash "sygus_dac engine not applicable to this input")
+      | None -> Utils.error "sygus_dac engine not applicable to this input")
     | Some MixedDac, _ | _, Some MixedDac -> 
       (match MixedDac.dac ppf ctx ast with
       | Some result -> result 
-      | None -> Utils.crash "mixed_dac engine not applicable to this input")
+      | None -> Utils.error "mixed_dac engine not applicable to this input")
     (* Race mode *)
     | None, None -> 
       try 

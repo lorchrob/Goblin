@@ -61,6 +61,13 @@ let find_index predicate lst =
   in
   aux 0 lst
 
+let find_index_opt predicate lst =
+  let rec aux i = function
+    | [] -> None
+    | x :: xs -> if predicate x then Some i else aux (i + 1) xs
+  in
+  aux 0 lst
+
 let capture_output: (Format.formatter -> 'a -> unit) -> 'a -> string = 
 fun f arg ->
   let buf = Buffer.create 80 in

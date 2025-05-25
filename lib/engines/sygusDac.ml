@@ -2,6 +2,9 @@
    then SygusMono is equivalent to SygusDac. *)
 
 let sygus ppf ctx ast =
+  (*!! Right now, this check is strict enough to rule out the grammars from SAECRED *)
+  match SyntaxChecker.check_if_recursive ast with | true -> None | false -> 
+
   (* Step 1: Merge overlapping constraints *)
   Utils.debug_print Format.pp_print_string ppf "\nMerge overlapping constraints:\n";
   let ast = MergeOverlappingConstraints.merge_overlapping_constraints ast in

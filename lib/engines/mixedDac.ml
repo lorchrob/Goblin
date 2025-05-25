@@ -24,6 +24,8 @@ let sygus_leaf: Format.formatter -> TypeChecker.context -> Ast.ast -> Ast.semant
   ) else VarLeaf ""
 
 let dac ppf ctx ast =
+  match SyntaxChecker.check_if_recursive ast with | true -> None | false -> 
+    
   (* Step 1: Merge overlapping constraints *)
   Utils.debug_print Format.pp_print_string ppf "\nMerge overlapping constraints:\n";
   let ast = MergeOverlappingConstraints.merge_overlapping_constraints ast in
