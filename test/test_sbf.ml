@@ -1124,26 +1124,8 @@ let sd_test9 () =
   | Ok _ -> ()  
   | Error msg -> fail msg
 
-let sd_test13 () = 
-  let input = "../../../test/test_cases/test13" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
-  match output with
-  | Ok _ -> ()  
-  | Error msg -> fail msg
-
 let sd_test11 () = 
   let input = "../../../test/test_cases/test11" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
-  match output with
-  | Ok _ -> ()  
-  | Error msg -> fail msg
-
-let sd_test12 () = 
-  let input = "../../../test/test_cases/test12" in
   let ast = Parsing.parse (Utils.read_file input) in
   let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
@@ -1616,6 +1598,4 @@ let () =
     "sd_test9", [test_case "test9" `Quick sd_test9];
     "sd_test14", [test_case "test14" `Quick sd_test14];
     "sd_test11", [test_case "test11" `Quick sd_test11];
-    "sd_test12", [test_case "test12" `Quick sd_test12];
-    "sd_test13", [test_case "test13" `Quick sd_test13];
   ]

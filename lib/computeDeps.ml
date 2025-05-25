@@ -94,7 +94,7 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -
   let call = evaluate ~dep_map sygus_ast ast element in
   match expr with 
 | NTExpr (_, []) -> Utils.crash "Unexpected case in evaluate"
-| NTExpr (_, id :: rest) -> (*!! TODO: Consider the index *)
+| NTExpr (_, id :: rest) ->
   let child_index = match element with 
   | A.TypeAnnotation _ -> Utils.crash "Unexpected case in evaluate" 
   | A.ProdRule (_, rhss) ->

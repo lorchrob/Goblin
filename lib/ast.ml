@@ -450,7 +450,7 @@ let ast_constrains_nt: ast -> string -> bool
     ) rhss
   ) ast
 
-(*!! Use before populating indices *)
+(* Use before resolving constraint ambiguities *)
 let rec prepend_nt_to_dot_exprs: string -> expr -> expr 
 = fun nt expr -> 
   let r = prepend_nt_to_dot_exprs nt in
