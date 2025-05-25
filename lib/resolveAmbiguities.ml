@@ -107,16 +107,13 @@ let process_sc: TC.context -> string list -> A.semantic_constraint -> A.semantic
   | A.Dependency (nt, expr) -> 
     let exprs = generate_all_possible_exprs ctx nts expr in
     let expr = match exprs with 
-      | _ :: _ -> Utils.error ("Dependent term '" ^ nt ^ "' is defined ambiguously")
-      | [] -> expr 
+      | _ :: _ :: _ -> Utils.error ("Dependent term '" ^ nt ^ "' is defined ambiguously")
+      | _ -> expr
     in
     Dependency (nt, expr)
   | SyGuSExpr expr -> 
     let exprs = generate_all_possible_exprs ctx nts expr in
-    let expr = match exprs with 
-      | init :: exprs -> List.fold_left (fun acc expr -> A.BinOp (expr, GLAnd, acc)) init exprs 
-      | [] -> expr 
-    in
+    let expr = List.fold_left (fun acc expr -> A.BinOp (expr, GLAnd, acc)) (BConst true) exprs in
     SyGuSExpr expr
 
 let process_sc_to_list: TC.context -> string list -> A.semantic_constraint -> A.semantic_constraint list
