@@ -1102,7 +1102,7 @@ let () =
     "sd_repeated_nt_dependency", [test_case "repeated_nt_dependency" `Quick sd_repeated_nt_dependency];
     (* "sd_test_dpll_unsat_constraint", [test_case "test_dpll_unsat_constraint" `Quick sd_test_dpll_unsat_constraint]; *)
     "sd_test_strings", [test_case "test_strings" `Quick sd_test_strings];
-
+ 
     (***** DPLL_MONO TESTS *****)
     "dm_test_sc", [test_case "Semantic constraint" `Quick dm_test_sc];
     "dm_test_placeholder", [test_case "Placeholder" `Quick dm_test_placeholder];
@@ -1125,9 +1125,9 @@ let () =
     "dm_test_horizontal_ambiguous_reference_1", [test_case "test_horizontal_ambiguous_reference_1" `Quick dm_test_horizontal_ambiguous_reference_1];
     "dm_test_cyclic_dependencies", [test_case "test_cyclic_dependencies" `Quick dm_test_cyclic_dependencies];
     "dm_test_dot_notation_2", [test_case "test_dot_notation_2" `Quick dm_test_dot_notation_2];
-    (* "dm_test_another_ambiguous_reference", [test_case "test_another_ambiguous_reference" `Quick dm_test_another_ambiguous_reference]; *)
-    (* "dm_test_another_ambiguous_reference_1", [test_case "test_another_ambiguous_reference_1" `Quick dm_test_another_ambiguous_reference_1]; *)
-    (* "dm_test_another_ambiguous_reference_2", [test_case "test_another_ambiguous_reference_2" `Quick dm_test_another_ambiguous_reference_2]; *)
+    "dm_test_another_ambiguous_reference", [test_case "test_another_ambiguous_reference" `Quick dm_test_another_ambiguous_reference];
+    "dm_test_another_ambiguous_reference_1", [test_case "test_another_ambiguous_reference_1" `Quick dm_test_another_ambiguous_reference_1];
+    "dm_test_another_ambiguous_reference_2", [test_case "test_another_ambiguous_reference_2" `Quick dm_test_another_ambiguous_reference_2];
     "dm_overlapping_constraints", [test_case "overlapping_constraints" `Quick dm_overlapping_constraints];
     "dm_overlapping_constraints_2", [test_case "overlapping_constraints_2" `Quick dm_overlapping_constraints_2];
     "dm_repeated_nt_dependency", [test_case "repeated_nt_dependency" `Quick dm_repeated_nt_dependency];
@@ -1151,17 +1151,17 @@ let () =
     "dd_test_dynamic_typing", [test_case "Dynamic typing" `Quick dd_test_dynamic_typing];
     "dd_test_recombine", [test_case "Recombine" `Quick dd_test_recombine];
     (* "dd_test_dot_notation", [test_case "Test dot notation" `Quick dd_test_dot_notation]; *)
-    (* "dd_test_vertical_ambiguous_reference_1", [test_case "test_vertical_ambiguous_reference_1" `Quick dd_test_vertical_ambiguous_reference_1]; *)
-    (* "dd_test_vertical_ambiguous_reference_2", [test_case "test_vertical_ambiguous_reference_2" `Quick dd_test_vertical_ambiguous_reference_2]; *)
-    (* "dd_test_horizontal_ambiguous_reference_1", [test_case "test_horizontal_ambiguous_reference_1" `Quick dd_test_horizontal_ambiguous_reference_1]; *)
+    "dd_test_vertical_ambiguous_reference_1", [test_case "test_vertical_ambiguous_reference_1" `Quick dd_test_vertical_ambiguous_reference_1];
+    "dd_test_vertical_ambiguous_reference_2", [test_case "test_vertical_ambiguous_reference_2" `Quick dd_test_vertical_ambiguous_reference_2];
+    "dd_test_horizontal_ambiguous_reference_1", [test_case "test_horizontal_ambiguous_reference_1" `Quick dd_test_horizontal_ambiguous_reference_1];
     "dd_test_cyclic_dependencies", [test_case "test_cyclic_dependencies" `Quick dd_test_cyclic_dependencies];
     "dd_test_dot_notation_2", [test_case "test_dot_notation_2" `Quick dd_test_dot_notation_2];
-    (* "dd_test_another_ambiguous_reference", [test_case "test_another_ambiguous_reference" `Quick dd_test_another_ambiguous_reference]; *)
-    (* "dd_test_another_ambiguous_reference_1", [test_case "test_another_ambiguous_reference_1" `Quick dd_test_another_ambiguous_reference_1]; *)
-    (* "dd_test_another_ambiguous_reference_2", [test_case "test_another_ambiguous_reference_2" `Quick dd_test_another_ambiguous_reference_2]; *)
+    "dd_test_another_ambiguous_reference", [test_case "test_another_ambiguous_reference" `Quick dd_test_another_ambiguous_reference];
+    "dd_test_another_ambiguous_reference_1", [test_case "test_another_ambiguous_reference_1" `Quick dd_test_another_ambiguous_reference_1];
+    "dd_test_another_ambiguous_reference_2", [test_case "test_another_ambiguous_reference_2" `Quick dd_test_another_ambiguous_reference_2];
     "dd_repeated_nt_dependency", [test_case "repeated_nt_dependency" `Quick dd_repeated_nt_dependency];
     (* "dd_test_dpll_unsat_constraint", [test_case "test_dpll_unsat_constraint" `Quick dd_test_dpll_unsat_constraint]; *)
-    "dd_test_strings", [test_case "test_strings" `Quick dd_test_strings];
+     "dd_test_strings", [test_case "test_strings" `Quick dd_test_strings];
 
     (***** MIXED_DAC TESTS *****)
     "md_test_sc", [test_case "Semantic constraint" `Quick md_test_sc];

@@ -4,7 +4,7 @@ all:
 	@dune build
 
 test:
-	@dune test
+	@dune test -j 1
 
 clean:
 	@dune clean
