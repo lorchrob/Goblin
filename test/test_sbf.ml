@@ -1100,7 +1100,6 @@ let () =
     "sd_overlapping_constraints", [test_case "overlapping_constraints" `Quick sd_overlapping_constraints];
     "sd_overlapping_constraints_2", [test_case "overlapping_constraints_2" `Quick sd_overlapping_constraints_2];
     "sd_repeated_nt_dependency", [test_case "repeated_nt_dependency" `Quick sd_repeated_nt_dependency];
-    (* "sd_test_dpll_unsat_constraint", [test_case "test_dpll_unsat_constraint" `Quick sd_test_dpll_unsat_constraint]; *)
     "sd_test_strings", [test_case "test_strings" `Quick sd_test_strings];
  
     (***** DPLL_MONO TESTS *****)
@@ -1131,7 +1130,6 @@ let () =
     "dm_overlapping_constraints", [test_case "overlapping_constraints" `Quick dm_overlapping_constraints];
     "dm_overlapping_constraints_2", [test_case "overlapping_constraints_2" `Quick dm_overlapping_constraints_2];
     "dm_repeated_nt_dependency", [test_case "repeated_nt_dependency" `Quick dm_repeated_nt_dependency];
-    (* "dm_test_dpll_unsat_constraint", [test_case "test_dpll_unsat_constraint" `Quick dm_test_dpll_unsat_constraint]; *)
     "dm_test_strings", [test_case "test_strings" `Quick dm_test_strings];
  
     (***** DPLL_DAC TESTS *****)
@@ -1160,7 +1158,6 @@ let () =
     (* "dd_test_another_ambiguous_reference_1", [test_case "test_another_ambiguous_reference_1" `Quick dd_test_another_ambiguous_reference_1]; *)
     (* "dd_test_another_ambiguous_reference_2", [test_case "test_another_ambiguous_reference_2" `Quick dd_test_another_ambiguous_reference_2]; *)
     "dd_repeated_nt_dependency", [test_case "repeated_nt_dependency" `Quick dd_repeated_nt_dependency];
-    (* "dd_test_dpll_unsat_constraint", [test_case "test_dpll_unsat_constraint" `Quick dd_test_dpll_unsat_constraint]; *)
      "dd_test_strings", [test_case "test_strings" `Quick dd_test_strings];
 
     (***** MIXED_DAC TESTS *****)
@@ -1180,17 +1177,16 @@ let () =
     "md_test_dynamic_typing", [test_case "Dynamic typing" `Quick md_test_dynamic_typing];
     "md_test_recombine", [test_case "Recombine" `Quick md_test_recombine];
     (* "md_test_dot_notation", [test_case "Test dot notation" `Quick md_test_dot_notation]; *)
-    (* "md_test_vertical_ambiguous_reference_1", [test_case "test_vertical_ambiguous_reference_1" `Quick md_test_vertical_ambiguous_reference_1]; *)
-    (* "md_test_vertical_ambiguous_reference_2", [test_case "test_vertical_ambiguous_reference_2" `Quick md_test_vertical_ambiguous_reference_2]; *)
-    (* "md_test_horizontal_ambiguous_reference_1", [test_case "test_horizontal_ambiguous_reference_1" `Quick md_test_horizontal_ambiguous_reference_1]; *)
+    "md_test_vertical_ambiguous_reference_1", [test_case "test_vertical_ambiguous_reference_1" `Quick md_test_vertical_ambiguous_reference_1];
+    "md_test_vertical_ambiguous_reference_2", [test_case "test_vertical_ambiguous_reference_2" `Quick md_test_vertical_ambiguous_reference_2];
+    "md_test_horizontal_ambiguous_reference_1", [test_case "test_horizontal_ambiguous_reference_1" `Quick md_test_horizontal_ambiguous_reference_1];
     "md_test_cyclic_dependencies", [test_case "test_cyclic_dependencies" `Quick md_test_cyclic_dependencies];
     "md_test_dot_notation_2", [test_case "test_dot_notation_2" `Quick md_test_dot_notation_2];
-    (* "md_test_another_ambiguous_reference", [test_case "test_another_ambiguous_reference" `Quick md_test_another_ambiguous_reference]; *)
+    "md_test_another_ambiguous_reference", [test_case "test_another_ambiguous_reference" `Quick md_test_another_ambiguous_reference];
     (* "md_test_another_ambiguous_reference_1", [test_case "test_another_ambiguous_reference_1" `Quick md_test_another_ambiguous_reference_1]; *)
     (* "md_test_another_ambiguous_reference_2", [test_case "test_another_ambiguous_reference_2" `Quick md_test_another_ambiguous_reference_2]; *)
     "md_overlapping_constraints", [test_case "overlapping_constraints" `Quick md_overlapping_constraints];
     "md_overlapping_constraints_2", [test_case "overlapping_constraints_2" `Quick md_overlapping_constraints_2];
     "md_repeated_nt_dependency", [test_case "repeated_nt_dependency" `Quick md_repeated_nt_dependency];
-    (* "md_test_dpll_unsat_constraint", [test_case "test_dpll_unsat_constraint" `Quick md_test_dpll_unsat_constraint]; *)
     "md_test_strings", [test_case "test_strings" `Quick md_test_strings];
   ]
