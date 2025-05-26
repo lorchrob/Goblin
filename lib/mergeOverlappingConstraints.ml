@@ -85,6 +85,7 @@ let merge: A.ast -> A.element -> A.ast
            We can't ignore what it overlaps with, in case it is unsat. *)
         (* We can place None in the index because this pipeline step happens before 
            resolveAmbiguities. *)
+        Utils.debug_print Format.pp_print_string Format.std_formatter "Replacing dependency with sygus expr";
         A.SyGuSExpr (A.prepend_nt_to_dot_exprs nt (A.CompOp (NTExpr([], [nt2, None]), Eq, expr)))
       ) scs in 
       let ast = List.fold_left (fun acc element -> match element with

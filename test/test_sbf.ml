@@ -1530,6 +1530,33 @@ let md_test14 () =
   | Ok _ -> ()  
   | Error msg -> fail msg
 
+let sd_test16 () = 
+  let input = "../../../test/test_cases/test16" in
+  let ast = Parsing.parse (Utils.read_file input) in
+  let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
+  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  match output with
+  | Ok _ -> ()  
+  | Error msg -> fail msg
+
+let dm_test16 () = 
+  let input = "../../../test/test_cases/test16" in
+  let ast = Parsing.parse (Utils.read_file input) in
+  let sygus_ast, _ = main_pipeline ~engine:(Some DpllMono) input in
+  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  match output with
+  | Ok _ -> ()  
+  | Error msg -> fail msg
+
+let md_test16 () = 
+  let input = "../../../test/test_cases/test16" in
+  let ast = Parsing.parse (Utils.read_file input) in
+  let sygus_ast, _ = main_pipeline ~engine:(Some MixedDac) input in
+  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  match output with
+  | Ok _ -> ()  
+  | Error msg -> fail msg
+
 let () = 
   run "My_module" [
     "test_check_sygus_ast", [test_case "test_check_sygus_ast" `Quick test_check_sygus_ast];
@@ -1662,10 +1689,25 @@ let () =
     "sd_test14", [test_case "test14" `Quick sd_test14];
     "sd_test11", [test_case "test11" `Quick sd_test11];
 
+    "dm_test2", [test_case "test2" `Quick dm_test2];
+    "dm_test3", [test_case "test3" `Quick dm_test3];
+    "dm_test4", [test_case "test4" `Quick dm_test4];
+    "dm_test5", [test_case "test5" `Quick dm_test5];
+    "dm_test6", [test_case "test6" `Quick dm_test6];
+    "dm_test7", [test_case "test7" `Quick dm_test7];
+    "dm_test8", [test_case "test8" `Quick dm_test8];
+    "dm_test9", [test_case "test9" `Quick dm_test9];
+    "dm_test14", [test_case "test14" `Quick dm_test14];
+    "dm_test11", [test_case "test11" `Quick dm_test11];
+
     "sd_test17", [test_case "test17" `Quick sd_test17];
     "dm_test17", [test_case "test17" `Quick dm_test17];
     "dd_test17", [test_case "test17" `Quick dd_test17];
     "md_test17", [test_case "test17" `Quick md_test17];
+
+    "sd_test16", [test_case "test16" `Quick sd_test16];
+    "dm_test16", [test_case "test16" `Quick dm_test16];
+    "md_test16", [test_case "test16" `Quick md_test16];
 
     "sd_test18", [test_case "test18" `Quick sd_test18];
     "dm_test18", [test_case "test18" `Quick dm_test18];

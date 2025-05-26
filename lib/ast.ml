@@ -443,7 +443,14 @@ let get_nts_from_sc: semantic_constraint -> string list
 | SyGuSExpr expr -> get_nts_from_expr expr
 | Dependency (nt2, _) -> [nt2]
 
-(* To be called before desugaring NTs to match expressions and resolving ambiguities *)
+(* To be called before desugaring NTs to match expressions and resolving ambiguities.
+   This may seem overconservative, but in the sygus_dac approach, we have to have subproblems 
+   be completely independent to stub them out. E.g., consider 
+   <A> -> <B> { <B>.<C> < 5 };
+   <B> -> <C> <D> { <D> < 6 }; 
+   It may seem these should not overlap. But in the sygus approach, they must, 
+   because otherwise we will try to stub out <B>, but then <B>.<C> will fail.
+   *)
 let ast_constrains_nt: ast -> string -> bool 
 = fun ast nt -> 
   List.exists (fun element -> match element with 
