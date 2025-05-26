@@ -396,7 +396,7 @@ let nts_of_rhs: prod_rule_rhs -> string list
 | Rhs (ges, _) -> 
   List.map (fun ge -> match ge with 
   | Nonterminal (nt, _) -> nt 
-  | StubbedNonterminal _ -> assert false
+  | StubbedNonterminal (nt, _) -> nt (* TODO: Not sure which tuple element we want, first or second *)
   ) ges
 | StubbedRhs _ -> assert false
 

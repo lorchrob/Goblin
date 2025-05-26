@@ -626,7 +626,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
           children := List.map (fun ge -> match ge with 
           | A.Nonterminal (nt, idx_opt) ->
             Node ((nt, idx_opt), ref Utils.IntSet.empty, path @ [nt, idx_opt], ref [])  
-          | StubbedNonterminal (_, nt) -> DependentTermLeaf nt
+          | StubbedNonterminal (_, stub_id) -> DependentTermLeaf stub_id
           ) ges;
           List.iter (fun sc -> match sc with 
           | A.SyGuSExpr expr ->

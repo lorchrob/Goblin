@@ -31,7 +31,7 @@ let pp_print_sygus_ast: Format.formatter -> sygus_ast -> unit
     let bits = List.map Bool.to_int bits in
     Format.fprintf ppf "#b%a"
     (Lib.pp_print_list Format.pp_print_int "") bits
-  | VarLeaf id -> Format.fprintf ppf "%s" id;
+  | VarLeaf id -> Format.fprintf ppf "%S" id;
   | StrLeaf id -> Format.fprintf ppf "%S" id;
   | IntLeaf d -> Format.pp_print_int ppf d;
   | BoolLeaf b -> Format.pp_print_bool ppf b;
