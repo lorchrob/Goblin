@@ -1,4 +1,9 @@
-let dpll ppf ctx ast =  
+let dpll ppf ctx ast = 
+  
+  Utils.debug_print Format.pp_print_string ppf "\nLifting overlapping dependencies:\n";
+  let ast = MergeOverlappingConstraints.lift_overlapping_dependencies ast in
+  Utils.debug_print Ast.pp_print_ast ppf ast;
+
   (* Step 1: Resolve ambiguities in constraints *)
   let ast = ResolveAmbiguities.resolve_ambiguities_dpll ctx ast in
   Utils.debug_print Format.pp_print_string ppf "\nResolving grammar ambiguities complete:\n";

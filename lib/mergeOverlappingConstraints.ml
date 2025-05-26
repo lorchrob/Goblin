@@ -112,6 +112,40 @@ let merge: A.ast -> A.element -> A.ast
     (* If no overlapping constraint, no action is required *)
     else ast @ [element]
 
+let lift: A.ast -> A.element -> A.ast 
+= fun ast element -> match element with 
+  | A.TypeAnnotation (_, _, []) -> ast @ [element] 
+  | A.TypeAnnotation (nt, ty, scs) -> 
+    (* If a prior AST rule constrains the NT, we need to push up the constraints *)
+    if A.ast_constrains_nt ast nt then 
+      (* Lift dependencies to sygus exprs. 
+         TODO: This step may be overly conservative. *)
+      let scs = List.map (fun sc -> match sc with 
+      | A.SyGuSExpr _ -> sc 
+      | A.Dependency (nt, expr) -> 
+        Utils.debug_print Format.pp_print_string Format.std_formatter "Lifting dependency to SMT constraint\n";
+        let expr = A.CompOp (NTExpr ([], [nt, None]), Eq, expr) in 
+        SyGuSExpr expr
+      ) scs in
+      ast @ [A.TypeAnnotation (nt, ty, scs)]
+    else ast @ [element]
+  | A.ProdRule (nt, rhss) -> 
+    if A.ast_constrains_nt ast nt then 
+      let rhss = List.map (fun rhs -> match rhs with
+      | A.StubbedRhs _ -> rhs 
+      | A.Rhs (ges, scs) -> 
+        let scs = List.map (fun sc -> match sc with 
+        | A.SyGuSExpr _ -> sc 
+        | A.Dependency (nt, expr) -> 
+          Utils.debug_print Format.pp_print_string Format.std_formatter "Lifting dependency to SMT constraint\n";
+          let expr = A.CompOp (NTExpr ([], [nt, None]), Eq, expr) in 
+          SyGuSExpr expr
+        ) scs in
+        Rhs (ges, scs)
+      ) rhss in
+      ast @ [A.ProdRule (nt, rhss)]
+    else ast @ [element]
+
 let detect: A.ast -> A.element -> bool
 = fun ast element -> match element with 
   | A.TypeAnnotation (_, _, []) -> false 
@@ -138,6 +172,13 @@ let detect_overlapping_constraints: A.ast -> bool
     ) ([], false) ast |> snd
   | None -> true
 
+(* Lift dependencies that overlap with other constraints 
+   to SMT constraints for dpll_mono (don't need to push around) *)
+let lift_overlapping_dependencies: A.ast -> A.ast 
+= fun ast ->
+  List.fold_left lift [] ast
+
+(* Fully merge/push around constraints from sygus_dac *)
 let merge_overlapping_constraints: A.ast -> A.ast 
 = fun ast ->
   List.fold_left merge [] ast
