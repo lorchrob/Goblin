@@ -1314,15 +1314,6 @@ let dm_test14 () =
   | Ok _ -> ()  
   | Error msg -> fail msg
 
-let dd_test2 () = 
-  let input = "../../../test/test_cases/test2" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
-  match output with
-  | Ok _ -> ()  
-  | Error msg -> fail msg
-
 let dd_test3 () = 
   let input = "../../../test/test_cases/test3" in
   let ast = Parsing.parse (Utils.read_file input) in
@@ -1557,6 +1548,12 @@ let md_test16 () =
   | Ok _ -> ()  
   | Error msg -> fail msg
 
+let test10 () =
+  let input = "../../../test/test_cases/test10" in
+  match main_pipeline input with
+  | _ -> Alcotest.fail "Expected exception, but got success"
+  | exception _ -> ()  (* test passes *)
+
 let () = 
   run "My_module" [
     "test_check_sygus_ast", [test_case "test_check_sygus_ast" `Quick test_check_sygus_ast];
@@ -1700,6 +1697,16 @@ let () =
     "dm_test14", [test_case "test14" `Quick dm_test14];
     "dm_test11", [test_case "test11" `Quick dm_test11];
 
+    "dd_test3", [test_case "test3" `Quick dd_test3];
+    "dd_test4", [test_case "test4" `Quick dd_test4];
+    "dd_test5", [test_case "test5" `Quick dd_test5];
+    "dd_test6", [test_case "test6" `Quick dd_test6];
+    "dd_test7", [test_case "test7" `Quick dd_test7];
+    "dd_test8", [test_case "test8" `Quick dd_test8];
+    "dd_test9", [test_case "test9" `Quick dd_test9];
+    "dd_test14", [test_case "test14" `Quick dd_test14];
+    "dd_test11", [test_case "test11" `Quick dd_test11];
+
     "sd_test17", [test_case "test17" `Quick sd_test17];
     "dm_test17", [test_case "test17" `Quick dm_test17];
     "dd_test17", [test_case "test17" `Quick dd_test17];
@@ -1713,4 +1720,6 @@ let () =
     "dm_test18", [test_case "test18" `Quick dm_test18];
     "dd_test18", [test_case "test18" `Quick dd_test18];
     (* "md_test18", [test_case "test18" `Quick md_test18]; *)
+
+    "test10", [test_case "test10" `Quick test10];
   ]

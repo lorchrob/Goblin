@@ -1,0 +1,6 @@
+// We disallow dependent terms that have ambiguous references
+<S> ::= <A> <B> { <A> <- <B>.<C>.<D>; } ;
+<B> ::= <C> <C> ;
+<C> ::= <D> ;
+<A> :: Int;
+<D> :: Int ;
