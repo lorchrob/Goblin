@@ -4,6 +4,11 @@ module R = Res
 
 let (let*) = Res.(>>=)
 
+(*!!
+  * currently assumes that the leaf nodes are labeled (not the case in sygus_dac),
+    for now it's not too bad but could miss falsified type annotation semantic constraints 
+*)
+
 (* Check
   1. The sygus_ast is an instance of the grammar (syntactic well-formedness)
     a. The grammar starts at the start symbol 
@@ -44,6 +49,39 @@ let is_sc_applicable: Ast.expr -> SygusAst.sygus_ast -> bool
   let nts_are_applicable = List.map (is_nt_applicable sygus_ast) nts in 
   List.for_all (fun a -> a) nts_are_applicable
 
+let handle_scs ast sygus_ast constructor element scs = 
+  let scs = List.map (fun sc -> match sc with 
+  | A.SyGuSExpr expr -> 
+    if is_sc_applicable expr sygus_ast || (* type annotation constraints are always applicable *)
+       match element with | A.TypeAnnotation _ -> true | A.ProdRule _ -> false
+    then (
+      (if !Flags.debug then Format.fprintf Format.std_formatter "Constraint %a is applicable in %a"
+        A.pp_print_expr expr
+        SA.pp_print_sygus_ast sygus_ast
+        );
+      ComputeDeps.evaluate sygus_ast ast element expr)
+    else (
+      (if !Flags.debug then Format.fprintf Format.std_formatter "Constraint %a is not applicable in %a"
+        A.pp_print_expr expr
+        SA.pp_print_sygus_ast sygus_ast
+        );
+      [BConst true]) (* If sc is not applicable, it trivially holds *)
+  | Dependency (nt, expr) -> 
+    let expr = A.CompOp (NTExpr ([], [nt, None]), Eq, expr) in
+    (if !Flags.debug then Format.fprintf Format.std_formatter "Constraint %a is applicable in %a"
+      A.pp_print_expr expr
+      SA.pp_print_sygus_ast sygus_ast
+      );
+    ComputeDeps.evaluate sygus_ast ast element expr
+  ) scs in
+  let b = List.exists (fun sc -> match sc with 
+  | [A.BConst false] -> true 
+  | [BConst true] -> false 
+  | _ -> failwith "Unexpected pattern in check_syntax_semantics"
+  ) scs in
+  if b then Error ("Semantic constraint on constructor '" ^ constructor ^ "' is falsified") else
+  Ok ()
+
 let rec check_syntax_semantics: Ast.ast -> SygusAst.sygus_ast -> (unit, string) result 
 = fun ast sygus_ast -> match sygus_ast with 
   | Node ((constructor, _), children) -> 
@@ -60,78 +98,45 @@ let rec check_syntax_semantics: Ast.ast -> SygusAst.sygus_ast -> (unit, string) 
       
     let* _ = R.seq (List.map (check_syntax_semantics ast) children) in
     (* Find this node's corresponding AST element *) 
-    let nt_rhss = List.find_map (fun element -> match element with
+    let element = List.find_opt (fun element -> match element with
     | A.TypeAnnotation (nt, _, _) -> 
-      if Utils.str_eq_ci (Utils.extract_base_name constructor) nt 
-      then Some (nt, []) 
-      else None
-    | A.ProdRule (nt, rhss) -> 
-      if Utils.str_eq_ci (Utils.extract_base_name constructor) nt 
-      then Some (nt, rhss)
-      else None
-    ) ast in 
-    if nt_rhss = None then Error ("Dangling constructor identifier " ^ (Utils.extract_base_name constructor)) else 
-    let nt, rhss = Option.get nt_rhss in 
-    (* Find the matching production rule from ast, if one exists *)
-    let rhs = List.find_opt (fun rhs -> match rhs with 
-    | A.StubbedRhs _ -> false 
-    | A.Rhs (ges, _) -> 
-      if List.length ges != List.length children then false 
+      print_endline "got here!";
+      Utils.str_eq_ci (Utils.extract_base_name constructor) nt 
+    | A.ProdRule (nt, _) -> 
+      Utils.str_eq_ci (Utils.extract_base_name constructor) nt 
+    ) ast in (
+    match element with 
+    | None -> Error ("Dangling constructor identifier " ^ (Utils.extract_base_name constructor))
+    | Some (TypeAnnotation (_, _, scs) as element) -> 
+      Format.fprintf Format.std_formatter "Semantic constraints: %a\n"
+        (Lib.pp_print_list A.pp_print_semantic_constraint "; ") scs;
+      handle_scs ast sygus_ast constructor element scs
+    | Some (A.ProdRule (_, rhss) as element) ->
+      (* Find the matching production rule from ast, if one exists *)
+      let rhs = List.find_opt (fun rhs -> match rhs with 
+      | A.StubbedRhs _ -> false 
+      | A.Rhs (ges, _) -> 
+        if List.length ges != List.length children then false 
+        else 
+          List.for_all2 (fun child ge ->  
+            match child, ge with 
+            | _, A.StubbedNonterminal _ -> false 
+            | SA.Node ((constructor, _), _), Nonterminal (nt, _) -> Utils.str_eq_ci (Utils.extract_base_name constructor) nt
+            | _, _ -> true
+          ) children ges
+      ) rhss in 
+      if rhs = None then 
+        Error ("Could not find an associated production rule for constructor '" ^ constructor ^"'") 
       else 
-        List.for_all2 (fun child ge ->  
-          match child, ge with 
-          | _, A.StubbedNonterminal _ -> false 
-          | SA.Node ((constructor, _), _), Nonterminal (nt, _) -> Utils.str_eq_ci (Utils.extract_base_name constructor) nt
-          | _, _ -> true
-        ) children ges
-    ) rhss in 
-    if rhss != [] && rhs = None then Error ("Could not find an associated production rule for constructor '" ^ constructor ^"'") else 
-    let scs = match rhs with 
-    | Some (StubbedRhs _) -> assert false 
-    | Some (Rhs (_, scs)) -> scs 
-    | None -> [] (*!! TODO: Need to analyze scs in type annotation case *)
-    in 
-    (* Evaluate each semantic constraint with concrete values from the sygus AST, and check 
-       if all are satisfied *)
-    let scs = List.map (fun sc -> match sc with 
-    | A.SyGuSExpr expr -> 
-      if is_sc_applicable expr sygus_ast then (
-        (if !Flags.debug then Format.fprintf Format.std_formatter "Constraint %a is applicable in %a"
-          A.pp_print_expr expr
-          SA.pp_print_sygus_ast sygus_ast
-          );
-        ComputeDeps.evaluate sygus_ast ast (ProdRule (nt, rhss)) expr)
-      else (
-        (if !Flags.debug then Format.fprintf Format.std_formatter "Constraint %a is not applicable in %a"
-          A.pp_print_expr expr
-          SA.pp_print_sygus_ast sygus_ast
-          );
-        [BConst true]) (* If sc is not applicable, it trivially holds *)
-    | Dependency (nt, expr) -> 
-      let expr = A.CompOp (NTExpr ([], [nt, None]), Eq, expr) in
-      if is_sc_applicable expr sygus_ast then (
-        (if !Flags.debug then Format.fprintf Format.std_formatter "Constraint %a is applicable in %a"
-          A.pp_print_expr expr
-          SA.pp_print_sygus_ast sygus_ast
-          );
-        ComputeDeps.evaluate sygus_ast ast (ProdRule (nt, rhss)) expr)
-      else (
-        (if !Flags.debug then Format.fprintf Format.std_formatter "Constraint %a is not applicable in %a"
-          A.pp_print_expr expr
-          SA.pp_print_sygus_ast sygus_ast
-          );
-        [BConst true]) (* If sc is not applicable, it trivially holds *)
-    ) scs in
-    let b = List.exists (fun sc -> match sc with 
-    | [A.BConst false] -> true 
-    | [BConst true] -> false 
-    | _ -> failwith "Unexpected pattern in check_syntax_semantics"
-    ) scs in
-    if b then Error ("Semantic constraint on constructor '" ^ constructor ^ " is falsified") else
-    Ok ()
+        let scs = match Option.get rhs with 
+        | (StubbedRhs _) -> assert false 
+        | (Rhs (_, scs)) -> scs 
+        in 
+        handle_scs ast sygus_ast constructor element scs)
   | _ -> Ok ()
 
 let check_sygus_ast: Ast.ast -> SygusAst.sygus_ast -> (unit, string) result 
 = fun ast sygus_ast -> 
+  SA.pp_print_sygus_ast Format.std_formatter sygus_ast;
   let* _ = check_start_symbol ast sygus_ast in 
   check_syntax_semantics ast sygus_ast

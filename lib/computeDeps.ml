@@ -93,10 +93,10 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -
 = fun ?(dep_map=Utils.StringMap.empty) sygus_ast ast element expr -> 
   let call = evaluate ~dep_map sygus_ast ast element in
   match expr with 
-| NTExpr (_, []) -> Utils.crash "Unexpected case in evaluate"
+| NTExpr (_, []) -> Utils.crash "Unexpected case in evaluate 1"
 | NTExpr (_, id :: rest) ->
   let child_index = match element with 
-  | A.TypeAnnotation _ -> Utils.crash "Unexpected case in evaluate" 
+  | A.TypeAnnotation _ -> Some 0
   | A.ProdRule (_, rhss) ->
     (* Find child_index within the rule, not across all rules *) 
       List.find_map (fun rhs -> match rhs with 

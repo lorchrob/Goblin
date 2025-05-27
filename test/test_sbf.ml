@@ -58,7 +58,7 @@ let test_check_sygus_ast_4 () =
   let filename = "../../../test/test_cases/test_check_sygus_ast_2" in
   let input = Utils.read_file filename in 
   let ast = Parsing.parse input in 
-  let sygus_ast = SygusAst.Node (("A", None), [SygusAst.Node (("B", None), [SygusAst.IntLeaf 1]); SygusAst.Node (("C", None), [SygusAst.IntLeaf 2])]) in
+  let sygus_ast = SygusAst.Node (("A", None), [SygusAst.Node (("B", None), [SygusAst.Node (("G", None), [SygusAst.IntLeaf 1])]); SygusAst.Node (("C", None), [SygusAst.Node (("G", None), [SygusAst.IntLeaf (2)])])]) in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> fail "Expected failure"
@@ -69,6 +69,26 @@ let test_check_sygus_ast_5 () =
   let input = Utils.read_file filename in 
   let ast = Parsing.parse input in 
   let sygus_ast = SygusAst.Node (("C", None), [SygusAst.Node (("G", None), [SygusAst.IntLeaf 1])]) in
+  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  match output with
+  | Ok _ -> fail "Expected failure"
+  | Error _ -> ()
+
+let test_check_sygus_ast_6 () =
+  let filename = "../../../test/test_cases/test_check_sygus_ast_3" in
+  let input = Utils.read_file filename in 
+  let ast = Parsing.parse input in 
+  let sygus_ast = SygusAst.Node (("A", None), [SygusAst.Node (("B", None), [SygusAst.IntLeaf (-1)]); SygusAst.Node (("C", None), [SygusAst.IntLeaf (-2)])]) in
+  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  match output with
+  | Ok _ -> ()
+  | Error msg -> fail msg
+
+let test_check_sygus_ast_7 () =
+  let filename = "../../../test/test_cases/test_check_sygus_ast_3" in
+  let input = Utils.read_file filename in 
+  let ast = Parsing.parse input in 
+  let sygus_ast = SygusAst.Node (("A", None), [SygusAst.Node (("B", None), [SygusAst.Node (("G", None), [SygusAst.IntLeaf (2)])]); SygusAst.Node (("C", None), [SygusAst.Node (("G", None), [SygusAst.IntLeaf (1)])])]) in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> fail "Expected failure"
@@ -1669,7 +1689,7 @@ let () =
     "md_test_dot_notation_2", [test_case "test_dot_notation_2" `Quick md_test_dot_notation_2];
     "md_test_another_ambiguous_reference", [test_case "test_another_ambiguous_reference" `Quick md_test_another_ambiguous_reference];
     (* "md_test_another_ambiguous_reference_1", [test_case "test_another_ambiguous_reference_1" `Quick md_test_another_ambiguous_reference_1]; *)
-    (*!! "md_test_another_ambiguous_reference_2", [test_case "test_another_ambiguous_reference_2" `Quick md_test_another_ambiguous_reference_2]; *)
+    (* "md_test_another_ambiguous_reference_2", [test_case "test_another_ambiguous_reference_2" `Quick md_test_another_ambiguous_reference_2]; *)
     "md_overlapping_constraints", [test_case "overlapping_constraints" `Quick md_overlapping_constraints];
     "md_overlapping_constraints_2", [test_case "overlapping_constraints_2" `Quick md_overlapping_constraints_2];
     "md_repeated_nt_dependency", [test_case "repeated_nt_dependency" `Quick md_repeated_nt_dependency];
@@ -1722,4 +1742,7 @@ let () =
     (* "md_test18", [test_case "test18" `Quick md_test18]; *)
 
     "test10", [test_case "test10" `Quick test10];
+
+    "test_check_sygus_ast_6", [test_case "test_check_sygus_ast_6" `Quick test_check_sygus_ast_6];
+    "test_check_sygus_ast_7", [test_case "test_check_sygus_ast_7" `Quick test_check_sygus_ast_7];
   ]

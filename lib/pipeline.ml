@@ -1,8 +1,8 @@
 (*!! TODO: Bug fixes (make test and test cases in examples)
-     TODO: Experimental evaluation (debug examples first)
+     TODO: Experimental evaluation 
      TODO: Write paper 
 
-     TODO: Expand testing to test all engines individually, and in parallel, for each test case
+     TODO: Flag that allows you to disable engines in race mode (useful if one engine is buggy on a class of problems)
      TODO: More fine-grained check if divide and conquer engines are usable. Right now,
            rejecting all recursive grammars. But really this only is necessary for sygus_dac.
     
