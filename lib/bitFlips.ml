@@ -2,7 +2,7 @@ open SygusAst
 
 let random_bit_flip b = 
   if Random.bool () then not b else b
-
+ 
 let flip_bit_list lst = 
   if Random.bool () then List.map random_bit_flip lst else lst
 

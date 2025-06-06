@@ -8,6 +8,7 @@ let debug = ref false
 let no_warnings = ref true
 let only_parse = ref false
 let show_winner = ref false
+let dump_clp = ref false
 let daniyal = ref false
 let filename = ref None
 let selected_engine = ref None
@@ -53,6 +54,11 @@ let parse_args () =
     Arg.(value & flag & info ["w"; "show-winner"] ~doc)
   in
 
+  let dump_clp_flag =
+    let doc = "Translate the input to a CLP(T) problem" in
+    Arg.(value & flag & info ["c"; "dump-clp"] ~doc)
+  in
+
   let daniyal_flag =
     let doc = "Activate daniyal mode" in
     Arg.(value & flag & info ["a"; "daniyal"] ~doc)
@@ -68,12 +74,13 @@ let parse_args () =
     Arg.(value & opt (some engine_conv) None & info ["e"; "engine"] ~docv:"ENGINE" ~doc)
   in
 
-  let set_flags new_debug new_no_warnings new_only_parse new_show_winner new_daniyal new_filename new_engine =
+  let set_flags new_debug new_no_warnings new_only_parse new_show_winner new_dump_clp new_daniyal new_filename new_engine =
     Format.pp_print_flush Format.std_formatter ();
     debug := new_debug;
     no_warnings := new_no_warnings;
     only_parse := new_only_parse;
     show_winner := new_show_winner;
+    dump_clp := new_dump_clp;
     daniyal := new_daniyal;
     filename := new_filename;
     selected_engine := new_engine;
@@ -85,6 +92,7 @@ let parse_args () =
           $ no_warnings_flag
           $ only_parse_flag
           $ show_winner_flag
+          $ dump_clp_flag
           $ daniyal_flag
           $ filename_flag
           $ engine_flag)

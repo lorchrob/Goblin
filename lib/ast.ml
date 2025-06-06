@@ -288,8 +288,16 @@ and pp_print_expr: Format.formatter -> expr -> unit
   Format.fprintf ppf "(match %a with %a)"
     pp_print_nt_with_underscores (nts @ [nt])
     (Lib.pp_print_list pp_print_case " ") cases 
-| NTExpr (nts, [nt_expr]) -> pp_print_nt_with_underscores ppf (nts @ [nt_expr]) 
-| NTExpr ([], nt_expr) -> pp_print_nt_with_dots ppf (nt_expr) 
+| NTExpr (nts, [nt_expr]) -> 
+  if !Flags.dump_clp then 
+    let s = nt_expr |> fst |> String.uppercase_ascii in
+    Format.pp_print_string ppf s
+  else pp_print_nt_with_underscores ppf (nts @ [nt_expr]) 
+| NTExpr ([], nt_expr) -> 
+  if !Flags.dump_clp then 
+    let s = Utils.last nt_expr |> fst |> (fun x -> x ^ "s") |> String.uppercase_ascii in
+    Format.pp_print_string ppf s
+  else pp_print_nt_with_dots ppf (nt_expr) 
 | NTExpr (nt_ctx, nts) -> 
   Format.fprintf ppf "%a:%a"
     pp_print_nt_with_underscores nt_ctx 
@@ -482,3 +490,11 @@ let rec prepend_nt_to_dot_exprs: string -> expr -> expr
   | IntConst _ 
   | PhConst _ 
   | StrConst _ -> expr
+
+let scs_of_element = function 
+| ProdRule (_, rhss) -> 
+  List.concat_map (function 
+  | StubbedRhs _ -> [] 
+  | Rhs (_, scs) -> scs
+  ) rhss
+| TypeAnnotation (_, _, scs) -> scs
