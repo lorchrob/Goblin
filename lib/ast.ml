@@ -296,7 +296,8 @@ and pp_print_expr: Format.formatter -> expr -> unit
 | NTExpr ([], nt_expr) -> 
   if !Flags.dump_clp then 
     let s = Utils.last nt_expr |> fst |> (fun x -> x ^ "s") |> String.uppercase_ascii in
-    Format.pp_print_string ppf s
+    let init = Utils.init nt_expr |> List.map fst |> String.concat "_" in
+    Format.pp_print_string ppf (init ^ "_" ^ s)
   else pp_print_nt_with_dots ppf (nt_expr) 
 | NTExpr (nt_ctx, nts) -> 
   Format.fprintf ppf "%a:%a"

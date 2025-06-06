@@ -1,5 +1,12 @@
 module A = Ast
 
+(* NOTES
+  * Treating append as multi-arity function
+  * Take the CLP program and query for point-wise solutions
+  * Relies on lists in the encoding
+  * Relies on datatypes/theory combinations not supported by actual CLP solvers
+*)
+
 (* term is constructor + args *)
 type clp_term = 
 | Leaf of string 
@@ -76,7 +83,7 @@ let rec create_field_extractors: A.ast -> string list -> clp_rule list
 | [] 
 | _ :: [] -> []
 | nt1 :: nt2 :: [] -> 
-  let extractor = nt1 ^ "_" ^ nt2 in 
+  let extractor = nt1 ^ "_" ^ nt2 ^ "s" in 
   let nt1_rhss = List.find_map (function 
   | A.ProdRule (nt, rhss) -> if nt1 = nt then Some rhss else None
   | TypeAnnotation _ -> None
@@ -132,6 +139,27 @@ let rec create_field_extractors: A.ast -> string list -> clp_rule list
   ) nt1_rhss |> List.flatten in 
   field_extractors @ (create_field_extractors ast (nt2 :: rest))
 
+let annotate_occurrences strs =
+  let tbl = Hashtbl.create 10 in
+  List.map (fun s ->
+    let count = Hashtbl.find_opt tbl s |> Option.value ~default:0 in
+    Hashtbl.replace tbl s (count + 1);
+    s ^ string_of_int count
+  ) strs
+
+let is_base_and_indexed s1 s2 =
+  let is_suffix_number s base =
+    let base_len = String.length base in
+    let s_len = String.length s in
+    if s_len <= base_len then false
+    else
+      let prefix = String.sub s 0 base_len in
+      let suffix = String.sub s base_len (s_len - base_len) in
+      prefix = base && 
+      String.for_all (fun c -> '0' <= c && c <= '9') suffix
+  in
+  is_suffix_number s2 s1 || is_suffix_number s1 s2
+
 let clp_program_of_ast: Ast.ast -> clp_program 
 = fun ast -> List.fold_left (fun acc element -> match element with 
 | A.ProdRule (nt, rhss) -> 
@@ -139,7 +167,7 @@ let clp_program_of_ast: Ast.ast -> clp_program
   let rules = List.mapi (fun i rhs -> match rhs with 
   | A.StubbedRhs _ -> Utils.crash "unexpected case in clp_program_of_ast"
   | A.Rhs (_, scs) -> 
-    let nts = A.nts_of_rhs rhs in
+    let nts = A.nts_of_rhs rhs |> annotate_occurrences in
     let leaves = List.map (fun nt -> Leaf nt) nts in 
     let t = FunctionApp (nt, [FunctionApp (nt ^ (string_of_int i), leaves)]) in
     let nt_exprs = List.concat_map (fun sc -> A.get_nts_from_expr2 (expr_of_sc sc)) scs in
@@ -148,10 +176,19 @@ let clp_program_of_ast: Ast.ast -> clp_program
       else 
         Some (List.hd nt_expr |> fst, Utils.last nt_expr |> fst)  
     ) nt_exprs in 
-    let destructors = List.map (fun (l, r) -> 
-      let destructor_string = l ^ "_" ^ r ^ "s" in
-      Term (FunctionApp (destructor_string, [Leaf l; Leaf (r ^ "s")]))  
+    let pairs = List.concat_map (fun (l, r) -> 
+      let matching_nts = List.filter (fun nt -> is_base_and_indexed l nt) nts in 
+      List.map (fun nt -> nt, r) matching_nts
     ) pairs in
+    let destructors = List.mapi (fun i (l, r) -> 
+      let destructor_string = l ^ "_" ^ r ^ "s" in
+      let target = r ^ "s" ^ (string_of_int i) in
+      Term (FunctionApp (destructor_string, [Leaf l; Leaf target])) 
+    ) pairs in
+    (*!! Missing: a function to instantiate scs with every possible reference in the previous 
+         terms and destructors *)
+    (*!! Also, the field extractors need the full paths to the targets to disambiguate *)
+    (*!! Could try to build field extractors from the LHS of the prod rules rather than the RHS to eliminate the last gather step *)
     let scs = List.map (fun sc -> SemanticConstraint (expr_of_sc sc)) scs in
     let terms = List.map (fun nt -> Term (FunctionApp (nt, [Leaf nt]))) nts in
     let es = terms @ destructors @ scs in
