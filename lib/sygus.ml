@@ -224,6 +224,10 @@ and pp_print_expr: ?nt_prefix:string -> TC.context -> Format.formatter -> A.expr
     Format.fprintf ppf "(str.prefixof %a %a)"
       r expr1
       r expr2 
+  | CompOp (expr1, StrContains, expr2) -> 
+    Format.fprintf ppf "(str.contains %a %a)"
+      r expr1
+      r expr2 
   | CompOp (expr1, op, expr2) -> 
     Format.fprintf ppf "(%a %a %a)"
       pp_print_compop op 

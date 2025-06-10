@@ -15,6 +15,7 @@ type comp_operator =
 | BVGt 
 | BVGte
 | StrPrefix
+| StrContains
 
 type bin_operator = 
 | BVAnd 
@@ -240,6 +241,7 @@ let pp_print_comp_op: Format.formatter -> comp_operator -> unit
 | BVGt -> Format.fprintf ppf  "bvgt"
 | BVGte -> Format.fprintf ppf  "bvgte"
 | StrPrefix -> Format.fprintf ppf "str.prefixof"
+| StrContains -> Format.fprintf ppf "str.contains"
 
 (* let pp_print_bit: Format.formatter -> bool ->  *)
 

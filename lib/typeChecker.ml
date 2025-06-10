@@ -123,6 +123,7 @@ let rec infer_type_expr: context -> mode -> expr -> il_type option
   let _ = check_type_expr ctx mode Int expr1 in 
   let _ = check_type_expr ctx mode Int expr2 in
   Some Bool
+| CompOp (expr1, StrContains, expr2) 
 | CompOp (expr1, StrPrefix, expr2) ->
   let _ = check_type_expr ctx mode String expr1 in 
   let _ = check_type_expr ctx mode String expr2 in

@@ -81,6 +81,10 @@ lisp_term:
   { IntLeaf i }
 | LPAREN; HYPHEN; i = INTEGER; RPAREN; 
   { IntLeaf (-i) }
+| TRUE; 
+  { BoolLeaf true }
+| FALSE; 
+  { BoolLeaf false }
 | str = STRCONST;
   { StrLeaf str }
 

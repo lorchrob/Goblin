@@ -329,6 +329,20 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -
     [BConst (len1 <= len2 && String.sub str2 0 len1 = str1)] 
   | _ -> eval_fail 12
   )
+| CompOp (expr1, StrContains, expr2) -> 
+  let expr1 = call expr1 in 
+  let expr2 = call expr2 in (
+  match expr1, expr2 with 
+  | [StrConst str1], [StrConst str2] ->
+    (* TODO: Check this function *)
+    let contains s1 s2 =
+      let re = Str.regexp_string s2 in
+      try ignore (Str.search_forward re s1 0); true
+      with Not_found -> false
+    in
+    [BConst (contains str1 str2)] 
+  | _ -> eval_fail 12
+  )
 | Length expr -> (
   let exprs = call expr in 
   List.fold_left (fun acc expr ->

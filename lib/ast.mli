@@ -11,6 +11,7 @@ type comp_operator =
 | BVGt 
 | BVGte
 | StrPrefix
+| StrContains
 
 type bin_operator =
 | BVAnd

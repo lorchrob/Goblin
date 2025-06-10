@@ -72,6 +72,7 @@ rule read =
   | "." { DOT }
   | "++" { STRCONCAT }
   | "is_prefix" { STRPREFIX }
+  | "contains" { STRCONTAINS }
   | "0b" { read_bits lexbuf }
   | '"'[^ '"']*'"' as s   { STRING (String.sub s 1 (String.length s - 2)) }
   | int as p { INTEGER (int_of_string p) }

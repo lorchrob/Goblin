@@ -50,6 +50,7 @@ open Ast
 %token BVGT
 %token BVGTE
 %token STRPREFIX 
+%token STRCONTAINS 
 %token STRCONCAT
 
 %token<int> INTEGER
@@ -165,6 +166,8 @@ expr:
 | LENGTH; LPAREN; e = expr; RPAREN; { Length (e) }
 | STRLENGTH; LPAREN; e = expr; RPAREN; { StrLength (e) }
 | STRPREFIX; LPAREN; e1 = expr; COMMA; e2 = expr; RPAREN; { CompOp (e1, StrPrefix, e2) }
+| STRCONTAINS; LPAREN; e1 = expr; COMMA; e2 = expr; RPAREN; { CompOp (e1, StrContains, e2) }
+
 (* Case expressions *)
 // | CASE; e = nt_expr; OF; cs = case_list { Match (e, cs) }
 (* Variables *)
