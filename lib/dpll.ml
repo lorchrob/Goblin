@@ -288,9 +288,9 @@ let new_decision_level: solver_instance -> unit
   issue_solver_command push_cmd solver; 
   ()
 
-let backtrack_decision_level: solver_instance -> unit 
+let backtrack_decision_level: solver_instance -> unit
 = fun solver ->
-  if !assertion_level = 0 then (print_endline "infeasible"; exit 0);
+  if !assertion_level = 0 then (print_endline "infeasible"; raise (Failure "infeasible"));
   let pop_cmd = Format.asprintf "(pop 1)" in
   assertion_level := !assertion_level - 1;
   issue_solver_command pop_cmd solver; 
@@ -525,7 +525,7 @@ let assert_and_remove_applicable_constraints constraint_set derivation_tree ast 
   !constraint_set
 
 let backtrack_derivation_tree decision_stack = 
-  if B.Stack.is_empty decision_stack then (print_endline "infeasible"; exit 0);
+  if B.Stack.is_empty decision_stack then (raise (Failure "infeasible"));
   match !(B.Stack.pop decision_stack) with 
   | Node (_, _, _, children) -> 
     children := []
@@ -555,6 +555,8 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
   let decision_stack : derivation_tree ref Stack.t = B.Stack.create () in 
   (* Solver object *)
   let solver = initialize_cvc5 () in
+
+  try 
 
   (* Iteratively expand the frontier and instantiate the derivation tree leaves *)
   while not (is_complete !derivation_tree) do 
@@ -692,3 +694,5 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
   derivation_tree := fill_unconstrained_nonterminals !derivation_tree;
   (* Convert to sygus AST for later processing in the pipeline *)
   sygus_ast_of_derivation_tree !derivation_tree
+
+  with Failure _ -> SA.StrLeaf "infeasible"
