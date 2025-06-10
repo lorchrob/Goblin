@@ -249,7 +249,7 @@ and pp_print_expr: ?nt_prefix:string -> TC.context -> Format.formatter -> A.expr
       (Lib.pp_print_list Format.pp_print_int "") bits
   | BConst b ->  Format.fprintf ppf "%b" b
   | IntConst i -> Format.fprintf ppf "%d" i
-  | StrConst str -> Format.pp_print_string ppf str
+  | StrConst str -> Format.fprintf ppf "%S" str
   | PhConst _ -> Utils.crash "Error: String constants can only be in dependencies (of the form 'nonterminal <- string_literal')"
   | BLConst _ -> Utils.crash "BitList literals not yet fully supported"
   | BVCast _ -> Utils.crash "Integer to bitvector casts in semantic constraints that aren't preprocessable are not supported"

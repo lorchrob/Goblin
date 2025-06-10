@@ -155,7 +155,9 @@ expr:
 | LNOT; e = expr { UnOp (LNot, e) }
 (* Concrete constants *)
 | i = INTEGER; { IntConst (i) }
-| s = STRING; { PhConst (s) }
+//!! Need to commit to string or placeholder here, but repair later in pipeline
+//!! Should do a pass converting StrConst to PhConst when expecting placeholder
+| s = STRING; { StrConst (s) } 
 | TRUE; { BConst (true) }
 | FALSE; { BConst (false) }
 | bv = BITS { BVConst (List.length bv, bv) }

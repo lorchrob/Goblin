@@ -108,8 +108,8 @@ let rec create_field_extractors: A.ast -> string list -> clp_rule list
 
 | nt1 :: nt2 :: rest -> 
   let leaf = Utils.last nt_expr ^ "s" in
-  let nt1_extractor = nt1 ^ "_" ^ leaf in 
-  let nt2_extractor = nt2 ^ "_" ^ leaf in 
+  let nt1_extractor = String.concat "_" (nt1 :: nt2 :: rest) ^ "s" in 
+  let nt2_extractor = String.concat "_" (nt2 :: rest) ^ "s" in 
   let nt1_rhss = List.find_map (function 
   | A.ProdRule (nt, rhss) -> if nt1 = nt then Some rhss else None
   | TypeAnnotation _ -> None
@@ -171,26 +171,23 @@ let clp_program_of_ast: Ast.ast -> clp_program
     let leaves = List.map (fun nt -> Leaf nt) nts in 
     let t = FunctionApp (nt, [FunctionApp (nt ^ (string_of_int i), leaves)]) in
     let nt_exprs = List.concat_map (fun sc -> A.get_nts_from_expr2 (expr_of_sc sc)) scs in
-    let pairs = List.filter_map (fun nt_expr -> 
-      if List.length nt_expr < 2 then None 
-      else 
-        Some (List.hd nt_expr |> fst, Utils.last nt_expr |> fst)  
-    ) nt_exprs in 
-    let pairs = List.concat_map (fun (l, r) -> 
-      let matching_nts = List.filter (fun nt -> is_base_and_indexed l nt) nts in 
-      List.map (fun nt -> nt, r) matching_nts
-    ) pairs in
-    let destructors = List.mapi (fun i (l, r) -> 
-      let destructor_string = l ^ "_" ^ r ^ "s" in
-      let target = r ^ "s" ^ (string_of_int i) in
-      Term (FunctionApp (destructor_string, [Leaf l; Leaf target])) 
-    ) pairs in
+    let nt_exprs = List.filter (fun nt_expr -> List.length nt_expr >= 2) nt_exprs in 
+    let nt_exprs = List.map (List.map fst) nt_exprs in
+    let nt_exprs = List.concat_map (fun nt_expr -> 
+      let matching_nts = List.filter (fun nt -> is_base_and_indexed (List.hd nt_expr) nt) nts in 
+      List.map (fun nt -> nt :: List.tl nt_expr) matching_nts
+    ) nt_exprs in
+    let destructors = List.mapi (fun i nt_expr -> 
+      let destructor_string = String.concat "_" nt_expr ^ "s" in
+      let target = String.concat "_" nt_expr ^ "s" ^ (string_of_int i) in
+      Term (FunctionApp (destructor_string, [Leaf (List.hd nt_expr); Leaf target])) 
+    ) nt_exprs in
     (*!! Missing: a function to instantiate scs with every possible reference in the previous 
          terms and destructors *)
-    (*!! Also, the field extractors need the full paths to the targets to disambiguate *)
     (*!! Could try to build field extractors from the LHS of the prod rules rather than the RHS to eliminate the last gather step *)
-    let scs = List.map (fun sc -> SemanticConstraint (expr_of_sc sc)) scs in
     let terms = List.map (fun nt -> Term (FunctionApp (nt, [Leaf nt]))) nts in
+    let scs = List.map (fun sc -> SemanticConstraint (expr_of_sc sc)) scs in
+    (* let scs = generalize_scs_ambiguous_references scs terms destructors in *)
     let es = terms @ destructors @ scs in
     ProdRule (t, es)
   ) rhss in 
