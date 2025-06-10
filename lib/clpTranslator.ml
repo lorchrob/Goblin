@@ -160,6 +160,13 @@ let is_base_and_indexed s1 s2 =
   in
   is_suffix_number s2 s1 || is_suffix_number s1 s2
 
+let extract_str input =
+  let re = Str.regexp "^\\([a-zA-Z_]+\\)[0-9]*$" in
+  if Str.string_match re input 0 then
+    Str.matched_group 1 input
+  else
+    input 
+
 let clp_program_of_ast: Ast.ast -> clp_program 
 = fun ast -> List.fold_left (fun acc element -> match element with 
 | A.ProdRule (nt, rhss) -> 
@@ -178,14 +185,18 @@ let clp_program_of_ast: Ast.ast -> clp_program
       List.map (fun nt -> nt :: List.tl nt_expr) matching_nts
     ) nt_exprs in
     let destructors = List.mapi (fun i nt_expr -> 
-      let destructor_string = String.concat "_" nt_expr ^ "s" in
+      let nt_expr' = List.map extract_str nt_expr in
+      let destructor_string = String.concat "_" nt_expr' ^ "s" in
       let target = String.concat "_" nt_expr ^ "s" ^ (string_of_int i) in
       Term (FunctionApp (destructor_string, [Leaf (List.hd nt_expr); Leaf target])) 
     ) nt_exprs in
     (*!! Missing: a function to instantiate scs with every possible reference in the previous 
          terms and destructors *)
     (*!! Could try to build field extractors from the LHS of the prod rules rather than the RHS to eliminate the last gather step *)
-    let terms = List.map (fun nt -> Term (FunctionApp (nt, [Leaf nt]))) nts in
+    let terms = List.map (fun nt ->
+      
+      Term (FunctionApp (extract_str nt, [Leaf nt]))
+    ) nts in
     let scs = List.map (fun sc -> SemanticConstraint (expr_of_sc sc)) scs in
     (* let scs = generalize_scs_ambiguous_references scs terms destructors in *)
     let es = terms @ destructors @ scs in
