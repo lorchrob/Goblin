@@ -285,7 +285,11 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -
   | [BLConst bl1], [BLConst bl2] -> [BConst (bl1 = bl2)]
   | [StrConst str1], [StrConst str2]
   | [PhConst str1], [PhConst str2] -> [BConst (String.equal str1 str2)]
-  | _ -> eval_fail 25
+  | _ ->
+    Format.fprintf Format.std_formatter "Debug info: %a %a\n"
+      (Lib.pp_print_list A.pp_print_expr "; ") expr1
+      (Lib.pp_print_list A.pp_print_expr "; ") expr2;
+    eval_fail 25
   )
 | CompOp (expr1, BVLt, expr2) -> 
   let expr1 = call expr1 in 

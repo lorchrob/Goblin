@@ -8,9 +8,7 @@ TODO: support this test case
 
 let test_dpll_unsat_constraint () =
   let filename = "../../../test/test_cases/test_dpll_unsat_constraint" in
-  let input = Utils.read_file filename in 
-  let ast = Parsing.parse input in
-  let sygus_ast, _ = Pipeline.main_pipeline filename in
+  let input = Utils.read_file filename in _, ast = Pipeline.main_pipeline filename in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -21,7 +19,7 @@ let test_dpll_unsat_constraint () =
 
 (* let test_dpll_unsat_constraint_2 () =
   let input = "../../../test/test_cases/test_dpll_unsat_constraint_2" in
-  let _, output = main_pipeline input in
+  let _, output, _ = main_pipeline input in
   check string "test_another_ambiguous_reference_1" output "unsat\n" *)
 
 let test_check_sygus_ast () =
@@ -98,18 +96,17 @@ let sd_test_another_ambiguous_reference_1 () =
   (* TODO: Fix ugly paths. The test_cases directory is currently not included in the build directory, 
            so we have to reference it from the build directory. *)
   let input = "../../../test/test_cases/test_another_ambiguous_reference_1" in
-  let _, output = main_pipeline ~engine:(Some SygusDac) input in
+  let _, output, _ = main_pipeline ~engine:(Some SygusDac) input in
   check string "test_another_ambiguous_reference_1" output "infeasible\n"
 
 let sd_test_another_ambiguous_reference_2 () =
   let input = "../../../test/test_cases/test_another_ambiguous_reference_2" in
-  let _, output = main_pipeline ~engine:(Some SygusDac) input in
+  let _, output, _ = main_pipeline ~engine:(Some SygusDac) input in
   check string "test_another_ambiguous_reference_2" output "infeasible\n"
 
 let sd_test_another_ambiguous_reference () =
   let input = "../../../test/test_cases/test_another_ambiguous_reference" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -117,8 +114,7 @@ let sd_test_another_ambiguous_reference () =
 
 let sd_test_dot_notation_2 () =
   let input = "../../../test/test_cases/test_dot_notation_2" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -126,8 +122,7 @@ let sd_test_dot_notation_2 () =
 
 let sd_test_cyclic_dependencies () =
   let input = "../../../test/test_cases/test_cyclic_dependencies" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -135,8 +130,7 @@ let sd_test_cyclic_dependencies () =
 
 let sd_test_horizontal_ambiguous_reference_1 () =
   let input = "../../../test/test_cases/test_horizontal_ambiguous_reference_1" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -144,8 +138,7 @@ let sd_test_horizontal_ambiguous_reference_1 () =
 
 let sd_test_vertical_ambiguous_reference_1 () =
   let input = "../../../test/test_cases/test_vertical_ambiguous_reference_1" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -153,8 +146,7 @@ let sd_test_vertical_ambiguous_reference_1 () =
 
 let sd_test_vertical_ambiguous_reference_2 () =
   let input = "../../../test/test_cases/test_vertical_ambiguous_reference_2" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -163,8 +155,7 @@ let sd_test_vertical_ambiguous_reference_2 () =
 (* Semantic constraint example *)
 let sd_test_sc () =
   let input = "../../../test/test_cases/test_sc" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -172,8 +163,7 @@ let sd_test_sc () =
 
 let sd_test_placeholder () =
   let input = "../../../test/test_cases/test_placeholder" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -182,8 +172,7 @@ let sd_test_placeholder () =
 (* Dependent term calculation example *)
 let sd_test_dt () =
   let input = "../../../test/test_cases/test_dt" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -191,8 +180,7 @@ let sd_test_dt () =
 
 let sd_test_dt2 () =
   let input = "../../../test/test_cases/test_dt2" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -201,8 +189,7 @@ let sd_test_dt2 () =
 (* Divide and conquer example *)
 let sd_test_dc () = 
   let input = "../../../test/test_cases/test_dc" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -210,8 +197,7 @@ let sd_test_dc () =
 
 let sd_test_bl () = 
   let input = "../../../test/test_cases/test_bl" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -219,8 +205,7 @@ let sd_test_bl () =
 
 let sd_test_ty_annot_sc2 () = 
   let input = "../../../test/test_cases/test_ty_annot_sc2" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -228,8 +213,7 @@ let sd_test_ty_annot_sc2 () =
 
 let sd_test_mult_prod_rules () = 
   let input = "../../../test/test_cases/test_mult_prod_rules" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -237,8 +221,7 @@ let sd_test_mult_prod_rules () =
 
 let sd_test_bv_len () = 
   let input = "../../../test/test_cases/test_bv_len" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -246,8 +229,7 @@ let sd_test_bv_len () =
 
 let sd_test_dt3 () = 
   let input = "../../../test/test_cases/test_dt3" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -255,8 +237,7 @@ let sd_test_dt3 () =
 
 let sd_test_dt4 () = 
   let input = "../../../test/test_cases/test_dt4" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -264,8 +245,7 @@ let sd_test_dt4 () =
 
 let sd_test_dt5 () = 
   let input = "../../../test/test_cases/test_dt5" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -273,8 +253,7 @@ let sd_test_dt5 () =
 
 let sd_test_dt6 () = 
   let input = "../../../test/test_cases/test_dt6" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -282,8 +261,7 @@ let sd_test_dt6 () =
 
 (* let sd_test_recombine () =
   let input = "../../../test/test_cases/test_recombine" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -291,8 +269,7 @@ let sd_test_dt6 () =
   
 let sd_test_dynamic_typing () = 
   let input = "../../../test/test_cases/test_dynamic_typing" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -300,8 +277,7 @@ let sd_test_dynamic_typing () =
 
 let sd_test_dot_notation () = 
   let input = "../../../test/test_cases/test_dot_notation" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -309,8 +285,7 @@ let sd_test_dot_notation () =
 
 let sd_overlapping_constraints () = 
   let input = "../../../test/test_cases/overlapping_constraints" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -318,8 +293,7 @@ let sd_overlapping_constraints () =
 
 let sd_overlapping_constraints_2 () = 
   let input = "../../../test/test_cases/overlapping_constraints_2" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -327,8 +301,7 @@ let sd_overlapping_constraints_2 () =
 
 let sd_repeated_nt_dependency () = 
   let input = "../../../test/test_cases/repeated_nt_dependency" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -336,8 +309,7 @@ let sd_repeated_nt_dependency () =
 
 let sd_test_strings () = 
   let input = "../../../test/test_cases/test_strings" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -347,18 +319,17 @@ let dm_test_another_ambiguous_reference_1 () =
   (* TODO: Fix ugly paths. The test_cases directory is currently not included in the build directory, 
            so we have to reference it from the build directory. *)
   let input = "../../../test/test_cases/test_another_ambiguous_reference_1" in
-  let _, output = main_pipeline ~engine:(Some DpllMono) input in
+  let _, output, _ = main_pipeline ~engine:(Some DpllMono) input in
   check string "test_another_ambiguous_reference_1" output "infeasible\n"
 
 let dm_test_another_ambiguous_reference_2 () =
   let input = "../../../test/test_cases/test_another_ambiguous_reference_2" in
-  let _, output = main_pipeline ~engine:(Some DpllMono) input in
+  let _, output, _ = main_pipeline ~engine:(Some DpllMono) input in
   check string "test_another_ambiguous_reference_2" output "infeasible\n"
 
 let dm_test_another_ambiguous_reference () =
   let input = "../../../test/test_cases/test_another_ambiguous_reference" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllMono) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -366,8 +337,7 @@ let dm_test_another_ambiguous_reference () =
 
 let dm_test_dot_notation_2 () =
   let input = "../../../test/test_cases/test_dot_notation_2" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllMono) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -375,8 +345,7 @@ let dm_test_dot_notation_2 () =
 
 let dm_test_cyclic_dependencies () =
   let input = "../../../test/test_cases/test_cyclic_dependencies" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllMono) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -384,8 +353,7 @@ let dm_test_cyclic_dependencies () =
 
 let dm_test_horizontal_ambiguous_reference_1 () =
   let input = "../../../test/test_cases/test_horizontal_ambiguous_reference_1" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllMono) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -393,8 +361,7 @@ let dm_test_horizontal_ambiguous_reference_1 () =
 
 let dm_test_vertical_ambiguous_reference_1 () =
   let input = "../../../test/test_cases/test_vertical_ambiguous_reference_1" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllMono) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -402,8 +369,7 @@ let dm_test_vertical_ambiguous_reference_1 () =
 
 let dm_test_vertical_ambiguous_reference_2 () =
   let input = "../../../test/test_cases/test_vertical_ambiguous_reference_2" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllMono) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -412,8 +378,7 @@ let dm_test_vertical_ambiguous_reference_2 () =
 (* Semantic constraint example *)
 let dm_test_sc () =
   let input = "../../../test/test_cases/test_sc" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllMono) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -421,8 +386,7 @@ let dm_test_sc () =
 
 let dm_test_placeholder () =
   let input = "../../../test/test_cases/test_placeholder" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllMono) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -431,8 +395,7 @@ let dm_test_placeholder () =
 (* Dependent term calculation example *)
 let dm_test_dt () =
   let input = "../../../test/test_cases/test_dt" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllMono) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -440,8 +403,7 @@ let dm_test_dt () =
 
 let dm_test_dt2 () =
   let input = "../../../test/test_cases/test_dt2" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllMono) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -450,8 +412,7 @@ let dm_test_dt2 () =
 (* Divide and conquer example *)
 let dm_test_dc () = 
   let input = "../../../test/test_cases/test_dc" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllMono) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -459,8 +420,7 @@ let dm_test_dc () =
 
 let dm_test_bl () = 
   let input = "../../../test/test_cases/test_bl" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllMono) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -468,8 +428,7 @@ let dm_test_bl () =
 
 let dm_test_ty_annot_sc2 () = 
   let input = "../../../test/test_cases/test_ty_annot_sc2" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllMono) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -477,8 +436,7 @@ let dm_test_ty_annot_sc2 () =
 
 let dm_test_mult_prod_rules () = 
   let input = "../../../test/test_cases/test_mult_prod_rules" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllMono) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -486,8 +444,7 @@ let dm_test_mult_prod_rules () =
 
 let dm_test_bv_len () = 
   let input = "../../../test/test_cases/test_bv_len" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllMono) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -495,8 +452,7 @@ let dm_test_bv_len () =
 
 let dm_test_dt3 () = 
   let input = "../../../test/test_cases/test_dt3" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllMono) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -504,8 +460,7 @@ let dm_test_dt3 () =
 
 let dm_test_dt4 () = 
   let input = "../../../test/test_cases/test_dt4" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllMono) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -513,8 +468,7 @@ let dm_test_dt4 () =
 
 let dm_test_dt5 () = 
   let input = "../../../test/test_cases/test_dt5" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllMono) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -522,8 +476,7 @@ let dm_test_dt5 () =
 
 let dm_test_dt6 () = 
   let input = "../../../test/test_cases/test_dt6" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllMono) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -531,8 +484,7 @@ let dm_test_dt6 () =
 
 let dm_test_recombine () =
   let input = "../../../test/test_cases/test_recombine" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllMono) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -540,8 +492,7 @@ let dm_test_recombine () =
   
 let dm_test_dynamic_typing () = 
   let input = "../../../test/test_cases/test_dynamic_typing" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllMono) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -549,8 +500,7 @@ let dm_test_dynamic_typing () =
 
 let dm_test_dot_notation () = 
   let input = "../../../test/test_cases/test_dot_notation" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllMono) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -558,8 +508,7 @@ let dm_test_dot_notation () =
 
 let dm_overlapping_constraints () = 
   let input = "../../../test/test_cases/overlapping_constraints" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllMono) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -567,8 +516,7 @@ let dm_overlapping_constraints () =
 
 let dm_overlapping_constraints_2 () = 
   let input = "../../../test/test_cases/overlapping_constraints_2" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllMono) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -576,8 +524,7 @@ let dm_overlapping_constraints_2 () =
 
 let dm_repeated_nt_dependency () = 
   let input = "../../../test/test_cases/repeated_nt_dependency" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllMono) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -585,8 +532,7 @@ let dm_repeated_nt_dependency () =
 
 let dm_test_strings () = 
   let input = "../../../test/test_cases/test_strings" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllMono) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -596,18 +542,17 @@ let dd_test_another_ambiguous_reference_1 () =
   (* TODO: Fix ugly paths. The test_cases directory is currently not included in the build directory, 
            so we have to reference it from the build directory. *)
   let input = "../../../test/test_cases/test_another_ambiguous_reference_1" in
-  let _, output = main_pipeline ~engine:(Some DpllDac) input in
+  let _, output, _ = main_pipeline ~engine:(Some DpllDac) input in
   check string "test_another_ambiguous_reference_1" output "infeasible\n"
 
 let dd_test_another_ambiguous_reference_2 () =
   let input = "../../../test/test_cases/test_another_ambiguous_reference_2" in
-  let _, output = main_pipeline ~engine:(Some DpllDac) input in
+  let _, output, _ = main_pipeline ~engine:(Some DpllDac) input in
   check string "test_another_ambiguous_reference_2" output "infeasible\n"
 
 let dd_test_another_ambiguous_reference () =
   let input = "../../../test/test_cases/test_another_ambiguous_reference" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -615,8 +560,7 @@ let dd_test_another_ambiguous_reference () =
 
 let dd_test_dot_notation_2 () =
   let input = "../../../test/test_cases/test_dot_notation_2" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -624,8 +568,7 @@ let dd_test_dot_notation_2 () =
 
 let dd_test_cyclic_dependencies () =
   let input = "../../../test/test_cases/test_cyclic_dependencies" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -633,8 +576,7 @@ let dd_test_cyclic_dependencies () =
 
 let dd_test_horizontal_ambiguous_reference_1 () =
   let input = "../../../test/test_cases/test_horizontal_ambiguous_reference_1" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -642,8 +584,7 @@ let dd_test_horizontal_ambiguous_reference_1 () =
 
 let dd_test_vertical_ambiguous_reference_1 () =
   let input = "../../../test/test_cases/test_vertical_ambiguous_reference_1" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -651,8 +592,7 @@ let dd_test_vertical_ambiguous_reference_1 () =
 
 let dd_test_vertical_ambiguous_reference_2 () =
   let input = "../../../test/test_cases/test_vertical_ambiguous_reference_2" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -661,8 +601,7 @@ let dd_test_vertical_ambiguous_reference_2 () =
 (* Semantic constraint example *)
 let dd_test_sc () =
   let input = "../../../test/test_cases/test_sc" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -670,8 +609,7 @@ let dd_test_sc () =
 
 let dd_test_placeholder () =
   let input = "../../../test/test_cases/test_placeholder" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -680,8 +618,7 @@ let dd_test_placeholder () =
 (* Dependent term calculation example *)
 let dd_test_dt () =
   let input = "../../../test/test_cases/test_dt" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -689,8 +626,7 @@ let dd_test_dt () =
 
 let dd_test_dt2 () =
   let input = "../../../test/test_cases/test_dt2" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -699,8 +635,7 @@ let dd_test_dt2 () =
 (* Divide and conquer example *)
 let dd_test_dc () = 
   let input = "../../../test/test_cases/test_dc" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -708,8 +643,7 @@ let dd_test_dc () =
 
 let dd_test_bl () = 
   let input = "../../../test/test_cases/test_bl" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -717,8 +651,7 @@ let dd_test_bl () =
 
 let dd_test_ty_annot_sc2 () = 
   let input = "../../../test/test_cases/test_ty_annot_sc2" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -726,8 +659,7 @@ let dd_test_ty_annot_sc2 () =
 
 let dd_test_mult_prod_rules () = 
   let input = "../../../test/test_cases/test_mult_prod_rules" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -735,8 +667,7 @@ let dd_test_mult_prod_rules () =
 
 let dd_test_bv_len () = 
   let input = "../../../test/test_cases/test_bv_len" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -744,8 +675,7 @@ let dd_test_bv_len () =
 
 let dd_test_dt3 () = 
   let input = "../../../test/test_cases/test_dt3" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -753,8 +683,7 @@ let dd_test_dt3 () =
 
 let dd_test_dt4 () = 
   let input = "../../../test/test_cases/test_dt4" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -762,8 +691,7 @@ let dd_test_dt4 () =
 
 let dd_test_dt5 () = 
   let input = "../../../test/test_cases/test_dt5" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -771,8 +699,7 @@ let dd_test_dt5 () =
 
 let dd_test_dt6 () = 
   let input = "../../../test/test_cases/test_dt6" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -780,8 +707,7 @@ let dd_test_dt6 () =
 
 let dd_test_recombine () =
   let input = "../../../test/test_cases/test_recombine" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -789,8 +715,7 @@ let dd_test_recombine () =
   
 let dd_test_dynamic_typing () = 
   let input = "../../../test/test_cases/test_dynamic_typing" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -798,8 +723,7 @@ let dd_test_dynamic_typing () =
 
 let dd_test_dot_notation () = 
   let input = "../../../test/test_cases/test_dot_notation" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -807,8 +731,7 @@ let dd_test_dot_notation () =
 
 let dd_repeated_nt_dependency () = 
   let input = "../../../test/test_cases/repeated_nt_dependency" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -816,8 +739,7 @@ let dd_repeated_nt_dependency () =
 
 let dd_test_strings () = 
   let input = "../../../test/test_cases/test_strings" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -827,18 +749,17 @@ let md_test_another_ambiguous_reference_1 () =
   (* TODO: Fix ugly paths. The test_cases directory is currently not included in the build directory, 
            so we have to reference it from the build directory. *)
   let input = "../../../test/test_cases/test_another_ambiguous_reference_1" in
-  let _, output = main_pipeline ~engine:(Some MixedDac) input in
+  let _, output, _ = main_pipeline ~engine:(Some MixedDac) input in
   check string "test_another_ambiguous_reference_1" output "infeasible\n"
 
 let md_test_another_ambiguous_reference_2 () =
   let input = "../../../test/test_cases/test_another_ambiguous_reference_2" in
-  let _, output = main_pipeline ~engine:(Some MixedDac) input in
+  let _, output, _ = main_pipeline ~engine:(Some MixedDac) input in
   check string "test_another_ambiguous_reference_2" output "infeasible\n"
 
 let md_test_another_ambiguous_reference () =
   let input = "../../../test/test_cases/test_another_ambiguous_reference" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some MixedDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -846,8 +767,7 @@ let md_test_another_ambiguous_reference () =
 
 let md_test_dot_notation_2 () =
   let input = "../../../test/test_cases/test_dot_notation_2" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some MixedDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -855,8 +775,7 @@ let md_test_dot_notation_2 () =
 
 let md_test_cyclic_dependencies () =
   let input = "../../../test/test_cases/test_cyclic_dependencies" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some MixedDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -864,8 +783,7 @@ let md_test_cyclic_dependencies () =
 
 let md_test_horizontal_ambiguous_reference_1 () =
   let input = "../../../test/test_cases/test_horizontal_ambiguous_reference_1" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some MixedDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -873,8 +791,7 @@ let md_test_horizontal_ambiguous_reference_1 () =
 
 let md_test_vertical_ambiguous_reference_1 () =
   let input = "../../../test/test_cases/test_vertical_ambiguous_reference_1" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some MixedDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -882,8 +799,7 @@ let md_test_vertical_ambiguous_reference_1 () =
 
 let md_test_vertical_ambiguous_reference_2 () =
   let input = "../../../test/test_cases/test_vertical_ambiguous_reference_2" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some MixedDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -892,8 +808,7 @@ let md_test_vertical_ambiguous_reference_2 () =
 (* Semantic constraint example *)
 let md_test_sc () =
   let input = "../../../test/test_cases/test_sc" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some MixedDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -901,8 +816,7 @@ let md_test_sc () =
 
 let md_test_placeholder () =
   let input = "../../../test/test_cases/test_placeholder" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some MixedDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -911,8 +825,7 @@ let md_test_placeholder () =
 (* Dependent term calculation example *)
 let md_test_dt () =
   let input = "../../../test/test_cases/test_dt" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some MixedDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -920,8 +833,7 @@ let md_test_dt () =
 
 let md_test_dt2 () =
   let input = "../../../test/test_cases/test_dt2" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some MixedDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -930,8 +842,7 @@ let md_test_dt2 () =
 (* Divide and conquer example *)
 let md_test_dc () = 
   let input = "../../../test/test_cases/test_dc" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some MixedDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -939,8 +850,7 @@ let md_test_dc () =
 
 let md_test_bl () = 
   let input = "../../../test/test_cases/test_bl" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some MixedDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -948,8 +858,7 @@ let md_test_bl () =
 
 let md_test_ty_annot_sc2 () = 
   let input = "../../../test/test_cases/test_ty_annot_sc2" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some MixedDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -957,8 +866,7 @@ let md_test_ty_annot_sc2 () =
 
 let md_test_mult_prod_rules () = 
   let input = "../../../test/test_cases/test_mult_prod_rules" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some MixedDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -966,8 +874,7 @@ let md_test_mult_prod_rules () =
 
 let md_test_bv_len () = 
   let input = "../../../test/test_cases/test_bv_len" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some MixedDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -975,8 +882,7 @@ let md_test_bv_len () =
 
 let md_test_dt3 () = 
   let input = "../../../test/test_cases/test_dt3" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some MixedDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -984,8 +890,7 @@ let md_test_dt3 () =
 
 let md_test_dt4 () = 
   let input = "../../../test/test_cases/test_dt4" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some MixedDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -993,8 +898,7 @@ let md_test_dt4 () =
 
 let md_test_dt5 () = 
   let input = "../../../test/test_cases/test_dt5" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some MixedDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1002,8 +906,7 @@ let md_test_dt5 () =
 
 let md_test_dt6 () = 
   let input = "../../../test/test_cases/test_dt6" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some MixedDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1011,8 +914,7 @@ let md_test_dt6 () =
   
 let md_test_dynamic_typing () = 
   let input = "../../../test/test_cases/test_dynamic_typing" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some MixedDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1020,8 +922,7 @@ let md_test_dynamic_typing () =
 
 let md_test_dot_notation () = 
   let input = "../../../test/test_cases/test_dot_notation" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some MixedDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1029,8 +930,7 @@ let md_test_dot_notation () =
 
 let md_overlapping_constraints () = 
   let input = "../../../test/test_cases/overlapping_constraints" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some MixedDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1038,8 +938,7 @@ let md_overlapping_constraints () =
 
 let md_overlapping_constraints_2 () = 
   let input = "../../../test/test_cases/overlapping_constraints_2" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some MixedDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1047,8 +946,7 @@ let md_overlapping_constraints_2 () =
 
 let md_repeated_nt_dependency () = 
   let input = "../../../test/test_cases/repeated_nt_dependency" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some MixedDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1056,8 +954,7 @@ let md_repeated_nt_dependency () =
 
 let md_test_strings () = 
   let input = "../../../test/test_cases/test_strings" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some MixedDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1065,8 +962,7 @@ let md_test_strings () =
 
 let sd_test2 () = 
   let input = "../../../test/test_cases/test2" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1074,8 +970,7 @@ let sd_test2 () =
 
 let sd_test3 () = 
   let input = "../../../test/test_cases/test3" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1083,8 +978,7 @@ let sd_test3 () =
 
 let sd_test4 () = 
   let input = "../../../test/test_cases/test4" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1092,8 +986,7 @@ let sd_test4 () =
 
 let sd_test5 () = 
   let input = "../../../test/test_cases/test5" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1101,8 +994,7 @@ let sd_test5 () =
 
 let sd_test6 () = 
   let input = "../../../test/test_cases/test6" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1110,8 +1002,7 @@ let sd_test6 () =
 
 let sd_test7 () = 
   let input = "../../../test/test_cases/test7" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1119,8 +1010,7 @@ let sd_test7 () =
 
 let sd_test8 () = 
   let input = "../../../test/test_cases/test8" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1128,8 +1018,7 @@ let sd_test8 () =
 
 let sd_test9 () = 
   let input = "../../../test/test_cases/test9" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1137,8 +1026,7 @@ let sd_test9 () =
 
 let sd_test11 () = 
   let input = "../../../test/test_cases/test11" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1146,8 +1034,7 @@ let sd_test11 () =
 
 let sd_test14 () = 
   let input = "../../../test/test_cases/test14" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1155,8 +1042,7 @@ let sd_test14 () =
 
 let sd_test17 () = 
   let input = "../../../test/test_cases/test17" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1164,8 +1050,7 @@ let sd_test17 () =
 
 let dm_test17 () = 
   let input = "../../../test/test_cases/test17" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllMono) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1173,8 +1058,7 @@ let dm_test17 () =
 
 let dd_test17 () = 
   let input = "../../../test/test_cases/test17" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1182,8 +1066,7 @@ let dd_test17 () =
 
 let md_test17 () = 
   let input = "../../../test/test_cases/test17" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some MixedDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1192,8 +1075,7 @@ let md_test17 () =
 
 let sd_test18 () = 
   let input = "../../../test/test_cases/test18" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1201,8 +1083,7 @@ let sd_test18 () =
 
 let dm_test18 () = 
   let input = "../../../test/test_cases/test18" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllMono) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1210,8 +1091,7 @@ let dm_test18 () =
 
 let dd_test18 () = 
   let input = "../../../test/test_cases/test18" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1219,8 +1099,7 @@ let dd_test18 () =
 
 let md_test18 () = 
   let input = "../../../test/test_cases/test18" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some MixedDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1228,8 +1107,7 @@ let md_test18 () =
 
 let dm_test2 () = 
   let input = "../../../test/test_cases/test2" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllMono) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1237,8 +1115,7 @@ let dm_test2 () =
 
 let dm_test3 () = 
   let input = "../../../test/test_cases/test3" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllMono) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1246,8 +1123,7 @@ let dm_test3 () =
 
 let dm_test4 () = 
   let input = "../../../test/test_cases/test4" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllMono) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1255,8 +1131,7 @@ let dm_test4 () =
 
 let dm_test5 () = 
   let input = "../../../test/test_cases/test5" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllMono) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1264,8 +1139,7 @@ let dm_test5 () =
 
 let dm_test6 () = 
   let input = "../../../test/test_cases/test6" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1273,8 +1147,7 @@ let dm_test6 () =
 
 let dm_test7 () = 
   let input = "../../../test/test_cases/test7" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllMono) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1282,8 +1155,7 @@ let dm_test7 () =
 
 let dm_test8 () = 
   let input = "../../../test/test_cases/test8" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllMono) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1291,8 +1163,7 @@ let dm_test8 () =
 
 let dm_test9 () = 
   let input = "../../../test/test_cases/test9" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllMono) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1300,8 +1171,7 @@ let dm_test9 () =
 
 let dm_test13 () = 
   let input = "../../../test/test_cases/test13" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllMono) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1309,8 +1179,7 @@ let dm_test13 () =
 
 let dm_test11 () = 
   let input = "../../../test/test_cases/test11" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllMono) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1318,8 +1187,7 @@ let dm_test11 () =
 
 let dm_test12 () = 
   let input = "../../../test/test_cases/test12" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllMono) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1327,8 +1195,7 @@ let dm_test12 () =
 
 let dm_test14 () = 
   let input = "../../../test/test_cases/test14" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllMono) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1336,8 +1203,7 @@ let dm_test14 () =
 
 let dd_test3 () = 
   let input = "../../../test/test_cases/test3" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1345,8 +1211,7 @@ let dd_test3 () =
 
 let dd_test4 () = 
   let input = "../../../test/test_cases/test4" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1354,8 +1219,7 @@ let dd_test4 () =
 
 let dd_test5 () = 
   let input = "../../../test/test_cases/test5" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1363,8 +1227,7 @@ let dd_test5 () =
 
 let dd_test6 () = 
   let input = "../../../test/test_cases/test6" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1372,8 +1235,7 @@ let dd_test6 () =
 
 let dd_test7 () = 
   let input = "../../../test/test_cases/test7" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1381,8 +1243,7 @@ let dd_test7 () =
 
 let dd_test8 () = 
   let input = "../../../test/test_cases/test8" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1390,8 +1251,7 @@ let dd_test8 () =
 
 let dd_test9 () = 
   let input = "../../../test/test_cases/test9" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1399,8 +1259,7 @@ let dd_test9 () =
 
 let dd_test13 () = 
   let input = "../../../test/test_cases/test13" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1408,8 +1267,7 @@ let dd_test13 () =
 
 let dd_test11 () = 
   let input = "../../../test/test_cases/test11" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1417,8 +1275,7 @@ let dd_test11 () =
 
 let dd_test12 () = 
   let input = "../../../test/test_cases/test12" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1426,8 +1283,7 @@ let dd_test12 () =
 
 let dd_test14 () = 
   let input = "../../../test/test_cases/test14" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1435,8 +1291,7 @@ let dd_test14 () =
 
 let md_test2 () = 
   let input = "../../../test/test_cases/test2" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some MixedDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1444,8 +1299,7 @@ let md_test2 () =
 
 let md_test3 () = 
   let input = "../../../test/test_cases/test3" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some MixedDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1453,8 +1307,7 @@ let md_test3 () =
 
 let md_test4 () = 
   let input = "../../../test/test_cases/test4" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some MixedDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1462,8 +1315,7 @@ let md_test4 () =
 
 let md_test5 () = 
   let input = "../../../test/test_cases/test5" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some MixedDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1471,8 +1323,7 @@ let md_test5 () =
 
 let md_test6 () = 
   let input = "../../../test/test_cases/test6" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1480,8 +1331,7 @@ let md_test6 () =
 
 let md_test7 () = 
   let input = "../../../test/test_cases/test7" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some MixedDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1489,8 +1339,7 @@ let md_test7 () =
 
 let md_test8 () = 
   let input = "../../../test/test_cases/test8" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some MixedDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1498,8 +1347,7 @@ let md_test8 () =
 
 let md_test9 () = 
   let input = "../../../test/test_cases/test9" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some MixedDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1507,8 +1355,7 @@ let md_test9 () =
 
 let md_test13 () = 
   let input = "../../../test/test_cases/test13" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some MixedDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1516,8 +1363,7 @@ let md_test13 () =
 
 let md_test11 () = 
   let input = "../../../test/test_cases/test11" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some MixedDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1525,8 +1371,7 @@ let md_test11 () =
 
 let md_test12 () = 
   let input = "../../../test/test_cases/test12" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some MixedDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1534,8 +1379,7 @@ let md_test12 () =
 
 let md_test14 () = 
   let input = "../../../test/test_cases/test14" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some MixedDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1543,8 +1387,7 @@ let md_test14 () =
 
 let sd_test16 () = 
   let input = "../../../test/test_cases/test16" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some SygusDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1552,8 +1395,7 @@ let sd_test16 () =
 
 let dm_test16 () = 
   let input = "../../../test/test_cases/test16" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some DpllMono) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1561,8 +1403,7 @@ let dm_test16 () =
 
 let md_test16 () = 
   let input = "../../../test/test_cases/test16" in
-  let ast = Parsing.parse (Utils.read_file input) in
-  let sygus_ast, _ = main_pipeline ~engine:(Some MixedDac) input in
+  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
@@ -1744,5 +1585,5 @@ let () =
     "test10", [test_case "test10" `Quick test10];
 
     "test_check_sygus_ast_6", [test_case "test_check_sygus_ast_6" `Quick test_check_sygus_ast_6];
-    "test_check_sygus_ast_7", [test_case "test_check_sygus_ast_7" `Quick test_check_sygus_ast_7];
+    "test_check_sygus_ast_7", [test_case "test_check_sygus_ast_7" `Quick test_check_sygus_ast_7]; 
   ]

@@ -25,6 +25,7 @@ let main_pipeline ?(engine: Flags.engine option = None) filename =
   let prm = SyntaxChecker.build_prm ast in
   let nt_set = SyntaxChecker.build_nt_set ast in
   let ast = SyntaxChecker.check_syntax prm nt_set ast in 
+  let ast_to_return = ast in
   Utils.debug_print Format.pp_print_string ppf "\nSyntactic checks complete:\n";
   Utils.debug_print Ast.pp_print_ast ppf ast;
 
@@ -74,7 +75,7 @@ let main_pipeline ?(engine: Flags.engine option = None) filename =
   Utils.debug_print Format.pp_print_string ppf "\nSerializing:\n";
   let output = Utils.capture_output SygusAst.serialize sygus_ast in 
   Format.pp_print_string ppf output; 
-  sygus_ast, output
+  sygus_ast, output, ast_to_return
 
 let rec collect_results results =
   match results with

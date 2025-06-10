@@ -276,9 +276,53 @@ let check_sygus_exprs_for_dep_terms: ast -> ast
     ProdRule (nt, rhss)
   ) ast
 
+(* The parser automatically parses all hardcoded string as string constants. 
+   But, sometimes, they are actually placeholders, which are handled differently 
+   by the type system. So, do the conversion here where necessary. *)
+let str_const_to_ph_const ast = 
+  let rec handle_expr = function 
+  | StrConst ph -> PhConst ph
+  | BVCast (len, expr) -> BVCast (len, handle_expr expr)
+  | BinOp (expr1, op, expr2) -> BinOp (handle_expr expr1, op, handle_expr expr2) 
+  | UnOp (op, expr) -> UnOp (op, handle_expr expr) 
+  | CompOp (expr1, op, expr2) -> CompOp (handle_expr expr1, op, handle_expr expr2) 
+  | StrLength expr -> StrLength (handle_expr expr) 
+  | Length expr -> Length (handle_expr expr) 
+  | Match (nt_ctx, nt, cases) -> 
+    let cases = List.map (fun case -> match case with 
+    | CaseStub _ -> case 
+    | Case (nts, e) -> Case (nts, handle_expr e)
+    ) cases in
+    Match (nt_ctx, nt, cases) 
+  | NTExpr _ 
+  | BVConst _ 
+  | BLConst _ 
+  | BConst _ 
+  | IntConst _ 
+  | PhConst _ as expr -> expr
+  in
+
+  let handle_sc ty sc = match sc with 
+  | SyGuSExpr _ -> sc 
+  | Dependency (nt, expr) -> 
+    let expr = 
+      if ty = Placeholder then handle_expr expr else expr 
+    in 
+    Dependency (nt, expr)
+  in
+
+  List.map (fun element -> match element with 
+  | TypeAnnotation (nt, ty, scs) -> 
+    let scs = List.map (handle_sc ty) scs in 
+    TypeAnnotation (nt, ty, scs)
+  | ProdRule (nt, rhss) -> 
+    ProdRule (nt, rhss)
+  ) ast
+
 let check_syntax: prod_rule_map -> Utils.StringSet.t -> ast -> ast 
 = fun prm nt_set ast -> 
   let ast = sort_ast ast in
+  let ast = str_const_to_ph_const ast in
   let ast = Utils.recurse_until_fixpoint ast (=) remove_circular_deps in
   let ast = Utils.recurse_until_fixpoint ast (=) check_sygus_exprs_for_dep_terms in
   let ast = check_vacuity ast in
