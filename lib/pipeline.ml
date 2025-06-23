@@ -1,6 +1,9 @@
 (*!! TODO: Bug fixes (make test and test cases in examples)
      TODO: Experimental evaluation 
      TODO: Write paper 
+     TODO: Fix dpll module to use the extra precondition from DecidePR
+     TODO: Generate multiple solutions mode
+     TODO: IDS
 
      TODO: Flag that allows you to disable engines in race mode (useful if one engine is buggy on a class of problems)
      TODO: More fine-grained check if divide and conquer engines are usable. Right now,

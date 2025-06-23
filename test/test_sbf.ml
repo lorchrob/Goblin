@@ -92,17 +92,18 @@ let test_check_sygus_ast_7 () =
   | Ok _ -> fail "Expected failure"
   | Error _ -> ()
 
-let sd_test_another_ambiguous_reference_1 () =
+(* This class of tests is now disabled since we no longer have a way to fail *)
+(*let sd_test_another_ambiguous_reference_1 () =
   (* TODO: Fix ugly paths. The test_cases directory is currently not included in the build directory, 
            so we have to reference it from the build directory. *)
   let input = "../../../test/test_cases/test_another_ambiguous_reference_1" in
   let _, output, _ = main_pipeline ~engine:(Some SygusDac) input in
-  check string "test_another_ambiguous_reference_1" output "infeasible\n"
+  check string "test_another_ambiguous_reference_1" output "infeasible\n"*)
 
-let sd_test_another_ambiguous_reference_2 () =
+(*let sd_test_another_ambiguous_reference_2 () =
   let input = "../../../test/test_cases/test_another_ambiguous_reference_2" in
   let _, output, _ = main_pipeline ~engine:(Some SygusDac) input in
-  check string "test_another_ambiguous_reference_2" output "infeasible\n"
+  check string "test_another_ambiguous_reference_2" output "infeasible\n"*)
 
 let sd_test_another_ambiguous_reference () =
   let input = "../../../test/test_cases/test_another_ambiguous_reference" in
@@ -315,17 +316,17 @@ let sd_test_strings () =
   | Ok _ -> ()  
   | Error msg -> fail msg
 
-let dm_test_another_ambiguous_reference_1 () =
+(* let dm_test_another_ambiguous_reference_1 () =
   (* TODO: Fix ugly paths. The test_cases directory is currently not included in the build directory, 
            so we have to reference it from the build directory. *)
   let input = "../../../test/test_cases/test_another_ambiguous_reference_1" in
   let _, output, _ = main_pipeline ~engine:(Some DpllMono) input in
-  check string "test_another_ambiguous_reference_1" output "infeasible\n"
+  check string "test_another_ambiguous_reference_1" output "infeasible\n"*)
 
-let dm_test_another_ambiguous_reference_2 () =
+(*let dm_test_another_ambiguous_reference_2 () =
   let input = "../../../test/test_cases/test_another_ambiguous_reference_2" in
   let _, output, _ = main_pipeline ~engine:(Some DpllMono) input in
-  check string "test_another_ambiguous_reference_2" output "infeasible\n"
+  check string "test_another_ambiguous_reference_2" output "infeasible\n"*)
 
 let dm_test_another_ambiguous_reference () =
   let input = "../../../test/test_cases/test_another_ambiguous_reference" in
@@ -538,17 +539,17 @@ let dm_test_strings () =
   | Ok _ -> ()  
   | Error msg -> fail msg
 
-let dd_test_another_ambiguous_reference_1 () =
+(*let dd_test_another_ambiguous_reference_1 () =
   (* TODO: Fix ugly paths. The test_cases directory is currently not included in the build directory, 
            so we have to reference it from the build directory. *)
   let input = "../../../test/test_cases/test_another_ambiguous_reference_1" in
   let _, output, _ = main_pipeline ~engine:(Some DpllDac) input in
-  check string "test_another_ambiguous_reference_1" output "infeasible\n"
+  check string "test_another_ambiguous_reference_1" output "infeasible\n"*)
 
-let dd_test_another_ambiguous_reference_2 () =
+(*let dd_test_another_ambiguous_reference_2 () =
   let input = "../../../test/test_cases/test_another_ambiguous_reference_2" in
   let _, output, _ = main_pipeline ~engine:(Some DpllDac) input in
-  check string "test_another_ambiguous_reference_2" output "infeasible\n"
+  check string "test_another_ambiguous_reference_2" output "infeasible\n"*)
 
 let dd_test_another_ambiguous_reference () =
   let input = "../../../test/test_cases/test_another_ambiguous_reference" in
@@ -745,17 +746,17 @@ let dd_test_strings () =
   | Ok _ -> ()  
   | Error msg -> fail msg
 
-let md_test_another_ambiguous_reference_1 () =
+(*let md_test_another_ambiguous_reference_1 () =
   (* TODO: Fix ugly paths. The test_cases directory is currently not included in the build directory, 
            so we have to reference it from the build directory. *)
   let input = "../../../test/test_cases/test_another_ambiguous_reference_1" in
   let _, output, _ = main_pipeline ~engine:(Some MixedDac) input in
-  check string "test_another_ambiguous_reference_1" output "infeasible\n"
+  check string "test_another_ambiguous_reference_1" output "infeasible\n"*)
 
-let md_test_another_ambiguous_reference_2 () =
+(*let md_test_another_ambiguous_reference_2 () =
   let input = "../../../test/test_cases/test_another_ambiguous_reference_2" in
   let _, output, _ = main_pipeline ~engine:(Some MixedDac) input in
-  check string "test_another_ambiguous_reference_2" output "infeasible\n"
+  check string "test_another_ambiguous_reference_2" output "infeasible\n"*)
 
 let md_test_another_ambiguous_reference () =
   let input = "../../../test/test_cases/test_another_ambiguous_reference" in
@@ -1420,8 +1421,6 @@ let () =
     "sd_test_cyclic_dependencies", [test_case "test_cyclic_dependencies" `Quick sd_test_cyclic_dependencies];
     "sd_test_dot_notation_2", [test_case "test_dot_notation_2" `Quick sd_test_dot_notation_2];
     "sd_test_another_ambiguous_reference", [test_case "test_another_ambiguous_reference" `Quick sd_test_another_ambiguous_reference];
-    "sd_test_another_ambiguous_reference_1", [test_case "test_another_ambiguous_reference_1" `Quick sd_test_another_ambiguous_reference_1];
-    "sd_test_another_ambiguous_reference_2", [test_case "test_another_ambiguous_reference_2" `Quick sd_test_another_ambiguous_reference_2];
     "sd_overlapping_constraints", [test_case "overlapping_constraints" `Quick sd_overlapping_constraints];
     "sd_overlapping_constraints_2", [test_case "overlapping_constraints_2" `Quick sd_overlapping_constraints_2];
     "sd_repeated_nt_dependency", [test_case "repeated_nt_dependency" `Quick sd_repeated_nt_dependency];
@@ -1449,8 +1448,6 @@ let () =
     "dm_test_cyclic_dependencies", [test_case "test_cyclic_dependencies" `Quick dm_test_cyclic_dependencies];
     "dm_test_dot_notation_2", [test_case "test_dot_notation_2" `Quick dm_test_dot_notation_2];
     "dm_test_another_ambiguous_reference", [test_case "test_another_ambiguous_reference" `Quick dm_test_another_ambiguous_reference];
-    "dm_test_another_ambiguous_reference_1", [test_case "test_another_ambiguous_reference_1" `Quick dm_test_another_ambiguous_reference_1];
-    "dm_test_another_ambiguous_reference_2", [test_case "test_another_ambiguous_reference_2" `Quick dm_test_another_ambiguous_reference_2];
     "dm_overlapping_constraints", [test_case "overlapping_constraints" `Quick dm_overlapping_constraints];
     "dm_overlapping_constraints_2", [test_case "overlapping_constraints_2" `Quick dm_overlapping_constraints_2];
     "dm_repeated_nt_dependency", [test_case "repeated_nt_dependency" `Quick dm_repeated_nt_dependency];
@@ -1478,8 +1475,6 @@ let () =
     "dd_test_cyclic_dependencies", [test_case "test_cyclic_dependencies" `Quick dd_test_cyclic_dependencies];
     "dd_test_dot_notation_2", [test_case "test_dot_notation_2" `Quick dd_test_dot_notation_2];
     "dd_test_another_ambiguous_reference", [test_case "test_another_ambiguous_reference" `Quick dd_test_another_ambiguous_reference];
-    "dd_test_another_ambiguous_reference_1", [test_case "test_another_ambiguous_reference_1" `Quick dd_test_another_ambiguous_reference_1];
-    "dd_test_another_ambiguous_reference_2", [test_case "test_another_ambiguous_reference_2" `Quick dd_test_another_ambiguous_reference_2]; 
     "dd_repeated_nt_dependency", [test_case "repeated_nt_dependency" `Quick dd_repeated_nt_dependency];
      "dd_test_strings", [test_case "test_strings" `Quick dd_test_strings];
 
@@ -1504,8 +1499,6 @@ let () =
     "md_test_cyclic_dependencies", [test_case "test_cyclic_dependencies" `Quick md_test_cyclic_dependencies];
     "md_test_dot_notation_2", [test_case "test_dot_notation_2" `Quick md_test_dot_notation_2];
     "md_test_another_ambiguous_reference", [test_case "test_another_ambiguous_reference" `Quick md_test_another_ambiguous_reference];
-    "md_test_another_ambiguous_reference_1", [test_case "test_another_ambiguous_reference_1" `Quick md_test_another_ambiguous_reference_1];
-    "md_test_another_ambiguous_reference_2", [test_case "test_another_ambiguous_reference_2" `Quick md_test_another_ambiguous_reference_2]; 
     "md_overlapping_constraints", [test_case "overlapping_constraints" `Quick md_overlapping_constraints];
     "md_overlapping_constraints_2", [test_case "overlapping_constraints_2" `Quick md_overlapping_constraints_2];
     "md_repeated_nt_dependency", [test_case "repeated_nt_dependency" `Quick md_repeated_nt_dependency];
