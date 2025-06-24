@@ -587,7 +587,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
   (* Iteratively expand the frontier and instantiate the derivation tree leaves *)
   while not (is_complete !derivation_tree) do 
     (* It is unclear how to efficiently update the frontier with backtracking in general. 
-    IT seems straightforward with DPLL-style backtracking, but not backjumping. So for now, 
+    It seems straightforward with DPLL-style backtracking, but not backjumping. So for now, 
     we compute it naively. *)
     frontier := compute_new_frontier !derivation_tree;
 
@@ -599,7 +599,24 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
     if !Flags.debug then Format.fprintf Format.std_formatter "Frontier: %a\n"
       (Lib.pp_print_list pp_print_derivation_tree "; ") (DTSet.elements !frontier |> List.map (fun p -> !p));
 
-    let node_to_expand = DTSet.choose !frontier in
+    (* Choose a node to expand from the frontier *)
+    let node_to_expand = 
+      (* If possible, take a forced "decision" *)
+      let forced_node = List.find_opt (fun element -> match !element with 
+      | Node ((nt, _), visited, _, _, _) -> 
+          let num_options = List.find_map (fun element -> match element with 
+          | A.TypeAnnotation (nt2, _, _) -> 
+            if nt = nt2 then Some 1 else None  
+          | A.ProdRule (nt2, rhss) -> 
+            if nt = nt2 then Some (List.length rhss) else None 
+          ) ast |> Option.get in 
+          num_options - (Utils.IntSet.cardinal !visited) <= 1
+      | _ -> true
+      ) (DTSet.elements !frontier) in 
+      match forced_node with 
+      | Some node -> node 
+      | None -> DTSet.choose !frontier 
+    in
 
     (* Expand the chosen frontier node *)
     match !node_to_expand with 
