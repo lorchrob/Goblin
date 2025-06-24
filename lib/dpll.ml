@@ -520,7 +520,7 @@ let assert_and_remove_applicable_constraints constraint_set derivation_tree ast 
   constraint_set := ConstraintSet.diff !constraint_set constraints_to_remove;
   !constraint_set
 
-let initialize_globals derivation_tree start_symbol frontier constraints_to_assert decision_stack declared_variables = 
+let initialize_globals derivation_tree start_symbol frontier constraints_to_assert decision_stack declared_variables backtrack_depth = 
   (* Incremental construction of output term so far *)
   derivation_tree := (Node ((start_symbol, None), ref Utils.IntSet.empty, [start_symbol, None], 0, ref []));
   (* Tree nodes left to explore *)
@@ -533,12 +533,15 @@ let initialize_globals derivation_tree start_symbol frontier constraints_to_asse
   decision_stack := B.Stack.create ();
   (* Track declared (SMT-level) variables to avoid redeclaration *)
   declared_variables := Utils.StringSet.empty;
+  (* Track whether, since the last restart, we backtracked due to the depth limit *) 
+  backtrack_depth := false; 
   ()
 
-let backtrack_derivation_tree decision_stack start_symbol depth_limit derivation_tree frontier constraints_to_assert declared_variables = 
+let backtrack_derivation_tree decision_stack start_symbol depth_limit derivation_tree frontier constraints_to_assert declared_variables backtrack_depth = 
   if B.Stack.is_empty !decision_stack then (
+    if not !backtrack_depth then raise (Failure "infeasible");
     depth_limit := !depth_limit + 1;
-    initialize_globals derivation_tree start_symbol frontier constraints_to_assert decision_stack declared_variables; 
+    initialize_globals derivation_tree start_symbol frontier constraints_to_assert decision_stack declared_variables backtrack_depth; 
   ) else (
     match !(B.Stack.pop !decision_stack) with 
     | Node (_, _, _, _, children) -> 
@@ -573,10 +576,13 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
   let depth_limit = ref 1 in
   (* Solver object *)
   let solver = initialize_cvc5 () in
+  (* Track whether, since the last restart, we backtracked due to the depth limit *) 
+  let backtrack_depth = ref false in 
 
   (* we start at decision level 1 so we can undo all pushed assertions when restarting *)
   new_decision_level solver assertion_level; 
 
+  try
 
   (* Iteratively expand the frontier and instantiate the derivation tree leaves *)
   while not (is_complete !derivation_tree) do 
@@ -604,10 +610,11 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
       Utils.crash ("Trying to expand node " ^ (fst nt) ^ " that already has children in dpll")
     | Node (nt, visited, path, depth, children) as node -> 
       if depth > !depth_limit then (
+        backtrack_depth := true;
         Utils.debug_print Format.pp_print_string Format.std_formatter "Exceeded depth limit!\n";
         backtrack_decision_level solver assertion_level; 
         backtrack_derivation_tree decision_stack start_symbol depth_limit derivation_tree 
-                                  frontier constraints_to_assert declared_variables;
+                                  frontier constraints_to_assert declared_variables backtrack_depth;
       ) else 
 
       let path' = string_of_path path |> String.lowercase_ascii in
@@ -635,7 +642,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
           | Error () -> 
             backtrack_decision_level solver assertion_level;
             backtrack_derivation_tree decision_stack start_symbol depth_limit derivation_tree 
-                                      frontier constraints_to_assert declared_variables;
+                                      frontier constraints_to_assert declared_variables backtrack_depth;
           )
         | A.Dependency _ -> ()
         ) scs;
@@ -687,7 +694,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
             if !Flags.debug then Format.pp_print_string Format.std_formatter "it was UNSAT, backtracking\n"; 
             backtrack_decision_level solver assertion_level;
             backtrack_derivation_tree decision_stack start_symbol depth_limit derivation_tree 
-                                      frontier constraints_to_assert declared_variables;
+                                      frontier constraints_to_assert declared_variables backtrack_depth;
           ); 
 
     
@@ -720,10 +727,14 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
   | Error () -> (* unsat *)
     if !Flags.debug then Format.pp_print_string Format.std_formatter "it was UNSAT, backtracking\n"; 
     backtrack_decision_level solver assertion_level;
-    backtrack_derivation_tree decision_stack start_symbol depth_limit derivation_tree frontier constraints_to_assert declared_variables;
+    backtrack_derivation_tree decision_stack start_symbol depth_limit derivation_tree 
+                              frontier constraints_to_assert declared_variables backtrack_depth;
   ); 
 
   derivation_tree := fill_unconstrained_nonterminals !derivation_tree;
   (* Convert to sygus AST for later processing in the pipeline *)
   sygus_ast_of_derivation_tree !derivation_tree
+
+  with Failure _ -> 
+    StrLeaf "infeasible"
 

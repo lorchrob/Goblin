@@ -1,9 +1,10 @@
 (*!! TODO: Bug fixes (make test and test cases in examples)
-     TODO: Experimental evaluation 
      TODO: Write paper 
+     TODO: Use Boolean flag to determine if you backtracked due to the depth limit to enable failing again,
+           and add the infeasible test cases back
      TODO: Fix dpll module to use the extra precondition from DecidePR
      TODO: Generate multiple solutions mode
-     TODO: IDS
+     TODO: Experimental evaluation 
 
      TODO: Flag that allows you to disable engines in race mode (useful if one engine is buggy on a class of problems)
      TODO: More fine-grained check if divide and conquer engines are usable. Right now,
@@ -11,7 +12,11 @@
     
 
      FUTURE: I think we could support arbitrary recursive functions in the dpll engines (at least, dpll_mono) 
-             by simply unrolling the function definition as far as you need on the fly *)
+             by simply unrolling the function definition as far as you need on the fly 
+     FUTURE: Something akin to inherited attributes 
+     FUTURE: Structural constraints 
+     FUTURE: Quantifiers in the DSL 
+*)
 
 let main_pipeline ?(engine: Flags.engine option = None) filename = 
   (* Printexc.record_backtrace true; *)
