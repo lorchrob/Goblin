@@ -1,0 +1,37 @@
+<xml-tree> ::= <xml-openclose-tag> | <xml-open-tag> <inner-xml-tree> <xml-close-tag> 
+    // Matching tags
+    { <xml-open-tag>.<id>.<_full_id> = <xml-close-tag>.<id>.<_full_id>; } ; 
+
+<inner-xml-tree> ::= <TEXT> | <xml-tree> | <inner-xml-tree> <inner-xml-tree> ;
+
+<xml-open-tag> ::= <id> | <id> <xml-attribute> ;
+
+<xml-close-tag> ::= <id> ;
+
+<xml-openclose-tag> ::= <id> | <id> <xml-attribute> ; 
+
+<xml-attribute> ::= <_attributes> <id> <TEXT> 
+                    { <_attributes> = { <id>.<_full_id> } } ;
+                  | <_attributes> <xml-attribute> <xml-attribute> 
+                    { <_attributes> = union(<xml-attribute-1>.<xml-attribute>.<_attributes>, 
+                                            <xml-attribute-2>.<xml-attribute>.<_attributes>) ; 
+                      // no redef
+                      intersect(<xml-attribute-1>.<xml-attribute>.<_attributes>, 
+                                <xml-attribute-2>.<xml-attribute>.<_attributes>) = {} ; } ;
+
+<xml-attribute-1> ::= <xml-attribute> ; 
+<xml-attribute-2> ::= <xml-attribute> ;
+
+<id> ::= <_full_id> <id-no-prefix-1> 
+         { <_full_id> = <id-no-prefix-1>; } 
+       | <_full_id> <id-with-prefix> 
+         { <_full_id> = <id-with-prefix>.<id-no-prefix-1> ++ <id-with-prefix>.<id-no-prefix-2>; } ;
+
+// <id-no-prefix-1> is prefix def, <id-no-prefix-2> is prefix use
+<id-with-prefix> ::=  <id-no-prefix-1> <id-no-prefix-2> ;
+
+<id-no-prefix-1> :: String; 
+<id-no-prefix-2> :: String;
+<TEXT> :: String;
+<_full_id> :: String;
+<_attributes> :: Set(String);
