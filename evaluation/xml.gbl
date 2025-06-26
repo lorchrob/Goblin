@@ -1,6 +1,7 @@
-<xml-tree> ::= <xml-openclose-tag> | <xml-open-tag> <inner-xml-tree> <xml-close-tag> 
-    // Matching tags
-    { <xml-open-tag>.<id>.<_full_id> = <xml-close-tag>.<id>.<_full_id>; } ; 
+<xml-tree> ::= <xml-openclose-tag>
+             | <xml-open-tag> <inner-xml-tree> <xml-close-tag> 
+               // constraint: matching tags
+               { <xml-open-tag>.<id>.<_full_id> = <xml-close-tag>.<id>.<_full_id>; } ; 
 
 <inner-xml-tree> ::= <TEXT> | <xml-tree> | <inner-xml-tree> <inner-xml-tree> ;
 
@@ -15,7 +16,7 @@
                   | <_attributes> <xml-attribute> <xml-attribute> 
                     { <_attributes> = union(<xml-attribute-1>.<xml-attribute>.<_attributes>, 
                                             <xml-attribute-2>.<xml-attribute>.<_attributes>) ; 
-                      // no redef
+                      // constraint: no redef
                       intersect(<xml-attribute-1>.<xml-attribute>.<_attributes>, 
                                 <xml-attribute-2>.<xml-attribute>.<_attributes>) = {} ; } ;
 
@@ -23,12 +24,14 @@
 <xml-attribute-2> ::= <xml-attribute> ;
 
 <id> ::= <_full_id> <id-no-prefix-1> 
-         { <_full_id> = <id-no-prefix-1>; } 
+       { <_full_id> = <id-no-prefix-1>; } 
        | <_full_id> <id-with-prefix> 
          { <_full_id> = <id-with-prefix>.<id-no-prefix-1> ++ <id-with-prefix>.<id-no-prefix-2>; } ;
 
 // <id-no-prefix-1> is prefix def, <id-no-prefix-2> is prefix use
-<id-with-prefix> ::=  <id-no-prefix-1> <id-no-prefix-2> ;
+<id-with-prefix> ::= <_defs> <id-no-prefix-1> <id-no-prefix-2> 
+  //!! constraint: namespace definition before use ... make <_defs> a proper inherited attribute
+  { <id-no-prefix-2> in <_defs> ; } ;
 
 <id-no-prefix-1> :: String; 
 <id-no-prefix-2> :: String;
