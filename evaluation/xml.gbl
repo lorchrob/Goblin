@@ -1,23 +1,43 @@
-<xml-tree> ::= <_defs_up> <xml-openclose-tag>
-             { <_defs_up> = <xml-openclose-tag>.<_defs_up> ; }
-             | <_defs_up> <xml-open-tag> <inner-xml-tree> <xml-close-tag> 
-               // constraint: matching tags
-               { <xml-open-tag>.<id>.<_full_id> = <xml-close-tag>.<id>.<_full_id>; 
-                 <_defs_up> = <xml-open-tag>.<_defs_up> ; } ; 
+// Synthesized attributes must be defined in all cases for a given LHS NT
+// Inherited attributes for a given LHS NT must be passed by all references to that NT
 
-<inner-xml-tree> ::= <TEXT> | <xml-tree> | <inner-xml-tree> <inner-xml-tree> ;
+<xml-tree> ::= <xml-openclose-tag>
+             {  <xml-openclose-tag>.<_defs_down> = empty_set<String> ; }
+             | <rec-xml-tree> 
+            {  <rec-xml-tree>.<_defs_down> = empty_set<String> ; } ;
+
+<rec-xml-tree> ::= <_defs_down> <_defs_up> <xml-openclose-tag> 
+                 { <xml-openclose-tag>.<_defs_down> = <_defs_down> ; 
+                   <_defs_up> = <xml-openclose-tag>.<_defs_up> ; }  
+                 | <_defs_down> <_defs_up> <xml-open-tag> <inner-xml-tree> <xml-close-tag> 
+                 // constraint: matching tags
+                 { <xml-open-tag>.<id>.<_full_id> = <xml-close-tag>.<id>.<_full_id>; 
+                   <_defs_up> = <xml-open-tag>.<_defs_up> ; 
+                   <inner-xml-tree>.<_defs_down> = union(<_defs_up>, <_defs_down>) ; } ; 
+
+<inner-xml-tree> ::= <_defs_down> <TEXT>  
+                   |  <_defs_down> <rec-xml-tree> 
+                   {  <rec-xml-tree>.<_defs_down> = <_defs_down> ; } 
+                   |  <_defs_down> <inner-xml-tree> <inner-xml-tree> 
+                  {   <inner-xml-tree>.<_defs_down> = <_defs_down>; } ;
 
 <xml-open-tag> ::= <_defs_down> <_defs_up> <id>
-                 { <_defs_up> = empty_set<String> ; }
+                 { <_defs_up> = empty_set<String> ; 
+                   <id>.<_defs_down> = <_defs_down> ; }
                  | <_defs_down> <_defs_up> <id> <xml-attribute> 
-                 { <_defs_up> = <xml-attribute>.<_defs_up> ; } ;
+                 { <_defs_up> = <xml-attribute>.<_defs_up> ; 
+                   <id>.<_defs_down> = <_defs_down> ;
+                   <xml-attribute>.<_defs_down> = <_defs_down> ; } ;
 
-<xml-close-tag> ::= <_defs_down> <id> ;
+<xml-close-tag> ::= <_defs_down> <id> { <id>.<_defs_down> = <_defs_down> ; };
 
 <xml-openclose-tag> ::= <_defs_down> <_defs_up> <id> 
-                      { <_defs_up> = empty_set<String> ; } 
+                      { <_defs_up> = empty_set<String> ;
+                        <id>.<_defs_down> = <_defs_down> ; } 
                       | <_defs_down> <_defs_up> <id> <xml-attribute>  
-                      { <_defs_up> = <xml-attribute>.<_defs_up> ; } ;
+                      { <_defs_up> = <xml-attribute>.<_defs_up> ; 
+                        <id>.<_defs_down> = <_defs_down> ; 
+                        <xml-attribute>.<_defs_down> = <_defs_down> ; } ;
 
 <xml-attribute> ::= <_defs_down> <_defs_up> <_attributes> <id> <TEXT> 
                   { <_attributes> = singleton(<id>.<_full_id>) ; 
@@ -26,7 +46,8 @@
                     lnot (<id>.<id-with-prefix>.<id-no-prefix-1> = "xmlns") =>
                       <_defs_up> = empty_set<String> ;
                     <id>.<id-no-prefix-1> = <id>.<id-no-prefix-1> => 
-                      <_defs_up> = empty_set<String> ; } 
+                      <_defs_up> = empty_set<String> ; 
+                    <id>.<_defs_down> = <_defs_down> ; } 
                   | <_defs_down> <_defs_up> <_attributes> <xml-attribute-1> <xml-attribute-2> 
                     { <_attributes> = union(<xml-attribute-1>.<xml-attribute>.<_attributes>, 
                                             <xml-attribute-2>.<xml-attribute>.<_attributes>) ; 
@@ -42,7 +63,8 @@
 <id> ::= <_defs_down> <_full_id> <id-no-prefix-1> 
        { <_full_id> = <id-no-prefix-1> ; } 
        | <_defs_down> <_full_id> <id-with-prefix> 
-       { <_full_id> = <id-with-prefix>.<id-no-prefix-1> ++ <id-with-prefix>.<id-no-prefix-2> ; } ;
+       { <_full_id> = <id-with-prefix>.<id-no-prefix-1> ++ <id-with-prefix>.<id-no-prefix-2> ; 
+         <id-with-prefix>.<_defs_down> = <_defs_down> ; } ;
 
 // <id-no-prefix-1> is prefix def, <id-no-prefix-2> is prefix use
 <id-with-prefix> ::= <_defs_down> <id-no-prefix-1> <id-no-prefix-2> 

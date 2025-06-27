@@ -260,7 +260,7 @@ and pp_print_expr: ?nt_prefix:string -> TC.context -> Format.formatter -> A.expr
     Format.fprintf ppf "(seq.len %a)"
       r expr
   | EmptySet ty -> 
-    Format.fprintf ppf "(as set.empty %a)"
+    Format.fprintf ppf "(as set.empty (Set %a))"
       pp_print_ty ty  
   | Singleton expr -> 
     Format.fprintf ppf "(set.singleton %a)" 
