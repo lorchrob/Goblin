@@ -9,7 +9,13 @@
     tbl
 
   let keyword_table = mk_hashtbl [
+    "empty_set", EMPTYSET ;
+    "member", MEMBER ; 
+    "union", UNION ;
+    "intersection", INTERSECTION ;
+    "singleton", SINGLETON ;
     "Bool", BOOL ;
+    "Set", SET ;
     "Int", INT ;
     "Placeholder", PLACEHOLDER ;
     "String", STRINGTYPE ; 
@@ -41,7 +47,7 @@ let digit = ['0'-'9']
 let bit = ['0' '1']
 let int = digit+
 let letter = ['a'-'z' 'A'-'Z']
-let id = ['a'-'z' 'A'-'Z' '_'] ['a'-'z' 'A'-'Z' '_' '0'-'9']*
+let id = ['a'-'z' 'A'-'Z' '_'] ['a'-'z' 'A'-'Z' '_' '-' '0'-'9']*
 
 rule read = 
   parse

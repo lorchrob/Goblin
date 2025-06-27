@@ -32,6 +32,19 @@ type bin_operator =
 | Times 
 | Div
 | StrConcat
+| SetUnion
+| SetIntersection
+| SetMembership 
+
+type il_type = 
+| Bool 
+| Int 
+| Placeholder
+| String
+| BitVector of int 
+| BitList
+| ADT of string list list
+| Set of il_type
 
 type case = 
 (* A case is a list of <context, nonterminal> pairs (denoting a pattern) and the corresponding expression *)
@@ -40,6 +53,8 @@ type case =
 | CaseStub of ((string * int option) list * (string * int option)) list
 and
 expr = 
+| EmptySet of il_type
+| Singleton of expr
 | BinOp of expr * bin_operator * expr 
 | UnOp of unary_operator * expr
 | CompOp of expr * comp_operator * expr 
@@ -73,15 +88,6 @@ expr =
 type semantic_constraint = 
 | Dependency of string * expr (* <nonterminal> <- <expression> *)
 | SyGuSExpr of expr (* Any boolean expression *)
-
-type il_type = 
-| Bool 
-| Int 
-| Placeholder
-| String
-| BitVector of int 
-| BitList
-| ADT of string list list
 
 type grammar_element = 
 | Nonterminal of string * int option
@@ -118,13 +124,15 @@ let rec get_nts_from_expr: expr -> string list
   | StrLength expr
   | Length expr -> 
     r expr
+  | Singleton expr -> r expr
   | BVConst _ 
   | BLConst _ 
   | BConst _ 
   | BVCast _  
   | PhConst _
   | IntConst _ 
-  | StrConst _ -> []
+  | StrConst _
+  | EmptySet _  -> [] 
 
 (* This function is used before desugaring dot expressions *)
 let rec get_nts_from_expr2: expr -> (string * int option) list list
@@ -142,13 +150,15 @@ let rec get_nts_from_expr2: expr -> (string * int option) list list
   | StrLength expr
   | Length expr -> 
     r expr
+  | Singleton expr -> r expr
   | BVConst _ 
   | BLConst _ 
   | BConst _ 
   | BVCast _  
   | PhConst _
   | IntConst _ 
-  | StrConst _ -> []
+  | StrConst _ 
+  | EmptySet _ -> []
 
 (* For when you want to process simple NTs after translation of dot to match expressions *)
 let rec get_nts_from_expr_after_desugaring_dot_notation: expr -> (string * int option) list list 
@@ -172,13 +182,15 @@ let rec get_nts_from_expr_after_desugaring_dot_notation: expr -> (string * int o
   | StrLength expr
   | Length expr -> 
     r expr
+  | Singleton expr -> r expr
   | BVConst _ 
   | BLConst _ 
   | BConst _ 
   | BVCast _  
   | PhConst _
   | IntConst _ 
-  | StrConst _ -> []
+  | StrConst _ 
+  | EmptySet _ -> []
 
 let pp_print_nt_helper_dots: Format.formatter -> string * int option -> unit 
 = fun ppf (nt, idx) -> 
@@ -221,6 +233,8 @@ let pp_print_bin_op: Format.formatter -> bin_operator -> unit
 | Times -> Format.fprintf ppf "*"
 | Div -> Format.fprintf ppf "/"
 | StrConcat -> Format.fprintf ppf ("str.++")
+| SetMembership | SetUnion | SetIntersection -> 
+  Utils.crash "Unexpected case in pp_print_bin_op"
 
 let pp_print_unary_op: Format.formatter -> unary_operator -> unit 
 = fun ppf op -> match op with 
@@ -249,6 +263,19 @@ let pp_print_pattern: Format.formatter -> ((string * int option) list * (string 
 = fun ppf (nt_ctx, (nt, idx)) -> 
     pp_print_nt_with_underscores ppf (nt_ctx @ [nt, idx])
 
+let rec pp_print_ty: Format.formatter -> il_type -> unit 
+= fun ppf ty -> match ty with 
+| Bool -> Format.fprintf ppf "Bool"
+| Int -> Format.fprintf ppf "Int"
+| Placeholder -> Format.fprintf ppf "Placeholder"
+| String -> Format.fprintf ppf "String"
+| BitList -> Format.fprintf ppf "BitList" 
+| BitVector width -> Format.fprintf ppf "BitVector(%d)" width
+| Set ty -> Format.fprintf ppf "Set(%a)" pp_print_ty ty
+| ADT rules -> 
+  Format.fprintf ppf "ADT: %a"
+    (Lib.pp_print_list (Lib.pp_print_list Format.pp_print_string " ") "; ") rules
+    
 let rec pp_print_case: Format.formatter -> case -> unit 
 = fun ppf case -> 
   match case with 
@@ -262,6 +289,24 @@ let rec pp_print_case: Format.formatter -> case -> unit
 
 and pp_print_expr: Format.formatter -> expr -> unit 
 = fun ppf expr -> match expr with
+| EmptySet ty -> 
+  Format.fprintf ppf "empty_set<%a>"
+    pp_print_ty ty
+| Singleton expr -> 
+  Format.fprintf ppf "singleton(%a)" 
+    pp_print_expr expr
+| BinOp (expr1, SetMembership, expr2) -> 
+  Format.fprintf ppf "member(%a, %a)"
+    pp_print_expr expr1
+    pp_print_expr expr2
+| BinOp (expr1, SetUnion, expr2) -> 
+  Format.fprintf ppf "union(%a, %a)"
+    pp_print_expr expr1
+    pp_print_expr expr2
+| BinOp (expr1, SetIntersection, expr2) -> 
+  Format.fprintf ppf "intersect(%a, %a)"
+    pp_print_expr expr1
+    pp_print_expr expr2
 | BinOp (expr1, op, expr2) -> 
   Format.fprintf ppf "(%a %a %a)" 
     pp_print_expr expr1 
@@ -327,18 +372,6 @@ let pp_print_semantic_constraint: Format.formatter -> semantic_constraint -> uni
 | SyGuSExpr expr -> 
   Format.fprintf ppf "%a;"
     pp_print_expr expr
-
-let pp_print_ty: Format.formatter -> il_type -> unit 
-= fun ppf ty -> match ty with 
-| Bool -> Format.fprintf ppf "Bool"
-| Int -> Format.fprintf ppf "Int"
-| Placeholder -> Format.fprintf ppf "Placeholder"
-| String -> Format.fprintf ppf "String"
-| BitList -> Format.fprintf ppf "BitList" 
-| BitVector width -> Format.fprintf ppf "BitVector(%d)" width
-| ADT rules -> 
-  Format.fprintf ppf "ADT: %a"
-    (Lib.pp_print_list (Lib.pp_print_list Format.pp_print_string " ") "; ") rules
 
 let pp_print_grammar_element: Format.formatter -> grammar_element ->  unit 
 = fun ppf g_el -> match g_el with 
@@ -433,13 +466,15 @@ let rec expr_contains_dangling_nt: Utils.SILSet.t -> expr -> bool
   | StrLength expr
   | Length expr -> 
     r expr
+  | Singleton expr -> r expr
   | BVConst _ 
   | BLConst _ 
   | BConst _ 
   | BVCast _  
   | PhConst _
   | IntConst _ 
-  | StrConst _ -> false
+  | StrConst _ 
+  | EmptySet _ -> false
   | Match _ -> 
     Utils.crash "Encountered Match in expr_contains_dangling_nt. 
     Shouldn't be possible, as this function should only process base expressions."
@@ -485,6 +520,7 @@ let rec prepend_nt_to_dot_exprs: string -> expr -> expr
   | CompOp (expr1, op, expr2) -> CompOp (r expr1, op, r expr2) 
   | StrLength expr -> StrLength (r expr)
   | Length expr -> Length (r expr) 
+  | Singleton expr -> Singleton (r expr)
   | Match _ -> Utils.crash "Unexpected case 1 in prepend_nt_to_dot_exprs"
   | NTExpr _ -> Utils.crash "Unexpected case 2 in prepend_nt_to_dot_exprs" 
   | BVConst _ 
@@ -492,7 +528,8 @@ let rec prepend_nt_to_dot_exprs: string -> expr -> expr
   | BConst _ 
   | IntConst _ 
   | PhConst _ 
-  | StrConst _ -> expr
+  | StrConst _
+  | EmptySet _ -> expr
 
 let scs_of_element = function 
 | ProdRule (_, rhss) -> 

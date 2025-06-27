@@ -28,6 +28,19 @@ type bin_operator =
 | Times
 | Div
 | StrConcat
+| SetUnion
+| SetIntersection
+| SetMembership
+
+type il_type = 
+| Bool 
+| Int 
+| Placeholder 
+| String 
+| BitVector of int 
+| BitList 
+| ADT of string list list 
+| Set of il_type
 
 type case = 
 (* A case is a list of <context, nonterminal> pairs (denoting a pattern) and the corresponding expression *)
@@ -35,6 +48,8 @@ type case =
 | Case of ((string * int option) list * (string * int option)) list * expr 
 | CaseStub of ((string * int option) list * (string * int option)) list
 and expr =
+| EmptySet of il_type
+| Singleton of expr
 | BinOp of expr * bin_operator * expr
 | UnOp of unary_operator * expr
 | CompOp of expr * comp_operator * expr
@@ -68,8 +83,6 @@ and expr =
 type semantic_constraint =
 | Dependency of string * expr
 | SyGuSExpr of expr
-
-type il_type = Bool | Int | Placeholder | String | BitVector of int | BitList | ADT of string list list
 
 type grammar_element =
 | Nonterminal of string * int option

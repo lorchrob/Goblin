@@ -12,6 +12,7 @@ let dump_clp = ref false
 let daniyal = ref false
 let filename = ref None
 let selected_engine = ref None
+let num_solutions = ref 1
 
 let parse_args () = 
   let open Cmdliner in
@@ -74,7 +75,13 @@ let parse_args () =
     Arg.(value & opt (some engine_conv) None & info ["e"; "engine"] ~docv:"ENGINE" ~doc)
   in
 
-  let set_flags new_debug new_no_warnings new_only_parse new_show_winner new_dump_clp new_daniyal new_filename new_engine =
+  let num_solutions_flag =
+    let doc = "Specify the number of solutions to produce" in
+    Arg.(value & opt int 0 & info ["s"; "num-solutions"] ~doc)
+  in
+
+  let set_flags new_debug new_no_warnings new_only_parse new_show_winner 
+                new_dump_clp new_daniyal new_filename new_engine new_num_solutions =
     Format.pp_print_flush Format.std_formatter ();
     debug := new_debug;
     no_warnings := new_no_warnings;
@@ -84,6 +91,7 @@ let parse_args () =
     daniyal := new_daniyal;
     filename := new_filename;
     selected_engine := new_engine;
+    num_solutions := new_num_solutions;
   in
 
   let term =
@@ -95,7 +103,8 @@ let parse_args () =
           $ dump_clp_flag
           $ daniyal_flag
           $ filename_flag
-          $ engine_flag)
+          $ engine_flag
+          $ num_solutions_flag)
   in
 
   let info = Cmd.info "sbf" in

@@ -1,6 +1,12 @@
 module SA = SygusAst
 module A = Ast
 
+(* TODO:
+  * Get rid of polymorphic length function stuff resulting in 
+    the main function returning a list of expressions
+  * Support set operations in dependency computation
+*)
+
 let eval_fail index = Utils.crash ("evaluation error #" ^ string_of_int index)
 
 (* TODO: Replace with Utils.extract_base_name *)
@@ -58,6 +64,7 @@ let rec sygus_ast_to_expr: SA.sygus_ast -> A.expr list
 | VarLeaf s -> [PhConst s]
 | StrLeaf s -> [StrConst s]
 | BoolLeaf b -> [BConst b]
+| SetLeaf _ -> Utils.crash "unsupported (sets)"
 | Node (_, sygus_asts) -> List.map sygus_ast_to_expr sygus_asts |> List.flatten
 
 let rec compute_dep: A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -> A.ast -> A.element -> string -> SA.sygus_ast
@@ -77,7 +84,7 @@ let rec compute_dep: A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -> 
 and evaluate_sygus_ast: A.semantic_constraint Utils.StringMap.t -> A.element -> A.ast -> SA.sygus_ast  -> SA.sygus_ast 
 = fun dep_map element ast sygus_ast ->
   match sygus_ast with 
-| IntLeaf _ | BVLeaf _ | BLLeaf _ | BoolLeaf _ | StrLeaf _ -> sygus_ast
+| IntLeaf _ | BVLeaf _ | BLLeaf _ | BoolLeaf _ | StrLeaf _ | SetLeaf _ -> sygus_ast
 | VarLeaf var ->
   if Utils.StringMap.mem (remove_suffix var |> String.uppercase_ascii) dep_map 
     then
@@ -114,7 +121,7 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -
   in
   (
   match sygus_ast with 
-  | VarLeaf _ | BVLeaf _ | IntLeaf _ | BLLeaf _ | BoolLeaf _ | StrLeaf _  -> 
+  | VarLeaf _ | BVLeaf _ | IntLeaf _ | BLLeaf _ | BoolLeaf _ | StrLeaf _ | SetLeaf _  -> 
     sygus_ast_to_expr sygus_ast
   | Node (_, subterms) ->
     let child_sygus_ast = List.nth subterms child_index in 
@@ -365,8 +372,13 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -
   | [IntConst i] -> [A.il_int_to_bitvector len i]
   | _ -> eval_fail 27
  )
-| BVConst _ | BLConst _ | IntConst _ | BConst _ | PhConst _ | StrConst _ -> [expr]
+| BVConst _ | BLConst _ | IntConst _ | BConst _ | PhConst _ | StrConst _ | EmptySet _ -> [expr]
 | Match _ -> Utils.crash "Match not yet supported in dependency computation"
+| BinOp (_, SetMembership, _) 
+| BinOp (_, SetUnion, _) 
+| BinOp (_, SetIntersection, _) 
+| Singleton _ ->
+  Utils.crash "Set operations not yet supported in dependency computation"
 
 
 let rec compute_deps: A.semantic_constraint Utils.StringMap.t -> A.ast -> SA.sygus_ast -> SA.sygus_ast 
@@ -394,4 +406,4 @@ let rec compute_deps: A.semantic_constraint Utils.StringMap.t -> A.ast -> SA.syg
   | _ -> subterm
   ) subterms in 
   Node ((constructor, idx), subterms)
-| BVLeaf _ | BLLeaf _ | IntLeaf _ | BoolLeaf _ | StrLeaf _ -> sygus_ast
+| BVLeaf _ | BLLeaf _ | IntLeaf _ | BoolLeaf _ | StrLeaf _ | SetLeaf _ -> sygus_ast

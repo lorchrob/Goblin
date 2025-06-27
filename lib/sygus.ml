@@ -14,7 +14,7 @@ let fresh_constraint: unit -> string
   Utils.k := !Utils.k + 1;
   id
 
-let pp_print_ty: Format.formatter -> A.il_type -> unit 
+let rec pp_print_ty: Format.formatter -> A.il_type -> unit 
 = fun ppf ty -> match ty with 
 | Int -> Format.fprintf ppf "Int"
 | Bool -> Format.fprintf ppf "Bool"
@@ -25,6 +25,7 @@ let pp_print_ty: Format.formatter -> A.il_type -> unit
 | BitVector len -> Format.fprintf ppf "(_ BitVec %d)" len
 | BitList -> Format.fprintf ppf "(Seq Bool)"
 | ADT _ -> Utils.crash "sygus.ml (pp_print_ty)"
+| Set ty -> Format.fprintf ppf "(Set %a)" pp_print_ty ty
 
 let pp_print_constructor: TC.context -> Ast.semantic_constraint Utils.StringMap.t -> Ast.ast ->  Format.formatter -> A.grammar_element -> unit 
 = fun ctx dep_map ast ppf ge -> match ge with 
@@ -93,7 +94,6 @@ let pp_print_binop: Format.formatter -> A.bin_operator -> unit
 = fun ppf op -> match op with 
 | A.BVAnd -> Format.fprintf ppf "bvand"
 | BVOr -> Format.fprintf ppf "bvor"
-| BVXor -> Utils.crash "Should not reach this case in pp_print_binop"
 | GLAnd
 | LAnd -> Format.fprintf ppf "and"
 | LOr -> Format.fprintf ppf "or"
@@ -104,6 +104,10 @@ let pp_print_binop: Format.formatter -> A.bin_operator -> unit
 | Times -> Format.fprintf ppf "*"
 | Div -> Format.fprintf ppf "/"
 | StrConcat -> Format.fprintf ppf "str.++"
+| SetMembership 
+| SetUnion 
+| SetIntersection
+| BVXor -> Utils.crash "Should not reach this case in pp_print_binop"
 
 let pp_print_compop: Format.formatter -> A.comp_operator -> unit 
 = fun ppf op -> match op with 
@@ -189,6 +193,18 @@ and pp_print_expr: ?nt_prefix:string -> TC.context -> Format.formatter -> A.expr
     let nt_ctx = nts1 @ Utils.init nts2 in 
     let nt = nts2 |> List.rev |> List.hd in 
     r ppf (Ast.NTExpr (nt_ctx, [nt]))
+  | BinOp (expr1, SetMembership, expr2) ->
+    Format.fprintf ppf "(set.member %a %a)"
+      r expr1 
+      r expr2
+  | BinOp (expr1, SetUnion, expr2) ->
+    Format.fprintf ppf "(set.union %a %a)"
+      r expr1 
+      r expr2
+  | BinOp (expr1, SetIntersection, expr2) ->
+    Format.fprintf ppf "(set.inter %a %a)"
+      r expr1 
+      r expr2
   | BinOp (expr1, BVXor, expr2) -> 
     Format.fprintf ppf "(and (or %a %a) (not (and %a %a)))"
       r expr1 
@@ -242,6 +258,12 @@ and pp_print_expr: ?nt_prefix:string -> TC.context -> Format.formatter -> A.expr
       r expr
   | Length expr -> 
     Format.fprintf ppf "(seq.len %a)"
+      r expr
+  | EmptySet ty -> 
+    Format.fprintf ppf "(as set.empty %a)"
+      pp_print_ty ty  
+  | Singleton expr -> 
+    Format.fprintf ppf "(set.singleton %a)" 
       r expr
   | BVConst (_, bits) -> 
     let bits = List.map Bool.to_int bits in
@@ -395,7 +417,7 @@ let pp_print_grammar: Format.formatter -> Ast.semantic_constraint Utils.StringMa
 
 let pp_print_ast: Format.formatter -> (TC.context * Ast.semantic_constraint Utils.StringMap.t * A.ast) -> unit 
 = fun ppf (ctx, dep_map, ast) -> 
-  Format.fprintf ppf "(set-logic BVSLIA)\n\n";
+  Format.fprintf ppf "(set-logic QF_BVSLIAFS)\n\n";
 
   pp_print_datatypes ppf ctx dep_map (List.rev ast);
 

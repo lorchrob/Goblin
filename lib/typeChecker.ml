@@ -41,6 +41,13 @@ let rec infer_type_expr: context -> mode -> expr -> il_type option
     None
   | ty -> Some ty
   )
+| EmptySet ty -> Some (Set ty)
+| Singleton expr -> (
+  let ty = infer_type_expr ctx mode expr in  
+  match ty with 
+  | Some ty -> Some (Set ty)
+  | None -> None 
+  )
 | UnOp (UPlus, expr) 
 | UnOp (UMinus, expr) -> 
   let _ = check_type_expr ctx mode Int expr in
@@ -105,6 +112,38 @@ let rec infer_type_expr: context -> mode -> expr -> il_type option
   let _ = check_type_expr ctx mode Bool expr1 in 
   let _ = check_type_expr ctx mode Bool expr2 in
   Some Bool
+| BinOp (expr1, SetMembership, expr2) -> 
+  let ty1 = infer_type_expr ctx mode expr1 in 
+  let ty2 = infer_type_expr ctx mode expr2 in 
+  (match ty1, ty2 with 
+  | Some ty1, Some (Set ty2) -> 
+    if ty1 = ty2 then Some Bool else 
+    let expr1_str = Utils.capture_output Ast.pp_print_expr expr1 in
+    let expr2_str = Utils.capture_output Ast.pp_print_expr expr2 in   
+    let error_message = "Type checking error: expressions " ^ expr1_str ^ " and " ^ expr2_str ^ " have mismatched types for set membership query" in 
+    Utils.error error_message
+  | Some _, Some ty ->
+    let ty_str = Utils.capture_output Ast.pp_print_ty ty in 
+    let error_message = "Type checking error: set membership query to operand of non-set type " ^ ty_str in 
+    Utils.error error_message
+  | _ -> None)
+| BinOp (expr1, SetUnion, expr2) 
+| BinOp (expr1, SetIntersection, expr2) -> 
+  let ty1 = infer_type_expr ctx mode expr1 in 
+  let ty2 = infer_type_expr ctx mode expr2 in 
+  (match ty1, ty2 with 
+  | Some (Ast.Set ty1), Some (Set ty2) -> 
+    if ty1 = ty2 then Some (Set ty1) else 
+    let expr1_str = Utils.capture_output Ast.pp_print_expr expr1 in
+    let expr2_str = Utils.capture_output Ast.pp_print_expr expr2 in   
+    let error_message = "Type checking error: set expressions " ^ expr1_str ^ " and " ^ expr2_str ^ " have mismatched set types" in 
+    Utils.error error_message
+  | Some (Set _), Some ty 
+  | Some ty, Some (Set _) -> 
+    let ty_str = Utils.capture_output Ast.pp_print_ty ty in 
+    let error_message = "Type checking error: set operation applied to operand of non-set type " ^ ty_str in 
+    Utils.error error_message
+  | _ -> None)
 | BinOp (expr1, Plus, expr2) 
 | BinOp (expr1, Minus, expr2) 
 | BinOp (expr1, Times, expr2) 

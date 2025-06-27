@@ -3,6 +3,10 @@
       1. Lisp-style terms compatible with any input grammar, and 
       2. SMT solver models upon calling check-sat and get-model 
          (essentially a single node with a list of leaf children) *)
+
+type concrete_set = 
+| StringSet of Utils.StringSet.t 
+
 type sygus_ast = 
 | Node of (string * int option) * sygus_ast list 
 | BVLeaf of int * bool list 
@@ -10,6 +14,7 @@ type sygus_ast =
 | BLLeaf of bool list
 | BoolLeaf of bool
 | StrLeaf of string
+| SetLeaf of concrete_set 
 | VarLeaf of string (* DANIYAL: Placeholder can go here *)
 
 type endianness = 
@@ -35,6 +40,9 @@ let pp_print_sygus_ast: Format.formatter -> sygus_ast -> unit
   | StrLeaf id -> Format.fprintf ppf "%S" id;
   | IntLeaf d -> Format.pp_print_int ppf d;
   | BoolLeaf b -> Format.pp_print_bool ppf b;
+  | SetLeaf (StringSet s) -> 
+    Format.fprintf Format.std_formatter "{%a}" 
+      (Lib.pp_print_list Format.pp_print_string ", ") (Utils.StringSet.to_list s)
   (* This is kind of cheating, but I don't feel like matching cvc5 format exactly *)
   | BLLeaf bits -> 
     let bits = List.map Bool.to_int bits in
@@ -59,6 +67,9 @@ let serialize: Format.formatter -> sygus_ast -> unit
   | StrLeaf id -> Format.fprintf ppf "%s" id;
   | IntLeaf i -> Format.pp_print_int ppf i
   | BoolLeaf b -> Format.pp_print_bool ppf b
+  | SetLeaf (StringSet s) -> 
+    Format.fprintf Format.std_formatter "{%a}" 
+      (Lib.pp_print_list Format.pp_print_string ", ") (Utils.StringSet.to_list s)
   in 
   Format.fprintf ppf "%a\n" 
   pp_print_sygus_ast' sygus_ast
@@ -172,6 +183,7 @@ let serialize_bytes: endianness -> sygus_ast -> bytes * bytes
     | BoolLeaf _ -> Utils.crash "serializing final packet, unhandled case 1"
     | IntLeaf _ -> Utils.crash "serializing final packet, unhandled case 2"
     | StrLeaf _ -> Utils.crash "serializing final packet, unhandled case 3"
+    | SetLeaf _ -> Utils.crash "unsupported"
   in
   let initial_metadata = {
     var_leaf_count = 0;

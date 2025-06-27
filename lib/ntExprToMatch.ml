@@ -105,6 +105,7 @@ let rec pull_up_match_exprs: A.expr -> A.expr =
     | A.CaseStub rule -> A.CaseStub rule
     ) cases in
     Match (nt_ctx, nt, cases)
+  | Singleton expr -> Singleton (r expr)
   | BVCast (len, expr) -> BVCast (len, r expr)
   | Length (Match (nt_ctx, nt, cases)) -> 
     let cases = List.map (fun case -> match case with 
@@ -133,7 +134,8 @@ let rec pull_up_match_exprs: A.expr -> A.expr =
   | BConst _ 
   | IntConst _ 
   | PhConst _ 
-  | StrConst _ -> expr
+  | StrConst _ 
+  | EmptySet _ -> expr
 
 (* Recursively generate match expressions for the "top level" of each NT expr, 
    until all the NTExprs have no more dots. If we encounter the same "top level" NT 
@@ -380,6 +382,10 @@ fun ctx ast expr ->
         in
         matches_so_far,
         Match (nt_ctx, nt1, cases @ remaining_cases)
+    | Singleton expr -> 
+      let matches_so_far, expr = r matches_so_far expr in 
+      matches_so_far, 
+      Singleton expr
     | BVCast (len, expr) -> 
       let matches_so_far, expr = r matches_so_far expr in 
       matches_so_far,
@@ -390,7 +396,8 @@ fun ctx ast expr ->
     | BConst _ 
     | IntConst _ 
     | PhConst _ 
-    | StrConst _ -> matches_so_far, expr
+    | StrConst _ 
+    | EmptySet _ -> matches_so_far, expr
   in snd (helper ctx ast SILSet.empty expr)
 
 (* Say a production rule has multiple options with the same nonterminal, e.g., 
@@ -460,14 +467,16 @@ let filter_out_dangling_nts expr =
     StrLength (helper ctx expr)
   | Length expr -> 
     Length (helper ctx expr) 
-  | BVCast _
+  | BVCast (len, expr) -> BVCast (len, helper ctx expr)
+  | Singleton expr -> Singleton (helper ctx expr)
   | NTExpr _ 
   | BVConst _ 
   | BLConst _ 
   | BConst _ 
   | IntConst _ 
   | PhConst _ 
-  | StrConst _ -> expr
+  | StrConst _ 
+  | EmptySet _ -> expr
   in 
   helper SILSet.empty expr
 

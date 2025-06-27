@@ -1,10 +1,9 @@
-(*!! TODO: Bug fixes (make test and test cases in examples)
+(*!! 
+     TODO: Look at Shankar paper Omar sent in Zulip
      TODO: Write paper 
-     TODO: Use Boolean flag to determine if you backtracked due to the depth limit to enable failing again,
-           and add the infeasible test cases back
-     TODO: Fix dpll module to use the extra precondition from DecidePR
      TODO: Generate multiple solutions mode
      TODO: Experimental evaluation 
+     TODO: Always more testing 
 
      TODO: Flag that allows you to disable engines in race mode (useful if one engine is buggy on a class of problems)
      TODO: More fine-grained check if divide and conquer engines are usable. Right now,
@@ -16,6 +15,13 @@
      FUTURE: Something akin to inherited attributes 
      FUTURE: Structural constraints 
      FUTURE: Quantifiers in the DSL 
+*)
+
+(* TODO for nice surface-level language
+    
+    * Means of passing variables around CLP-style 
+    * disambiguating an NT reference with <nt>[i]
+
 *)
 
 let main_pipeline ?(engine: Flags.engine option = None) filename = 
@@ -80,9 +86,9 @@ let main_pipeline ?(engine: Flags.engine option = None) filename =
   in
 
   (* Serialize! *)
-  Utils.debug_print Format.pp_print_string ppf "\nSerializing:\n";
+  Utils.debug_print Format.pp_print_string ppf "\nFinal result:\n";
   let output = Utils.capture_output SygusAst.serialize sygus_ast in 
-  Format.pp_print_string ppf output; 
+  SygusAst.pp_print_sygus_ast Format.std_formatter sygus_ast;
   sygus_ast, output, ast_to_return
 
 let rec collect_results results =

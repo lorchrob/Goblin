@@ -90,17 +90,21 @@ let rec generate_all_possible_exprs: TC.context -> string list -> A.expr -> A.ex
     List.map (fun (e1, e2) -> A.CompOp (e1, op, e2)) pairs
   | StrLength expr -> 
     let exprs = r expr in 
-    List.map (fun e -> A.StrLength (e)) exprs
+    List.map (fun e -> A.StrLength e) exprs
+  | Singleton expr -> 
+    let exprs = r expr in 
+    List.map (fun e -> A.Singleton e) exprs
   | Length expr -> 
     let exprs = r expr in 
-    List.map (fun e -> A.Length (e)) exprs
+    List.map (fun e -> A.Length e) exprs
   | BVConst _ 
   | BLConst _ 
   | BConst _ 
   | BVCast _  
   | PhConst _
   | IntConst _ 
-  | StrConst _ -> [expr]
+  | StrConst _ 
+  | EmptySet _ -> [expr]
 
 let process_sc: TC.context -> string list -> A.semantic_constraint -> A.semantic_constraint 
 = fun ctx nts sc -> match sc with 

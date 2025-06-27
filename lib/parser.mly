@@ -17,6 +17,7 @@ open Ast
 %token LOR
 %token LXOR
 %token LNOT
+%token SET
 %token BVAND
 %token BVOR
 %token BVXOR
@@ -52,6 +53,11 @@ open Ast
 %token STRPREFIX 
 %token STRCONTAINS 
 %token STRCONCAT
+%token EMPTYSET
+%token SINGLETON
+%token UNION
+%token INTERSECTION
+%token MEMBER
 
 %token<int> INTEGER
 %token<bool list> BITS
@@ -109,6 +115,7 @@ il_type:
 | STRINGTYPE { String }
 | BITVECTOR; LPAREN; len = INTEGER; RPAREN; { BitVector (len) }
 | BITLIST { BitList }
+| SET; LPAREN; ty = il_type; RPAREN; { Set ty } 
 
 semantic_constraints:
 | LCURLY; scs = semantic_constraint_list; RCURLY; { scs }
@@ -125,6 +132,10 @@ semantic_constraint:
 | e = expr { SyGuSExpr e }
 
 expr: 
+| EMPTYSET; LT; ty = il_type; GT; 
+  { EmptySet ty } 
+| SINGLETON; LPAREN; e = expr; RPAREN;
+  { Singleton e }
 (* Binary operations *)
 | e1 = expr; LAND; e2 = expr { BinOp (e1, LAnd, e2) }
 | e1 = expr; LOR; e2 = expr { BinOp (e1, LOr, e2) }
@@ -163,6 +174,12 @@ expr:
 | bv = BITS { BVConst (List.length bv, bv) }
 | LPAREN; BITLIST; bl = BITS; RPAREN; { BLConst (bl) }
 (* Built-in functions *)
+| MEMBER; LPAREN; e1 = expr; COMMA; e2 = expr; RPAREN; 
+  { BinOp (e1, SetMembership, e2) }
+| UNION; LPAREN; e1 = expr; COMMA; e2 = expr; RPAREN; 
+  { BinOp (e1, SetUnion, e2) }
+| INTERSECTION; LPAREN; e1 = expr; COMMA; e2 = expr; RPAREN; 
+  { BinOp (e1, SetIntersection, e2) }
 | INTTOBITVECTOR; 
   LPAREN; width = INTEGER; COMMA; e = expr; RPAREN; { BVCast (width, e) }
 | LENGTH; LPAREN; e = expr; RPAREN; { Length (e) }

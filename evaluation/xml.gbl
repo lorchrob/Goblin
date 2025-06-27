@@ -11,14 +11,13 @@
 
 <xml-openclose-tag> ::= <id> | <id> <xml-attribute> ; 
 
-<xml-attribute> ::= <_attributes> <id> <TEXT> 
-                    { <_attributes> = { <id>.<_full_id> } } ;
-                  | <_attributes> <xml-attribute> <xml-attribute> 
+<xml-attribute> ::= <_attributes> <id> <TEXT> { <_attributes> = singleton(<id>.<_full_id>) ; } 
+                  | <_attributes> <xml-attribute-1> <xml-attribute-2> 
                     { <_attributes> = union(<xml-attribute-1>.<xml-attribute>.<_attributes>, 
                                             <xml-attribute-2>.<xml-attribute>.<_attributes>) ; 
                       // constraint: no redef
-                      intersect(<xml-attribute-1>.<xml-attribute>.<_attributes>, 
-                                <xml-attribute-2>.<xml-attribute>.<_attributes>) = {} ; } ;
+                      intersection(<xml-attribute-1>.<xml-attribute>.<_attributes>, 
+                                <xml-attribute-2>.<xml-attribute>.<_attributes>) = empty_set<String> ; } ;
 
 <xml-attribute-1> ::= <xml-attribute> ; 
 <xml-attribute-2> ::= <xml-attribute> ;
@@ -31,10 +30,11 @@
 // <id-no-prefix-1> is prefix def, <id-no-prefix-2> is prefix use
 <id-with-prefix> ::= <_defs> <id-no-prefix-1> <id-no-prefix-2> 
   //!! constraint: namespace definition before use ... make <_defs> a proper inherited attribute
-  { <id-no-prefix-2> in <_defs> ; } ;
+  { member(<id-no-prefix-2>,  <_defs>) ; } ;
 
 <id-no-prefix-1> :: String; 
 <id-no-prefix-2> :: String;
 <TEXT> :: String;
 <_full_id> :: String;
 <_attributes> :: Set(String);
+<_defs> :: Set(String);

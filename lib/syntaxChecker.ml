@@ -10,6 +10,11 @@
        If we allow this, then match statements are a bit harder to generate, 
        because you could accidentally match the same constructor twice 
        rather than the distinct constructors. *)
+
+  (*!! TODO: 
+       Revisit dangling identifier checks (esp., for nonterminals on RHS not in constraints 
+
+  *)
 *)
 
 open Ast
@@ -74,6 +79,8 @@ let rec check_dangling_identifiers: Utils.StringSet.t -> expr -> expr
     let nt_expr' = List.map fst nt_expr in
     let _ = check_d_ids_nt_expr nt_expr' in 
     NTExpr (nt_ctx, nt_expr)
+  | EmptySet ty -> EmptySet ty
+  | Singleton expr -> Singleton (call expr)
   | BinOp (expr1, op, expr2) -> BinOp (call expr1, op, call expr2) 
   | UnOp (op, expr) -> UnOp (op, call expr) 
   | CompOp (expr1, op, expr2) -> CompOp (call expr1, op, call expr2) 
@@ -110,6 +117,8 @@ let rec check_prod_rule_nt_exprs: prod_rule_map -> Utils.StringSet.t -> expr -> 
     else
       let nt_expr = check_nt_expr_refs prm nt_expr in 
       NTExpr (nt_context, nt_expr) 
+  | EmptySet ty -> EmptySet ty
+  | Singleton expr -> Singleton (call expr)
   | BinOp (expr1, op, expr2) -> BinOp (call expr1, op, call expr2) 
   | UnOp (op, expr) -> UnOp (op, call expr) 
   | CompOp (expr1, op, expr2) -> CompOp (call expr1, op, call expr2) 
@@ -136,6 +145,8 @@ let rec check_type_annot_nt_exprs: prod_rule_map -> Utils.StringSet.t -> expr ->
     else
       let nt_expr = check_nt_expr_refs prm nt_expr in 
       NTExpr (nt_context, nt_expr) 
+  | EmptySet ty -> EmptySet ty
+  | Singleton expr -> Singleton (call expr)
   | BinOp (expr1, op, expr2) -> BinOp (call expr1, op, call expr2) 
   | UnOp (op, expr) -> UnOp (op, call expr) 
   | CompOp (expr1, op, expr2) -> CompOp (call expr1, op, call expr2) 
@@ -281,7 +292,9 @@ let check_sygus_exprs_for_dep_terms: ast -> ast
    by the type system. So, do the conversion here where necessary. *)
 let str_const_to_ph_const ast = 
   let rec handle_expr = function 
+  | EmptySet ty -> EmptySet ty
   | StrConst ph -> PhConst ph
+  | Singleton expr -> Singleton (handle_expr expr)
   | BVCast (len, expr) -> BVCast (len, handle_expr expr)
   | BinOp (expr1, op, expr2) -> BinOp (handle_expr expr1, op, handle_expr expr2) 
   | UnOp (op, expr) -> UnOp (op, handle_expr expr) 

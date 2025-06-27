@@ -9,11 +9,14 @@
     tbl
 
   let keyword_table = mk_hashtbl [
-    "define", DEFINE ;
-    "fun", FUN ;
+    "define-fun", DEFINEFUN ;
     "top", TOP ;
     "as", AS ;
     "seq", SEQ ;
+    "set", SET ; 
+    "Set", SETTYPE ;
+    "singleton", SINGLETON ;
+    "union", UNION ;
     "Seq", CAPSEQ ;
     "Bool", BOOL ;
     "empty", EMPTY ;
@@ -22,7 +25,7 @@
     "false", FALSE ;
     "Int", INT ;
     "BitVec", BITVEC ;
-    "String", STRING;
+    "String", STRINGTYPE ;
     "str", STR ;
     "infeasible", INFEASIBLE ;
     (* "sat", SAT ; *)
@@ -36,7 +39,7 @@ let digit = ['0'-'9']
 let bit = ['0' '1']
 let int = digit+
 let letter = ['a'-'z' 'A'-'Z']
-let id = ['a'-'z' 'A'-'Z' '_'] ['a'-'z' 'A'-'Z' '_' '0'-'9']*
+let id = ['a'-'z' 'A'-'Z' '_'] ['a'-'z' 'A'-'Z' '_' '-' '0'-'9']*
 
 rule read = 
   parse
