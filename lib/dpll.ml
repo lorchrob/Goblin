@@ -133,15 +133,26 @@ type model_value =
 | ConcreteBitList of bool list
 | ConcreteStringSet of Utils.StringSet.t
 
+let rec pp_print_ss ppf = function 
+  | [] -> Format.pp_print_string ppf "(as set.empty (Set String))"
+  | [s] -> 
+    Format.fprintf ppf "(set.singleton %S)"
+      s
+  | s :: tl -> 
+    Format.fprintf ppf "(set.union (set.singleton %S) %a)" 
+      s pp_print_ss tl
+      
+      
+
 let pp_print_model_value ppf = function
 | ConcreteBool b -> Format.pp_print_bool ppf b
 | ConcreteInt i -> Format.pp_print_int ppf i 
 | ConcretePlaceholder str -> Format.pp_print_string ppf str
 | ConcreteString str -> Format.fprintf ppf "%S" str 
+| ConcreteStringSet ss -> pp_print_ss ppf (Utils.StringSet.to_list ss)
 (* TODO: fill in with actual details *)
 | ConcreteBitVector _ -> Format.pp_print_string ppf "bitvector"
 | ConcreteBitList _ -> Format.pp_print_string ppf "bitlist"
-| ConcreteStringSet _ -> Format.pp_print_string ppf "string_set"
 
 type concrete_set = 
 | ConcreteStringSetLeaf of Utils.StringSet.t
@@ -239,7 +250,7 @@ let read_get_model_response solver =
 let initialize_cvc5 () : solver_instance =
   let cvc5 = Utils.find_command_in_path "cvc5" in
   let cmd = 
-    Printf.sprintf "%s --produce-models --dag-thresh=0 --lang=smtlib2 --incremental" 
+    Printf.sprintf "%s --produce-models --global-declarations --dag-thresh=0 --lang=smtlib2 --incremental" 
       cvc5 
   in
   let (in_chan, out_chan, err_chan) = Unix.open_process_full cmd (Unix.environment ()) in
@@ -325,17 +336,6 @@ let rec model_of_sygus_ast: SygusAst.sygus_ast -> (model_value Utils.StringMap.t
   | Node (_, children) -> 
     (Res.seq_chain (fun acc child -> 
       let* map = model_of_sygus_ast child in 
-
-      (* List.iter (fun (k, v) -> 
-        Format.fprintf Format.std_formatter "%s: %a\n"
-          k pp_print_model_value v
-      ) (Utils.StringMap.bindings acc);
-
-      List.iter (fun (k, v) -> 
-        Format.fprintf Format.std_formatter "%s: %a\n"
-          k pp_print_model_value v
-      ) (Utils.StringMap.bindings map); *)
-
       Ok (Utils.StringMap.merge Lib.union_keys acc map)  
     ) Utils.StringMap.empty children)
   | VarLeaf _ | BLLeaf _ | BVLeaf _ 
@@ -541,7 +541,7 @@ let assert_and_remove_applicable_constraints constraint_set derivation_tree ast 
   constraint_set := ConstraintSet.diff !constraint_set constraints_to_remove;
   !constraint_set
 
-let initialize_globals derivation_tree start_symbol frontier constraints_to_assert decision_stack declared_variables backtrack_depth = 
+let initialize_globals derivation_tree start_symbol frontier constraints_to_assert decision_stack _declared_variables backtrack_depth = 
   (* Incremental construction of output term so far *)
   derivation_tree := (Node ((start_symbol, None), ref Utils.IntSet.empty, [start_symbol, None], 0, ref []));
   (* Tree nodes left to explore *)
@@ -552,8 +552,6 @@ let initialize_globals derivation_tree start_symbol frontier constraints_to_asse
   (* let provenance_list = _ in *) (* Challenge: backtracking affects provenance list *)
   (* Keep track of all decisions so we can easily backtrack in the derivation tree *)
   decision_stack := B.Stack.create ();
-  (* Track declared (SMT-level) variables to avoid redeclaration *)
-  declared_variables := Utils.StringSet.empty;
   (* Track whether, since the last restart, we backtracked due to the depth limit *) 
   backtrack_depth := false; 
   ()
@@ -570,6 +568,29 @@ let backtrack_derivation_tree decision_stack start_symbol depth_limit derivation
     | _ -> Utils.crash "Unexpected case in backtrack_derivation_tree"
   )
 
+let pp_print_model_pair ppf (k, v) = 
+  Format.fprintf ppf "(= %s %a)" 
+    k 
+    pp_print_model_value v 
+
+let push_blocking_clause model declared_variables solver = 
+  let ctx_of_model model = Utils.StringMap.map (function 
+  | ConcreteBool _ -> A.Bool 
+  | ConcreteInt _ -> A.Int 
+  | ConcreteString _ -> A.String
+  | ConcreteBitList _ -> A.BitList 
+  | ConcreteStringSet _ -> A.Set(String)
+  | ConcreteBitVector (w, _) -> A.BitVector w
+  | ConcretePlaceholder _ -> A.Placeholder 
+  ) model in 
+  let ctx = ctx_of_model model in 
+  declare_smt_variables declared_variables ctx solver; 
+  let blocking_clause_str = Format.asprintf "(assert (not (and %a)))" 
+    (Lib.pp_print_list pp_print_model_pair " ") (Utils.StringMap.bindings model) in
+  issue_solver_command blocking_clause_str solver  
+
+
+
 let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
 = fun ctx ast -> 
   Random.self_init (); 
@@ -578,6 +599,12 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
   | A.TypeAnnotation (nt, _, _) -> nt
   | ProdRule (nt, _) -> nt
   in 
+
+
+  (* Solver object *)
+  let solver = initialize_cvc5 () in
+  let starting_depth_limit = 7 in 
+  try
 
   (*** Set up the key data structures ***)
   let assertion_level = ref 0 in 
@@ -594,16 +621,18 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
   (* Keep track of all decisions so we can easily backtrack in the derivation tree *)
   let decision_stack : derivation_tree ref Stack.t ref = ref (B.Stack.create ()) in 
   (* IDS depth limit *) 
-  let depth_limit = ref 1 in
-  (* Solver object *)
-  let solver = initialize_cvc5 () in
+  let depth_limit = ref starting_depth_limit in
   (* Track whether, since the last restart, we backtracked due to the depth limit *) 
   let backtrack_depth = ref false in 
 
+  let exit_flag = ref true in 
+  let result = ref None in 
+
+  (* exit flag allows us to toggle between infinite looping (multiple solutions mode) 
+     or stopping after one solution *)
+  while !exit_flag do 
   (* we start at decision level 1 so we can undo all pushed assertions when restarting *)
   new_decision_level solver assertion_level; 
-
-  try
 
   (* Iteratively expand the frontier and instantiate the derivation tree leaves *)
   while not (is_complete !derivation_tree) do 
@@ -738,21 +767,6 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
             backtrack_derivation_tree decision_stack start_symbol depth_limit derivation_tree 
                                       frontier constraints_to_assert declared_variables backtrack_depth;
           ); 
-
-    
-    (* Update the frontier *)
-    (* Only expand the frontier if the new constraints were SAT; otherwise, just go to next iteration (we updated the visited set) *)
-    (* if expand then (
-      frontier := DTSet.remove node_to_expand !frontier;
-      frontier := match !node_to_expand with 
-      | SymbolicIntLeaf _ 
-      | ConcreteIntLeaf _ 
-      | DependentTermLeaf _ -> !frontier
-      | Node (_, _, _, children) -> 
-        List.fold_left (fun acc child ->
-          DTSet.add (ref child) acc
-        ) !frontier !children;
-    ); *)
   done;
 
   if !Flags.debug then Format.fprintf Format.std_formatter "Constraints to assert: %a\n"
@@ -773,9 +787,33 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
                               frontier constraints_to_assert declared_variables backtrack_depth;
   ); 
 
+  (* If we exited the loop, there must be a model. If there was no model, 
+     we would have backtracked, and the derivation tree would still be open, 
+     so the loop would continue. *)
+  let model = match model with 
+  | Ok model -> model 
+  | Error () -> Utils.crash "internal error; expected a model but got none." in 
+
   derivation_tree := fill_unconstrained_nonterminals !derivation_tree;
   (* Convert to sygus AST for later processing in the pipeline *)
-  sygus_ast_of_derivation_tree !derivation_tree
+  let r = sygus_ast_of_derivation_tree !derivation_tree in 
+  result := Some r;
+  exit_flag := false;
+  if !Flags.multiple_solutions then (
+    exit_flag := true;
+    SA.pp_print_sygus_ast Format.std_formatter r; 
+    Format.pp_print_flush Format.std_formatter ();
+
+    (* prepare to generate another solution *)
+    initialize_globals derivation_tree start_symbol frontier constraints_to_assert decision_stack declared_variables backtrack_depth; 
+    depth_limit := starting_depth_limit;
+    issue_solver_command "(pop 1)" solver; 
+    push_blocking_clause model declared_variables solver;
+  );
+  ()
+  done; 
+
+  Option.get !result 
 
   with Failure _ -> 
     StrLeaf "infeasible"

@@ -1,8 +1,12 @@
 (*!! 
+     TODO: Make handling of indices more sane to try to fix xml example bug
      TODO: Look at Shankar paper Omar sent in Zulip
      TODO: Write paper 
      TODO: Generate multiple solutions mode
-     TODO: Experimental evaluation 
+     TODO: Experimental evaluation -- XML, CSV
+       * finish modeling 
+       * bug fixes
+       * some means of automated testing (either pretty printers or extend the evaluator)
      TODO: Always more testing 
 
      TODO: Flag that allows you to disable engines in race mode (useful if one engine is buggy on a class of problems)
