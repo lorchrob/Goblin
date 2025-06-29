@@ -1,0 +1,29 @@
+<csv-file> ::= <_num_cols> <csv-header> <csv-records> 
+             { <_num_cols> = <csv-header>.<_num_cols> ;
+               <csv-records>.<_num_cols> = <_num_cols> ; } ; 
+
+<csv-header> ::= <csv-record> <_num_cols> 
+               { <csv-record>.<_count> = <_num_cols> ; 
+                 <_num_cols> > 0; } ; 
+
+<csv-records> ::= <_num_cols> <csv-record> <csv-records> 
+                { <csv-record>.<_count> = <_num_cols> ; 
+                  <csv-records>.<_num_cols> = <_num_cols> ; }
+                | <_num_cols> <nil> ; 
+
+<csv-record> ::= <_count> <raw-field> 
+               { <_count> = 1; } 
+               | <_count> <raw-field> <csv-record> 
+               { <_count> = 1 + <csv-record>.<_count> ; } ;
+
+<raw-field> ::= <simple-field> | <quoted-field> ;
+
+<simple-field> :: String ; 
+
+<quoted-field> :: String ;
+
+<nil> :: Placeholder  
+  { <nil> = ""; } ; 
+
+<_count> :: Int ;
+<_num_cols> :: Int ;
