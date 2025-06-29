@@ -18,9 +18,7 @@ let rec pp_print_ty: Format.formatter -> A.il_type -> unit
 = fun ppf ty -> match ty with 
 | Int -> Format.fprintf ppf "Int"
 | Bool -> Format.fprintf ppf "Bool"
-(* NOTE: Strings should only be present for dependency computations. 
-   If it's here, it is a grammar element that would be pruned anyway. *)
-| Placeholder -> Format.fprintf ppf "Int"
+| Placeholder -> Format.fprintf ppf "String"
 | String -> Format.fprintf ppf "String"
 | BitVector len -> Format.fprintf ppf "(_ BitVec %d)" len
 | BitList -> Format.fprintf ppf "(Seq Bool)"
@@ -281,7 +279,7 @@ let pp_print_semantic_constraint_ty_annot: TC.context -> Format.formatter -> str
 | A.Dependency _ -> () 
 | SyGuSExpr expr -> 
   let constraint_id = fresh_constraint () in 
-  Format.fprintf ppf "(define-fun %s ((%s %a)) Bool \n\t%a\n)\n"
+  Format.fprintf ppf "(define-fun %s ((%s0 %a)) Bool \n\t%a\n)\n"
     constraint_id
     (String.lowercase_ascii nt) 
     pp_print_ty ty
@@ -304,12 +302,9 @@ let find_indices lst =
   (* Generate the result with indices for repeated elements *)
   let counts = Hashtbl.create (List.length lst) in
   List.map (fun s ->
-    let count = Hashtbl.find occurrences s in
-    if count = 1 then (s, None)
-    else 
-      let index = (Hashtbl.find_opt counts s |> Option.value ~default:0) + 1 in
-      Hashtbl.replace counts s index;
-      (s, Some (index - 1))
+    let index = (Hashtbl.find_opt counts s |> Option.value ~default:0) + 1 in
+    Hashtbl.replace counts s index;
+    (s, Some (index - 1))
   ) lst
 
 let pp_print_ges_pattern: Format.formatter -> string list -> unit 

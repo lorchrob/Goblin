@@ -75,7 +75,7 @@ let simp_rhss: TypeChecker.context -> prod_rule_rhs -> semantic_constraint Utils
     | Some _, _, _ -> assert false 
   ) (Utils.StringMap.empty, [], ctx) ges in 
   dep_map, Rhs (ges, scs), ctx
-| StubbedRhs _ -> assert false
+| StubbedRhs _ as rhs -> Utils.StringMap.empty, rhs, ctx 
 
 
 (*     let dep_map = List.fold_left (Utils.StringMap.merge Lib.union_keys) acc_dep_map dep_maps in *)

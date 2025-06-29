@@ -21,13 +21,9 @@ let disambiguate_nonterminals (rhss : A.prod_rule_rhs list) : A.prod_rule_rhs li
 
   let disambiguate_elem = function
     | A.Nonterminal (name, _) ->
-        let total = Hashtbl.find total_counts name in
-        if total = 1 then
-          A.Nonterminal (name, None)
-        else
-          let idx = Hashtbl.find_opt running_indices name |> Option.value ~default:0 in
-          Hashtbl.replace running_indices name (idx + 1);
-          Nonterminal (name, Some idx)
+      let idx = Hashtbl.find_opt running_indices name |> Option.value ~default:0 in
+      Hashtbl.replace running_indices name (idx + 1);
+      A.Nonterminal (name, Some idx)
     | other -> other
   in
 

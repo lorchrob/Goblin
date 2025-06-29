@@ -594,12 +594,10 @@ let push_blocking_clause model declared_variables solver =
 let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
 = fun ctx ast -> 
   Random.self_init (); 
-
-  let start_symbol = match List.hd ast with 
-  | A.TypeAnnotation (nt, _, _) -> nt
-  | ProdRule (nt, _) -> nt
+  let start_symbol, start_path = match List.hd ast with 
+  | A.TypeAnnotation (nt, _, _) -> nt, [nt, Some 0]
+  | ProdRule (nt, _) -> nt, [nt, Some 0]
   in 
-
 
   (* Solver object *)
   let solver = initialize_cvc5 () in
@@ -609,7 +607,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
   (*** Set up the key data structures ***)
   let assertion_level = ref 0 in 
   (* Incremental construction of output term so far *)
-  let derivation_tree = ref (Node ((start_symbol, None), ref Utils.IntSet.empty, [start_symbol, None], 0, ref [])) in 
+  let derivation_tree = ref (Node ((start_symbol, Some 0), ref Utils.IntSet.empty, start_path, 0, ref [])) in 
   (* Tree nodes left to explore *)
   let frontier = ref (DTSet.singleton derivation_tree) in 
   (* Track declared (SMT-level) variables to avoid redeclaration *)

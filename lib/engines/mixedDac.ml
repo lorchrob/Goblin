@@ -1,7 +1,12 @@
-let dpll_leaf ppf ctx ast _dep_map = 
+let dpll_leaf ppf ctx ast = 
   (* Resolve ambiguities in constraints *)
   let ast = ResolveAmbiguities.resolve_ambiguities_dpll ctx ast in
   Utils.debug_print Format.pp_print_string ppf "\nResolving grammar ambiguities complete:\n";
+  Utils.debug_print Ast.pp_print_ast ppf ast;
+
+  (* Abstract away dependent terms in the grammar *)
+  Utils.debug_print Format.pp_print_string ppf "\nDependent term abstraction:\n";
+  let dep_map, ast, ctx = AbstractDeps.abstract_dependencies ctx ast in 
   Utils.debug_print Ast.pp_print_ast ppf ast;
 
   if not !Flags.only_parse then (
@@ -10,16 +15,21 @@ let dpll_leaf ppf ctx ast _dep_map =
     let sygus_ast = Dpll.dpll ctx ast in 
     Utils.debug_print SygusAst.pp_print_sygus_ast ppf sygus_ast;
     
-    sygus_ast
-  ) else VarLeaf ""
+    dep_map, sygus_ast
+  ) else Utils.StringMap.empty, VarLeaf ""
 
 
-let sygus_leaf: Format.formatter -> TypeChecker.context -> Ast.ast -> Ast.semantic_constraint Utils.StringMap.t -> SygusAst.sygus_ast
-= fun ppf ctx ast dep_map ->
+let sygus_leaf: Format.formatter -> TypeChecker.context -> Ast.ast -> Ast.semantic_constraint Utils.StringMap.t * SygusAst.sygus_ast
+= fun ppf ctx ast ->
   if not !Flags.only_parse then (
     (* Resolve ambiguities in constraints *)
     let ast = ResolveAmbiguities.resolve_ambiguities ctx ast in
     Utils.debug_print Format.pp_print_string ppf "\nResolving grammar ambiguities complete:\n";
+    Utils.debug_print Ast.pp_print_ast ppf ast;
+
+    (* Abstract away dependent terms in the grammar *)
+    Utils.debug_print Format.pp_print_string ppf "\nDependent term abstraction:\n";
+    let dep_map, ast, ctx = AbstractDeps.abstract_dependencies ctx ast in 
     Utils.debug_print Ast.pp_print_ast ppf ast;
 
     (* Convert NTExprs to Match expressions *)
@@ -40,8 +50,8 @@ let sygus_leaf: Format.formatter -> TypeChecker.context -> Ast.ast -> Ast.semant
     Utils.debug_print Format.pp_print_string ppf "\nSyGuS ASTs:\n";
     Format.pp_print_flush ppf ();
 
-    sygus_ast
-  ) else VarLeaf ""
+    dep_map, sygus_ast
+  ) else Utils.StringMap.empty, VarLeaf ""
 
 let dac ppf ctx ast =
   match SyntaxChecker.check_if_recursive ast with | true -> None | false -> 
@@ -51,11 +61,6 @@ let dac ppf ctx ast =
   let ast = Utils.recurse_until_fixpoint ast (=) MergeOverlappingConstraints.merge_overlapping_constraints in
   Utils.debug_print Ast.pp_print_ast ppf ast;
 
-  (* Abstract away dependent terms in the grammar *)
-  Utils.debug_print Format.pp_print_string ppf "\nDependent term abstraction:\n";
-  let dep_map, ast, ctx = AbstractDeps.abstract_dependencies ctx ast in 
-  Utils.debug_print Ast.pp_print_ast ppf ast;
-
   (* Divide and conquer *)
   Utils.debug_print Format.pp_print_string ppf "\n\nDivide and conquer:\n";
   let asts = DivideAndConquer.split_ast ast in 
@@ -63,12 +68,14 @@ let dac ppf ctx ast =
   Utils.debug_print Lib.pp_print_newline ppf ();
    
   (* Race leaf-level solvers *)
-  let sygus_asts = Parallelism.parallel_map  (fun ast -> 
+  let dep_maps, sygus_asts = Parallelism.parallel_map  (fun ast -> 
     Parallelism.race_n [
-      (fun () -> sygus_leaf ppf ctx ast dep_map), "sygus_leaf" ;
-      (fun () -> dpll_leaf ppf ctx ast dep_map), "dpll_leaf" ;
+      (fun () -> sygus_leaf ppf ctx ast), "sygus_leaf" ;
+      (fun () -> dpll_leaf ppf ctx ast), "dpll_leaf" ;
     ]
-  ) asts in
+  ) asts |> List.split in
+
+  let dep_map = List.fold_left (Utils.StringMap.merge Lib.union_keys) Utils.StringMap.empty dep_maps in 
 
   (* Recombine to single AST *)
   Utils.debug_print Format.pp_print_string ppf "\nRecombining to single AST:\n";

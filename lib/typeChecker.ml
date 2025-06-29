@@ -206,6 +206,8 @@ let rec infer_type_expr: context -> mode -> expr -> il_type option
   let inf_ty1 = infer_type_expr ctx mode expr1 in 
   let inf_ty2 = infer_type_expr ctx mode expr2 in (
   match inf_ty1, inf_ty2 with 
+  | Some Placeholder, Some String 
+  | Some String, Some Placeholder -> Some Bool
   | Some inf_ty1, Some inf_ty2 ->
     if not (inf_ty1 = inf_ty2) 
     then

@@ -27,20 +27,11 @@ let rec generate_all_possible_exprs: TC.context -> string list -> A.expr -> A.ex
          This might allow us to include indices in the input syntax for no (or little) extra cost *)
       | (nt', Some idx) :: [] -> [[(nt', Some idx)]]
       | (nt', None) :: [] -> 
-        (* let rhs_nts = match Utils.StringMap.find nt ctx with 
-        | ADT options -> List.flatten options
-        | _ -> [nt']
-        in *)
         let nt_options = 
           nts |>
           List.filter (fun nt'' -> String.equal nt' nt'') |>
           List.mapi (fun i rhs_nt -> (rhs_nt, Some i)) 
         in 
-        let nt_options = 
-          if List.length nt_options = 1 
-          then [(fst (List.hd nt_options), None)] 
-          else nt_options 
-        in
         (* let nt_options  *)
         List.map (fun nt_option -> [nt_option]) nt_options
       | (nt', Some idx) :: nt_expr' -> 
@@ -58,11 +49,6 @@ let rec generate_all_possible_exprs: TC.context -> string list -> A.expr -> A.ex
           List.filter (fun nt'' -> String.equal nt' nt'') |>
           List.mapi (fun i rhs_nt -> (rhs_nt, Some i)) 
         in 
-        let nt_options = 
-          if List.length nt_options = 1 
-          then [(fst (List.hd nt_options), None)] 
-          else nt_options 
-        in
         let nts' = match Utils.StringMap.find nt' ctx with 
         | ADT options -> List.flatten options
         | _ -> [nt']
@@ -97,10 +83,12 @@ let rec generate_all_possible_exprs: TC.context -> string list -> A.expr -> A.ex
   | Length expr -> 
     let exprs = r expr in 
     List.map (fun e -> A.Length e) exprs
+  | BVCast (i, expr) -> 
+    let exprs = r expr in 
+    List.map (fun e -> A.BVCast (i, e)) exprs 
   | BVConst _ 
   | BLConst _ 
   | BConst _ 
-  | BVCast _  
   | PhConst _
   | IntConst _ 
   | StrConst _ 
@@ -112,7 +100,8 @@ let process_sc: TC.context -> string list -> A.semantic_constraint -> A.semantic
     let exprs = generate_all_possible_exprs ctx nts expr in
     let expr = match exprs with 
       | _ :: _ :: _ -> Utils.error ("Dependent term '" ^ nt ^ "' is defined ambiguously")
-      | _ -> expr
+      | expr :: _ -> expr
+      | [] -> Utils.crash "unexpected case"
     in
     Dependency (nt, expr)
   | SyGuSExpr expr -> 

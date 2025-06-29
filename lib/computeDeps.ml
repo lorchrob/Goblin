@@ -117,7 +117,14 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -
   in 
   let child_index = match child_index with 
   | Some child_index -> child_index 
-  | None -> Utils.crash ("Dangling identifier " ^ (fst id) ^ " in semantic constraint") 
+  | None -> 
+    let msg = Format.asprintf "Dangling identifier %s%a in semantic constraint"
+      (fst id) 
+      (fun ppf opt -> match opt with 
+      | Some idx -> Format.fprintf ppf "[%d]" idx 
+      | None -> Format.fprintf ppf "") (snd id)
+    in 
+    Utils.crash msg
   in
   (
   match sygus_ast with 

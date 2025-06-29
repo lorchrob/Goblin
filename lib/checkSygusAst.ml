@@ -100,7 +100,6 @@ let rec check_syntax_semantics: Ast.ast -> SygusAst.sygus_ast -> (unit, string) 
     (* Find this node's corresponding AST element *) 
     let element = List.find_opt (fun element -> match element with
     | A.TypeAnnotation (nt, _, _) -> 
-      print_endline "got here!";
       Utils.str_eq_ci (Utils.extract_base_name constructor) nt 
     | A.ProdRule (nt, _) -> 
       Utils.str_eq_ci (Utils.extract_base_name constructor) nt 
