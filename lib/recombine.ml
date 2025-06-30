@@ -5,11 +5,10 @@ let replace_stub: string -> SygusAst.sygus_ast list -> SygusAst.sygus_ast option
   | BoolLeaf _ | StrLeaf _ | SetLeaf _ -> false 
   | Node ((constructor, _), _) -> 
     (* To compare stubs, we only need the stub ID prefix "_stubN"*)
-    ((Utils.extract_base_name possible_stub = Utils.extract_base_name constructor) && 
-     (Utils.extract_base_name possible_stub <> ""))
+    Utils.extract_base_name possible_stub = Utils.extract_base_name constructor
     || 
     (* For type annotations, we don't use a stub ID *)
-    (possible_stub = constructor)
+    possible_stub = constructor
   ) sygus_asts
 
 (* Invariant: First element of sygus_asts is the combined AST *)

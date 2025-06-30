@@ -16,11 +16,13 @@
                | <_count> <raw-field> <csv-record> 
                { <_count> = 1 + <csv-record>.<_count> ; } ;
 
-<raw-field> ::= <simple-field> | <quoted-field> ;
+// <raw-field> ::= <simple-field> | <quoted-field> ;
 
-<simple-field> :: String ; 
+// <simple-field> :: String ; 
 
-<quoted-field> :: String ;
+// <quoted-field> :: String ;
+
+<raw-field> :: String ;
 
 <nil> :: Placeholder  
   { <nil> = ""; } ; 

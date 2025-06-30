@@ -127,10 +127,12 @@ let process_sc_to_list: TC.context -> string list -> A.semantic_constraint -> A.
    case at a time, ignoring constraints that aren't applicable in that case. *)
 let resolve_ambiguities_dpll: TC.context -> A.ast -> A.ast 
 = fun ctx ast -> List.map (fun element -> match element with
-| A.ProdRule (nt, rhss) -> 
+| A.ProdRule (nt, rhss) ->
+  (*!! Need to assume universally unique IDs *)
+  let nts = List.concat_map A.nts_of_rhs rhss in 
   let rhss = List.map (fun rhs -> match rhs with 
   | A.Rhs (ges, scs) -> 
-    let scs = List.concat_map (process_sc_to_list ctx (A.nts_of_rhs rhs)) scs in
+    let scs = List.concat_map (process_sc_to_list ctx nts) scs in
     A.Rhs (ges, scs) 
   | StubbedRhs _ -> rhs 
   ) rhss in 
@@ -142,9 +144,11 @@ let resolve_ambiguities_dpll: TC.context -> A.ast -> A.ast
 
 let resolve_ambiguities: TC.context -> A.ast -> A.ast 
 = fun ctx ast -> List.map (fun element -> match element with
-| A.ProdRule (nt, rhss) -> 
+| A.ProdRule (nt, rhss) ->
+  (*!! We need to assume universally unique IDs *)
+  let nts = List.concat_map A.nts_of_rhs rhss in 
   let rhss = List.map (fun rhs -> match rhs with 
-  | A.Rhs (ges, scs) -> A.Rhs (ges, List.map (process_sc ctx (A.nts_of_rhs rhs)) scs) 
+  | A.Rhs (ges, scs) -> A.Rhs (ges, List.map (process_sc ctx nts) scs) 
   | StubbedRhs _ -> rhs 
   ) rhss in 
   A.ProdRule (nt, rhss)

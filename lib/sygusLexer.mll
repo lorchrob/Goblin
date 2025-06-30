@@ -28,7 +28,7 @@
     "String", STRINGTYPE ;
     "str", STR ;
     "infeasible", INFEASIBLE ;
-    (* "sat", SAT ; *)
+    "sat", SAT ; 
     "unsat", UNSAT ;
   ] 
 }

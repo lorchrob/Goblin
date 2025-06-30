@@ -268,7 +268,11 @@ and pp_print_expr: ?nt_prefix:string -> TC.context -> Format.formatter -> A.expr
     Format.fprintf ppf "#b%a"
       (Lib.pp_print_list Format.pp_print_int "") bits
   | BConst b ->  Format.fprintf ppf "%b" b
-  | IntConst i -> Format.fprintf ppf "%d" i
+  | IntConst i -> 
+    if i >= 0 then 
+      Format.fprintf ppf "%d" i
+    else 
+      Format.fprintf ppf "(- %d)" (i * -1)
   | StrConst str -> Format.fprintf ppf "%S" str
   | PhConst _ -> Utils.crash "Error: String constants can only be in dependencies (of the form 'nonterminal <- string_literal')"
   | BLConst _ -> Utils.crash "BitList literals not yet fully supported"

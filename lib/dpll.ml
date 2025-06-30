@@ -146,7 +146,11 @@ let rec pp_print_ss ppf = function
 
 let pp_print_model_value ppf = function
 | ConcreteBool b -> Format.pp_print_bool ppf b
-| ConcreteInt i -> Format.pp_print_int ppf i 
+| ConcreteInt i -> 
+  if i >= 0 then 
+    Format.pp_print_int ppf i 
+  else 
+    Format.fprintf ppf "(- %d)" (-1 * i) 
 | ConcretePlaceholder str -> Format.pp_print_string ppf str
 | ConcreteString str -> Format.fprintf ppf "%S" str 
 | ConcreteStringSet ss -> pp_print_ss ppf (Utils.StringSet.to_list ss)
@@ -601,7 +605,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
 
   (* Solver object *)
   let solver = initialize_cvc5 () in
-  let starting_depth_limit = 7 in 
+  let starting_depth_limit = 0 in 
   try
 
   (*** Set up the key data structures ***)
@@ -626,12 +630,12 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
   let exit_flag = ref true in 
   let result = ref None in 
 
-  (* exit flag allows us to toggle between infinite looping (multiple solutions mode) 
-     or stopping after one solution *)
-  while !exit_flag do 
   (* we start at decision level 1 so we can undo all pushed assertions when restarting *)
   new_decision_level solver assertion_level; 
 
+  (* exit flag allows us to toggle between infinite looping (multiple solutions mode) 
+     or stopping after one solution *)
+  while !exit_flag do 
   (* Iteratively expand the frontier and instantiate the derivation tree leaves *)
   while not (is_complete !derivation_tree) do 
     (* It is unclear how to efficiently update the frontier with backtracking in general. 
@@ -799,14 +803,18 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
   exit_flag := false;
   if !Flags.multiple_solutions then (
     exit_flag := true;
-    SA.pp_print_sygus_ast Format.std_formatter r; 
+    Format.fprintf Format.std_formatter "%a$\n" 
+      SA.pp_print_sygus_ast r; 
     Format.pp_print_flush Format.std_formatter ();
 
     (* prepare to generate another solution *)
     initialize_globals derivation_tree start_symbol frontier constraints_to_assert decision_stack declared_variables backtrack_depth; 
     depth_limit := starting_depth_limit;
     issue_solver_command "(pop 1)" solver; 
+    Utils.debug_print Format.pp_print_string Format.std_formatter "Pushing blocking clause" ;
+    (*!! Blocking clause should only reference variables present in the derivation tree *)
     push_blocking_clause model declared_variables solver;
+    issue_solver_command "(push 1)" solver;
   );
   ()
   done; 

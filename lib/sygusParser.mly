@@ -24,6 +24,7 @@ open SygusAst
 %token STRINGTYPE
 %token INFEASIBLE
 %token UNSAT
+%token SAT
 %token SET
 %token SETTYPE
 %token UNION
@@ -42,6 +43,7 @@ open SygusAst
 
 s: 
 | d = sygus_term; EOF { d } 
+| SAT; model = sygus_model; EOF { model } 
 | model = sygus_model; EOF { model } 
 | UNSAT; EOF { VarLeaf "infeasible" }
 
