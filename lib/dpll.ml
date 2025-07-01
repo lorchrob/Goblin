@@ -547,7 +547,7 @@ let assert_and_remove_applicable_constraints constraint_set derivation_tree ast 
 
 let initialize_globals derivation_tree start_symbol frontier constraints_to_assert decision_stack _declared_variables backtrack_depth = 
   (* Incremental construction of output term so far *)
-  derivation_tree := (Node ((start_symbol, None), ref Utils.IntSet.empty, [start_symbol, None], 0, ref []));
+  derivation_tree := (Node ((start_symbol, Some 0), ref Utils.IntSet.empty, [start_symbol, Some 0], 0, ref []));
   (* Tree nodes left to explore *)
   frontier := (DTSet.singleton derivation_tree); 
   (* Keep around constraints we may not need to assert *)
@@ -562,6 +562,7 @@ let initialize_globals derivation_tree start_symbol frontier constraints_to_asse
 
 let backtrack_derivation_tree decision_stack start_symbol depth_limit derivation_tree frontier constraints_to_assert declared_variables backtrack_depth = 
   if B.Stack.is_empty !decision_stack then (
+    Utils.debug_print Format.pp_print_string Format.std_formatter "Also restarting according to backtrack_derivation_tree\n";
     if not !backtrack_depth then raise (Failure "infeasible");
     depth_limit := !depth_limit + 1;
     initialize_globals derivation_tree start_symbol frontier constraints_to_assert decision_stack declared_variables backtrack_depth; 
@@ -577,7 +578,25 @@ let pp_print_model_pair ppf (k, v) =
     k 
     pp_print_model_value v 
 
-let push_blocking_clause model declared_variables solver = 
+let rec get_dt_vars = function 
+| Node ((id, idx), _, _, _, children) -> 
+  let id_str = Format.asprintf "%s%a"
+    id (fun ppf idx -> match idx with | Some idx -> Format.pp_print_int ppf idx | None -> ()) idx in
+  let r = List.map get_dt_vars !children in
+  let r = List.fold_left Utils.StringSet.union Utils.StringSet.empty r in
+  Utils.StringSet.map (fun child -> 
+    if String.equal child "" then id_str 
+    else id_str ^ "_" ^ child
+  ) r
+| ConcreteBitVectorLeaf _| ConcreteSetLeaf _ | ConcreteBitListLeaf _ 
+| ConcreteStringLeaf _ | ConcreteIntLeaf _ | ConcreteBoolLeaf _ 
+| ConcretePlaceholderLeaf _ | SymbolicLeaf _ -> 
+  Utils.StringSet.singleton "" 
+| DependentTermLeaf _ -> Utils.StringSet.empty 
+
+let push_blocking_clause model dt declared_variables solver = 
+  let dt_vars = get_dt_vars !dt in
+  let model = Utils.StringMap.filter (fun var _ -> Utils.StringSet.mem var dt_vars) model in
   let ctx_of_model model = Utils.StringMap.map (function 
   | ConcreteBool _ -> A.Bool 
   | ConcreteInt _ -> A.Int 
@@ -684,7 +703,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
     | Node (nt, visited, path, depth, children) as node -> 
       if depth > !depth_limit then (
         backtrack_depth := true;
-        Utils.debug_print Format.pp_print_string Format.std_formatter "Exceeded depth limit!\n";
+        Utils.debug_print Format.pp_print_string Format.std_formatter ("Exceeded depth limit " ^ (string_of_int !depth_limit) ^ "!\n");
         backtrack_decision_level solver assertion_level; 
         backtrack_derivation_tree decision_stack start_symbol depth_limit derivation_tree 
                                   frontier constraints_to_assert declared_variables backtrack_depth;
@@ -804,17 +823,20 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
   if !Flags.multiple_solutions then (
     exit_flag := true;
     Format.fprintf Format.std_formatter "%a$\n" 
-      SA.pp_print_sygus_ast r; 
+      SA.pp_print_sygus_ast r;
     Format.pp_print_flush Format.std_formatter ();
+
+    depth_limit := starting_depth_limit;
+    (*!! NEED to pop all the way back to zeroth level *)
+    let pop_cmd = Format.asprintf "(pop %d)" !assertion_level in 
+    issue_solver_command pop_cmd solver; 
+    Utils.debug_print Format.pp_print_string Format.std_formatter "Pushing blocking clause\n" ;
+    push_blocking_clause model derivation_tree declared_variables solver;
+    issue_solver_command "(push 1)" solver;
+    assertion_level := 1;
 
     (* prepare to generate another solution *)
     initialize_globals derivation_tree start_symbol frontier constraints_to_assert decision_stack declared_variables backtrack_depth; 
-    depth_limit := starting_depth_limit;
-    issue_solver_command "(pop 1)" solver; 
-    Utils.debug_print Format.pp_print_string Format.std_formatter "Pushing blocking clause" ;
-    (*!! Blocking clause should only reference variables present in the derivation tree *)
-    push_blocking_clause model declared_variables solver;
-    issue_solver_command "(push 1)" solver;
   );
   ()
   done; 

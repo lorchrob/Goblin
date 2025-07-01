@@ -133,6 +133,19 @@ let resolve_ambiguities_dpll: TC.context -> A.ast -> A.ast
   let rhss = List.map (fun rhs -> match rhs with 
   | A.Rhs (ges, scs) -> 
     let scs = List.concat_map (process_sc_to_list ctx nts) scs in
+    (* Filter out scs with dot notation expressions of the form <nt1>[n], where 
+       [n] does not apply to this production rule *)
+    let scs = List.filter (function 
+    | A.SyGuSExpr expr  
+    | A.Dependency (_, expr) ->
+      let nts = A.get_nts_from_expr2 expr |> List.map List.hd in
+      List.for_all (fun (nt1, idx1) -> 
+        List.exists (function 
+        | A.StubbedNonterminal _ -> false 
+        | A.Nonterminal (nt2, idx2) -> nt1 = nt2 && idx1 = idx2 
+        ) ges
+      ) nts  
+    ) scs in 
     A.Rhs (ges, scs) 
   | StubbedRhs _ -> rhs 
   ) rhss in 
