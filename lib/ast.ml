@@ -442,7 +442,7 @@ let nts_of_rhs: prod_rule_rhs -> string list
   | Nonterminal (nt, _) -> nt 
   | StubbedNonterminal (nt, _) -> nt (* TODO: Not sure which tuple element we want, first or second *)
   ) ges
-| StubbedRhs _ -> assert false
+| StubbedRhs _ -> [] 
 
 let rec expr_contains_dangling_nt: Utils.SILSet.t -> expr -> bool 
 = fun ctx expr -> 

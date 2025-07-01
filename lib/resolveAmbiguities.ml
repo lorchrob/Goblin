@@ -158,10 +158,8 @@ let resolve_ambiguities_dpll: TC.context -> A.ast -> A.ast
 let resolve_ambiguities: TC.context -> A.ast -> A.ast 
 = fun ctx ast -> List.map (fun element -> match element with
 | A.ProdRule (nt, rhss) ->
-  (*!! We need to assume universally unique IDs *)
-  let nts = List.concat_map A.nts_of_rhs rhss in 
   let rhss = List.map (fun rhs -> match rhs with 
-  | A.Rhs (ges, scs) -> A.Rhs (ges, List.map (process_sc ctx nts) scs) 
+  | A.Rhs (ges, scs) -> A.Rhs (ges, List.map (process_sc ctx (A.nts_of_rhs rhs)) scs) 
   | StubbedRhs _ -> rhs 
   ) rhss in 
   A.ProdRule (nt, rhss)

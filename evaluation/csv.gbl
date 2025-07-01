@@ -4,7 +4,7 @@
 
 <csv-header> ::= <csv-record> <_num_cols> 
                { <csv-record>.<_count> = <_num_cols> ; 
-                 <_num_cols> > 5; } ; 
+                 <_num_cols> > 2; } ; 
 
 <csv-records> ::= <_num_cols> <csv-record> <csv-records> 
                 { <csv-record>.<_count> = <_num_cols> ; 

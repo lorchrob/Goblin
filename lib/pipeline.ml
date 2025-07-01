@@ -93,7 +93,8 @@ let main_pipeline ?(engine: Flags.engine option = None) filename =
   (* Serialize! *)
   Utils.debug_print Format.pp_print_string ppf "\nFinal result:\n";
   let output = Utils.capture_output SygusAst.serialize sygus_ast in 
-  SygusAst.pp_print_sygus_ast Format.std_formatter sygus_ast;
+  if not !Flags.multiple_solutions then
+    SygusAst.pp_print_sygus_ast Format.std_formatter sygus_ast;
   sygus_ast, output, ast_to_return
 
 let rec collect_results results =

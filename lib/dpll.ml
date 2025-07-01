@@ -251,16 +251,22 @@ let read_get_model_response solver =
   result
   
 
-let initialize_cvc5 () : solver_instance =
+let initialize_solver () : solver_instance =
   let cvc5 = Utils.find_command_in_path "cvc5" in
   let cmd = 
     Printf.sprintf "%s --produce-models --global-declarations --dag-thresh=0 --lang=smtlib2 --incremental" 
       cvc5 
   in
+  (*let z3 = Utils.find_command_in_path "z3" in
+  let cmd = 
+    Printf.sprintf "%s -smt2 -in" 
+     z3 
+  in*)
   let (in_chan, out_chan, err_chan) = Unix.open_process_full cmd (Unix.environment ()) in
   let set_logic_command = Format.asprintf "(set-logic QF_BVSLIAFS)\n" in
   let solver = { in_channel = in_chan; out_channel = out_chan; err_channel = err_chan } in
   issue_solver_command set_logic_command solver;
+  (*issue_solver_command "(set-option :produce-models true)\n(set-option :global-declarations true)\n" solver;*)
   solver
 
 let assert_smt_constraint: solver_instance -> Ast.expr -> unit 
@@ -527,17 +533,17 @@ let constraint_is_applicable expr derivation_tree ast =
 let assert_and_remove_applicable_constraints constraint_set derivation_tree ast solver =
   let constraints_to_remove = 
     ConstraintSet.fold (fun expr acc -> 
-      if constraint_is_applicable expr derivation_tree ast then (
+      if constraint_is_applicable expr !derivation_tree ast then (
         (* declare_smt_variables declared_variables (Utils.StringMap.singleton path' A.Int) solver; *)
         if !Flags.debug then Format.fprintf Format.std_formatter "Constraint %a is applicable in derivation tree %a\n"
           A.pp_print_expr expr 
-          pp_print_derivation_tree derivation_tree;
+          pp_print_derivation_tree !derivation_tree;
         assert_smt_constraint solver expr;
         ConstraintSet.add expr acc
       ) else (
-        (if !Flags.debug then Format.fprintf Format.std_formatter "Constraint %a is not applicable in derivation tree %a\n"
+        (*(if !Flags.debug then Format.fprintf Format.std_formatter "Constraint %a is not applicable in derivation tree %a\n"
           A.pp_print_expr expr 
-          pp_print_derivation_tree derivation_tree);
+          pp_print_derivation_tree derivation_tree);*)
         acc
       )
     )  !constraint_set ConstraintSet.empty 
@@ -568,7 +574,10 @@ let backtrack_derivation_tree decision_stack start_symbol depth_limit derivation
     initialize_globals derivation_tree start_symbol frontier constraints_to_assert decision_stack declared_variables backtrack_depth; 
   ) else (
     match !(B.Stack.pop !decision_stack) with 
-    | Node (_, _, _, _, children) -> 
+    | Node ((nt, idx), _, _, _, children) -> 
+      if !Flags.debug then 
+        Format.fprintf Format.std_formatter "Popping at node %s[%d]\n" 
+          nt (Option.get idx);
       children := []
     | _ -> Utils.crash "Unexpected case in backtrack_derivation_tree"
   )
@@ -621,10 +630,11 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
   | A.TypeAnnotation (nt, _, _) -> nt, [nt, Some 0]
   | ProdRule (nt, _) -> nt, [nt, Some 0]
   in 
-
   (* Solver object *)
-  let solver = initialize_cvc5 () in
+  let solver = initialize_solver () in
   let starting_depth_limit = 0 in 
+  let num_solutions = ref 0 in 
+  let num_solutions_to_find = 5 in 
   try
 
   (*** Set up the key data structures ***)
@@ -663,8 +673,8 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
     frontier := compute_new_frontier !derivation_tree;
 
     if !Flags.debug then Format.fprintf Format.std_formatter "------------------------\n";
-    if !Flags.debug then Format.fprintf Format.std_formatter "Constraints to assert: %a\n"
-      (Lib.pp_print_list A.pp_print_expr " ") (ConstraintSet.elements !constraints_to_assert);
+    (*if !Flags.debug then Format.fprintf Format.std_formatter "Constraints to assert: %a\n"
+      (Lib.pp_print_list A.pp_print_expr " ") (ConstraintSet.elements !constraints_to_assert);*)
     if !Flags.debug then Format.fprintf Format.std_formatter "Derivation tree: %a\n"
       pp_print_derivation_tree !derivation_tree;
     if !Flags.debug then Format.fprintf Format.std_formatter "Frontier: %a\n"
@@ -725,7 +735,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
         | A.SyGuSExpr expr ->
           declare_smt_variables declared_variables (Utils.StringMap.singleton path' ty) solver; 
           constraints_to_assert := ConstraintSet.add (universalize_expr true path expr) !constraints_to_assert;
-          constraints_to_assert := assert_and_remove_applicable_constraints constraints_to_assert !derivation_tree ast solver;
+          constraints_to_assert := assert_and_remove_applicable_constraints constraints_to_assert derivation_tree ast solver;
           let model = get_smt_result ast solver in  
           (match model with 
           | Ok model -> 
@@ -771,13 +781,13 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
             declare_smt_variables declared_variables ty_ctx solver;
             constraints_to_assert := ConstraintSet.add (universalize_expr false path expr) !constraints_to_assert;
             (* don't instantiate yet -- we haven't hit the leaf nodes *)
-            (* derivation_tree := instantiate_terminals model !derivation_tree;  *)
+            (* derivation_tree := instantiate_terminals model derivation_tree;  *)
           | A.Dependency _ -> ()
           ) scs;
 
           (* Assert the constraints from this choice (and also try to assert constraints hanging around from earlier on,
              but maybe weren't definitely applicable until this decision) *)
-          constraints_to_assert := assert_and_remove_applicable_constraints constraints_to_assert !derivation_tree ast solver;
+          constraints_to_assert := assert_and_remove_applicable_constraints constraints_to_assert derivation_tree ast solver;
           let model = get_smt_result ast solver in
           (match model with 
           | Ok _ -> (* sat *)
@@ -821,7 +831,8 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
   result := Some r;
   exit_flag := false;
   if !Flags.multiple_solutions then (
-    exit_flag := true;
+    num_solutions := !num_solutions + 1;
+    exit_flag := not (!num_solutions = num_solutions_to_find);
     Format.fprintf Format.std_formatter "%a$\n" 
       SA.pp_print_sygus_ast r;
     Format.pp_print_flush Format.std_formatter ();

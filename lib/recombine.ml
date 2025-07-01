@@ -14,9 +14,6 @@ let replace_stub: string -> SygusAst.sygus_ast list -> SygusAst.sygus_ast option
 (* Invariant: First element of sygus_asts is the combined AST *)
 let rec recombine: SygusAst.sygus_ast list -> SygusAst.sygus_ast 
 = fun sygus_asts -> 
-  Format.fprintf Format.std_formatter "Sygus ASTs: %a\n"
-   (Lib.pp_print_list SygusAst.pp_print_sygus_ast "\n") sygus_asts; 
-  Format.pp_print_flush Format.std_formatter ();
   match sygus_asts with 
 | [] -> assert false
 | SetLeaf _ :: _ | IntLeaf _ :: _ | BVLeaf _ :: _ 
