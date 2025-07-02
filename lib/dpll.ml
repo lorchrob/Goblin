@@ -238,7 +238,8 @@ let read_get_model_response solver =
   let rec loop acc parens =
     try
       let line = input_line solver.in_channel in
-      let parens = parens + (List.length (String.split_on_char '(' line) - 1) - (List.length (String.split_on_char ')' line) - 1) in
+      let parens = parens + (List.length (String.split_on_char '(' line) - 1) 
+                          - (List.length (String.split_on_char ')' line) - 1) in
       let acc = acc ^ "\n" ^ line in
       if parens <= 0 && (not (String.equal line "sat")) then
         acc
@@ -388,7 +389,8 @@ let rec instantiate_terminals: model_value Utils.StringMap.t -> derivation_tree 
   let r = instantiate_terminals model in 
   match derivation_tree with 
   | ConcreteIntLeaf (path, _) | ConcreteBoolLeaf (path, _) | ConcreteBitListLeaf (path, _)
-  | ConcreteBitVectorLeaf (path, _, _) | ConcretePlaceholderLeaf (path, _) | ConcreteStringLeaf (path, _) | ConcreteSetLeaf (path, _) -> 
+  | ConcreteBitVectorLeaf (path, _, _) | ConcretePlaceholderLeaf (path, _) 
+  | ConcreteStringLeaf (path, _) | ConcreteSetLeaf (path, _) -> 
     let path' = string_of_path (Utils.init path) |> String.lowercase_ascii in
     (match Utils.StringMap.find_opt path' model with 
     | Some (ConcreteInt int) -> ConcreteIntLeaf (path, int)
@@ -398,7 +400,8 @@ let rec instantiate_terminals: model_value Utils.StringMap.t -> derivation_tree 
     | Some (ConcreteString str) -> ConcreteStringLeaf (path, str)
     | Some (ConcreteStringSet s) -> ConcreteSetLeaf (path, ConcreteStringSetLeaf s)
     | Some (ConcretePlaceholder ph) -> ConcretePlaceholderLeaf (path, ph)
-    | None -> SymbolicLeaf (ty_of_concrete_leaf derivation_tree, path) (* Model contain unconstrained variables not present in this derivation tree *))
+    (* Model contain unconstrained variables not present in this derivation tree *)
+    | None -> SymbolicLeaf (ty_of_concrete_leaf derivation_tree, path)) 
   | SymbolicLeaf (ty, path) -> 
     let path' = string_of_path (Utils.init path) |> String.lowercase_ascii in
     (match Utils.StringMap.find_opt path' model with 
@@ -511,7 +514,8 @@ let rec nt_will_be_reached derivation_tree ast nt =
         | Node (nt2, _, _, _, _) -> str = nt2
         | SymbolicLeaf (_, path) -> str = (Utils.last path)
         | ConcreteIntLeaf (path, _) | ConcreteBoolLeaf (path, _) | ConcreteBitListLeaf (path, _) 
-        | ConcreteBitVectorLeaf (path, _, _) | ConcretePlaceholderLeaf (path, _) | ConcreteStringLeaf (path, _) | ConcreteSetLeaf (path, _) -> str = (Utils.last path)
+        | ConcreteBitVectorLeaf (path, _, _) | ConcretePlaceholderLeaf (path, _) 
+        | ConcreteStringLeaf (path, _) | ConcreteSetLeaf (path, _) -> str = (Utils.last path)
         | DependentTermLeaf nt2 -> (fst str) = nt2
         ) !children with 
         | Some child -> nt_will_be_reached child ast nts
@@ -530,8 +534,8 @@ let constraint_is_applicable expr derivation_tree ast =
     acc && nt_will_be_reached derivation_tree ast (List.tl nt)
   ) true nts
 
-let assert_and_remove_applicable_constraints constraint_set derivation_tree ast solver =
-  let constraints_to_remove = 
+let assert_applicable_constraints constraint_set derivation_tree ast solver =
+  let _constraints_to_remove = 
     ConstraintSet.fold (fun expr acc -> 
       if constraint_is_applicable expr !derivation_tree ast then (
         (* declare_smt_variables declared_variables (Utils.StringMap.singleton path' A.Int) solver; *)
@@ -548,10 +552,28 @@ let assert_and_remove_applicable_constraints constraint_set derivation_tree ast 
       )
     )  !constraint_set ConstraintSet.empty 
   in
-  constraint_set := ConstraintSet.diff !constraint_set constraints_to_remove;
+  (* unsound! Constraints may need to be reasserted, because they can be spuriously popped. *)
+  (*constraint_set := ConstraintSet.diff !constraint_set constraints_to_remove;*)
   !constraint_set
 
-let initialize_globals derivation_tree start_symbol frontier constraints_to_assert decision_stack _declared_variables backtrack_depth = 
+let rec collect_constraints_of_dt ast = function 
+  | Node ((nt, _), _, _, _, children) -> 
+    let child_constraints = List.map (collect_constraints_of_dt ast) !children in 
+    let child_constraints = List.fold_left ConstraintSet.union ConstraintSet.empty child_constraints in
+    let grammar_rule = List.find (fun element -> match element with 
+      | A.ProdRule (nt2, _) 
+      | TypeAnnotation (nt2, _, _) -> nt = nt2
+      ) ast in 
+    let constraints = A.scs_of_element grammar_rule |> 
+    List.concat_map (fun sc -> match sc with 
+    | A.SyGuSExpr expr -> [expr] 
+    | Dependency _ -> [] 
+    ) |> ConstraintSet.of_list in 
+    ConstraintSet.union constraints child_constraints
+  | _ -> ConstraintSet.empty
+
+let initialize_globals derivation_tree start_symbol frontier constraints_to_assert 
+                       decision_stack _declared_variables backtrack_depth = 
   (* Incremental construction of output term so far *)
   derivation_tree := (Node ((start_symbol, Some 0), ref Utils.IntSet.empty, [start_symbol, Some 0], 0, ref []));
   (* Tree nodes left to explore *)
@@ -566,19 +588,28 @@ let initialize_globals derivation_tree start_symbol frontier constraints_to_asse
   backtrack_depth := false; 
   ()
 
-let backtrack_derivation_tree decision_stack start_symbol depth_limit derivation_tree frontier constraints_to_assert declared_variables backtrack_depth = 
+let backtrack_derivation_tree ast decision_stack start_symbol depth_limit derivation_tree  
+                              frontier constraints_to_assert declared_variables backtrack_depth = 
   if B.Stack.is_empty !decision_stack then (
     Utils.debug_print Format.pp_print_string Format.std_formatter "Also restarting according to backtrack_derivation_tree\n";
-    if not !backtrack_depth then raise (Failure "infeasible");
+    (* unsound *)
+    (*if not !backtrack_depth then raise (Failure "infeasible");*)
     depth_limit := !depth_limit + 1;
-    initialize_globals derivation_tree start_symbol frontier constraints_to_assert decision_stack declared_variables backtrack_depth; 
+    initialize_globals derivation_tree start_symbol frontier constraints_to_assert 
+                       decision_stack declared_variables backtrack_depth; 
   ) else (
     match !(B.Stack.pop !decision_stack) with 
     | Node ((nt, idx), _, _, _, children) -> 
       if !Flags.debug then 
         Format.fprintf Format.std_formatter "Popping at node %s[%d]\n" 
           nt (Option.get idx);
-      children := []
+      children := []; 
+      (* Remove constraints that are_rooted_nodes that are no longer in the derivation tree *)
+      (* Not sure if this is actually worth it efficiency wise (keeping these constraints around is sound *)
+      let constraints_to_remove = List.map (collect_constraints_of_dt ast) !children |> 
+        List.fold_left ConstraintSet.union ConstraintSet.empty in
+      constraints_to_assert := ConstraintSet.diff !constraints_to_assert constraints_to_remove; 
+      ()
     | _ -> Utils.crash "Unexpected case in backtrack_derivation_tree"
   )
 
@@ -605,6 +636,10 @@ let rec get_dt_vars = function
 
 let push_blocking_clause model dt declared_variables solver = 
   let dt_vars = get_dt_vars !dt in
+  let dt_vars = Utils.StringSet.map (fun s -> String.lowercase_ascii s) dt_vars in
+  (*Format.fprintf Format.std_formatter "dt_vars: %a, model vars: %a\n" 
+    (Lib.pp_print_list Format.pp_print_string ", ") (Utils.StringSet.to_list dt_vars)  
+    (Lib.pp_print_list Format.pp_print_string ", ") (Utils.StringMap.bindings model |> List.map fst); *)
   let model = Utils.StringMap.filter (fun var _ -> Utils.StringSet.mem var dt_vars) model in
   let ctx_of_model model = Utils.StringMap.map (function 
   | ConcreteBool _ -> A.Bool 
@@ -632,9 +667,9 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
   in 
   (* Solver object *)
   let solver = initialize_solver () in
-  let starting_depth_limit = 0 in 
+  let starting_depth_limit = 10 in 
   let num_solutions = ref 0 in 
-  let num_solutions_to_find = 5 in 
+  let num_solutions_to_find = 100 in 
   try
 
   (*** Set up the key data structures ***)
@@ -713,9 +748,10 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
     | Node (nt, visited, path, depth, children) as node -> 
       if depth > !depth_limit then (
         backtrack_depth := true;
-        Utils.debug_print Format.pp_print_string Format.std_formatter ("Exceeded depth limit " ^ (string_of_int !depth_limit) ^ "!\n");
+        Utils.debug_print Format.pp_print_string Format.std_formatter 
+          ("Exceeded depth limit " ^ (string_of_int !depth_limit) ^ "!\n");
         backtrack_decision_level solver assertion_level; 
-        backtrack_derivation_tree decision_stack start_symbol depth_limit derivation_tree 
+        backtrack_derivation_tree ast decision_stack start_symbol depth_limit derivation_tree 
                                   frontier constraints_to_assert declared_variables backtrack_depth;
       ) else 
 
@@ -735,7 +771,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
         | A.SyGuSExpr expr ->
           declare_smt_variables declared_variables (Utils.StringMap.singleton path' ty) solver; 
           constraints_to_assert := ConstraintSet.add (universalize_expr true path expr) !constraints_to_assert;
-          constraints_to_assert := assert_and_remove_applicable_constraints constraints_to_assert derivation_tree ast solver;
+          constraints_to_assert := assert_applicable_constraints constraints_to_assert derivation_tree ast solver;
           let model = get_smt_result ast solver in  
           (match model with 
           | Ok model -> 
@@ -743,7 +779,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
             derivation_tree := instantiate_terminals model !derivation_tree; 
           | Error () -> 
             backtrack_decision_level solver assertion_level;
-            backtrack_derivation_tree decision_stack start_symbol depth_limit derivation_tree 
+            backtrack_derivation_tree ast decision_stack start_symbol depth_limit derivation_tree 
                                       frontier constraints_to_assert declared_variables backtrack_depth;
           )
         | A.Dependency _ -> ()
@@ -787,15 +823,16 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
 
           (* Assert the constraints from this choice (and also try to assert constraints hanging around from earlier on,
              but maybe weren't definitely applicable until this decision) *)
-          constraints_to_assert := assert_and_remove_applicable_constraints constraints_to_assert derivation_tree ast solver;
+          constraints_to_assert := assert_applicable_constraints constraints_to_assert derivation_tree ast solver;
           let model = get_smt_result ast solver in
           (match model with 
           | Ok _ -> (* sat *)
-            if !Flags.debug then Format.pp_print_string Format.std_formatter "it was SAT, waiting to expand before instantiating in derivation tree\n"; 
+            if !Flags.debug then Format.pp_print_string Format.std_formatter 
+              "it was SAT, waiting to expand before instantiating in derivation tree\n"; 
           | Error () -> (* unsat *)
             if !Flags.debug then Format.pp_print_string Format.std_formatter "it was UNSAT, backtracking\n"; 
             backtrack_decision_level solver assertion_level;
-            backtrack_derivation_tree decision_stack start_symbol depth_limit derivation_tree 
+            backtrack_derivation_tree ast decision_stack start_symbol depth_limit derivation_tree 
                                       frontier constraints_to_assert declared_variables backtrack_depth;
           ); 
   done;
@@ -814,7 +851,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
   | Error () -> (* unsat *)
     if !Flags.debug then Format.pp_print_string Format.std_formatter "it was UNSAT, backtracking\n"; 
     backtrack_decision_level solver assertion_level;
-    backtrack_derivation_tree decision_stack start_symbol depth_limit derivation_tree 
+    backtrack_derivation_tree ast decision_stack start_symbol depth_limit derivation_tree 
                               frontier constraints_to_assert declared_variables backtrack_depth;
   ); 
 
@@ -838,7 +875,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
     Format.pp_print_flush Format.std_formatter ();
 
     depth_limit := starting_depth_limit;
-    (*!! NEED to pop all the way back to zeroth level *)
+    (* Need to pop all the way back to zeroth level so we can assert persisting blocking clause *)
     let pop_cmd = Format.asprintf "(pop %d)" !assertion_level in 
     issue_solver_command pop_cmd solver; 
     Utils.debug_print Format.pp_print_string Format.std_formatter "Pushing blocking clause\n" ;
@@ -847,7 +884,8 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
     assertion_level := 1;
 
     (* prepare to generate another solution *)
-    initialize_globals derivation_tree start_symbol frontier constraints_to_assert decision_stack declared_variables backtrack_depth; 
+    initialize_globals derivation_tree start_symbol frontier constraints_to_assert 
+                       decision_stack declared_variables backtrack_depth; 
   );
   ()
   done; 
