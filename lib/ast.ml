@@ -360,8 +360,8 @@ and pp_print_expr: Format.formatter -> expr -> unit
     (Lib.pp_print_list Format.pp_print_int "") bits
 | BConst b -> Format.fprintf ppf "%b" b
 | IntConst i -> Format.fprintf ppf "%d" i
-| PhConst s -> Format.fprintf ppf "%S" s
-| StrConst s -> Format.fprintf ppf "%s" s
+| PhConst s -> Format.fprintf ppf "\"%s\"" s
+| StrConst s -> Format.fprintf ppf "\"%s\"" s
 
 let pp_print_semantic_constraint: Format.formatter -> semantic_constraint -> unit 
 = fun ppf sc -> match sc with 
