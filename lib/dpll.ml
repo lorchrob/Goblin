@@ -204,16 +204,19 @@ let initialize_solver () : solver_instance =
     Printf.sprintf "%s --produce-models --global-declarations --dag-thresh=0 --lang=smtlib2 --incremental" 
       cvc5 
   in
+  let set_logic_command = Format.asprintf "(set-logic QF_BVSLIAFS)\n" in
+
   (*let z3 = Utils.find_command_in_path "z3" in
   let cmd = 
     Printf.sprintf "%s -smt2 -in" 
      z3 
-  in*)
+  in
+  let set_logic_command = Format.asprintf "(set-logic QF_SLIA)\n" in*)
+
   let (in_chan, out_chan, err_chan) = Unix.open_process_full cmd (Unix.environment ()) in
-  let set_logic_command = Format.asprintf "(set-logic QF_BVSLIAFS)\n" in
   let solver = { in_channel = in_chan; out_channel = out_chan; err_channel = err_chan } in
   issue_solver_command set_logic_command solver;
-  (*issue_solver_command "(set-option :produce-models true)\n(set-option :global-declarations true)\n" solver;*)
+  issue_solver_command "(set-option :produce-models true)\n(set-option :global-declarations true)\n" solver;
   solver
 
 let assert_smt_constraint: solver_instance -> Ast.expr -> unit 
@@ -756,9 +759,11 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
 
   (* Solver object *)
   let solver = initialize_solver () in
-
-  let starting_depth_limit = 4 in 
-  let restart_rate = -1 in 
+ 
+  (*!! IDEA: dynamically alter starting depth limit *)
+  (*** HYPERPARAMETERS *)
+  let starting_depth_limit = 8 in 
+  let restart_rate = 10000 in 
   let num_solutions = ref 0 in 
   let num_solutions_to_find = -1 in 
   let num_iterations = ref 0 in
@@ -797,7 +802,11 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
      or stopping after one solution *)
   while !exit_flag do 
   while not (is_complete !derivation_tree) do
+    Format.pp_print_flush Format.std_formatter () ;
     num_iterations := !num_iterations + 1;
+
+    (*if !num_iterations mod 100 = 0 then 
+      Format.fprintf Format.std_formatter "num_iterations: %d\n" !num_iterations; *)
      
     if !Flags.debug then Format.fprintf Format.std_formatter "------------------------\n";
     (*if !Flags.debug then Format.fprintf Format.std_formatter "Constraints to assert: %a\n"
@@ -824,6 +833,20 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
       pp_print_derivation_tree !derivation_tree 
       pp_print_derivation_tree expanded_node;
 
+     if !num_iterations = restart_rate then (
+        num_iterations := 0;
+        (*Format.fprintf Format.std_formatter "Restarting\n";*)
+        let pop_cmd = Format.asprintf "(pop %d)" !assertion_level in 
+        issue_solver_command pop_cmd solver; 
+        issue_solver_command "(push 1)" solver;
+
+        (* prepare to generate another solution *)
+        assertion_level := 1;
+        depth_limit := starting_depth_limit;
+        initialize_globals ctx ast derivation_tree start_symbol constraints_to_assert 
+                           decision_stack declared_variables backtrack_depth curr_st_node declared_variables solver; 
+    ) else 
+
     (* Assert constraints for the expanded node *)
     match expanded_node, !curr_st_node with 
     (SymbolicLeaf _ | ConcreteIntLeaf _ | DependentTermLeaf _ | ConcreteSetLeaf _ 
@@ -841,17 +864,6 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
           ("Exceeded depth limit " ^ (string_of_int !depth_limit) ^ "!\n");
         backtrack ctx ast assertion_level decision_stack solver backtrack_depth declared_variables 
                   constraints_to_assert depth_limit start_symbol derivation_tree curr_st_node 
-      ) else if !num_iterations = restart_rate then (
-        (*Format.fprintf Format.std_formatter "Restarting\n";*)
-        let pop_cmd = Format.asprintf "(pop %d)" !assertion_level in 
-        issue_solver_command pop_cmd solver; 
-        issue_solver_command "(push 1)" solver;
-
-        (* prepare to generate another solution *)
-        assertion_level := 1;
-        depth_limit := starting_depth_limit;
-        initialize_globals ctx ast derivation_tree start_symbol constraints_to_assert 
-                           decision_stack declared_variables backtrack_depth curr_st_node declared_variables solver; 
       ) else 
 
       (* Find the associated AST rule for the new expansion *)
