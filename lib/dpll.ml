@@ -337,6 +337,79 @@ let rec collect_constraints_of_dt ast = function
     ConstraintSet.union constraints child_constraints
   | _ -> ConstraintSet.empty
 
+(* Determine whether an nt, in dot notation, will __necessarily__ be reached 
+   in a given derivation_tree *)
+let rec nt_will_be_reached derivation_tree ast nt = 
+  (* at each step, check if the rest of nt is reachable from head *)
+  let rec nt_will_be_reached_ast: (string * int option) list -> (string * int option) -> bool 
+  = fun nt head -> match nt with 
+  | [] -> true 
+  | new_head :: nts -> 
+    let rule = List.find (fun element -> match element with
+    | A.TypeAnnotation (nt2, _, _) 
+    | A.ProdRule (nt2, _) -> nt2 = (fst head)
+    ) ast in 
+    match rule with 
+    | ProdRule (_, rhss) -> 
+      (* There are multiple options. Conservatively say the nt may not be reached. 
+         TODO: This is a safe approximation. A more exact analysis would see if the nt is reachable in all cases. *)
+      if List.length rhss <> 1 then false
+      else 
+        nt_will_be_reached_ast nts new_head
+    | _ -> true
+  in
+  match nt with 
+  | [] -> true 
+  | str :: nts -> match derivation_tree with 
+    | Node (head, _, children) -> 
+      if children = [] then nt_will_be_reached_ast nt head
+      else (
+        match List.find_opt (fun child -> match child with 
+        | Node (nt2, _, _) -> str = nt2
+        | SymbolicLeaf (_, path) -> str = (Utils.last path)
+        | ConcreteIntLeaf (path, _) | ConcreteBoolLeaf (path, _) | ConcreteBitListLeaf (path, _) 
+        | ConcreteBitVectorLeaf (path, _, _) | ConcretePlaceholderLeaf (path, _) 
+        | ConcreteStringLeaf (path, _) | ConcreteSetLeaf (path, _) -> str = (Utils.last path)
+        | DependentTermLeaf nt2 -> (fst str) = nt2
+        ) children with 
+        | Some child -> nt_will_be_reached child ast nts
+        | None -> 
+          if !Flags.debug then Format.fprintf Format.std_formatter "Could not find child %s from node %s\n"
+            (fst str) (fst head);
+          false)
+    | _ -> true
+
+(* Determine if a constraint necessarily applies to a given derivation tree. 
+   It may not apply if the nonterminals referenced by the constraint are avoidable 
+   by selecting other production rule options in the AST. *)
+let constraint_is_applicable expr derivation_tree ast = 
+  let nts = A.get_nts_from_expr2 expr in
+  List.fold_left (fun acc nt -> 
+    acc && nt_will_be_reached derivation_tree ast (List.tl nt)
+  ) true nts
+
+let assert_applicable_constraints constraint_set derivation_tree ast solver =
+  let _constraints_to_remove = 
+    ConstraintSet.fold (fun expr acc -> 
+      if constraint_is_applicable expr derivation_tree ast then (
+        (* declare_smt_variables declared_variables (Utils.StringMap.singleton path' A.Int) solver; *)
+        if !Flags.debug then Format.fprintf Format.std_formatter "Constraint %a is applicable in derivation tree %a\n"
+          A.pp_print_expr expr 
+          pp_print_derivation_tree derivation_tree;
+        assert_smt_constraint solver expr;
+        ConstraintSet.add expr acc
+      ) else (
+       (*if !Flags.debug then Format.fprintf Format.std_formatter "Constraint %a is not applicable in derivation tree %a\n"
+          A.pp_print_expr expr 
+          pp_print_derivation_tree derivation_tree;*)
+        acc
+      )
+    )  !constraint_set ConstraintSet.empty 
+  in
+  (* unsound! Constraints may need to be reasserted, because they can be spuriously popped. *)
+  (*constraint_set := ConstraintSet.diff !constraint_set constraints_to_remove;*)
+  !constraint_set
+
 let initialize_globals ctx ast derivation_tree start_symbol constraints_to_assert 
                        decision_stack _declared_variables backtrack_depth curr_st_node declared_variables solver = 
   (* Keep around constraints we may not need to assert *)
@@ -344,6 +417,7 @@ let initialize_globals ctx ast derivation_tree start_symbol constraints_to_asser
   (* Incremental construction of output term so far *)
   derivation_tree := (Node ((start_symbol, Some 0), [start_symbol, Some 0], []));
   derivation_tree := normalize_derivation_tree ctx ast declared_variables solver constraints_to_assert !derivation_tree ;
+  constraints_to_assert := assert_applicable_constraints constraints_to_assert !derivation_tree ast solver;
   (* Set of paths through the tree to help determine when to push constraints from constraints_to_assert *)
   (* let provenance_list = _ in *) (* Challenge: backtracking affects provenance list *)
   (* Keep track of all decisions so we can easily backtrack in the derivation tree *)
@@ -611,78 +685,6 @@ let rec compute_new_dt_frontier derivation_tree = match derivation_tree with
   ) DTSet.empty children *)
 
 
-(* Determine whether an nt, in dot notation, will __necessarily__ be reached 
-   in a given derivation_tree *)
-let rec nt_will_be_reached derivation_tree ast nt = 
-  (* at each step, check if the rest of nt is reachable from head *)
-  let rec nt_will_be_reached_ast: (string * int option) list -> (string * int option) -> bool 
-  = fun nt head -> match nt with 
-  | [] -> true 
-  | new_head :: nts -> 
-    let rule = List.find (fun element -> match element with
-    | A.TypeAnnotation (nt2, _, _) 
-    | A.ProdRule (nt2, _) -> nt2 = (fst head)
-    ) ast in 
-    match rule with 
-    | ProdRule (_, rhss) -> 
-      (* There are multiple options. Conservatively say the nt may not be reached. 
-         TODO: This is a safe approximation. A more exact analysis would see if the nt is reachable in all cases. *)
-      if List.length rhss <> 1 then false
-      else 
-        nt_will_be_reached_ast nts new_head
-    | _ -> true
-  in
-  match nt with 
-  | [] -> true 
-  | str :: nts -> match derivation_tree with 
-    | Node (head, _, children) -> 
-      if children = [] then nt_will_be_reached_ast nt head
-      else (
-        match List.find_opt (fun child -> match child with 
-        | Node (nt2, _, _) -> str = nt2
-        | SymbolicLeaf (_, path) -> str = (Utils.last path)
-        | ConcreteIntLeaf (path, _) | ConcreteBoolLeaf (path, _) | ConcreteBitListLeaf (path, _) 
-        | ConcreteBitVectorLeaf (path, _, _) | ConcretePlaceholderLeaf (path, _) 
-        | ConcreteStringLeaf (path, _) | ConcreteSetLeaf (path, _) -> str = (Utils.last path)
-        | DependentTermLeaf nt2 -> (fst str) = nt2
-        ) children with 
-        | Some child -> nt_will_be_reached child ast nts
-        | None -> 
-          if !Flags.debug then Format.fprintf Format.std_formatter "Could not find child %s from node %s\n"
-            (fst str) (fst head);
-          false)
-    | _ -> true
-
-(* Determine if a constraint necessarily applies to a given derivation tree. 
-   It may not apply if the nonterminals referenced by the constraint are avoidable 
-   by selecting other production rule options in the AST. *)
-let constraint_is_applicable expr derivation_tree ast = 
-  let nts = A.get_nts_from_expr2 expr in
-  List.fold_left (fun acc nt -> 
-    acc && nt_will_be_reached derivation_tree ast (List.tl nt)
-  ) true nts
-
-let assert_applicable_constraints constraint_set derivation_tree ast solver =
-  let _constraints_to_remove = 
-    ConstraintSet.fold (fun expr acc -> 
-      if constraint_is_applicable expr derivation_tree ast then (
-        (* declare_smt_variables declared_variables (Utils.StringMap.singleton path' A.Int) solver; *)
-        if !Flags.debug then Format.fprintf Format.std_formatter "Constraint %a is applicable in derivation tree %a\n"
-          A.pp_print_expr expr 
-          pp_print_derivation_tree derivation_tree;
-        assert_smt_constraint solver expr;
-        ConstraintSet.add expr acc
-      ) else (
-       if !Flags.debug then Format.fprintf Format.std_formatter "Constraint %a is not applicable in derivation tree %a\n"
-          A.pp_print_expr expr 
-          pp_print_derivation_tree derivation_tree;
-        acc
-      )
-    )  !constraint_set ConstraintSet.empty 
-  in
-  (* unsound! Constraints may need to be reasserted, because they can be spuriously popped. *)
-  (*constraint_set := ConstraintSet.diff !constraint_set constraints_to_remove;*)
-  !constraint_set
 
 let pp_print_model_pair ppf (k, v) = 
   Format.fprintf ppf "(= %s %a)" 
