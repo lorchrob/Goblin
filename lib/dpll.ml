@@ -136,10 +136,10 @@ type model_value =
 let rec pp_print_ss ppf = function 
   | [] -> Format.pp_print_string ppf "(as set.empty (Set String))"
   | [s] -> 
-    Format.fprintf ppf "(set.singleton %S)"
+    Format.fprintf ppf "(set.singleton \"%s\")"
       s
   | s :: tl -> 
-    Format.fprintf ppf "(set.union (set.singleton %S) %a)" 
+    Format.fprintf ppf "(set.union (set.singleton \"%s\") %a)" 
       s pp_print_ss tl
       
       
@@ -152,7 +152,7 @@ let pp_print_model_value ppf = function
   else 
     Format.fprintf ppf "(- %d)" (-1 * i) 
 | ConcretePlaceholder str -> Format.pp_print_string ppf str
-| ConcreteString str -> Format.fprintf ppf "%S" str 
+| ConcreteString str -> Format.fprintf ppf "\"%s\"" str 
 | ConcreteStringSet ss -> pp_print_ss ppf (Utils.StringSet.to_list ss)
 (* TODO: fill in with actual details *)
 | ConcreteBitVector _ -> Format.pp_print_string ppf "bitvector"
@@ -179,7 +179,7 @@ let rec pp_print_derivation_tree ppf derivation_tree = match derivation_tree wit
 | DependentTermLeaf _ -> Format.pp_print_string ppf "dep_sym_leaf"
 | ConcreteBoolLeaf (_, b) -> Format.pp_print_bool ppf b 
 | ConcreteIntLeaf (_, int) -> Format.pp_print_int ppf int 
-| ConcretePlaceholderLeaf (_, ph) -> Format.fprintf ppf "%S" ph 
+| ConcretePlaceholderLeaf (_, ph) -> Format.fprintf ppf "\"%s\"" ph 
 | ConcreteStringLeaf (_, str) -> Format.pp_print_string ppf str 
 | ConcreteSetLeaf _ -> Format.pp_print_string ppf "concrete_string_set"
 | ConcreteBitVectorLeaf (_, _, bits) -> 
