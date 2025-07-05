@@ -277,6 +277,27 @@ and pp_print_expr: ?nt_prefix:string -> TC.context -> Format.formatter -> A.expr
   | PhConst _ -> Utils.crash "Error: String constants can only be in dependencies (of the form 'nonterminal <- string_literal')"
   | BLConst _ -> Utils.crash "BitList literals not yet fully supported"
   | BVCast _ -> Utils.crash "Integer to bitvector casts in semantic constraints that aren't preprocessable are not supported"
+  | ReStar e -> 
+  Format.fprintf ppf "(re.* %a)" 
+    r e 
+  | ReConcat es -> 
+    Format.fprintf ppf "(re.++ %a)" 
+    (Lib.pp_print_list r " ") es  
+  | StrToRe e -> 
+      Format.fprintf ppf "(str.to_re %a)" 
+        r e 
+  | StrInRe (e1, e2) -> 
+    Format.fprintf ppf "(str.in_re %a %a)" 
+      r e1 
+      r e2
+  | ReUnion es -> 
+    Format.fprintf ppf "(re.union %a)" 
+      (Lib.pp_print_list r " ") es  
+  | ReRange (e1, e2) ->  
+    Format.fprintf ppf "(re.range %a %a)" 
+      r e1 
+      r e2
+
 
 let pp_print_semantic_constraint_ty_annot: TC.context -> Format.formatter -> string -> A.il_type -> A.semantic_constraint -> unit 
 = fun ctx ppf nt ty sc -> match sc with 

@@ -4,6 +4,25 @@ module B = Batteries
 
 let (let*) = Res.(>>=)
 (* TODO 
+
+   * Optimization: normalize in cases where you have an open leaf and multiple prod rule options, 
+     but only one remaining option 
+   * Optimization: don't represent search tree explicitly in memory; it exists logically but only use 
+     minimal bits to represent it (e.g., a map from DTs to indices of expansions you've tried; 
+     map from DT to depth, and so on) 
+   * Optimization: Better way to do dot notation constraints -- synthesized attribute style? But maybe doesn't work 
+     since <A>.<B> could reference multiple <B>s in the same prod rule, and we don't want to use list map. 
+     CLP style, but w/ semantics to somehow avoid list map?
+     W/ CLP style variable passing, the user specifies exactly what gets passed up the chain... 
+   * Optimization: Actually for dot notation, one idea: Do "constraint passing", where instead 
+     of dealing with dot notation constraint at the given parent node, move it to the child 
+     node in the DT. Seems impossible if you have something like <A>.<B> = <C>.<D>, where both 
+     <B> and <D> may not occur. But in this case, you can create a fresh literal 
+     fresh_lit, and generate the constraints <C>.<D> = fresh_lit and <A>.<B> = fresh_lit. 
+     Then, you can pass these constraints down. To support this, you'd also need to 
+     reference the other way in dot notation -- e.g., you'd pass down <D> = parent.fresh_lit 
+     to child node <C>.
+   * Optimization: Track constraints you can assert and forget 
 *)
 
 (*
@@ -246,6 +265,12 @@ let rec universalize_expr: bool -> (string * int option) list -> Ast.expr -> Ast
   | Length expr -> Length (r expr) 
   | Singleton expr -> Singleton (r expr)
   | Match _ -> Utils.crash "Unexpected case in universalize_expr"
+  | ReStar expr -> ReStar (r expr)
+  | StrToRe expr -> StrToRe (r expr) 
+  | StrInRe (expr1, expr2) -> StrInRe (r expr1, r expr2) 
+  | ReConcat exprs -> ReConcat (List.map r exprs)
+  | ReUnion exprs -> ReUnion (List.map r exprs) 
+  | ReRange (expr1, expr2) -> ReRange (r expr1, r expr2)
   | BVConst _ 
   | BLConst _ 
   | BConst _ 
@@ -396,9 +421,9 @@ let assert_applicable_constraints constraint_set derivation_tree ast solver =
     ConstraintSet.fold (fun expr acc -> 
       if constraint_is_applicable expr derivation_tree ast then (
         (* declare_smt_variables declared_variables (Utils.StringMap.singleton path' A.Int) solver; *)
-        if !Flags.debug then Format.fprintf Format.std_formatter "Constraint %a is applicable in derivation tree %a\n"
+        (*if !Flags.debug then Format.fprintf Format.std_formatter "Constraint %a is applicable in derivation tree %a\n"
           A.pp_print_expr expr 
-          pp_print_derivation_tree derivation_tree;
+          pp_print_derivation_tree derivation_tree;*)
         assert_smt_constraint solver expr;
         ConstraintSet.add expr acc
       ) else (
@@ -409,7 +434,12 @@ let assert_applicable_constraints constraint_set derivation_tree ast solver =
       )
     )  !constraint_set ConstraintSet.empty 
   in
-  (* unsound! Constraints may need to be reasserted, because they can be spuriously popped. *)
+  (* unsound! Constraints may need to be reasserted. 
+     Say you have a dot notation constraint, but it doesn't become applicable until a later decision. 
+     If you assert and forget, then backtrack, you may re-expand, in a different path, to the same situation 
+     where that constraint holds. But, it won't be around to re-assert. And you won't re-add that constraint 
+     to the constraint set because it is associated with a higher-up node. So you can only remove constraints 
+     that are rooted at DT nodes that were backtracked away, not ones that are potentially rooted higher up. *)
   (*constraint_set := ConstraintSet.diff !constraint_set constraints_to_remove;*)
   !constraint_set
 
@@ -762,7 +792,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
  
   (*!! IDEA: dynamically alter starting depth limit *)
   (*** HYPERPARAMETERS *)
-  let starting_depth_limit = 8 in 
+  let starting_depth_limit = 5 in 
   let restart_rate = 10000 in 
   let num_solutions = ref 0 in 
   let num_solutions_to_find = -1 in 

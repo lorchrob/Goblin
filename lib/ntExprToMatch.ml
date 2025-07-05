@@ -136,6 +136,7 @@ let rec pull_up_match_exprs: A.expr -> A.expr =
   | PhConst _ 
   | StrConst _ 
   | EmptySet _ -> expr
+  | _ -> Utils.crash "ntExprToMatch not yet supported for some operator in your input" 
 
 (* Recursively generate match expressions for the "top level" of each NT expr, 
    until all the NTExprs have no more dots. If we encounter the same "top level" NT 
@@ -398,6 +399,7 @@ fun ctx ast expr ->
     | PhConst _ 
     | StrConst _ 
     | EmptySet _ -> matches_so_far, expr
+    | _ -> Utils.crash "ntExprToMatch not yet supported for some operator in your input" 
   in snd (helper ctx ast SILSet.empty expr)
 
 (* Say a production rule has multiple options with the same nonterminal, e.g., 
@@ -477,6 +479,7 @@ let filter_out_dangling_nts expr =
   | PhConst _ 
   | StrConst _ 
   | EmptySet _ -> expr
+  | _ -> Utils.crash "ntExprToMatch not yet supported for some operator in your input" 
   in 
   helper SILSet.empty expr
 

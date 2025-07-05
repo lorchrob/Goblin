@@ -87,6 +87,12 @@ let rec check_dangling_identifiers: Utils.StringSet.t -> expr -> expr
   | StrLength expr -> StrLength (call expr)
   | Length expr -> Length (call expr) 
   | Match _ -> assert false (* -> Match (check_d_ids_nt_expr nt_expr, cases) *)
+  | StrInRe (expr1, expr2) -> StrInRe (call expr1, call expr2) 
+  | ReStar expr -> ReStar (call expr)
+  | StrToRe expr -> StrToRe (call expr) 
+  | ReConcat exprs -> ReConcat (List.map call exprs)
+  | ReUnion exprs -> ReUnion (List.map call exprs) 
+  | ReRange (expr1, expr2) -> ReRange (call expr1, call expr2)
   | BVConst _ 
   | BLConst _ 
   | BConst _ 
@@ -123,7 +129,13 @@ let rec check_prod_rule_nt_exprs: prod_rule_map -> Utils.StringSet.t -> expr -> 
   | UnOp (op, expr) -> UnOp (op, call expr) 
   | CompOp (expr1, op, expr2) -> CompOp (call expr1, op, call expr2) 
   | StrLength expr -> StrLength (call expr)
+  | ReStar expr -> ReStar (call expr)
   | Length expr -> Length (call expr) 
+  | StrInRe (expr1, expr2) -> StrInRe (call expr1, call expr2) 
+  | StrToRe expr -> StrToRe (call expr) 
+  | ReConcat exprs -> ReConcat (List.map call exprs)
+  | ReUnion exprs -> ReUnion (List.map call exprs) 
+  | ReRange (expr1, expr2) -> ReRange (call expr1, call expr2)
   | Match _ -> assert false (* -> Match (check_nt_expr_refs prm nt_expr, cases) *)
   | BVConst _ 
   | BLConst _ 
@@ -153,6 +165,12 @@ let rec check_type_annot_nt_exprs: prod_rule_map -> Utils.StringSet.t -> expr ->
   | StrLength expr -> StrLength (call expr)
   | Length expr -> Length (call expr) 
   | Match _ -> assert false(* -> Match (check_nt_expr_refs prm nt_expr, cases) *)
+  | StrInRe (expr1, expr2) -> StrInRe (call expr1, call expr2) 
+  | ReStar expr -> ReStar (call expr)
+  | StrToRe expr -> StrToRe (call expr) 
+  | ReConcat exprs -> ReConcat (List.map call exprs)
+  | ReUnion exprs -> ReUnion (List.map call exprs) 
+  | ReRange (expr1, expr2) -> ReRange (call expr1, call expr2)
   | BVConst _ 
   | BLConst _ 
   | BConst _ 
@@ -307,6 +325,12 @@ let str_const_to_ph_const ast =
     | Case (nts, e) -> Case (nts, handle_expr e)
     ) cases in
     Match (nt_ctx, nt, cases) 
+  | StrInRe (expr1, expr2) -> StrInRe (handle_expr expr1, handle_expr expr2) 
+  | ReStar expr -> ReStar (handle_expr expr)
+  | StrToRe expr -> StrToRe (handle_expr expr) 
+  | ReConcat exprs -> ReConcat (List.map handle_expr exprs) 
+  | ReUnion exprs -> ReUnion (List.map handle_expr exprs) 
+  | ReRange (expr1, expr2) -> ReRange (handle_expr expr1, handle_expr expr2)
   | NTExpr _ 
   | BVConst _ 
   | BLConst _ 

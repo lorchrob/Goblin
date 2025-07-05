@@ -15,7 +15,7 @@
                    <_defs_up> = <xml-open-tag>.<_defs_up> ; 
                    <inner-xml-tree>.<_defs_down> = union(<_defs_up>, <_defs_down>) ; } ; 
 
-<inner-xml-tree> ::= <_defs_down> <TEXT>  
+<inner-xml-tree> ::= <_defs_down> <text>  
                    |  <_defs_down> <rec-xml-tree> 
                    {  <rec-xml-tree>.<_defs_down> = <_defs_down> ; } 
                    |  <_defs_down> <inner-xml-tree> <inner-xml-tree> 
@@ -39,7 +39,7 @@
                         <id>.<_defs_down> = <_defs_down> ; 
                         <xml-attribute>.<_defs_down> = <_defs_down> ; } ;
 
-<xml-attribute> ::= <_defs_down> <_defs_up> <_attributes> <id> <TEXT> 
+<xml-attribute> ::= <_defs_down> <_defs_up> <_attributes> <id> <text> 
                   { <_attributes> = singleton(<id>.<_full_id>) ; 
                     <id>.<id-with-prefix>.<id-no-prefix-1> = "xmlns" =>
                       <_defs_up> = singleton(<id>.<id-with-prefix>.<id-no-prefix-2>) ;
@@ -71,9 +71,125 @@
   //!! constraint: namespace definition before use ... make <_defs_down> a proper inherited attribute
   { member(<id-no-prefix-2>,  <_defs_down>) ; } ;
 
-<id-no-prefix-1> :: String; 
-<id-no-prefix-2> :: String;
-<TEXT> :: String;
+<text> :: String {
+str_in_re(<text>,
+  re_star(
+    re_union(
+      re_union(
+        re_union(
+          re_union(
+            re_union(
+              re_union(
+                re_union(
+                  re_union(
+                    // re_union(
+                      re_union(
+                        re_union(
+                          re_union(
+                            re_range("a", "z"),
+                            re_range("A", "Z")
+                          ),
+                          re_range("0", "9")
+                      //  ),
+                     //   str_to_re("""")
+                      ),
+                      str_to_re("'")
+                    ),
+                    str_to_re(".")
+                  ),
+                  str_to_re(" ")
+                ),
+                str_to_re("\t")
+              ),
+              str_to_re("/")
+            ),
+            str_to_re("?")
+          ),
+          str_to_re("-")
+        ),
+        str_to_re(",")
+      ),
+      re_union(
+        str_to_re("="),
+        re_union(
+          str_to_re(":"),
+          str_to_re("+")
+        )
+      )
+    )
+  )
+) ; } 
+
+;
+
+<id-no-prefix-1> :: String 
+{
+str_in_re(<id-no-prefix-1>,
+  re_concat(
+    re_union(
+      re_union(
+        re_range("a", "z"),
+        re_range("A", "Z")
+      ),
+      str_to_re("_")
+    ),
+    re_star(
+      re_union(
+        re_union(
+          re_union(
+            re_union(
+              re_range("a", "z"),
+              re_range("A", "Z")
+            ),
+            re_range("0", "9")
+          ),
+          str_to_re("_")
+        ),
+        re_union(
+          str_to_re("-"),
+          str_to_re(".")
+        )
+      )
+    )
+  )
+) ;
+}
+; 
+<id-no-prefix-2> :: String
+{
+str_in_re(<id-no-prefix-2>,
+  re_concat(
+    re_union(
+      re_union(
+        re_range("a", "z"),
+        re_range("A", "Z")
+      ),
+      str_to_re("_")
+    ),
+    re_star(
+      re_union(
+        re_union(
+          re_union(
+            re_union(
+              re_range("a", "z"),
+              re_range("A", "Z")
+            ),
+            re_range("0", "9")
+          ),
+          str_to_re("_")
+        ),
+        re_union(
+          str_to_re("-"),
+          str_to_re(".")
+        )
+      )
+    )
+  )
+) ;
+}
+; 
+
+
 <_full_id> :: String;
 <_attributes> :: Set(String);
 <_defs_down> :: Set(String);

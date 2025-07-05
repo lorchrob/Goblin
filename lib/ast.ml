@@ -84,6 +84,12 @@ expr =
 | IntConst of int 
 | PhConst of string
 | StrConst of string
+| ReUnion of expr list 
+| ReRange of expr * expr 
+| StrInRe of expr * expr 
+| StrToRe of expr
+| ReStar of expr 
+| ReConcat of expr list 
 
 type semantic_constraint = 
 | Dependency of string * expr (* <nonterminal> <- <expression> *)
@@ -119,12 +125,19 @@ let rec get_nts_from_expr: expr -> string list
     r expr1 @ r expr2
   | UnOp (_, expr) -> 
     r expr
+  | StrInRe (expr1, expr2) 
+  | ReRange (expr1, expr2)
   | CompOp (expr1, _, expr2) -> 
     r expr1 @ r expr2
   | StrLength expr
+  | StrToRe expr 
+  | ReStar expr 
   | Length expr -> 
     r expr
   | Singleton expr -> r expr
+  | ReConcat exprs 
+  | ReUnion exprs -> 
+    List.concat_map r exprs
   | BVConst _ 
   | BLConst _ 
   | BConst _ 
@@ -145,12 +158,19 @@ let rec get_nts_from_expr2: expr -> (string * int option) list list
     r expr1 @ r expr2
   | UnOp (_, expr) -> 
     r expr
+  | ReRange (expr1, expr2) 
+  | StrInRe (expr1, expr2)
   | CompOp (expr1, _, expr2) -> 
     r expr1 @ r expr2
   | StrLength expr
+  | StrToRe expr
   | Length expr -> 
     r expr
+  | ReStar expr 
   | Singleton expr -> r expr
+  | ReConcat exprs 
+  | ReUnion exprs -> 
+    List.concat_map r exprs
   | BVConst _ 
   | BLConst _ 
   | BConst _ 
@@ -173,16 +193,23 @@ let rec get_nts_from_expr_after_desugaring_dot_notation: expr -> (string * int o
     | Case (pattern, expr) -> 
       List.map (fun (nt_ctx, (nt, idx)) -> nt_ctx @ [nt, idx]) pattern @ r expr
     ) cases |> List.flatten)
+  | ReRange (expr1, expr2) 
+  | StrInRe (expr1, expr2)
   | BinOp (expr1, _, expr2) -> 
     r expr1 @ r expr2
+  | ReStar expr 
   | UnOp (_, expr) -> 
     r expr
   | CompOp (expr1, _, expr2) -> 
     r expr1 @ r expr2
   | StrLength expr
+  | StrToRe expr 
   | Length expr -> 
     r expr
   | Singleton expr -> r expr
+  | ReConcat exprs 
+  | ReUnion exprs -> 
+    List.concat_map r exprs 
   | BVConst _ 
   | BLConst _ 
   | BConst _ 
@@ -288,7 +315,7 @@ let rec pp_print_case: Format.formatter -> case -> unit
       (Lib.pp_print_list pp_print_pattern " ") pattern
 
 and pp_print_expr: Format.formatter -> expr -> unit 
-= fun ppf expr -> match expr with
+= fun ppf expr -> let r = pp_print_expr in match expr with
 | EmptySet ty -> 
   Format.fprintf ppf "empty_set<%a>"
     pp_print_ty ty
@@ -362,6 +389,26 @@ and pp_print_expr: Format.formatter -> expr -> unit
 | IntConst i -> Format.fprintf ppf "%d" i
 | PhConst s -> Format.fprintf ppf "\"%s\"" s
 | StrConst s -> Format.fprintf ppf "\"%s\"" s
+| StrToRe e -> 
+  Format.fprintf ppf "(str.to_re %a)" 
+    r e 
+| ReStar e -> 
+  Format.fprintf ppf "(re.* %a)" 
+    r e 
+| StrInRe (e1, e2) -> 
+  Format.fprintf ppf "(str.in_re %a %a)" 
+    r e1 
+    r e2
+| ReConcat es -> 
+  Format.fprintf ppf "(re.++ %a)" 
+    (Lib.pp_print_list r " ") es  
+| ReUnion es -> 
+  Format.fprintf ppf "(re.union %a)" 
+    (Lib.pp_print_list r " ") es  
+| ReRange (e1, e2) ->  
+  Format.fprintf ppf "(re.range %a %a)" 
+    r e1 
+    r e2
 
 let pp_print_semantic_constraint: Format.formatter -> semantic_constraint -> unit 
 = fun ppf sc -> match sc with 
@@ -464,9 +511,15 @@ let rec expr_contains_dangling_nt: Utils.SILSet.t -> expr -> bool
   | CompOp (expr1, _, expr2) -> 
     r expr1 || r expr2
   | StrLength expr
+  | ReStar expr  
   | Length expr -> 
     r expr
   | Singleton expr -> r expr
+  | ReRange (expr1, expr2) -> r expr1 || r expr2
+  | ReConcat exprs 
+  | ReUnion exprs -> List.map r exprs |> List.fold_left (||) false  
+  | StrInRe (expr1, expr2) -> r expr1 || r expr2
+  | StrToRe expr -> r expr
   | BVConst _ 
   | BLConst _ 
   | BConst _ 
@@ -521,6 +574,12 @@ let rec prepend_nt_to_dot_exprs: string -> expr -> expr
   | StrLength expr -> StrLength (r expr)
   | Length expr -> Length (r expr) 
   | Singleton expr -> Singleton (r expr)
+  | ReRange (expr1, expr2) -> ReRange (r expr1, r expr2) 
+  | ReConcat exprs -> ReConcat (List.map r exprs)
+  | ReUnion exprs -> ReUnion (List.map r exprs) 
+  | StrInRe (expr1, expr2) -> StrInRe (r expr1, r expr2)
+  | ReStar expr -> ReStar (r expr)
+  | StrToRe expr -> StrToRe (r expr)
   | Match _ -> Utils.crash "Unexpected case 1 in prepend_nt_to_dot_exprs"
   | NTExpr _ -> Utils.crash "Unexpected case 2 in prepend_nt_to_dot_exprs" 
   | BVConst _ 

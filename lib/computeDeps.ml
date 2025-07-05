@@ -386,6 +386,8 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -
 | BinOp (_, SetIntersection, _) 
 | Singleton _ ->
   Utils.crash "Set operations not yet supported in dependency computation"
+| ReRange _ | ReUnion _ | ReStar _ | ReConcat _ | StrToRe _ | StrInRe _ -> 
+  Utils.crash "Regex operations not yet supported in dependency computation"
 
 
 let rec compute_deps: A.semantic_constraint Utils.StringMap.t -> A.ast -> SA.sygus_ast -> SA.sygus_ast 

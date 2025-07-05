@@ -79,6 +79,12 @@ and expr =
 | IntConst of int
 | PhConst of string
 | StrConst of string
+| ReUnion of expr list 
+| ReRange of expr * expr 
+| StrInRe of expr * expr 
+| StrToRe of expr
+| ReStar of expr 
+| ReConcat of expr list 
 
 type semantic_constraint =
 | Dependency of string * expr

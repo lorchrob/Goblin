@@ -273,6 +273,62 @@ let rec infer_type_expr: context -> mode -> expr -> il_type option
   else 
     let error_message = "String constants can only be in dependencies (of the form 'nonterminal <- string_literal')" in 
     Utils.error error_message
+(* TODO: Add proper RegEx type *)
+| ReStar expr 
+| StrToRe expr -> 
+  let inf_ty = infer_type_expr ctx mode expr in (
+  match inf_ty with 
+  | Some String -> Some String 
+  | None -> None 
+  | Some ty -> 
+    let ty_str = Utils.capture_output Ast.pp_print_ty ty in 
+    let msg = "Type checking error: str.to_re/re.* expected type String, given type " ^ ty_str in 
+    Utils.error msg
+  )
+| StrInRe (expr1, expr2) -> 
+  let inf_ty1 = infer_type_expr ctx mode expr1 in
+  let inf_ty2 = infer_type_expr ctx mode expr2 in (
+  match inf_ty1, inf_ty2 with 
+  | Some String, Some String -> Some Bool 
+  | _, None 
+  | None, _ -> None 
+  | _, Some ty ->
+    let ty_str = Utils.capture_output Ast.pp_print_ty ty in 
+    let msg = "Type checking error: str.in_re expected type String, given type " ^ ty_str in 
+    Utils.error msg
+  )
+| ReRange (expr1, expr2) -> 
+  let inf_ty1 = infer_type_expr ctx mode expr1 in
+  let inf_ty2 = infer_type_expr ctx mode expr2 in (
+  match inf_ty1, inf_ty2 with 
+  | Some String, Some String -> Some String
+  | _, None 
+  | None, _ -> None 
+  | _, Some ty ->
+    let ty_str = Utils.capture_output Ast.pp_print_ty ty in 
+    let msg = "Type checking error: str.in_re expected type String, given type " ^ ty_str in 
+    Utils.error msg
+  )
+| ReConcat exprs 
+| ReUnion exprs -> 
+  let inf_tys = List.map (infer_type_expr ctx mode) exprs in
+  if List.for_all (fun ty -> match ty with 
+  | Some String -> true 
+  | _ -> false
+  ) inf_tys then Some String 
+  else if List.exists (fun ty -> match ty with 
+  | None -> true 
+  | _ -> false 
+  ) inf_tys then None 
+  else 
+    let inf_ty = List.find (fun ty -> match ty with 
+    | Some ty when ty <> String -> true 
+    | _ -> false 
+    ) inf_tys in
+    let ty_str = Utils.capture_output Ast.pp_print_ty (Option.get inf_ty) in 
+    let msg = "Type checking error: re.(union | ++) expected type String, given type " ^ ty_str in 
+    Utils.error msg
+
 
 and check_type_expr: context -> mode -> il_type -> expr -> expr 
 = fun ctx mode exp_ty expr -> 

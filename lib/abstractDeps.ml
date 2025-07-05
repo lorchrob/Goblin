@@ -7,7 +7,11 @@ let rec calculate_casts: expr -> expr
   | IntConst i -> Ast.il_int_to_bitvector len i
   | _ -> BVCast (len, expr)
   )
+| ReRange (expr1, expr2) -> ReRange (calculate_casts expr1, calculate_casts expr2) 
+| StrInRe (expr1, expr2) -> StrInRe (calculate_casts expr1, calculate_casts expr2) 
 | BinOp (expr1, op, expr2) -> BinOp (calculate_casts expr1, op, calculate_casts expr2) 
+| ReStar expr -> ReStar (calculate_casts expr) 
+| StrToRe (expr) -> StrToRe (calculate_casts expr)
 | UnOp (op, expr) -> UnOp (op, calculate_casts expr) 
 | Singleton expr -> Singleton (calculate_casts expr)
 | CompOp (expr1, op, expr2) -> CompOp (calculate_casts expr1, op, calculate_casts expr2) 
@@ -18,7 +22,9 @@ let rec calculate_casts: expr -> expr
   | CaseStub _ -> case 
   | Case (nts, e) -> Case (nts, calculate_casts e)
   ) cases in
-  Match (nt_ctx, nt, cases) 
+  Match (nt_ctx, nt, cases)
+| ReConcat exprs -> ReConcat (List.map calculate_casts exprs)
+| ReUnion exprs -> ReUnion (List.map calculate_casts exprs)
 | NTExpr _ 
 | BVConst _ 
 | BLConst _ 

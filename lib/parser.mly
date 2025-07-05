@@ -59,6 +59,13 @@ open Ast
 %token INTERSECTION
 %token MEMBER
 
+%token STR_TO_RE ; 
+%token STR_IN_RE ; 
+%token RE_RANGE ; 
+%token RE_UNION ; 
+%token RE_STAR ; 
+%token RE_CONCAT ;
+
 %token<int> INTEGER
 %token<bool list> BITS
 %token<string> ID
@@ -186,6 +193,12 @@ expr:
 | STRLENGTH; LPAREN; e = expr; RPAREN; { StrLength (e) }
 | STRPREFIX; LPAREN; e1 = expr; COMMA; e2 = expr; RPAREN; { CompOp (e1, StrPrefix, e2) }
 | STRCONTAINS; LPAREN; e1 = expr; COMMA; e2 = expr; RPAREN; { CompOp (e1, StrContains, e2) }
+| STR_TO_RE; LPAREN; e = expr; RPAREN; { StrToRe e }
+| STR_IN_RE; LPAREN; e1 = expr; COMMA; e2 = expr; RPAREN; { StrInRe (e1, e2) }
+| RE_UNION; LPAREN; es = separated_nonempty_list(COMMA, expr); RPAREN; { ReUnion es } 
+| RE_RANGE; LPAREN; e1 = expr; COMMA; e2 = expr; RPAREN; { ReRange (e1, e2) } 
+| RE_CONCAT; LPAREN; es = separated_nonempty_list(COMMA, expr); RPAREN; { ReConcat es }
+| RE_STAR; LPAREN; e = expr; RPAREN; { ReStar e } 
 
 (* Case expressions *)
 // | CASE; e = nt_expr; OF; cs = case_list { Match (e, cs) }

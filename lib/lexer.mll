@@ -38,6 +38,16 @@
     "bvlte", BVLTE ;
     "bvgt", BVGT ; 
     "bvgte", BVGTE ;
+
+    "is_prefix", STRPREFIX ;
+    "contains", STRCONTAINS ; 
+
+    "str_to_re", STR_TO_RE ; 
+    "str_in_re", STR_IN_RE ; 
+    "re_range", RE_RANGE ; 
+    "re_union", RE_UNION ; 
+    "re_star", RE_STAR ; 
+    "re_concat", RE_CONCAT ;
   ] 
 }
 
@@ -67,6 +77,7 @@ rule read =
   | "}" { RCURLY }
   | "<-" { ASSIGN }
   (* | "->" { ARROW } *)
+  | "++" { STRCONCAT }
   | "+" { PLUS }
   | "-" { MINUS }
   | "*" { TIMES }
@@ -76,9 +87,6 @@ rule read =
   | "," { COMMA }
   | ";" { SEMICOLON }
   | "." { DOT }
-  | "++" { STRCONCAT }
-  | "is_prefix" { STRPREFIX }
-  | "contains" { STRCONTAINS }
   | "0b" { read_bits lexbuf }
   | '"'[^ '"']*'"' as s   { STRING (String.sub s 1 (String.length s - 2)) }
   | int as p { INTEGER (int_of_string p) }

@@ -69,17 +69,44 @@ let rec generate_all_possible_exprs: TC.context -> string list -> A.expr -> A.ex
   | UnOp (op, expr) ->
     let exprs = r expr in 
     List.map (fun e -> A.UnOp (op, e)) exprs
+  | StrInRe (expr1, expr2) -> 
+    let exprs1 = r expr1 in 
+    let exprs2 = r expr2 in 
+    let pairs = cartesian_product exprs1 exprs2 in 
+    List.map (fun (e1, e2) -> A.StrInRe (e1, e2)) pairs
+  | ReRange (expr1, expr2) -> 
+    let exprs1 = r expr1 in 
+    let exprs2 = r expr2 in 
+    let pairs = cartesian_product exprs1 exprs2 in 
+    List.map (fun (e1, e2) -> A.ReRange (e1, e2)) pairs
   | CompOp (expr1, op, expr2) -> 
     let exprs1 = r expr1 in 
     let exprs2 = r expr2 in 
     let pairs = cartesian_product exprs1 exprs2 in
-    List.map (fun (e1, e2) -> A.CompOp (e1, op, e2)) pairs
+    List.map (fun (e1, e2) -> A.CompOp (e1, op, e2)) pairs 
+  | ReConcat [expr1; expr2] -> 
+    let exprs1 = r expr1 in 
+    let exprs2 = r expr2 in 
+    let pairs = cartesian_product exprs1 exprs2 in
+    List.map (fun (e1, e2) -> A.ReConcat [e1; e2]) pairs 
+  | ReUnion [expr1; expr2] -> 
+    let exprs1 = r expr1 in 
+    let exprs2 = r expr2 in 
+    let pairs = cartesian_product exprs1 exprs2 in
+    List.map (fun (e1, e2) -> A.ReUnion ([e1; e2])) pairs 
+  | ReUnion _ | ReConcat _ -> Utils.error "re_union and re_concat must take exactly 2 arguments"
+  | ReStar expr -> 
+    let exprs = r expr in 
+    List.map (fun e -> A.ReStar e) exprs 
   | StrLength expr -> 
     let exprs = r expr in 
     List.map (fun e -> A.StrLength e) exprs
   | Singleton expr -> 
     let exprs = r expr in 
     List.map (fun e -> A.Singleton e) exprs
+  | StrToRe expr -> 
+    let exprs = r expr in 
+    List.map (fun e -> A.StrToRe e) exprs 
   | Length expr -> 
     let exprs = r expr in 
     List.map (fun e -> A.Length e) exprs

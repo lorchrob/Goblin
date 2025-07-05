@@ -16,18 +16,32 @@
                | <_count> <raw-field> <csv-record> 
                { <_count> = 1 + <csv-record>.<_count> ; } ;
 
-// <raw-field> ::= <simple-field> | <quoted-field> ;
 
-// <simple-field> :: String ; 
-
-// <quoted-field> :: String ;
-
-<raw-field> :: String ;
+<raw-field> :: String 
+{
+// simple field 
+str_in_re(<raw-field>, 
+              re_concat(re_concat(re_star(str_to_re(" ")), 
+                    re_union(
+                        re_union(re_range("!", "!"), re_range("#", ":")), re_range("<", "~"))), 
+                    re_star(str_to_re(" "))))
+lor 
+// quoted field
+str_in_re(<raw-field>,
+  re_union(re_union(
+    re_range("!", "!"), 
+   re_range("#", "~")), 
+    re_union(
+      re_union(str_to_re("\t"), 
+      str_to_re("\n")),
+      str_to_re("\r")
+    ))
+  ) ; 
+}
+; 
 
 <nil> :: Placeholder  
   { <nil> = ""; } ; 
 
 <_count> :: Int ;
 <_num_cols> :: Int ;
-
-//!! num_cols1 negative number? 
