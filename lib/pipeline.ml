@@ -53,6 +53,11 @@ let main_pipeline ?(engine: Flags.engine option = None) filename =
   let ast = TypeChecker.check_types ctx ast in
   Utils.debug_print Format.pp_print_string ppf "\nType checking complete:\n";
 
+  (* Desugar type annotation constraints *) 
+  let ast = EliminateTaConstraints.eliminate_ta_constraints ast in 
+  Utils.debug_print Format.pp_print_string ppf "\nType annotation constraints eliminated:\n";
+  Utils.debug_print Ast.pp_print_ast ppf ast;
+
   (* Populate nonterminal indices *)
   Utils.debug_print Format.pp_print_string ppf "\nPopulating indices:\n";
   let ast = PopulateIndices.populate_indices ast in

@@ -427,9 +427,9 @@ let assert_applicable_constraints constraint_set derivation_tree ast solver =
         assert_smt_constraint solver expr;
         ConstraintSet.add expr acc
       ) else (
-       (*if !Flags.debug then Format.fprintf Format.std_formatter "Constraint %a is not applicable in derivation tree %a\n"
+       if !Flags.debug then Format.fprintf Format.std_formatter "Constraint %a is not applicable in derivation tree %a\n"
           A.pp_print_expr expr 
-          pp_print_derivation_tree derivation_tree;*)
+          pp_print_derivation_tree derivation_tree;
         acc
       )
     )  !constraint_set ConstraintSet.empty 

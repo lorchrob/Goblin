@@ -1,3 +1,11 @@
+(* TODO
+* Support n-ary expressions
+* make function names consistent with smt-lib
+* nt[i] notation
+* Don't use separate AST constructor for each built-in function; instead, use 
+  BinaryFunc, NaryFunc, etc. parameterized by func_name 
+  *)
+
 type unary_operator = 
 | UPlus 
 | UMinus
