@@ -43,11 +43,23 @@ let pp_print_sygus_ast: Format.formatter -> sygus_ast -> unit
   | SetLeaf (StringSet s) -> 
     Format.fprintf Format.std_formatter "{%a}" 
       (Lib.pp_print_list Format.pp_print_string ", ") (Utils.StringSet.to_list s)
-  (* This is kind of cheating, but I don't feel like matching cvc5 format exactly *)
-  | BLLeaf bits -> 
-    let bits = List.map Bool.to_int bits in
-    Format.fprintf ppf "#bl%a"
-    (Lib.pp_print_list Format.pp_print_int "") bits
+  | BLLeaf bits ->
+let print_smt_bool_seq fmt (lst : bool list) : unit =
+  match lst with
+  | [] ->
+    Format.fprintf fmt "seq.empty"
+  | [b] ->
+    if b then Format.fprintf fmt "(seq.unit true)"
+    else Format.fprintf fmt "(seq.unit false)"
+  | _ ->
+    Format.fprintf fmt "(seq.++ ";
+    let print_unit b =
+      if b then Format.fprintf fmt "(seq.unit true) "
+      else Format.fprintf fmt "(seq.unit false) "
+    in
+    List.iter print_unit lst;
+    Format.fprintf fmt ")"
+  in print_smt_bool_seq ppf bits
   in 
   Format.fprintf ppf "%a\n" 
   pp_print_sygus_ast' sygus_ast

@@ -100,7 +100,7 @@ let pp_print_binop: Format.formatter -> A.bin_operator -> unit
 | Plus -> Format.fprintf ppf "+"
 | Minus -> Format.fprintf ppf "-"
 | Times -> Format.fprintf ppf "*"
-| Div -> Format.fprintf ppf "/"
+| Div -> Format.fprintf ppf "div"
 | StrConcat -> Format.fprintf ppf "str.++"
 | SetMembership 
 | SetUnion 
@@ -276,7 +276,10 @@ and pp_print_expr: ?nt_prefix:string -> TC.context -> Format.formatter -> A.expr
   | StrConst str -> Format.fprintf ppf "\"%s\"" str
   | PhConst _ -> Utils.crash "Error: String constants can only be in dependencies (of the form 'nonterminal <- string_literal')"
   | BLConst _ -> Utils.crash "BitList literals not yet fully supported"
-  | BVCast _ -> Utils.crash "Integer to bitvector casts in semantic constraints that aren't preprocessable are not supported"
+  | BVCast (width, e) -> 
+    Format.fprintf ppf "((_ int_to_bv %d) %a)"
+      width 
+      r e 
   | ReStar e -> 
   Format.fprintf ppf "(re.* %a)" 
     r e 

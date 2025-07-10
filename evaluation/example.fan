@@ -2,6 +2,6 @@
 <i1> ::= <ascii_lowercase_letter>+ ;
 <i2> ::= <ascii_lowercase_letter>+ ;
 
-where (str(<i1>) + " ") == str(<i2>) ;
+where str(<i1>) == str(<i2>) + " " ;
 
 

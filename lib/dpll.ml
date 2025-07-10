@@ -114,9 +114,27 @@ let pp_print_model_value ppf = function
 | ConcretePlaceholder str -> Format.pp_print_string ppf str
 | ConcreteString str -> Format.fprintf ppf "\"%s\"" str 
 | ConcreteStringSet ss -> pp_print_ss ppf (Utils.StringSet.to_list ss)
-(* TODO: fill in with actual details *)
-| ConcreteBitVector _ -> Format.pp_print_string ppf "bitvector"
-| ConcreteBitList _ -> Format.pp_print_string ppf "bitlist"
+| ConcreteBitVector (_, bits) -> 
+  let bits = List.map Bool.to_int bits in
+  Format.fprintf ppf "#b%a"
+    (Lib.pp_print_list Format.pp_print_int "") bits
+| ConcreteBitList bits -> 
+  let print_smt_bool_seq fmt (lst : bool list) : unit =
+  match lst with
+  | [] ->
+    Format.fprintf fmt "seq.empty"
+  | [b] ->
+    if b then Format.fprintf fmt "(seq.unit true)"
+    else Format.fprintf fmt "(seq.unit false)"
+  | _ ->
+    Format.fprintf fmt "(seq.++ ";
+    let print_unit b =
+      if b then Format.fprintf fmt "(seq.unit true) "
+      else Format.fprintf fmt "(seq.unit false) "
+    in
+    List.iter print_unit lst;
+    Format.fprintf fmt ")"
+  in print_smt_bool_seq ppf bits
 
 type concrete_set = 
 | ConcreteStringSetLeaf of Utils.StringSet.t
@@ -223,7 +241,7 @@ let initialize_solver () : solver_instance =
     Printf.sprintf "%s --produce-models --global-declarations --dag-thresh=0 --lang=smtlib2 --incremental" 
       cvc5 
   in
-  let set_logic_command = Format.asprintf "(set-logic QF_BVSLIAFS)\n" in
+  let set_logic_command = Format.asprintf "(set-logic ALL)\n" in
 
   (*let z3 = Utils.find_command_in_path "z3" in
   let cmd = 
@@ -548,7 +566,7 @@ let backtrack ctx ast assertion_level decision_stack solver backtrack_depth decl
     Utils.debug_print Format.pp_print_string Format.std_formatter "Restarting...\n";
     issue_solver_command "(pop 1)" solver; 
     issue_solver_command "(push 1)" solver;
-    if not !backtrack_depth then raise (Failure "infeasible");
+    (if not !backtrack_depth then raise (Failure "infeasible"));
     depth_limit := !depth_limit + 1;
     Format.fprintf Format.std_formatter "Increasing depth limit to %d\n" !depth_limit;
     initialize_globals ctx ast derivation_tree start_symbol constraints_to_assert 
@@ -573,7 +591,8 @@ let string_of_constructor (str, idx) = match idx with
 let rec model_of_sygus_ast: SygusAst.sygus_ast -> (model_value Utils.StringMap.t, unit) result
 = fun sygus_ast -> 
   match sygus_ast with 
-  | VarLeaf var when var = "infeasible" -> Error ()
+  | VarLeaf var when var = "infeasible" -> 
+    Format.pp_print_flush Format.std_formatter (); Error ()
   | Node (constructor, [SetLeaf (StringSet value)]) -> 
     Ok (Utils.StringMap.singleton (string_of_constructor constructor) (ConcreteStringSet value))
   | Node (constructor, [IntLeaf value]) -> 
@@ -599,15 +618,22 @@ let get_smt_result: A.ast -> solver_instance -> bool -> (model_value Utils.Strin
   issue_solver_command "(check-sat)\n" solver;
   let response = read_check_sat_response solver in
   if !Flags.debug then Format.fprintf Format.std_formatter "Solver response: %s\n" response;
+  Format.pp_print_flush Format.std_formatter ();
   if response = "sat" && get_model then (
     issue_solver_command "(get-model)\n" solver;
     let response = read_get_model_response solver in
     if !Flags.debug then Format.fprintf Format.std_formatter "Solver response: %s\n" response;
-    let result = Parsing.parse_sygus response ast |> Result.get_ok in
+    let result = match Parsing.parse_sygus response ast with 
+    | Ok result -> result 
+    | Error msg -> Format.fprintf Format.std_formatter "Error parsing: %s\n" msg; assert false 
+    in
     Some (model_of_sygus_ast result)
   ) else if response = "sat" then None  
   else
-    let result = Parsing.parse_sygus "unsat" ast |> Result.get_ok in
+    let result = match Parsing.parse_sygus response ast with 
+    | Ok result -> result 
+    | Error msg -> Format.fprintf Format.std_formatter "Error parsing: %s\n" msg; assert false 
+    in
     Some (model_of_sygus_ast result)
 
 let ty_of_concrete_leaf leaf = match leaf with 
@@ -1039,5 +1065,8 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
 
   Option.get !result 
 
-  with Failure _ -> 
+  with Failure e -> 
+    (if not (String.equal e "infeasible") then 
+      Utils.crash e);
+    Format.pp_print_flush Format.std_formatter ();
     StrLeaf "infeasible"
