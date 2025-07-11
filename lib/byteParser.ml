@@ -1,7 +1,7 @@
 (* open Bitstring *)
 (* open Yojson.Basic *)
 
-type state = int | IGNORE
+type state = int
 
 let char_to_binary c =
   let ascii = Char.code c in
@@ -75,11 +75,8 @@ let wait_for_oracle_response response_file =
     | Some response ->
         (* Clear the file after reading *)
         clear_file response_file;
-        match response with (
-        | "IGNORE" -> IGNORE
-        | x -> int_of_string x
-        )
-        else Utils.crash "unexpected condition in oracle.."
+        int_of_string response
+        (* else Utils.crash "unexpected condition in oracle.." *)
     | None ->
         Unix.sleepf 0.1;  (* Wait for a while before checking again *)
         loop ()
