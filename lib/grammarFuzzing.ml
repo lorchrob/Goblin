@@ -888,9 +888,9 @@ let runFuzzer grammar_list =
   let commit_grammar = List.nth grammar_list 0 in
   let confirm_grammar = List.nth grammar_list 1 in
   let commit_confirm_grammar = List.nth grammar_list 2 in
-  let nothing_queue = NOTHING([([], commit_grammar), 0.0; ([], confirm_grammar), 0.0; ([], commit_confirm_grammar), 0.0;]) in
-  let confirmed_queue = CONFIRMED([([ValidPacket COMMIT], commit_grammar), 0.0; ([ValidPacket COMMIT], confirm_grammar), 0.0; ([ValidPacket COMMIT], commit_confirm_grammar), 0.0;]) in
-  let accepted_queue = ACCEPTED([([ValidPacket COMMIT; ValidPacket CONFIRM], commit_grammar), 0.0; ([ValidPacket COMMIT; ValidPacket CONFIRM], confirm_grammar), 0.0; ([ValidPacket COMMIT; ValidPacket CONFIRM], commit_confirm_grammar), 0.0;]) in
+  let nothing_queue = [([], commit_grammar), 0.0; ([], confirm_grammar), 0.0; ([], commit_confirm_grammar), 0.0;] in
+  let confirmed_queue = [([ValidPacket 0], commit_grammar), 0.0; ([ValidPacket 0], confirm_grammar), 0.0; ([ValidPacket 0], commit_confirm_grammar), 0.0;] in
+  let accepted_queue = [([ValidPacket 0; ValidPacket 1], commit_grammar), 0.0; ([ValidPacket 0; ValidPacket 1], confirm_grammar), 0.0; ([ValidPacket 0; ValidPacket 1], commit_confirm_grammar), 0.0;] in
 
   let _ = fuzzingAlgorithm 10000 [nothing_queue; confirmed_queue; accepted_queue] [] 100 0 1150 100 100 [CorrectPacket; Modify; Add;CrossOver;Delete;] [nothing_queue; confirmed_queue; accepted_queue] in
   ()
