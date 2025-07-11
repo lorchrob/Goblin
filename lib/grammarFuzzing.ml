@@ -665,23 +665,35 @@ let get_percentile (p : child list) : float =
   else if List.length p <= 5000 then 10.0
   else 5.0
 
+let replicate_indices (lists : 'a list list) : int list =
+  let rec aux acc idx = function
+    | [] -> List.rev acc
+    | l :: rest ->
+        let repeated = List.init (List.length l) (fun _ -> idx) in
+        aux (List.rev_append repeated acc) (idx + 1) rest
+  in
+  aux [] 0 lists
+
 let uniform_sample_from_queue (q : queue) : (child list) * (state list) =
   print_endline "SAMPLING NEW POPULATION FOR MUTATION.." ;
-  let np, cnf, acc = List.nth q 0, List.nth q 1, List.nth q 2 in
+  (* let np, cnf, acc = List.nth q 0, List.nth q 1, List.nth q 2 in *)
   
-  let np_top_sample = sample_from_percentile_range (extract_child_from_state np) 0.0 (get_percentile ((extract_child_from_state np))) 15 in
-  let cnf_top_sample = sample_from_percentile_range (extract_child_from_state cnf) 0.0 (get_percentile ((extract_child_from_state cnf))) 15 in
-  let acc_top_sample = sample_from_percentile_range (extract_child_from_state acc) 0.0 (get_percentile ((extract_child_from_state acc))) 15 in
-  let np_bottom_sample = sample_from_percentile_range (extract_child_from_state np) 0.0 100.0 5 in
-  let cnf_bottom_sample = sample_from_percentile_range (extract_child_from_state cnf) 0.0 100.0 5 in
-  let acc_bottom_sample = sample_from_percentile_range (extract_child_from_state acc) 0.0 100.0 5 in
+  (* let top_sample = List.fold_left ( @ ) [] (List.map (fun x -> sample_from_percentile_range x 0.0 (get_percentile x) 15)) in *)
+  let top_sample = List.map (fun x -> sample_from_percentile_range x 0.0 (get_percentile x) 15) in
+  (* let cnf_top_sample = sample_from_percentile_range (extract_child_from_state cnf) 0.0 (get_percentile ((extract_child_from_state cnf))) 15 in
+  let acc_top_sample = sample_from_percentile_range (extract_child_from_state acc) 0.0 (get_percentile ((extract_child_from_state acc))) 15 in *)
+  (* let bottom_sample = List.fold_left ( @ ) [] (List.map (fun x -> sample_from_percentile_range x 0.0 100.0 5)) in *)
+  let bottom_sample = List.map (fun x -> sample_from_percentile_range x 0.0 100.0 5) in
+  (* sample_from_percentile_range (extract_child_from_state np) 0.0 100.0 5 in *)
+  (* let cnf_bottom_sample = sample_from_percentile_range (extract_child_from_state cnf) 0.0 100.0 5 in
+  let acc_bottom_sample = sample_from_percentile_range (extract_child_from_state acc) 0.0 100.0 5 in *)
   print_endline "RETURNING NEW POPULATION FOR MUTATION.." ;
-  let nothing_log_info = List.length (np_top_sample @ np_bottom_sample) in
-  let confirmed_log_info = List.length (cnf_top_sample @ cnf_bottom_sample) in
-  let accepted_log_info = List.length (acc_top_sample @ acc_bottom_sample) in
-  dump_queue_info nothing_log_info confirmed_log_info accepted_log_info ;
-  let state_concatenated = (List.map (fun _ -> NOTHING_) np_top_sample @ List.map (fun _ -> NOTHING_) np_bottom_sample @ List.map (fun _ -> CONFIRMED_) cnf_top_sample @ List.map (fun _ -> CONFIRMED_) cnf_bottom_sample @ List.map (fun _ -> ACCEPTED_) acc_top_sample @ List.map (fun _ -> ACCEPTED_) acc_bottom_sample) in
-  let population_concatenated = (np_top_sample @ np_bottom_sample @ cnf_top_sample @ cnf_bottom_sample @ acc_top_sample @ acc_bottom_sample) in
+  (* let log_info = List.length (top_sample @ bottom_sample) in *)
+  (* let confirmed_log_info = List.length (cnf_top_sample @ cnf_bottom_sample) in
+  let accepted_log_info = List.length (acc_top_sample @ acc_bottom_sample) in *)
+  (* dump_queue_info log_info ; *)
+  let state_concatenated = List.map2 (fun x y -> x @ y) (replicate_indices top_sample) (replicate_indices bottom_sample) in
+  let population_concatenated = top_sample @ bottom_sample in
   let num_states = List.length (state_concatenated) in
   let num_pop = List.length (population_concatenated) in
   let outString = Printf.sprintf "%d -- %d\n" num_states num_pop in
@@ -692,12 +704,12 @@ let uniform_sample_from_queue (q : queue) : (child list) * (state list) =
   let states = List.map (fun x -> snd x) removed_duplicates in
   (samples, states)
 
-let population_size_across_queues (x : population) (y : population) (z : population) =
-  match x, y, z with
-  | NOTHING a, CONFIRMED b, ACCEPTED c  -> List.length a + List.length b + List.length c
-  | _, _, _ -> Utils.crash "Queue order not maintained"
+let rec population_size_across_queues (currSize : int) (q : queues) =
+  match q with
+  | [] -> currSize
+  | x :: xs -> population_size_across_queues (curSize + List.length x) xs
 
-(* let oracle (pkt : provenance) : queue_handle =
+  (* let oracle (pkt : provenance) : queue_handle =
   match pkt with
   | RawPacket _ -> NOTHING
   | ValidPacket x ->
@@ -708,7 +720,7 @@ let population_size_across_queues (x : population) (y : population) (z : populat
     | NOTHING -> NOTHING 
     | RESET -> NOTHING *)
 
-let rec map_packet_to_state (cl : child list) (old_states : state list) (new_states : state list) : state_child list =
+(* let rec map_packet_to_state (cl : child list) (old_states : state list) (new_states : state list) : state_child list =
   match cl, old_states, new_states with
   | [], [], [] -> []
   | [], _, _ -> Utils.crash "child list exhausted, state list non-empty"
@@ -725,26 +737,26 @@ let rec map_packet_to_state (cl : child list) (old_states : state list) (new_sta
         | NOTHING_ -> NOTHING x :: map_packet_to_state xs ys zs
         | CONFIRMED_ -> CONFIRMED x :: map_packet_to_state xs ys zs
         | ACCEPTED_ -> ACCEPTED x :: map_packet_to_state xs ys zs
-        | IGNORE_ -> Utils.crash "unexpected IGNORE_ pattern"
+        | IGNORE_ -> Utils.crash "unexpected IGNORE_ pattern" *)
       
     (* | NOTHING -> Utils.crash "unreachable case.. nothing symbol unexpected in provenance"
     | RESET -> Utils.crash "unreachable case.. reset symbol unexpected in provenance" *)
 
-let get_child_from_state (c : state_child) : child =
+(* let get_child_from_state (c : state_child) : child =
   match c with 
-  | NOTHING x | CONFIRMED x | ACCEPTED x -> x
-
+  | NOTHING x | CONFIRMED x | ACCEPTED x -> x *)
+(* 
 let filter_state (qh : queue_handle) (c : state_child) : bool =
   match c with
   | NOTHING _ -> if qh = NOTHING then true else false
   | CONFIRMED _ -> if qh = CONFIRMED then true else false
-  | ACCEPTED _ -> if qh = ACCEPTED then true else false
+  | ACCEPTED _ -> if qh = ACCEPTED then true else false *)
 
 let removeDuplicates (currentList : child list) : child list = 
   let s = PopulationSet.of_list currentList in 
   PopulationSet.elements s  
   
-let bucket_oracle (q : triple_queue) (clist : child list) (old_states : state list) (new_states : state list) : triple_queue =
+let bucket_oracle (q : queue) (clist : child list) (old_states : state list) (new_states : state list) : queue =
   print_endline "NEW QUEUES GENERATING.." ;
   let np, cnf, acc = extract_child_from_state (List.nth q 0), extract_child_from_state (List.nth q 1), extract_child_from_state (List.nth q 2) in
   let newPopulation = map_packet_to_state clist old_states new_states in
