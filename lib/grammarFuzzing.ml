@@ -475,7 +475,7 @@ let save_mutation_count filename =
   ()
 
 let rec save_queue_info queues =
-  List.iteri (fun idx population -> save_population_info (Printf.sprintf "temporal-info/%d-queue-info.txt" idx) population) queues
+  List.map (fun x -> save_population_info (Printf.sprintf "temporal-info/%d-queue-info.txt" x)) queues
   (* | NOTHING population :: xs -> 
     save_population_info "temporal-info/NOTHING-queue-info.txt" population ;
     save_queue_info xs
