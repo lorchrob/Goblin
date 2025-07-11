@@ -241,7 +241,7 @@ let initialize_solver () : solver_instance =
     Printf.sprintf "%s --produce-models --global-declarations --dag-thresh=0 --lang=smtlib2 --incremental" 
       cvc5 
   in
-  let set_logic_command = Format.asprintf "(set-logic ALL)\n" in
+  let set_logic_command = Format.asprintf "(set-logic QF_BVSNIAFS)\n" in
 
   (*let z3 = Utils.find_command_in_path "z3" in
   let cmd = 
