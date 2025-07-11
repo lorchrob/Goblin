@@ -17,7 +17,7 @@ type mutationOperations = mutation list
 
 type output = CRASH | TIMEOUT | EXPECTED_OUTPUT | UNEXPECTED_OUTPUT | Message of string
 
-type provenance = RawPacket of packet | ValidPacket of packet_type
+type provenance = RawPacket of packet | ValidPacket of Config.packet_type
 
 type child = (provenance list * grammar) * score
 
@@ -236,11 +236,11 @@ let get_message message =
   | Message message -> message
   | _ -> Utils.crash "not message type"
 
-let map_provenance_to_string (p : provenance) : string =
+(* let map_provenance_to_string (p : provenance) : string =
   match p with
   | ValidPacket RESET -> "RESET"
   | ValidPacket n -> Printf.sprintf "%d" n
-  | RawPacket _ -> Utils.crash "handle the raw packet case"
+  | RawPacket _ -> Utils.crash "handle the raw packet case" *)
   
 (* let callDriver x =
   let message_file = "sync/message.txt" in
@@ -349,11 +349,11 @@ let rec check_well_formed_rules (grammar : ast) : bool =
   | TypeAnnotation(_, _, _, _) :: xs -> check_well_formed_rules xs
     
 
-let rec applyMutation (m : mutation) (g : ast) (count : int) : (packet_type * grammar) option =
+let rec applyMutation (m : mutation) (g : ast) (count : int) : (Config.packet_type * grammar) option =
   Random.self_init () ;
   if count = 0 then None
   else
-    let nt = random_element nonterminals in
+    let nt = random_element Config.nonterminals in
     match m with
     | Add -> print_endline "\n\nADDING\n\n" ; 
       let random_prod_rule = find_random_production_rule g in
@@ -429,8 +429,11 @@ let rec newMutatedSet (p : child list) (m : mutationOperations) (n : int) : chil
   | _, (x::xs), (mu::ms) ->
     let mutated_grammar = applyMutation mu (fst x |> snd) 10 in
     (match mutated_grammar with
-    | Some (Config.num_packets, z) -> ((((fst x |> fst)), z), (snd x)) :: (newMutatedSet xs ms (n - 1))
-    | Some (y, z) -> (((fst x |> fst) @ [(ValidPacket y)], z), (snd x)) :: (newMutatedSet xs ms (n - 1))
+    (* | Some (Config.num_packets, z) -> ((((fst x |> fst)), z), (snd x)) :: (newMutatedSet xs ms (n - 1)) *)
+    | Some (y, z) -> 
+      if y = Config.num_packets then
+        ((((fst x |> fst)), z), (snd x)) :: (newMutatedSet xs ms (n - 1))
+      else (((fst x |> fst) @ [(ValidPacket y)], z), (snd x)) :: (newMutatedSet xs ms (n - 1))
     | None -> (([], []), 0.0) :: newMutatedSet xs ms (n - 1)
     )
 
@@ -465,14 +468,6 @@ let save_population_info filename population =
   output_string oc string_to_save ;
   close_out oc
 
-let save_mutation_count filename = 
-  let _ = Unix.system ("touch " ^ filename) in
-  Unix.sleepf 0.1 ;
-  print_endline "saving mutation info.." ;
-  let oc = open_out filename in
-  output_string oc (Printf.sprintf "Addition: %d\nDeletion: %d\nModification: %d\nCrossOver: %d" !addition_count !deletion_count !modify_count !crossover_count);
-  close_out oc;
-  ()
 
 let rec save_queue_info queues =
   List.map (fun x -> save_population_info (Printf.sprintf "temporal-info/%d-queue-info.txt" x)) queues
@@ -530,7 +525,7 @@ let run_trace (trace : provenance list) : string list =
     | RawPacket z -> (bytes_to_hex z)
     | ValidPacket z -> ( 
       match z with
-      | RESET -> Utils.crash "unexpected provenance element.."
+      (* | RESET -> Utils.crash "unexpected provenance element.." *)
       | n -> Printf.sprintf "%d" n
     ) 
   ) trace
@@ -770,10 +765,10 @@ let sample_population (p : population) : population =
   let new_population_random = sample_from_percentile_range p 0.0 100.0 (int_of_float (population_choice /. 0.2)) in
   new_population_top @ new_population_random
   
-let rec cleanup (q : queue) : population list = 
+let rec cleanup (q : queue) : queue = 
   match q with
   | [] -> []
-  | x :: xs -> sample_population x @ cleanup xs
+  | x :: xs -> [sample_population x] @ cleanup xs
   
   (* [sample_population (List.nth q 0); sample_population (List.nth q 1); sample_population (List.nth q 2)] *)
 
@@ -930,7 +925,7 @@ let dump_single_trace (trace : provenance list) : string =
   ) trace in
   let result = ref "" in
   (List.iter (fun x -> result := !result ^ x ^ ", ") trace_string) ;
-  !result ^ "\n"  
+  !result ^ "\n"
 
 let dump_all_traces (traces : provenance list list) =
   let trace_string_lists = List.map dump_single_trace traces in
@@ -1011,6 +1006,13 @@ let rec fuzzingAlgorithm
       let iteration_timer = Unix.gettimeofday () -. start_time in
       save_iteration_time (currentIteration + 1) iteration_timer ;
       fuzzingAlgorithm maxCurrentPopulation newQueue (List.append iTraces iT) tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations seed
+
+let rec clear_state_files (i : int) : unit =
+  if i = Config.num_queues then ()
+  else (
+    initialize_clear_file (Printf.sprintf "temporal-info/%d-queue-info.txt" i);
+    clear_state_files (i + 1);
+  )
 
 let initialize_files () =
   clear_state_files 0;
