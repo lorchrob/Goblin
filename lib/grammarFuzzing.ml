@@ -5,11 +5,9 @@ open ByteParser
 open Unix
 open Lwt.Infix
 
-type packet = bytes 
-type score = float 
 
-
-type packet_type = COMMIT | CONFIRM | ASSOCIATION_REQUEST | NOTHING | RESET
+type packet = bytes
+type score = float
 
 type grammar = ast
 
@@ -25,13 +23,9 @@ type child = (provenance list * grammar) * score
 
 (* type single_queue = ((provenance list) * (child list)) *)
 
-type queue_handle = NOTHING | CONFIRMED | ACCEPTED
+type population = child list
 
-type state_child = NOTHING of child | CONFIRMED of child | ACCEPTED of child
-
-type population = NOTHING of child list | CONFIRMED of child list | ACCEPTED of child list
-
-type triple_queue = population list
+type queue = population list
 
 type trace = packet list
 
@@ -52,11 +46,12 @@ let total_execution_calls = ref 0
 let driver_call_time = ref 0.0
 let driver_calls = ref 0
 
+(* 
 let preprocess_map (f : 'a) (p : population) : population =
   match p with
   | NOTHING x -> NOTHING (f x)
   | CONFIRMED x -> CONFIRMED (f x)
-  | ACCEPTED x -> ACCEPTED (f x)
+  | ACCEPTED x -> ACCEPTED (f x) *)
 
 let rec compare_provenance_list (x : provenance list) (y : provenance list) =
   match x, y with
@@ -68,11 +63,10 @@ let rec compare_provenance_list (x : provenance list) (y : provenance list) =
     | RawPacket x1, RawPacket y1 -> 
       let c = Bytes.compare x1 y1 in
       if c = 0 then compare_provenance_list xs ys else c
-    | ValidPacket x1, ValidPacket y1 ->
-      (match x1, y1 with
-      | COMMIT, COMMIT | CONFIRM, CONFIRM | ASSOCIATION_REQUEST, ASSOCIATION_REQUEST -> 
-        compare_provenance_list xs ys
-      | _, _ -> -1)
+    | ValidPacket x1, ValidPacket y1 -> 
+      if x1 = y1 
+        then compare_provenance_list xs ys
+      else 1
     | _, _ -> -1
 
 
@@ -237,11 +231,8 @@ let get_message message =
 
 let map_provenance_to_string (p : provenance) : string =
   match p with
-  | ValidPacket COMMIT -> "COMMIT"
-  | ValidPacket CONFIRM -> "CONFIRM"
-  | ValidPacket ASSOCIATION_REQUEST -> "ASSOCIATION_REQUEST"
   | ValidPacket RESET -> "RESET"
-  | ValidPacket NOTHING -> Utils.crash "unexpected symbol.."
+  | ValidPacket n -> Printf.sprintf "%d" n
   | RawPacket _ -> Utils.crash "handle the raw packet case"
   
 (* let callDriver x =
@@ -343,7 +334,6 @@ let sample_from_percentile_range (pop : child list) (lower_percentile: float) (u
 
     sample [] segment sample_size
 
-let nonterminals = ["AC_TOKEN" ; "RG_ID"; "RG_ID_LIST"; "REJECTED_GROUPS"; "RG_ID_LENGTH"; "PASSWD_ELEMENT_ID_EXTENSION"; "AC_ID_LENGTH"; "STATUS_CODE"; "RG_ELEMENT_ID_EXTENSION" ;"PASSWD_ID_LENGTH";"PASSWORD_IDENTIFIER"; "PASSWD_ELEMENT_ID" ; "RG_ELEMENT_ID"; "PASSWD_ID"; "AC_ELEMENT_ID"; "AC_TOKEN_ELEMENT"; "AC_TOKEN"; "COMMIT"; "CONFIRM"; "AUTH_SEQ_CONFIRM"; "AC_TOKEN_CONTAINER"; "CONFIRM_HASH"; "AUTH_ALGO"; "AUTH_SEQ_COMMIT"; "CONFIRM_HASH"; "SCALAR"; "GROUP_ID"; "ELEMENT"; "SEND_CONFIRM_COUNTER";]
 
 let rec check_well_formed_rules (grammar : ast) : bool =
   match grammar with
@@ -364,7 +354,7 @@ let rec applyMutation (m : mutation) (g : ast) (count : int) : (packet_type * gr
       if snd added_grammar = false then applyMutation Add g (count - 1)
       else begin
         pp_print_ast Format.std_formatter (fst added_grammar); 
-        Some (NOTHING, (fst added_grammar))
+        Some (Config.num_packets, (fst added_grammar))
       end
     | Delete -> print_endline "\n\nDELETING\n\n" ;
       let delete_attempt = (mutation_delete g nt) in
@@ -377,7 +367,7 @@ let rec applyMutation (m : mutation) (g : ast) (count : int) : (packet_type * gr
           let well_formed_check = check_well_formed_rules x in
           (
             match well_formed_check with
-            | true -> pp_print_ast Format.std_formatter x; Some (NOTHING, x)
+            | true -> pp_print_ast Format.std_formatter x; Some (Config.num_packets, x)
             | false -> applyMutation Delete g (count - 1)
           )
         | None -> applyMutation Delete g (count - 1)
@@ -387,7 +377,7 @@ let rec applyMutation (m : mutation) (g : ast) (count : int) : (packet_type * gr
       let operation = random_element [Plus; Minus] in
       let (modified_grammar, success_code) = mutation_update g nt operation in
       if success_code then 
-        Some (NOTHING, modified_grammar)
+        Some (Config.num_packets, modified_grammar)
       else applyMutation Modify g (count - 1)
 
     | CrossOver -> print_endline "\n\n\nENTERING CROSSOVER\n\n\n" ;
@@ -404,26 +394,16 @@ let rec applyMutation (m : mutation) (g : ast) (count : int) : (packet_type * gr
             let well_formed_check = check_well_formed_rules x in
             (match well_formed_check with
             | true ->
-              Some (NOTHING, x)
+              Some (Config.num_packets, x)
             | false -> applyMutation CrossOver g (count - 1)
             )
           | None -> (applyMutation CrossOver g (count - 1)))
     | CorrectPacket -> 
-      let x = random_element [COMMIT; CONFIRM; ASSOCIATION_REQUEST] in (
-        match x with 
-        | COMMIT -> 
-          print_endline "\n\nINJECTING CORRECT COMMIT\n\n" ;
-          Some (COMMIT, g)
-        | CONFIRM -> 
-          print_endline "\n\nINJECTING CORRECT CONFIRM\n\n" ;
-          Some (CONFIRM, g)
-        | ASSOCIATION_REQUEST -> 
-          print_endline "\n\nINJECTING ASSOCIATION REQUEST\n\n" ;
-          Some (ASSOCIATION_REQUEST, g)
-        | NOTHING -> Utils.crash "unexpected symbol NOTHING"
-        | RESET -> Utils.crash "RESET should not occur"
+      let x = Random.int num_packets in (
+        print_endline "\n\nINJECTING CORRECT PACKET\n\n" ;
+        Some (x, g)
       )
-    | None -> Some (NOTHING, g)
+    | None -> Some (Config.num_packets, g)
 
 
 let rec newMutatedSet (p : child list) (m : mutationOperations) (n : int) : child list = 
@@ -434,7 +414,7 @@ let rec newMutatedSet (p : child list) (m : mutationOperations) (n : int) : chil
   | _, (x::xs), (mu::ms) ->
     let mutated_grammar = applyMutation mu (fst x |> snd) 10 in
     (match mutated_grammar with
-    | Some (NOTHING, z) -> ((((fst x |> fst)), z), (snd x)) :: (newMutatedSet xs ms (n - 1))
+    | Some (Config.num_packets, z) -> ((((fst x |> fst)), z), (snd x)) :: (newMutatedSet xs ms (n - 1))
     | Some (y, z) -> (((fst x |> fst) @ [(ValidPacket y)], z), (snd x)) :: (newMutatedSet xs ms (n - 1))
     | None -> (([], []), 0.0) :: newMutatedSet xs ms (n - 1)
     )
@@ -471,8 +451,8 @@ let save_population_info filename population =
 
 
 let rec save_queue_info queues =
-  match queues with
-  | NOTHING population :: xs -> 
+  List.map (fun x -> save_population_info (Printf.sprintf "temporal-info/%d-queue-info.txt" x)) queues
+  (* | NOTHING population :: xs -> 
     save_population_info "temporal-info/NOTHING-queue-info.txt" population ;
     save_queue_info xs
   | CONFIRMED population :: xs -> 
@@ -481,7 +461,7 @@ let rec save_queue_info queues =
   | ACCEPTED population  :: xs -> 
     save_population_info "temporal-info/ACCEPTED-queue-info.txt" population ;
     save_queue_info xs
-  | [] -> ()
+  | [] -> () *)
     
 (* let sendPacket (c : child) : (provenance * output) * state =
   let stateTransition = fst c |> fst in
@@ -526,10 +506,8 @@ let run_trace (trace : provenance list) : string list =
     | RawPacket z -> (bytes_to_hex z)
     | ValidPacket z -> ( 
       match z with
-      | COMMIT -> "COMMIT"
-      | CONFIRM -> "CONFIRM"
-      | ASSOCIATION_REQUEST -> "ASSOCIATION_REQUEST"
-      | NOTHING | RESET -> Utils.crash "unexpected provenance element.."
+      | RESET -> Utils.crash "unexpected provenance element.."
+      | n -> Printf.sprintf "%d" n
     ) 
   ) trace
   
@@ -586,13 +564,13 @@ let callDriver_new packets packet =
     (driver_result, oracle_result)
     
 let run_sequence (c : child) : (provenance * output) * state =
-  if c = (([],[]),0.0) then ((ValidPacket NOTHING, EXPECTED_OUTPUT), IGNORE_)
+  if c = (([],[]),0.0) then ((ValidPacket Config.num_packets, EXPECTED_OUTPUT), IGNORE_)
   else begin 
     let stateTransition = fst c |> fst in
     (* print_endline "\n\n\nGRAMMAR TO SYGUS:" ;
     pp_print_ast Format.std_formatter (fst c |> snd) ; *)
     let sygus_start_time = Unix.gettimeofday () in
-    let removed_dead_rules_for_sygus = dead_rule_removal (fst c |> snd) "SAE_PACKET" in
+    let removed_dead_rules_for_sygus = dead_rule_removal (fst c |> snd) Config.start_symbol in
     match removed_dead_rules_for_sygus with
     | Some grammar_to_sygus ->
       sygus_success_execution_time := ((Unix.gettimeofday ()) -. sygus_start_time) ;
@@ -610,9 +588,9 @@ let run_sequence (c : child) : (provenance * output) * state =
           print_endline "ERROR";
           sygus_fail_execution_time := ((Unix.gettimeofday ()) -. sygus_start_time) ;
           sygus_fail_calls := !sygus_fail_calls + 1 ;
-          ((ValidPacket NOTHING, EXPECTED_OUTPUT), IGNORE_)
+          ((ValidPacket Config.num_packets, EXPECTED_OUTPUT), IGNORE_)
       )
-    | None -> ((ValidPacket NOTHING, EXPECTED_OUTPUT), IGNORE_)
+    | None -> ((ValidPacket Config.num_packets, EXPECTED_OUTPUT), IGNORE_)
   end
 
 let executeMutatedPopulation (mutatedPopulation : child list) (old_states : state list) : (((provenance list list) * (child list)) * (state list)) * (state list) =
@@ -624,7 +602,7 @@ let executeMutatedPopulation (mutatedPopulation : child list) (old_states : stat
   (* print_endline "List.map2 first try SUCCESS"; *)
   let old_new_states = List.map2 (fun x y -> (x, y)) cat_mutated_population old_states in
   (* print_endline "List.map2 second one SUCCESS"; *)
-  let removed_sygus_errors = List.filter (fun x -> (fst x |> snd |> fst |> fst) <> (ValidPacket NOTHING)) old_new_states in
+  let removed_sygus_errors = List.filter (fun x -> (fst x |> snd |> fst |> fst) <> (ValidPacket Config.num_packets)) old_new_states in
   let filtered_mutated_population = List.map (fun x -> fst x |> fst) removed_sygus_errors in
   let old_states_ = List.map (fun x -> snd x) removed_sygus_errors in
   let outputList = List.map (fun x -> fst x |> snd |> fst) removed_sygus_errors in
@@ -644,31 +622,31 @@ let stdDev (s:score list) : float =
   let variance = List.fold_left (fun a x -> a +. (x -. m) ** 2.0) 0.0 s in
   sqrt (variance /. float_of_int (List.length s))
 
-let extract_child_from_state (p : population) : child list =
+(* let extract_child_from_state (p : population) : child list =
   match p with
-  | NOTHING x | CONFIRMED x | ACCEPTED x -> x
+  | NOTHING x | CONFIRMED x | ACCEPTED x -> x *)
 
 let sample_population (p : population) : population =
-  let population_c = extract_child_from_state p in
-  let population_proportion = (float_of_int (List.length population_c)) /. 10000.0 in
+  let population_proportion = (float_of_int (List.length p)) /. 10000.0 in
   let population_choice = 2000.0 *. population_proportion in
-  let new_population_top = sample_from_percentile_range population_c 0.0 50.0 (int_of_float (population_choice /. 0.8)) in
-  let new_population_random = sample_from_percentile_range population_c 0.0 100.0 (int_of_float (population_choice /. 0.2)) in
-  let new_population = new_population_top @ new_population_random in
-  match p with
-  | NOTHING _ -> NOTHING new_population
-  | CONFIRMED _ -> CONFIRMED new_population
-  | ACCEPTED _ -> ACCEPTED new_population
+  let new_population_top = sample_from_percentile_range p 0.0 50.0 (int_of_float (population_choice /. 0.8)) in
+  let new_population_random = sample_from_percentile_range p 0.0 100.0 (int_of_float (population_choice /. 0.2)) in
+  new_population_top @ new_population_random
+  
+let rec cleanup (q : queue) : population list = 
+  match q with
+  | [] -> []
+  | x :: xs -> sample_population x @ cleanup xs
+  
+  (* [sample_population (List.nth q 0); sample_population (List.nth q 1); sample_population (List.nth q 2)] *)
 
-let cleanup (q : triple_queue) : population list = [sample_population (List.nth q 0); sample_population (List.nth q 1); sample_population (List.nth q 2)]
 
-
-let dump_queue_info a b c =
+(* let dump_queue_info queues_sizes =
   let _ = Unix.system ("touch " ^ "temporal-info/sample-info.txt") in
   Unix.sleepf 0.1 ;
   print_endline "saving population info.." ;
   let string_to_save = Printf.sprintf "NOTHING SAMPLE %d, CONFIRMED SAMPLE %d, ACCEPTED SAMPLE %d\n" a b c in
-  append_to_file "temporal-info/sample-info.txt" string_to_save
+  append_to_file "temporal-info/sample-info.txt" string_to_save *)
 
 let rec exists elem lst =
   match lst with
@@ -687,10 +665,10 @@ let get_percentile (p : child list) : float =
   else if List.length p <= 5000 then 10.0
   else 5.0
 
-let uniform_sample_from_queue (q : triple_queue) : (child list) * (state list) =
+let uniform_sample_from_queue (q : queue) : (child list) * (state list) =
   print_endline "SAMPLING NEW POPULATION FOR MUTATION.." ;
   let np, cnf, acc = List.nth q 0, List.nth q 1, List.nth q 2 in
-   
+  
   let np_top_sample = sample_from_percentile_range (extract_child_from_state np) 0.0 (get_percentile ((extract_child_from_state np))) 15 in
   let cnf_top_sample = sample_from_percentile_range (extract_child_from_state cnf) 0.0 (get_percentile ((extract_child_from_state cnf))) 15 in
   let acc_top_sample = sample_from_percentile_range (extract_child_from_state acc) 0.0 (get_percentile ((extract_child_from_state acc))) 15 in
