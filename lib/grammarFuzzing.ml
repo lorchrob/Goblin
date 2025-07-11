@@ -846,7 +846,7 @@ let rec population_size_across_queues (currSize : int) (q : queue) =
   | [] -> currSize
   | x :: xs -> population_size_across_queues (currSize + List.length x) xs
 
-(* let oracle (pkt : provenance) : queue_handle =
+  (* let oracle (pkt : provenance) : queue_handle =
   match pkt with
   | RawPacket _ -> NOTHING
   | ValidPacket x ->
@@ -887,8 +887,8 @@ let save_grammar_map filename =
 
 (* let get_child_from_state (c : state_child) : child =
   match c with 
-  | NOTHING x | CONFIRMED x | ACCEPTED x -> x
-
+  | NOTHING x | CONFIRMED x | ACCEPTED x -> x *)
+(* 
 let filter_state (qh : queue_handle) (c : state_child) : bool =
   match c with
   | NOTHING _ -> if qh = NOTHING then true else false
