@@ -53,7 +53,8 @@ let expr_to_sygus_ast: A.expr -> SA.sygus_ast
 | PhConst s -> VarLeaf s
 | BVConst (len, bits) -> BVLeaf (len, bits)
 | BLConst bits -> BLLeaf bits 
-| _ -> eval_fail 1
+| StrConst s -> StrLeaf s
+| _ -> A.pp_print_expr Format.std_formatter expr; eval_fail 1
 
 let rec sygus_ast_to_expr: SA.sygus_ast -> A.expr list
 = fun sygus_ast -> 

@@ -25,7 +25,7 @@
 *)
 
 let main_pipeline ?(engine: Flags.engine option = None) filename = 
-  (* Printexc.record_backtrace true; *)
+  Printexc.record_backtrace true;
 
   let ppf = Format.std_formatter in
   let input_string = Utils.read_file filename in 

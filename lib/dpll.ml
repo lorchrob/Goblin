@@ -321,7 +321,11 @@ match dt with
       ) scs in
       let expr_variables = List.map A.get_nts_from_expr2 constraints_to_add |> List.flatten in
       let ty_ctx = List.fold_left (fun acc nt -> 
-        let ty = Utils.StringMap.find (List.rev nt |> List.hd |> fst) ctx in 
+        let ty = Utils.StringMap.find_opt (List.rev nt |> List.hd |> fst) ctx in 
+        let ty = match ty with 
+        | Some ty -> ty 
+        | None -> Utils.error ("couldn't find " ^ (List.rev nt |> List.hd |> fst))
+        in
         let str = Format.asprintf "%a" (Lib.pp_print_list Sygus.pp_print_nt_helper "_") nt in
         let str = 
           if path' = "" then str else path' ^ "_" ^ str 
