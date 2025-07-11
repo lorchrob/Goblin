@@ -930,8 +930,7 @@ let dump_single_trace (trace : provenance list) : string =
   ) trace in
   let result = ref "" in
   (List.iter (fun x -> result := !result ^ x ^ ", ") trace_string) ;
-  !result ^ "\n"
-  
+  !result ^ "\n"  
 
 let dump_all_traces (traces : provenance list list) =
   let trace_string_lists = List.map dump_single_trace traces in
@@ -1011,20 +1010,10 @@ let rec fuzzingAlgorithm
       (* save_queue_info newQueue ; *)
       let iteration_timer = Unix.gettimeofday () -. start_time in
       save_iteration_time (currentIteration + 1) iteration_timer ;
-      fuzzingAlgorithm maxCurrentPopulation newQueue (List.append iTraces iT) tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations seed flag 
-
-let rec clear_state_files (i : int) : unit =
-  if i = Config.num_queues then ()
-  else (
-    initialize_clear_file (Printf.sprintf "temporal-info/%d-queue-info.txt" i);
-    clear_state_files (i + 1);
-  )
+      fuzzingAlgorithm maxCurrentPopulation newQueue (List.append iTraces iT) tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations seed
 
 let initialize_files () =
   clear_state_files 0;
-  initialize_clear_file "temporal-info/NOTHING-queue-info.txt";
-  initialize_clear_file "temporal-info/CONFIRMED-queue-info.txt";
-  initialize_clear_file "temporal-info/ACCEPTED-queue-info.txt";
   initialize_clear_file "temporal-info/queue-size-updates.txt";
   initialize_clear_file "temporal-info/OCaml-time-info.csv";
   initialize_clear_file "temporal-info/sample-info.txt";
