@@ -15,11 +15,7 @@ int_to_bitvector(16, 19) bvlte <GROUP_ID> land
 (lnot (<STATUS_CODE> = int_to_bitvector(16, 0)));
     };
 
-<AUTH_ALGO> :: BitVector(16)
-    { 
-<AUTH_ALGO> = int_to_bitvector(16, 0) lor 
-<AUTH_ALGO> = int_to_bitvector(16, 3); 
-};
+<AUTH_ALGO> :: BitVector(16) ; 
 
 <CONFIRM> ::= <AUTH_ALGO> <AUTH_SEQ_CONFIRM> <STATUS_CODE> <SEND_CONFIRM_COUNTER> <CONFIRM_HASH>
 {
