@@ -1,6 +1,8 @@
 (* 
+     TODO: Docs for all built-in functions, and make it align with SMT-LIB syntax where possible
      TODO: Give positions in error messages 
      * Optimization: infer tighter set-logic 
+     TODO: Clean up crud in output when Utils.crash is called 
      TODO: Look at Shankar paper Omar sent in Zulip
      TODO: Write paper 
      TODO: Experimental evaluation -- XML, CSV
@@ -25,7 +27,7 @@
 *)
 
 let main_pipeline ?(engine: Flags.engine option = None) filename = 
-  Printexc.record_backtrace true;
+  (*Printexc.record_backtrace true;*)
 
   let ppf = Format.std_formatter in
   let input_string = Utils.read_file filename in 
@@ -63,22 +65,23 @@ let main_pipeline ?(engine: Flags.engine option = None) filename =
     match engine, !Flags.selected_engine with 
     (* Single engine mode.
        Two means of selecting engines -- command-line arg (default for users), 
-       or passing a functional argument (for testing) *)
-    | Some DpllMono, _ | _, Some DpllMono -> DpllMono.dpll ppf ctx ast
-    | Some DpllDac, _ | _, Some DpllDac -> 
+       or passing a functional argument (for testing).
+       Function arg trumps command-line arg. *)
+    | Some DpllMono, _ -> DpllMono.dpll ppf ctx ast
+    | Some DpllDac, _  -> 
       (match DpllDac.dpll ppf ctx ast with
       | Some result -> result 
       | None -> Utils.error "dpll_dac engine not applicable to this input")
-    | Some SygusDac, _ | _, Some SygusDac -> 
+    | Some SygusDac, _ -> 
       (match SygusDac.sygus ppf ctx ast with  
       | Some result -> result 
       | None -> Utils.error "sygus_dac engine not applicable to this input")
-    | Some MixedDac, _ | _, Some MixedDac -> 
+    | Some MixedDac, _ -> 
       (match MixedDac.dac ppf ctx ast with
       | Some result -> result 
       | None -> Utils.error "mixed_dac engine not applicable to this input")
     (* Race mode *)
-    | None, None -> 
+    | Some Race, _ -> (
       try 
         Parallelism.race_n_opt [
           (fun () -> DpllDac.dpll ppf ctx ast), "dpll_dac" ;
@@ -88,6 +91,32 @@ let main_pipeline ?(engine: Flags.engine option = None) filename =
         ]
       with Parallelism.AllReturnedNone -> 
         Utils.crash "Internal error: No engine produced a result"
+      )
+    | _, DpllMono -> DpllMono.dpll ppf ctx ast
+    | _, DpllDac -> 
+      (match DpllDac.dpll ppf ctx ast with
+      | Some result -> result 
+      | None -> Utils.error "dpll_dac engine not applicable to this input")
+    | _, SygusDac -> 
+      (match SygusDac.sygus ppf ctx ast with  
+      | Some result -> result 
+      | None -> Utils.error "sygus_dac engine not applicable to this input")
+    | _, MixedDac -> 
+      (match MixedDac.dac ppf ctx ast with
+      | Some result -> result 
+      | None -> Utils.error "mixed_dac engine not applicable to this input")
+    (* Race mode *)
+    | _, Race -> 
+      try 
+        Parallelism.race_n_opt [
+          (fun () -> DpllDac.dpll ppf ctx ast), "dpll_dac" ;
+          (fun () -> Some (DpllMono.dpll ppf ctx ast)), "dpll_mono" ;
+          (fun () -> (SygusDac.sygus ppf ctx ast)), "sygus_dac" ;
+          (fun () -> (MixedDac.dac ppf ctx ast)), "mixed_dac" ;
+        ]
+      with Parallelism.AllReturnedNone -> 
+        Utils.crash "Internal error: No engine produced a result"
+
   in
 
   (* Serialize! *)

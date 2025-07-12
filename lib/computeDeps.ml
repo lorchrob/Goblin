@@ -102,7 +102,7 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -
   let call = evaluate ~dep_map sygus_ast ast element in
   match expr with 
 | NTExpr (_, []) -> Utils.crash "Unexpected case in evaluate 1"
-| NTExpr (_, id :: rest) ->
+| NTExpr (_, (id, idx0) :: rest) ->
   let child_index = match element with 
   | A.TypeAnnotation _ -> Some 0
   | A.ProdRule (_, rhss) ->
@@ -111,8 +111,11 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -
       | A.StubbedRhs _ -> None 
       | Rhs (ges, _) ->
         Utils.find_index_opt (fun ge -> match ge with 
-        | A.Nonterminal (nt, idx) -> id = (nt, idx) 
-        | StubbedNonterminal (nt, _) -> (fst id) = nt;
+        | A.Nonterminal (nt, idx) -> 
+          Utils.str_eq_ci id nt && 
+          idx0 = idx 
+        | StubbedNonterminal (nt, _) -> 
+          Utils.str_eq_ci id nt 
         ) ges
       ) rhss
   in 
@@ -120,10 +123,10 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -
   | Some child_index -> child_index 
   | None -> 
     let msg = Format.asprintf "Dangling identifier %s%a in semantic constraint"
-      (fst id) 
+      id 
       (fun ppf opt -> match opt with 
       | Some idx -> Format.fprintf ppf "[%d]" idx 
-      | None -> Format.fprintf ppf "") (snd id)
+      | None -> Format.fprintf ppf "") idx0 
     in 
     Utils.crash msg
   in
@@ -145,7 +148,8 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -
     | Node _ when rest <> [] -> 
       (* Evaluate dot notation *)
       let element = List.find (fun element -> match element with 
-      | A.ProdRule (nt, _) -> (fst id) = nt
+      | A.ProdRule (nt, _) -> 
+        Utils.str_eq_ci id nt
       | TypeAnnotation _ -> false
       ) ast in
       evaluate ~dep_map child_sygus_ast ast element (NTExpr ([], rest))

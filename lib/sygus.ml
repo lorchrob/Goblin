@@ -1,3 +1,8 @@
+(* 
+   TODO: 
+     * Fix set-logic warnings when sygus is used 
+*)
+
 module A = Ast
 module TC = TypeChecker
 module StringMap = Utils.StringMap

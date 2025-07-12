@@ -1,8 +1,15 @@
+(*
+  TODO: 
+    * Flags for initial depth limit and restart rate 
+    * Flag for which SMT solver to use 
+*)
+
 type engine = 
   | SygusDac 
   | DpllDac
   | DpllMono
   | MixedDac
+  | Race
 
 let debug = ref false
 let no_warnings = ref true
@@ -12,7 +19,7 @@ let dump_clp = ref false
 let multiple_solutions = ref false
 let daniyal = ref false
 let filename = ref None
-let selected_engine = ref None
+let selected_engine = ref DpllMono
 let num_solutions = ref 1
 
 let parse_args () = 
@@ -25,6 +32,7 @@ let parse_args () =
     | "dpll_dac" -> Ok DpllDac
     | "dpll_mono" -> Ok DpllMono
     | "mixed_dac" -> Ok MixedDac
+    | "race" -> Ok Race
     | s -> Error (`Msg ("Invalid engine: " ^ s))
     in
     let print ppf = function
@@ -32,6 +40,7 @@ let parse_args () =
     | DpllDac -> Format.fprintf ppf "dpll_dac"
     | DpllMono -> Format.fprintf ppf "dpll_mono"
     | MixedDac -> Format.fprintf ppf "mixed_dac"
+    | Race -> Format.fprintf ppf "race"
     in
     Arg.conv (parse, print)
   in
@@ -77,8 +86,8 @@ let parse_args () =
   in
 
   let engine_flag =
-    let doc = "Select a single engine to use (dpll_mono, dpll_dac, sygus_dac, or mixed_dac)" in
-    Arg.(value & opt (some engine_conv) None & info ["e"; "engine"] ~docv:"ENGINE" ~doc)
+    let doc = "Select a single engine to use (dpll_mono, dpll_dac, sygus_dac, mixed_dac, or race (DEFAULT: dpll_mono)" in
+    Arg.(value & opt engine_conv DpllMono & info ["e"; "engine"] ~docv:"ENGINE" ~doc)
   in
 
   let num_solutions_flag =

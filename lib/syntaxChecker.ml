@@ -249,17 +249,11 @@ let remove_circular_deps: ast -> ast
           ) scs in
           let dependencies = match TopologicalSort.canonicalize_scs dependencies with 
           | None -> dependencies
-          | Some cycle -> 
-            List.fold_left (fun acc dep -> match dep with 
-            | SyGuSExpr _ -> dep :: acc  
-            | Dependency (nt, expr) -> 
-              (* Change dependent terms in cycle to sygus level constraints *)
-              if List.mem nt cycle
-              then (
-                Utils.debug_print Format.pp_print_string Format.std_formatter "Replacing dependency with SyGuS constraint\n";
-                SyGuSExpr (CompOp (NTExpr ([], [nt, None]), Eq, expr)) :: acc
-              ) else dep :: acc
-            ) [] dependencies
+          | Some cycle ->
+            let msg = Format.asprintf "Derived field cyclic dependency detected: %a\n" 
+              (Lib.pp_print_list Format.pp_print_string " ") cycle
+            in
+            Utils.crash msg
           in 
           Rhs (nt, sygus_exprs @ dependencies)
       ) rhss in 
@@ -283,10 +277,12 @@ let check_scs_for_dep_terms: semantic_constraint list -> semantic_constraint lis
       StringSet.union acc deps_to_convert
   ) StringSet.empty scs in 
   List.fold_left (fun acc sc -> match sc with 
-  | Dependency (nt, expr) -> 
+  | Dependency (nt, _) -> 
     if StringSet.mem nt deps_to_convert then (
-      Utils.debug_print Format.pp_print_string Format.std_formatter "Replacing dependency with SyGuS constraint\n";
-      SyGuSExpr (CompOp (NTExpr ([], [nt, None]), Eq, expr)) :: acc
+      let msg = Format.asprintf "Derived field %s mentioned in semantic constraint"
+        nt 
+      in 
+      Utils.crash msg
     ) else sc :: acc
   | SyGuSExpr _ -> sc :: acc
   ) [] scs |> List.rev

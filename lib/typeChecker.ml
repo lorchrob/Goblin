@@ -9,9 +9,7 @@ type mode =
 
 let type_checker_error mode error_msg = match mode with 
 | SyGuS -> Utils.error error_msg 
-| Dep -> 
-  let msg = Format.asprintf "<WARNING> %s\n " error_msg in
-  Utils.warning_print Format.pp_print_string Format.std_formatter msg
+| Dep -> ()
 
 let build_context: ast -> ast * context
 = fun ast -> 

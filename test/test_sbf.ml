@@ -92,8 +92,7 @@ let test_check_sygus_ast_7 () =
   | Ok _ -> fail "Expected failure"
   | Error _ -> ()
 
-(* This class of tests is now disabled since we no longer have a way to fail *)
-let sd_test_another_ambiguous_reference_1 () =
+(*let sd_test_another_ambiguous_reference_1 () =
   (* TODO: Fix ugly paths. The test_cases directory is currently not included in the build directory, 
            so we have to reference it from the build directory. *)
   let input = "../../../test/test_cases/test_another_ambiguous_reference_1" in
@@ -103,7 +102,7 @@ let sd_test_another_ambiguous_reference_1 () =
 let sd_test_another_ambiguous_reference_2 () =
   let input = "../../../test/test_cases/test_another_ambiguous_reference_2" in
   let _, output, _ = main_pipeline ~engine:(Some SygusDac) input in
-  check string "test_another_ambiguous_reference_2" output "infeasible\n"
+  check string "test_another_ambiguous_reference_2" output "infeasible\n"*)
 
 let sd_test_another_ambiguous_reference () =
   let input = "../../../test/test_cases/test_another_ambiguous_reference" in
@@ -123,11 +122,10 @@ let sd_test_dot_notation_2 () =
 
 let sd_test_cyclic_dependencies () =
   let input = "../../../test/test_cases/test_cyclic_dependencies" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
-  match output with
-  | Ok _ -> ()  
-  | Error msg -> fail msg
+  try 
+    let _ = main_pipeline ~engine:(Some SygusDac) input in
+    fail "expected error"
+  with _ -> () 
 
 let sd_test_horizontal_ambiguous_reference_1 () =
   let input = "../../../test/test_cases/test_horizontal_ambiguous_reference_1" in
@@ -346,11 +344,10 @@ let dm_test_dot_notation_2 () =
 
 let dm_test_cyclic_dependencies () =
   let input = "../../../test/test_cases/test_cyclic_dependencies" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
-  match output with
-  | Ok _ -> ()  
-  | Error msg -> fail msg
+  try 
+    let _ = main_pipeline ~engine:(Some DpllMono) input in
+    fail "expected error"
+  with _ -> () 
 
 let dm_test_horizontal_ambiguous_reference_1 () =
   let input = "../../../test/test_cases/test_horizontal_ambiguous_reference_1" in
@@ -569,11 +566,10 @@ let dd_test_dot_notation_2 () =
 
 let dd_test_cyclic_dependencies () =
   let input = "../../../test/test_cases/test_cyclic_dependencies" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
-  match output with
-  | Ok _ -> ()  
-  | Error msg -> fail msg
+  try 
+    let _ = main_pipeline ~engine:(Some DpllDac) input in
+    fail "expected error"
+  with _ -> () 
 
 let dd_test_horizontal_ambiguous_reference_1 () =
   let input = "../../../test/test_cases/test_horizontal_ambiguous_reference_1" in
@@ -776,11 +772,10 @@ let md_test_dot_notation_2 () =
 
 let md_test_cyclic_dependencies () =
   let input = "../../../test/test_cases/test_cyclic_dependencies" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
-  match output with
-  | Ok _ -> ()  
-  | Error msg -> fail msg
+  try 
+    let _ = main_pipeline ~engine:(Some MixedDac) input in
+    fail "expected error"
+  with _ -> () 
 
 let md_test_horizontal_ambiguous_reference_1 () =
   let input = "../../../test/test_cases/test_horizontal_ambiguous_reference_1" in
@@ -1043,36 +1038,31 @@ let sd_test14 () =
 
 let sd_test17 () = 
   let input = "../../../test/test_cases/test17" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
-  match output with
-  | Ok _ -> ()  
-  | Error msg -> fail msg
+  try 
+    let _ = main_pipeline ~engine:(Some SygusDac) input in
+    fail "expected error"
+  with _ -> () 
 
 let dm_test17 () = 
   let input = "../../../test/test_cases/test17" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
-  match output with
-  | Ok _ -> ()  
-  | Error msg -> fail msg
+  try 
+    let _ = main_pipeline ~engine:(Some DpllMono) input in
+    fail "expected error"
+  with _ -> () 
 
 let dd_test17 () = 
   let input = "../../../test/test_cases/test17" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
-  match output with
-  | Ok _ -> ()  
-  | Error msg -> fail msg
+  try 
+    let _ = main_pipeline ~engine:(Some DpllDac) input in
+    fail "expected error"
+  with _ -> () 
 
 let md_test17 () = 
   let input = "../../../test/test_cases/test17" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
-  match output with
-  | Ok _ -> ()  
-  | Error msg -> fail msg
-
+  try 
+    let _ = main_pipeline ~engine:(Some MixedDac) input in
+    fail "expected error"
+  with _ -> () 
 
 let sd_test18 () = 
   let input = "../../../test/test_cases/test18" in
@@ -1388,7 +1378,7 @@ let md_test16 () =
 
 let test10 () =
   let input = "../../../test/test_cases/test10" in
-  match main_pipeline input with
+  match main_pipeline ~engine:(Some SygusDac) input with
   | _ -> Alcotest.fail "Expected exception, but got success"
   | exception _ -> ()  (* test passes *)
 
@@ -1569,11 +1559,11 @@ let () =
     "test_check_sygus_ast_6", [test_case "test_check_sygus_ast_6" `Quick test_check_sygus_ast_6];
     "test_check_sygus_ast_7", [test_case "test_check_sygus_ast_7" `Quick test_check_sygus_ast_7]; 
 
-    "sd_test_another_ambiguous_reference_1", [test_case "sd_test_another_ambiguous_reference_1" `Quick sd_test_another_ambiguous_reference_1]; 
+    (*"sd_test_another_ambiguous_reference_1", [test_case "sd_test_another_ambiguous_reference_1" `Quick sd_test_another_ambiguous_reference_1]; *)
     "dm_test_another_ambiguous_reference_1", [test_case "dm_test_another_ambiguous_reference_1" `Quick dm_test_another_ambiguous_reference_1]; 
     "dd_test_another_ambiguous_reference_1", [test_case "dd_test_another_ambiguous_reference_1" `Quick dd_test_another_ambiguous_reference_1]; 
     "md_test_another_ambiguous_reference_1", [test_case "md_test_another_ambiguous_reference_1" `Quick md_test_another_ambiguous_reference_1]; 
-    "sd_test_another_ambiguous_reference_2", [test_case "sd_test_another_ambiguous_reference_2" `Quick sd_test_another_ambiguous_reference_2];  
+    (*"sd_test_another_ambiguous_reference_2", [test_case "sd_test_another_ambiguous_reference_2" `Quick sd_test_another_ambiguous_reference_2];  *)
     "dm_test_another_ambiguous_reference_2", [test_case "dm_test_another_ambiguous_reference_2" `Quick dm_test_another_ambiguous_reference_2]; 
     "dd_test_another_ambiguous_reference_2", [test_case "dd_test_another_ambiguous_reference_2" `Quick dd_test_another_ambiguous_reference_2]; 
     "md_test_another_ambiguous_reference_2", [test_case "md_test_another_ambiguous_reference_2" `Quick md_test_another_ambiguous_reference_2];  
