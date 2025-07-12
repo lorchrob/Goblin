@@ -6,6 +6,7 @@
      TODO: Look at Shankar paper Omar sent in Zulip
      TODO: Write paper 
      TODO: Experimental evaluation -- XML, CSV
+     TODO: Remove placeholder type  
      TODO: Always more testing 
       * Fix mixed_dac engine recombine looping bug w/ dependent terms in type annotation
 
@@ -37,6 +38,11 @@ let main_pipeline ?(engine: Flags.engine option = None) filename =
   let ast = Parsing.parse input_string in 
   Utils.debug_print Ast.pp_print_ast ppf ast;
 
+  (* Desugar type annotation constraints *) 
+  let ast = EliminateTaConstraints.eliminate_ta_constraints ast in 
+  Utils.debug_print Format.pp_print_string ppf "\nType annotation constraints eliminated:\n";
+  Utils.debug_print Ast.pp_print_ast ppf ast;
+
   (* Syntactic checks *)
   let prm = SyntaxChecker.build_prm ast in
   let nt_set = SyntaxChecker.build_nt_set ast in
@@ -49,11 +55,6 @@ let main_pipeline ?(engine: Flags.engine option = None) filename =
   let ast, ctx = TypeChecker.build_context ast in
   let ast = TypeChecker.check_types ctx ast in
   Utils.debug_print Format.pp_print_string ppf "\nType checking complete:\n";
-
-  (* Desugar type annotation constraints *) 
-  let ast = EliminateTaConstraints.eliminate_ta_constraints ast in 
-  Utils.debug_print Format.pp_print_string ppf "\nType annotation constraints eliminated:\n";
-  Utils.debug_print Ast.pp_print_ast ppf ast;
 
   (* Populate nonterminal indices *)
   Utils.debug_print Format.pp_print_string ppf "\nPopulating indices:\n";

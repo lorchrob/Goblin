@@ -40,7 +40,7 @@ str_in_re(<raw-field>,
 }
 ; 
 
-<nil> :: Placeholder  
+<nil> :: String 
   { <nil> = ""; } ; 
 
 <_count> :: Int ;

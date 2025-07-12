@@ -20,7 +20,7 @@ let multiple_solutions = ref false
 let daniyal = ref false
 let filename = ref None
 let selected_engine = ref DpllMono
-let num_solutions = ref 1
+let num_solutions = ref (-1) 
 
 let parse_args () = 
   let open Cmdliner in
@@ -91,7 +91,7 @@ let parse_args () =
   in
 
   let num_solutions_flag =
-    let doc = "Specify the number of solutions to produce" in
+    let doc = "Specify the number of solutions to produce when --multiple-solutions is enabled. DEFAULT: infinitely many if --multiple_solutions is enabled, and otherwise 1" in
     Arg.(value & opt int 0 & info ["s"; "num-solutions"] ~doc)
   in
 

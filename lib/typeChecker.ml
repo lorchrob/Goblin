@@ -269,7 +269,7 @@ let rec infer_type_expr: context -> mode -> expr -> il_type option
 | PhConst _ -> 
   if mode = Dep then Some Placeholder
   else 
-    let error_message = "String constants can only be in dependencies (of the form 'nonterminal <- string_literal')" in 
+    let error_message = "Placeholders can only be in derived fields" in 
     Utils.error error_message
 (* TODO: Add proper RegEx type *)
 | ReStar expr 

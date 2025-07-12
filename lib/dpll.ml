@@ -324,7 +324,7 @@ match dt with
         let ty = Utils.StringMap.find_opt (List.rev nt |> List.hd |> fst) ctx in 
         let ty = match ty with 
         | Some ty -> ty 
-        | None -> Utils.error ("couldn't find " ^ (List.rev nt |> List.hd |> fst))
+        | None -> Utils.crash ("couldn't find " ^ (List.rev nt |> List.hd |> fst))
         in
         let str = Format.asprintf "%a" (Lib.pp_print_list Sygus.pp_print_nt_helper "_") nt in
         let str = 
@@ -825,7 +825,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
   let starting_depth_limit = 5 in 
   let restart_rate = 10000 in 
   let num_solutions = ref 0 in 
-  let num_solutions_to_find = -1 in 
+  let num_solutions_to_find = !Flags.num_solutions in 
   let num_iterations = ref 0 in
   try
 
