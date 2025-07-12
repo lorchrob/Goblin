@@ -27,16 +27,21 @@
 
 *)
 
-let main_pipeline ?(engine: Flags.engine option = None) filename = 
+let main_pipeline ?(engine: Flags.engine option = None) ?(grammar: Ast.ast option) filename = 
   (*Printexc.record_backtrace true;*)
-
   let ppf = Format.std_formatter in
-  let input_string = Utils.read_file filename in 
 
-  (* Parse user input *)
-  Utils.debug_print Format.pp_print_string ppf "Lexing and parsing complete:\n";
-  let ast = Parsing.parse input_string in 
-  Utils.debug_print Ast.pp_print_ast ppf ast;
+  let ast = match grammar with 
+  | Some ast -> ast 
+  | None -> 
+    let input_string = Utils.read_file filename in 
+
+    (* Parse user input *)
+    Utils.debug_print Format.pp_print_string ppf "Lexing and parsing complete:\n";
+    let ast = Parsing.parse input_string in 
+    Utils.debug_print Ast.pp_print_ast ppf ast;
+    ast
+  in
 
   (* Desugar type annotation constraints *) 
   let ast = EliminateTaConstraints.eliminate_ta_constraints ast in 

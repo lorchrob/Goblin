@@ -597,7 +597,15 @@ let run_sequence (c : child) : (provenance * output) * state =
     | Some grammar_to_sygus ->
       sygus_success_execution_time := ((Unix.gettimeofday ()) -. sygus_start_time) ;
       sygus_success_calls := !sygus_success_calls + 1 ;
-      let packetToSend_ = Lwt_main.run (timeout_wrapper 5.0 (fun () -> (Pipeline.sygusGrammarToPacket grammar_to_sygus))) in (
+      let packetToSend_ = Lwt_main.run (timeout_wrapper 5.0 (fun () -> 
+        let grammar = grammar_to_sygus in
+        try 
+          let sygus_ast, _, _ = Pipeline.main_pipeline ~grammar "dummy" in 
+          let sygus_ast = BitFlips.flip_bits sygus_ast in
+          Ok (SygusAst.serialize_bytes SygusAst.Big sygus_ast)
+        with _ -> 
+          Error "failure" 
+        )) in (
         match packetToSend_ with
         | Ok (packetToSend, _metadata) ->
           print_endline "SUCCESS";
