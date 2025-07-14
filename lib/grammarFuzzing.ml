@@ -384,7 +384,7 @@ let rec applyMutation (m : mutation) (g : ast) (count : int) : (packet_type * gr
           let well_formed_check = check_well_formed_rules x in
           (
             match well_formed_check with
-            | true -> pp_print_ast Format.std_formatter x; deletion_count = !deletion_count + 1; Some (NOTHING, x)
+            | true -> pp_print_ast Format.std_formatter x; deletion_count := !deletion_count + 1; Some (NOTHING, x)
             | false -> applyMutation Delete g (count - 1)
           )
         | None -> applyMutation Delete g (count - 1)
@@ -394,7 +394,7 @@ let rec applyMutation (m : mutation) (g : ast) (count : int) : (packet_type * gr
       let operation = random_element [Plus; Minus] in
       let (modified_grammar, success_code) = mutation_update g nt operation in
       if success_code then begin
-        modify_count = !modify_count + 1;
+        modify_count := !modify_count + 1;
         Some (NOTHING, modified_grammar)
       end
       else applyMutation Modify g (count - 1)
@@ -413,7 +413,7 @@ let rec applyMutation (m : mutation) (g : ast) (count : int) : (packet_type * gr
             let well_formed_check = check_well_formed_rules x in
             (match well_formed_check with
             | true ->
-              crossover_count = !crossover_count + 1;
+              crossover_count := !crossover_count + 1;
               Some (NOTHING, x)
             | false -> applyMutation CrossOver g (count - 1)
             )
@@ -484,6 +484,7 @@ let save_mutation_count filename =
   Unix.sleepf 0.1 ;
   print_endline "saving mutation info.." ;
   write_symbol_to_file filename (Printf.sprintf "Addition: %d\nDeletion: %d\nModification: %d\nCrossOver: %d" !addition_count !deletion_count !modify_count !crossover_count);
+  ()
 
 let rec save_queue_info queues =
   match queues with
@@ -617,14 +618,15 @@ let run_sequence (c : child) : (provenance * output) * state =
         try 
           let sygus_ast, _, _ = Pipeline.main_pipeline ~grammar "dummy" in 
           let sygus_ast = BitFlips.flip_bits sygus_ast in
-          let serialized = SygusAst.serialize_bytes SygusAst.Big sygus_ast in
-          grammar_byte_map = !grammar_byte_map ^ (Utils.capture_output Ast.pp_print_ast grammar) ^ "\n HEX: " ^ bytes_to_hex serialized ^ "------------------------------\n"
-          Ok serialized
+          grammar_byte_map := !grammar_byte_map ^ (Utils.capture_output Ast.pp_print_ast grammar);
+          Ok (SygusAst.serialize_bytes SygusAst.Big sygus_ast)
         with _ -> 
           Error "failure" 
         )) in (
         match packetToSend_ with
         | Ok (packetToSend, _metadata) ->
+          grammar_byte_map := !grammar_byte_map ^ "\n HEX: " ^ bytes_to_hex packetToSend ^ "------------------------------\n";
+
           print_endline "SUCCESS";
           let trace_start_time = Unix.gettimeofday () in
           let driver_output = callDriver_new (run_trace stateTransition) (RawPacket packetToSend) in
@@ -822,7 +824,7 @@ let dump_single_trace (trace : provenance list) : string =
 let dump_all_traces (traces : provenance list list) =
   let trace_string_lists = List.map dump_single_trace traces in
   let result = ref "" in
-  (List.iter (fun x -> result := !result ^ x ) trace_string_lists) ;addition
+  (List.iter (fun x -> result := !result ^ x ) trace_string_lists) ;
   append_to_file "results/interesting_traces.txt" !result
 
 let normalize_scores (q : triple_queue) : triple_queue =
