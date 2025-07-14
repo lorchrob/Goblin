@@ -628,7 +628,6 @@ let run_sequence (c : child) : (provenance * output) * state =
         match packetToSend_ with
         | Ok (packetToSend, _metadata) ->
           grammar_byte_map := !grammar_byte_map ^ "\n HEX: " ^ bytes_to_hex packetToSend ^ "------------------------------\n";
-
           print_endline "SUCCESS";
           let trace_start_time = Unix.gettimeofday () in
           let driver_output = callDriver_new (run_trace stateTransition) (RawPacket packetToSend) in

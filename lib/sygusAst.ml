@@ -183,6 +183,7 @@ let serialize_bytes: endianness -> sygus_ast -> bytes * bytes
       let bit_bytes = bools_to_bytes endianness bits in
       (bit_bytes, acc_metadata, offset + Bytes.length bit_bytes)
       
+    | StrLeaf id 
     | VarLeaf id ->
       let var_leaf_data = Bytes.of_string id in
       let var_leaf_length = Bytes.length var_leaf_data in
@@ -194,7 +195,6 @@ let serialize_bytes: endianness -> sygus_ast -> bytes * bytes
       
     | BoolLeaf _ -> Utils.crash "serializing final packet, unhandled case 1"
     | IntLeaf _ -> Utils.crash "serializing final packet, unhandled case 2"
-    | StrLeaf _ -> Utils.crash "serializing final packet, unhandled case 3"
     | SetLeaf _ -> Utils.crash "unsupported"
   in
   let initial_metadata = {
