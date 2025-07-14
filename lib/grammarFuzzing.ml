@@ -52,6 +52,12 @@ let total_execution_calls = ref 0
 let driver_call_time = ref 0.0
 let driver_calls = ref 0
 
+let addition_count = ref 0
+let deletion_count = ref 0
+let modify_count = ref 0
+let crossover_count = ref 0
+let grammar_byte_map = ref ""
+
 let preprocess_map (f : 'a) (p : population) : population =
   match p with
   | NOTHING x -> NOTHING (f x)
@@ -363,7 +369,8 @@ let rec applyMutation (m : mutation) (g : ast) (count : int) : (packet_type * gr
       let added_grammar = (mutation_add_s1 g nt random_prod_rule) in
       if snd added_grammar = false then applyMutation Add g (count - 1)
       else begin
-        pp_print_ast Format.std_formatter (fst added_grammar); 
+        pp_print_ast Format.std_formatter (fst added_grammar);
+        addition_count := !addition_count + 1 ;
         Some (NOTHING, (fst added_grammar))
       end
     | Delete -> print_endline "\n\nDELETING\n\n" ;
@@ -377,7 +384,7 @@ let rec applyMutation (m : mutation) (g : ast) (count : int) : (packet_type * gr
           let well_formed_check = check_well_formed_rules x in
           (
             match well_formed_check with
-            | true -> pp_print_ast Format.std_formatter x; Some (NOTHING, x)
+            | true -> pp_print_ast Format.std_formatter x; deletion_count = !deletion_count + 1; Some (NOTHING, x)
             | false -> applyMutation Delete g (count - 1)
           )
         | None -> applyMutation Delete g (count - 1)
@@ -386,8 +393,10 @@ let rec applyMutation (m : mutation) (g : ast) (count : int) : (packet_type * gr
     | Modify -> print_endline "\n\nMODIFYING\n\n" ;
       let operation = random_element [Plus; Minus] in
       let (modified_grammar, success_code) = mutation_update g nt operation in
-      if success_code then 
+      if success_code then begin
+        modify_count = !modify_count + 1;
         Some (NOTHING, modified_grammar)
+      end
       else applyMutation Modify g (count - 1)
 
     | CrossOver -> print_endline "\n\n\nENTERING CROSSOVER\n\n\n" ;
@@ -404,6 +413,7 @@ let rec applyMutation (m : mutation) (g : ast) (count : int) : (packet_type * gr
             let well_formed_check = check_well_formed_rules x in
             (match well_formed_check with
             | true ->
+              crossover_count = !crossover_count + 1;
               Some (NOTHING, x)
             | false -> applyMutation CrossOver g (count - 1)
             )
@@ -469,6 +479,11 @@ let save_population_info filename population =
   output_string oc string_to_save ;
   close_out oc
 
+let save_mutation_count filename = 
+  let _ = Unix.system ("touch " ^ filename) in
+  Unix.sleepf 0.1 ;
+  print_endline "saving mutation info.." ;
+  write_symbol_to_file filename (Printf.sprintf "Addition: %d\nDeletion: %d\nModification: %d\nCrossOver: %d" !addition_count !deletion_count !modify_count !crossover_count);
 
 let rec save_queue_info queues =
   match queues with
@@ -602,7 +617,9 @@ let run_sequence (c : child) : (provenance * output) * state =
         try 
           let sygus_ast, _, _ = Pipeline.main_pipeline ~grammar "dummy" in 
           let sygus_ast = BitFlips.flip_bits sygus_ast in
-          Ok (SygusAst.serialize_bytes SygusAst.Big sygus_ast)
+          let serialized = SygusAst.serialize_bytes SygusAst.Big sygus_ast in
+          grammar_byte_map = !grammar_byte_map ^ (Utils.capture_output Ast.pp_print_ast grammar) ^ "\n HEX: " ^ bytes_to_hex serialized ^ "------------------------------\n"
+          Ok serialized
         with _ -> 
           Error "failure" 
         )) in (
@@ -772,7 +789,7 @@ let filter_state (qh : queue_handle) (c : state_child) : bool =
 
 let removeDuplicates (currentList : child list) : child list = 
   let s = PopulationSet.of_list currentList in 
-  PopulationSet.elements s  
+  PopulationSet.elements s
   
 let bucket_oracle (q : triple_queue) (clist : child list) (old_states : state list) (new_states : state list) : triple_queue =
   print_endline "NEW QUEUES GENERATING.." ;
@@ -805,7 +822,7 @@ let dump_single_trace (trace : provenance list) : string =
 let dump_all_traces (traces : provenance list list) =
   let trace_string_lists = List.map dump_single_trace traces in
   let result = ref "" in
-  (List.iter (fun x -> result := !result ^ x ) trace_string_lists) ;
+  (List.iter (fun x -> result := !result ^ x ) trace_string_lists) ;addition
   append_to_file "results/interesting_traces.txt" !result
 
 let normalize_scores (q : triple_queue) : triple_queue =
@@ -836,6 +853,7 @@ let save_iteration_time (iteration : int) (iteration_timer : float) : unit =
   let time_string = Printf.sprintf "Iteration: %d --> Time taken: %.3f\n" iteration iteration_timer in
   append_to_file "temporal-info/iteration-times.txt" time_string ;
   ()
+
 
 let rec fuzzingAlgorithm 
 (maxCurrentPopulation : int) 
@@ -882,6 +900,8 @@ let rec fuzzingAlgorithm
       save_queue_info newQueue ;
       let iteration_timer = Unix.gettimeofday () -. start_time in
       save_iteration_time (currentIteration + 1) iteration_timer ;
+      write_symbol_to_file "temporal-info/grammar-hex-map.txt" !grammar_byte_map;
+      save_mutation_count "temporal-info/mutation-count.txt";
       fuzzingAlgorithm maxCurrentPopulation newQueue (List.append iTraces iT) tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations seed
 
 let initialize_files () =
@@ -909,6 +929,6 @@ let runFuzzer grammar_list =
   let confirmed_queue = CONFIRMED([([ValidPacket COMMIT], commit_grammar), 0.0; ([ValidPacket COMMIT], confirm_grammar), 0.0; ([ValidPacket COMMIT], commit_confirm_grammar), 0.0;]) in
   let accepted_queue = ACCEPTED([([ValidPacket COMMIT; ValidPacket CONFIRM], commit_grammar), 0.0; ([ValidPacket COMMIT; ValidPacket CONFIRM], confirm_grammar), 0.0; ([ValidPacket COMMIT; ValidPacket CONFIRM], commit_confirm_grammar), 0.0;]) in
 
-  let _ = fuzzingAlgorithm 10000 [nothing_queue; confirmed_queue; accepted_queue] [] 100 0 1150 100 100 [ Modify; Add;CrossOver;Delete;] [nothing_queue; confirmed_queue; accepted_queue] in
+  let _ = fuzzingAlgorithm 10000 [nothing_queue; confirmed_queue; accepted_queue] [] 100 0 1150 100 100 [ Modify; Add;CrossOver;Delete; CorrectPacket;] [nothing_queue; confirmed_queue; accepted_queue] in
   ()
   (* CorrectPacket;  Modify; Add;CrossOver;*)
