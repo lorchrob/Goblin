@@ -21,6 +21,9 @@ let daniyal = ref false
 let filename = ref None
 let selected_engine = ref DpllMono
 let num_solutions = ref (-1) 
+let starting_depth_limit = ref 5 
+let restart_rate = ref 10000 
+let sols_per_iter = ref 100 
 
 let parse_args () = 
   let open Cmdliner in
@@ -92,11 +95,27 @@ let parse_args () =
 
   let num_solutions_flag =
     let doc = "Specify the number of solutions to produce when --multiple-solutions is enabled. DEFAULT: infinitely many if --multiple_solutions is enabled, and otherwise 1" in
-    Arg.(value & opt int 0 & info ["s"; "num-solutions"] ~doc)
+    Arg.(value & opt int (-1) & info ["s"; "num-solutions"] ~doc)
+  in
+
+  let starting_depth_limit_flag =
+    let doc = "Starting depth limit for iterative deepening search" in 
+    Arg.(value & opt int 5 & info ["l"; "starting-depth-limit"] ~doc)
+  in
+
+  let restart_rate_flag =
+    let doc = "Specify the restart rate (number of iterations without finding a solution before restarting)" in 
+    Arg.(value & opt int 10000 & info ["r"; "restart-rate"] ~doc)
+  in
+
+  let sols_per_iter_flag =
+    let doc = "Specify the number of solutions to collect from each initial solution" in
+    Arg.(value & opt int 100 & info ["i"; "sols-per-iter"] ~doc)
   in
 
   let set_flags new_debug new_no_warnings new_only_parse new_show_winner 
-                new_dump_clp new_multiple_solutions new_daniyal new_filename new_engine new_num_solutions =
+                new_dump_clp new_multiple_solutions new_daniyal new_filename new_engine new_num_solutions 
+                new_starting_depth_limit new_restart_rate new_sols_per_iter =
     Format.pp_print_flush Format.std_formatter ();
     debug := new_debug;
     no_warnings := new_no_warnings;
@@ -108,6 +127,9 @@ let parse_args () =
     filename := new_filename;
     selected_engine := new_engine;
     num_solutions := new_num_solutions;
+    starting_depth_limit := new_starting_depth_limit; 
+    restart_rate := new_restart_rate; 
+    sols_per_iter := new_sols_per_iter;
   in
 
   let term =
@@ -121,7 +143,10 @@ let parse_args () =
           $ daniyal_flag
           $ filename_flag
           $ engine_flag
-          $ num_solutions_flag)
+          $ num_solutions_flag
+          $ starting_depth_limit_flag 
+          $ restart_rate_flag 
+          $ sols_per_iter_flag)
   in
 
   let info = Cmd.info "sbf" in
