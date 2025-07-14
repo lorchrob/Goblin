@@ -620,8 +620,10 @@ let run_sequence (c : child) : (provenance * output) * state =
           let sygus_ast = BitFlips.flip_bits sygus_ast in
           grammar_byte_map := !grammar_byte_map ^ (Utils.capture_output Ast.pp_print_ast grammar);
           Ok (SygusAst.serialize_bytes SygusAst.Big sygus_ast)
-        with _ -> 
-          Error "failure" 
+        with exn -> 
+          let error = Format.asprintf "Exception: %s\n" (Printexc.to_string exn) in 
+          let error2 = Format.asprintf "Backtrace:\n%s\n" (Printexc.get_backtrace ()) in 
+          Error (error ^ error2) 
         )) in (
         match packetToSend_ with
         | Ok (packetToSend, _metadata) ->
@@ -633,8 +635,9 @@ let run_sequence (c : child) : (provenance * output) * state =
           trace_time := Unix.gettimeofday () -. trace_start_time ;
           save_time_info "temporal-info/OCaml-time-info.csv" (1 + (List.length (stateTransition))) ;
           (RawPacket packetToSend, (fst driver_output)), (snd driver_output)
-        | Error _ -> 
+        | Error e -> 
           print_endline "ERROR";
+          print_endline e ;
           sygus_fail_execution_time := ((Unix.gettimeofday ()) -. sygus_start_time) ;
           sygus_fail_calls := !sygus_fail_calls + 1 ;
           ((ValidPacket NOTHING, EXPECTED_OUTPUT), IGNORE_)

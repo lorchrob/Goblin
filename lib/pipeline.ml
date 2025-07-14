@@ -18,6 +18,8 @@
      FUTURE: Something akin to inherited attributes 
      FUTURE: Structural constraints 
      FUTURE: Quantifiers in the DSL 
+     FUTURE: Finite model finding engine
+     FUTURE: Surface level language w/ support for attributes
 *)
 
 (* TODO for nice surface-level language
@@ -28,7 +30,7 @@
 *)
 
 let main_pipeline ?(engine: Flags.engine option = None) ?(grammar: Ast.ast option) filename = 
-  (*Printexc.record_backtrace true;*)
+  Printexc.record_backtrace true;
   let ppf = Format.std_formatter in
 
   let ast = match grammar with 
