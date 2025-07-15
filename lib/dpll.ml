@@ -273,6 +273,11 @@ let initialize_solver () : solver_instance =
   issue_solver_command "(set-option :produce-models true)\n(set-option :global-declarations true)\n" solver;
   solver
 
+let cleanup_solver (solver : solver_instance) : unit =
+  close_out_noerr solver.out_channel;
+  close_in_noerr solver.in_channel;
+  close_in_noerr solver.err_channel
+
 let assert_smt_constraint: solver_instance -> Ast.expr -> unit 
 = fun solver expr ->
   let assert_cmd = 
@@ -1111,9 +1116,11 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
   ()
   done; 
 
+  cleanup_solver solver;
   Option.get !result 
 
   with Failure e -> 
+    cleanup_solver solver;
     (if not (String.equal e "infeasible") then 
       Utils.crash e);
     Format.pp_print_flush Format.std_formatter ();
