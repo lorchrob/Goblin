@@ -619,6 +619,8 @@ let run_sequence (c : child) : (provenance * output) * state =
       let packetToSend_ = Lwt_main.run (timeout_wrapper 1.0 (fun () -> 
         let grammar = grammar_to_sygus in
         try 
+          Format.printf "%a\n" Ast.pp_print_ast grammar; 
+          Format.pp_print_flush Format.std_formatter ();
           let sygus_ast, _, _ = Pipeline.main_pipeline ~grammar "dummy" in 
           let sygus_ast = BitFlips.flip_bits sygus_ast in
           grammar_byte_map := !grammar_byte_map ^ (Utils.capture_output Ast.pp_print_ast grammar);
