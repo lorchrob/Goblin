@@ -217,7 +217,7 @@ let declare_smt_variables: Utils.StringSet.t ref -> A.il_type Utils.StringMap.t 
 let read_check_sat_response solver = 
     input_line solver.in_channel
 
-let read_get_model_response solver =
+(*let read_get_model_response solver =
   let rec loop acc parens =
     try
       let line = input_line solver.in_channel in
@@ -226,14 +226,31 @@ let read_get_model_response solver =
       let acc = acc ^ "\n" ^ line in
       if parens <= 0 && (not (String.equal line "sat")) then
         acc
-      else
-        loop acc parens
+      else (
+    Format.fprintf Format.std_formatter "looping: %s \n" acc; 
+    Format.pp_print_flush Format.std_formatter () ;
+        loop acc parens )
     with End_of_file -> 
       acc
   in
   let result = (loop "" 0) in
-  result
+      
+    Format.fprintf Format.std_formatter "got here \n" ; 
+    Format.pp_print_flush Format.std_formatter () ;
+  result*)
   
+
+let read_get_model_response solver =
+  let rec loop acc =
+    try
+      let line = input_line solver.in_channel in
+      let acc = acc ^ "\n" ^ line in
+      if String.trim line = ")" then acc
+      else loop acc
+    with End_of_file -> acc
+  in
+  let result = loop "" in
+  result
 
 let initialize_solver () : solver_instance =
   let cvc5 = Utils.find_command_in_path "cvc5" in
@@ -792,6 +809,24 @@ let push_blocking_clause model dt declared_variables solver =
     (Lib.pp_print_list pp_print_model_pair " ") (Utils.StringMap.bindings model) in
   issue_solver_command blocking_clause_str solver  
 
+let rec generate_n_solutions n ast model r derivation_tree declared_variables solver = 
+  if n = 1 then 
+    [model, r] 
+  else (
+    push_blocking_clause model derivation_tree declared_variables solver;
+    let model2 = get_smt_result ast solver true in   
+    match model2 with 
+    | Some (Ok model2) -> (* sat *)
+      if !Flags.debug then Format.pp_print_string Format.std_formatter "it was SAT, instantiating in derivation tree\n"; 
+      derivation_tree := instantiate_terminals model2 !derivation_tree; 
+      let r2 = sygus_ast_of_derivation_tree !derivation_tree in 
+      (model, r) :: (generate_n_solutions (n-1) ast model2 r2 derivation_tree declared_variables solver) 
+    | None  
+    | Some (Error ()) -> 
+      [model, r]
+  )
+   
+
 (*
   * Maintain a current DT and current search tree node
   * Pick an open, unexplored expansion of DT
@@ -822,10 +857,12 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
  
   (*!! IDEA: dynamically alter starting depth limit *)
   (*** HYPERPARAMETERS *)
-  let starting_depth_limit = 5 in 
-  let restart_rate = 10000 in 
-  let num_solutions = ref 0 in 
+  let starting_depth_limit = !Flags.starting_depth_limit in 
+  let restart_rate = !Flags.restart_rate in 
+  let sols_per_iter = !Flags.sols_per_iter in
   let num_solutions_to_find = !Flags.num_solutions in 
+
+  let num_solutions = ref 0 in 
   let num_iterations = ref 0 in
   try
 
@@ -1045,17 +1082,24 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
   exit_flag := false;
   if !Flags.multiple_solutions then (
     num_iterations := 0;
-    num_solutions := !num_solutions + 1;
-    exit_flag := not (!num_solutions = num_solutions_to_find);
-    Format.fprintf Format.std_formatter "%a$\n" 
+    num_solutions := !num_solutions + sols_per_iter;
+    exit_flag := (!num_solutions <= num_solutions_to_find) || num_solutions_to_find = (-1);
+
+    if !Flags.debug then Format.fprintf Format.std_formatter "Generating %d solutions\n" sols_per_iter;
+    let models, rs = generate_n_solutions sols_per_iter ast model r derivation_tree declared_variables solver |> List.split in 
+
+    List.iter (fun r -> Format.fprintf Format.std_formatter "%a$\n" 
       SA.pp_print_sygus_ast r;
-    Format.pp_print_flush Format.std_formatter ();
+      Format.pp_print_flush Format.std_formatter ();
+    ) rs; 
 
     (* Need to pop all the way back to zeroth level so we can assert persisting blocking clause *)
     let pop_cmd = Format.asprintf "(pop %d)" !assertion_level in 
     issue_solver_command pop_cmd solver; 
     if !Flags.debug then Format.fprintf Format.std_formatter "Pushing blocking clause\n" ;
-    push_blocking_clause model derivation_tree declared_variables solver;
+    List.iter (fun model -> 
+      push_blocking_clause model derivation_tree declared_variables solver
+    ) models ;
     issue_solver_command "(push 1)" solver;
 
     (* prepare to generate another solution *)

@@ -1,0 +1,13 @@
+* reproduce ISLa on CSV/XML
+  docker run -it --name isla dsteinhoefel/isla:0.10.6
+  cd isla
+  fish run_eval.fish -t 100 -s csv
+* run Goblin on CSV/XML
+  timeout 10 sbf --file ./evaluation/csv.gbl --multiple-solutions |> ~/Desktop/csv.out
+  timeout 10 sbf --file ./evaluation/xml.gbl --multiple-solutions |> ~/Desktop/xml.out
+* post analysis Goblin on CSV/XML 
+  * post_goblin_xml/csv.py
+  * count number of solutions
+  * count mean length of serialized solutions
+  * calculate k-path coverage
+* all single core, 1 hour runs
