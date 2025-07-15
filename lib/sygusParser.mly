@@ -29,6 +29,7 @@ open SygusAst
 %token SETTYPE
 %token UNION
 %token SINGLETON
+%token DOLLAR
 %token<string> STRCONST
 
 %token<bool list> BITS
@@ -42,6 +43,7 @@ open SygusAst
 %%
 
 s: 
+| DOLLAR; children = separated_nonempty_list(DOLLAR, lisp_term); EOF { Node (("outputs", None), children) }
 | d = sygus_term; EOF { d } 
 | SAT; model = sygus_model; EOF { model } 
 | model = sygus_model; EOF { model } 

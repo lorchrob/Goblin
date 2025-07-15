@@ -21,6 +21,18 @@ type endianness =
 | Little 
 | Big
 
+let rec smtlib_of_stringset set =
+  match Utils.StringSet.elements set with
+  | [] ->
+      "(as set.empty (Set String))"
+  | [x] ->
+      Printf.sprintf "(set.singleton \"%s\")" x
+  | x :: xs ->
+      let rest = Utils.StringSet.of_list xs in
+      Printf.sprintf "(set.union %s %s)"
+        (Printf.sprintf "(set.singleton \"%s\")" x)
+        (smtlib_of_stringset rest)
+
 let pp_print_sygus_ast: Format.formatter -> sygus_ast -> unit 
 = fun ppf sygus_ast -> 
   let rec pp_print_sygus_ast' ppf sygus_ast = match sygus_ast with 
@@ -41,9 +53,9 @@ let pp_print_sygus_ast: Format.formatter -> sygus_ast -> unit
   | IntLeaf d -> Format.pp_print_int ppf d;
   | BoolLeaf b -> Format.pp_print_bool ppf b;
   | SetLeaf (StringSet s) -> 
-    Format.fprintf Format.std_formatter "{%a}" 
-      (Lib.pp_print_list Format.pp_print_string ", ") (Utils.StringSet.to_list s)
+    Format.pp_print_string Format.std_formatter (smtlib_of_stringset s)
   | BLLeaf bits ->
+
 let print_smt_bool_seq fmt (lst : bool list) : unit =
   match lst with
   | [] ->

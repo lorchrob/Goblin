@@ -8,7 +8,9 @@ let () =
     let confirm_grammar = Parsing.parse (GrammarFuzzing.read_grammar "bin/confirm.txt") in
     let commit_confirm_grammar = Parsing.parse (GrammarFuzzing.read_grammar "bin/commit-confirm.txt") in
     GrammarFuzzing.runFuzzer [commit_grammar; confirm_grammar; commit_confirm_grammar;]
-  else
+  else if !Flags.analysis <> "" then 
+    AnalyzeGoblinOutput.evaluate () 
+  else 
     let filename = match !Flags.filename with 
     | Some filename -> filename 
     | None -> Utils.error "You must specify an input filename with --file <filename>"

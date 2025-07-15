@@ -1088,7 +1088,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
     if !Flags.debug then Format.fprintf Format.std_formatter "Generating %d solutions\n" sols_per_iter;
     let models, rs = generate_n_solutions sols_per_iter ast model r derivation_tree declared_variables solver |> List.split in 
 
-    List.iter (fun r -> Format.fprintf Format.std_formatter "%a$\n" 
+    List.iter (fun r -> Format.fprintf Format.std_formatter "$\n%a" 
       SA.pp_print_sygus_ast r;
       Format.pp_print_flush Format.std_formatter ();
     ) rs; 

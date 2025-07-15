@@ -52,7 +52,8 @@ rule read =
   | "_" { Utils.debug_print Format.pp_print_string Format.std_formatter "_"; UNDERSCORE } 
   | "++" { Utils.debug_print Format.pp_print_string Format.std_formatter "++"; PLUSPLUS }
   | "#b" { Utils.debug_print Format.pp_print_string Format.std_formatter "BITS"; read_bits lexbuf }
-  | '"'[^ '"']*'"' as s   { Utils.debug_print Format.pp_print_string Format.std_formatter "STRING CONSTANT"; STRCONST (String.sub s 1 (String.length s - 2)) }
+  |  '"' ([^ '"'] | "\"\"" )* '"' as s   { Utils.debug_print Format.pp_print_string Format.std_formatter (String.sub s 1 (String.length s - 2)); STRCONST (String.sub s 1 (String.length s - 2)) }
+  | "$" { Utils.debug_print Format.pp_print_string Format.std_formatter "$"; DOLLAR }
   | int as p { INTEGER (int_of_string p) }
   | id as p {
     try (
