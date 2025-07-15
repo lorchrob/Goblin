@@ -1,5 +1,95 @@
 module SA = SygusAst
 
+let xml_grammar : (string * string list) list = [
+  ("xml-tree0", ["xml-openclose-tag0"]);
+  ("xml-tree0", ["rec-xml-tree0"]);
+
+  ("rec-xml-tree0", ["xml-openclose-tag0"]);
+  ("rec-xml-tree0", ["xml-open-tag0"; "inner-xml-tree0"; "xml-close-tag0"]);
+
+  ("inner-xml-tree0", ["text0"]);
+  ("inner-xml-tree0", ["rec-xml-tree0"]);
+  ("inner-xml-tree0", ["inner-xml-tree0"; "inner-xml-tree0"]);
+
+  ("xml-open-tag0", ["id0"]);
+  ("xml-open-tag0", ["id0"; "xml-attribute0"]);
+
+  ("xml-close-tag0", ["id0"]);
+
+  ("xml-openclose-tag0", ["id0"]);
+  ("xml-openclose-tag0", ["id0"; "xml-attribute0"]);
+
+  ("xml-attribute0", ["id0"; "text0"]);
+  ("xml-attribute0", ["xml-attribute-10"; "xml-attribute-20"]);
+
+  ("xml-attribute-10", ["xml-attribute0"]);
+  ("xml-attribute-20", ["xml-attribute0"]);
+
+  ("id0", ["id-no-prefix-10"]);
+  ("id0", ["id-with-prefix0"]);
+
+  ("id-with-prefix0", ["id-no-prefix-10"; "id-no-prefix-20"]);
+
+  ("text0", []);
+  ("id-no-prefix-10", []);
+  ("id-no-prefix-20", []);
+]
+
+let csv_grammar : (string * string list) list = [
+  ("csv-file0", ["csv-header0"; "csv-records0"]);
+
+  ("csv-header0", ["csv-record0"]);
+
+  ("csv-records0", ["csv-record0"; "csv-records0"]);
+  ("csv-records0", ["nil0"]);
+
+  ("csv-record0", ["raw-field0"]);
+  ("csv-record0", ["raw-field0"; "csv-record0"]);
+
+  ("raw-field0", []);
+  ("nil0", []);
+]
+
+let count_paths (grammar : (string * string list) list) (k : int) : int =
+  let production_map = List.to_seq grammar |> Hashtbl.of_seq in
+
+  let rec explore_paths symbol depth =
+    if depth = 0 then 1
+    else
+      match Hashtbl.find_opt production_map symbol with
+      | Some children ->
+          if children = [] then 0
+          else
+            List.fold_left
+              (fun acc child -> acc + explore_paths child (depth - 1))
+              0
+              children
+      | None -> assert false 
+  in
+
+  let symbols = List.map fst grammar in
+  List.fold_left
+    (fun acc symbol -> acc + explore_paths symbol k)
+    0
+    symbols
+
+let collect_k_paths k ast =
+  let rec aux current_path acc = function
+    | SA.Node ((label, _), children) ->
+        if String.length label > 0 && label.[0] = '_' then acc
+        else
+          let new_path = current_path @ [label] in
+          let acc = if List.length new_path = k then Utils.StringSet.add (String.concat "/" new_path) acc else acc in
+          if List.length new_path < k then
+            List.fold_left (fun a child -> aux new_path a child) acc children
+          else acc
+    | _ -> acc
+  in
+  aux [] Utils.StringSet.empty ast
+
+let collect_k_paths_from_outputs k asts =
+  List.fold_left (fun acc ast -> Utils.StringSet.union acc (collect_k_paths k ast)) Utils.StringSet.empty asts
+
 (* CSV pretty printers *)
 let pp_raw_field = function
   | SA.Node ((label, _), [SA.StrLeaf s]) when String.starts_with ~prefix:"raw-field" label -> s
@@ -223,9 +313,30 @@ let evaluate () =
 
   let total_length = List.fold_left (fun acc s -> acc + String.length s) 0 outputs in
   let count = List.length outputs in
-  if count > 0 then
+  Format.printf "Number of instances produced: %d\n" count;
+  let _ = if count > 0 then
     let avg_length = float_of_int total_length /. float_of_int count in
     Format.printf "Average output length: %.2f\n" avg_length
   else
     Format.printf "No outputs found.\n"
+  in
 
+  let k = 3 in
+  let selected_grammar = match !Flags.analysis with
+    | "csv" -> csv_grammar
+    | "xml" -> xml_grammar
+    | _ -> Utils.error "Unknown grammar for path counting"
+  in
+  let path_count = count_paths selected_grammar k in
+  if !Flags.debug then Format.printf "%s grammar paths of length %d: %d\n" !Flags.analysis k path_count;
+
+  let observed_paths = collect_k_paths_from_outputs k sygus_asts in
+  let observed_count = Utils.StringSet.cardinal observed_paths in
+
+  (* Compute coverage percentage *)
+  let coverage = if path_count = 0 then assert false 
+                 else (float_of_int observed_count /. float_of_int path_count) *. 100.0
+  in
+
+  if !Flags.debug then Format.printf "Observed distinct %d-paths: %d\n" k observed_count;
+  Format.printf "Coverage: %.2f%%\n" coverage

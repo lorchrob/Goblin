@@ -616,22 +616,25 @@ let run_sequence (c : child) : (provenance * output) * state =
     | Some grammar_to_sygus ->
       sygus_success_execution_time := ((Unix.gettimeofday ()) -. sygus_start_time) ;
       sygus_success_calls := !sygus_success_calls + 1 ;
-      let packetToSend_ = Lwt_main.run (timeout_wrapper 5.0 (fun () -> 
+      let packetToSend_ = Lwt_main.run (timeout_wrapper 1.0 (fun () -> 
         let grammar = grammar_to_sygus in
         try 
           let sygus_ast, _, _ = Pipeline.main_pipeline ~grammar "dummy" in 
           let sygus_ast = BitFlips.flip_bits sygus_ast in
           grammar_byte_map := !grammar_byte_map ^ (Utils.capture_output Ast.pp_print_ast grammar);
+          Format.pp_print_flush Format.std_formatter ();
           Ok (SygusAst.serialize_bytes SygusAst.Big sygus_ast)
         with exn -> 
           let error = Format.asprintf "Exception: %s\n" (Printexc.to_string exn) in 
           let error2 = Format.asprintf "Backtrace:\n%s\n" (Printexc.get_backtrace ()) in 
+          Format.pp_print_flush Format.std_formatter ();
           Error (error ^ error2) 
         )) in (
         match packetToSend_ with
         | Ok (packetToSend, _metadata) ->
           grammar_byte_map := !grammar_byte_map ^ "\n HEX: " ^ bytes_to_hex packetToSend ^ "------------------------------\n";
-          print_endline "SUCCESS";
+          Format.printf "SUCCESS";
+          Format.pp_print_flush Format.std_formatter ();
           let trace_start_time = Unix.gettimeofday () in
           let driver_output = callDriver_new (run_trace stateTransition) (RawPacket packetToSend) in
           trace_time := Unix.gettimeofday () -. trace_start_time ;
@@ -639,7 +642,8 @@ let run_sequence (c : child) : (provenance * output) * state =
           (RawPacket packetToSend, (fst driver_output)), (snd driver_output)
         | Error e -> 
           print_endline "ERROR";
-          print_endline e ;
+          Format.printf "%s" e ;
+          Format.pp_print_flush Format.std_formatter ();
           sygus_fail_execution_time := ((Unix.gettimeofday ()) -. sygus_start_time) ;
           sygus_fail_calls := !sygus_fail_calls + 1 ;
           ((ValidPacket NOTHING, EXPECTED_OUTPUT), IGNORE_)
