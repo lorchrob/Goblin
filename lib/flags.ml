@@ -24,7 +24,7 @@ let selected_engine = ref DpllMono
 let num_solutions = ref (-1) 
 let starting_depth_limit = ref 5 
 let restart_rate = ref 10000 
-let sols_per_iter = ref 100 
+let sols_per_iter = ref 10 
 
 let parse_args () = 
   let open Cmdliner in

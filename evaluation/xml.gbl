@@ -23,20 +23,24 @@
                    |  <_defs_down> <inner-xml-tree> <inner-xml-tree> 
                   {   <inner-xml-tree>.<_defs_down> = <_defs_down>; } ;
 
-<xml-open-tag> ::= <_defs_down> <_defs_up> <id>
+<xml-open-tag> ::= 
+                   <_defs_down> <_defs_up> <id>
                  { <_defs_up> = empty_set<String> ; 
                    <id>.<_defs_down> = <_defs_down> ; }
-                 | <_defs_down> <_defs_up> <id> <xml-attribute> 
+                 | 
+                   <_defs_down> <_defs_up> <id> <xml-attribute> 
                  { <_defs_up> = <xml-attribute>.<_defs_up> ; 
                    <id>.<_defs_down> = <_defs_down> ;
                    <xml-attribute>.<_defs_down> = <_defs_down> ; } ;
 
 <xml-close-tag> ::= <_defs_down> <id> { <id>.<_defs_down> = <_defs_down> ; };
 
-<xml-openclose-tag> ::= <_defs_down> <_defs_up> <id> 
+<xml-openclose-tag> ::= 
+                        <_defs_down> <_defs_up> <id> 
                       { <_defs_up> = empty_set<String> ;
                         <id>.<_defs_down> = <_defs_down> ; } 
-                      | <_defs_down> <_defs_up> <id> <xml-attribute>  
+                      | 
+                        <_defs_down> <_defs_up> <id> <xml-attribute>  
                       { <_defs_up> = <xml-attribute>.<_defs_up> ; 
                         <id>.<_defs_down> = <_defs_down> ; 
                         <xml-attribute>.<_defs_down> = <_defs_down> ; } ;

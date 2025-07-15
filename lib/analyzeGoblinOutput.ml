@@ -75,17 +75,28 @@ let count_paths (grammar : (string * string list) list) (k : int) : int =
 
 let collect_k_paths k ast =
   let rec aux current_path acc = function
-    | SA.Node ((label, _), children) ->
+    | SA.Node ((label, idx), children) ->
         if String.length label > 0 && label.[0] = '_' then acc
         else
+          let label = Format.asprintf "%s%d" label (Option.get idx) in
           let new_path = current_path @ [label] in
-          let acc = if List.length new_path = k then Utils.StringSet.add (String.concat "/" new_path) acc else acc in
-          if List.length new_path < k then
-            List.fold_left (fun a child -> aux new_path a child) acc children
-          else acc
+          let acc = if List.length new_path = k then (
+              if !Flags.debug then Format.printf "%s\n" (String.concat "/" new_path);
+              Utils.StringSet.add (String.concat "/" new_path) acc
+          ) else acc
+          in
+          let acc = List.fold_left (fun a child -> aux new_path a child) acc children in
+          acc
     | _ -> acc
   in
-  aux [] Utils.StringSet.empty ast
+  let rec walk_and_collect acc node =
+    let acc = aux [] acc node in
+    match node with
+    | SA.Node (_, children) ->
+        List.fold_left walk_and_collect acc children
+    | _ -> acc
+  in
+  walk_and_collect Utils.StringSet.empty ast
 
 let collect_k_paths_from_outputs k asts =
   List.fold_left (fun acc ast -> Utils.StringSet.union acc (collect_k_paths k ast)) Utils.StringSet.empty asts
@@ -164,7 +175,7 @@ let pp_id = function
             | SA.Node ((part_label, Some 20), [SA.StrLeaf s]) when part_label = "id-no-prefix-" -> Some s
             | _ -> None
           ) id_parts in
-          (Option.get part1) ^ (Option.get part2)
+          (Option.get part1) ^ ":" ^ (Option.get part2)
         )
       | [sa] -> SA.pp_print_sygus_ast Format.std_formatter sa; assert false
       | _ -> assert false
@@ -185,7 +196,7 @@ let rec pp_xml_attribute = function
           Format.asprintf "%s=\"%s\"" name s
       | [ SA.Node ((child_label1, _), [attr1]);
           SA.Node ((child_label2, _), [attr2]) ]
-        when child_label1 = "xml-attribute-1" && child_label2 = "xml-attribute-2" ->
+        when child_label1 = "xml-attribute-" && child_label2 = "xml-attribute-" ->
           let str1 = pp_xml_attribute attr1 in
           let str2 = pp_xml_attribute attr2 in
           String.concat " " [str1; str2]
