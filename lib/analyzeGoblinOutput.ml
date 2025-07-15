@@ -1,8 +1,6 @@
-open Printf
-
 module SA = SygusAst
 
-(* CSV pretty-printers *)
+(* CSV pretty printers *)
 let pp_raw_field = function
   | SA.Node ((label, _), [SA.StrLeaf s]) when String.starts_with ~prefix:"raw-field" label -> s
   | _ -> assert false
@@ -50,7 +48,7 @@ let pp_csv_file = function
         | SA.Node ((child_label, _), _) as r when child_label = "csv-records" -> Some (pp_csv_records r)
         | _ -> None
       ) children in
-      sprintf "%s\n%s" (Option.get header) (Option.get records)
+      Format.asprintf "%s\n%s" (Option.get header) (Option.get records)
   | sa -> SA.pp_print_sygus_ast Format.std_formatter sa; assert false
 
 (* XML pretty-printers *)
@@ -59,65 +57,96 @@ let pp_text = function
   | _ -> assert false
 
 let pp_id = function
-  | SA.Node ((label, _), [SA.StrLeaf s]) when label = "id-no-prefix-1" -> s
+  | SA.Node ((label, _), children) when label = "id" -> (
+      let children = List.filter (function
+        | SA.Node ((child_label, _), _) -> not (String.length child_label > 0 && child_label.[0] = '_')
+        | _ -> false
+      ) children in
+      match children with
+      | [SA.Node ((child_label, _), [SA.StrLeaf s])] when child_label = "id-no-prefix-" ->
+          s
+      | [SA.Node ((child_label, _), id_parts)] when child_label = "id-with-prefix" -> (
+          let part1 = List.find_map (function
+            | SA.Node ((part_label, Some 10), [SA.StrLeaf s]) when part_label = "id-no-prefix-" -> Some s
+            | _ -> None
+          ) id_parts in
+          let part2 = List.find_map (function
+            | SA.Node ((part_label, Some 20), [SA.StrLeaf s]) when part_label = "id-no-prefix-" -> Some s
+            | _ -> None
+          ) id_parts in
+          (Option.get part1) ^ (Option.get part2)
+        )
+      | [sa] -> SA.pp_print_sygus_ast Format.std_formatter sa; assert false
+      | _ -> assert false
+    )
   | _ -> assert false
-
-let pp_xml_attribute = function
-  | SA.Node ((label, _), children) when label = "xml-attribute" ->
-      let name = List.find_map (function
-        | SA.Node ((child_label, _), id_children) when child_label = "id" -> 
-            Some (pp_id (List.find (function SA.Node ((grand_label, _), _) -> grand_label = "id-no-prefix-1" | _ -> false) id_children))
-        | _ -> None
+ 
+let rec pp_xml_attribute = function
+  | SA.Node ((label, _), children) when label = "xml-attribute" -> (
+      let meaningful_children = List.filter (function
+        | SA.Node ((child_label, _), _) -> not (String.length child_label > 0 && child_label.[0] = '_')
+        | _ -> false
       ) children in
-      let value = List.find_map (function
-        | SA.Node ((child_label, _), [SA.StrLeaf s]) when child_label = "text" -> Some s
-        | _ -> None
-      ) children in
-      sprintf "%s=\"%s\"" (Option.get name) (Option.get value)
+      match meaningful_children with
+      | [ SA.Node ((child_label1, _), _) as id_node;
+          SA.Node ((child_label2, _), [SA.StrLeaf s]) ]
+        when child_label1 = "id" && child_label2 = "text" ->
+          let name = pp_id id_node in
+          Format.asprintf "%s=\"%s\"" name s
+      | [ SA.Node ((child_label1, _), [attr1]);
+          SA.Node ((child_label2, _), [attr2]) ]
+        when child_label1 = "xml-attribute-1" && child_label2 = "xml-attribute-2" ->
+          let str1 = pp_xml_attribute attr1 in
+          let str2 = pp_xml_attribute attr2 in
+          String.concat " " [str1; str2]
+      | _ -> assert false
+    )
   | _ -> assert false
 
 let pp_xml_open_tag = function
   | SA.Node ((label, _), children) when label = "xml-open-tag" ->
       let tag = List.find_map (function
-        | SA.Node ((child_label, _), id_children) when child_label = "id" -> 
-            Some (pp_id (List.find (function SA.Node ((grand_label, _), _) -> grand_label = "id-no-prefix-1" | _ -> false) id_children))
+        | SA.Node ((child_label, _), _) as id_node when child_label = "id" ->
+            Some (pp_id id_node)
         | _ -> None
       ) children in
       let attributes =
         List.filter_map (function
-          | SA.Node ((child_label, _), _) as attr when child_label = "xml-attribute" -> Some (pp_xml_attribute attr)
+          | SA.Node ((child_label, _), _) as attr_node when child_label = "xml-attribute" ->
+              Some (pp_xml_attribute attr_node)
           | _ -> None
         ) children
       in
       let attrs_str = if attributes = [] then "" else " " ^ String.concat " " attributes in
-      sprintf "<%s%s>" (Option.get tag) attrs_str
+      Format.asprintf "<%s%s>" (Option.get tag) attrs_str
   | _ -> assert false
 
 let pp_xml_close_tag = function
   | SA.Node ((label, _), children) when label = "xml-close-tag" ->
       let tag = List.find_map (function
-        | SA.Node ((child_label, _), id_children) when child_label = "id" -> 
-            Some (pp_id (List.find (function SA.Node ((grand_label, _), _) -> grand_label = "id-no-prefix-1" | _ -> false) id_children))
+        | SA.Node ((child_label, _), _) as id_node when child_label = "id" ->
+            Some (pp_id id_node)
         | _ -> None
       ) children in
-      sprintf "</%s>" (Option.get tag)
+      Format.asprintf "</%s>" (Option.get tag)
   | _ -> assert false
 
 let pp_xml_openclose_tag = function
   | SA.Node ((label, _), children) when label = "xml-openclose-tag" ->
       let tag = List.find_map (function
-        | SA.Node ((child_label, _), id_children) when child_label = "id" -> 
-            Some (pp_id (List.find (function SA.Node ((grand_label, _), _) -> grand_label = "id-no-prefix-1" | _ -> false) id_children))
+        | SA.Node ((child_label, _), _) as id_node when child_label = "id" ->
+            Some (pp_id id_node)
         | _ -> None
       ) children in
       let attributes =
         List.filter_map (function
-          | SA.Node ((child_label, _), _) as attr when child_label = "xml-attribute" -> Some (pp_xml_attribute attr)
+          | SA.Node ((child_label, _), _) as attr_node when child_label = "xml-attribute" ->
+              Some (pp_xml_attribute attr_node)
           | _ -> None
         ) children
       in
       let attrs_str = if attributes = [] then "" else " " ^ String.concat " " attributes in
-      sprintf "<%s%s/>" (Option.get tag) attrs_str
+      Format.asprintf "<%s%s/>" (Option.get tag) attrs_str
   | _ -> assert false
 
 let rec pp_inner_xml_tree = function
@@ -152,7 +181,7 @@ and pp_rec_xml_tree = function
             | SA.Node ((child_label, _), _) as c when child_label = "xml-close-tag" -> Some (pp_xml_close_tag c)
             | _ -> None
           ) children in
-          Printf.sprintf "%s%s%s" (Option.get open_tag) (Option.get inner_tree) (Option.get close_tag)
+          Format.asprintf "%s%s%s" (Option.get open_tag) (Option.get inner_tree) (Option.get close_tag)
       end
   | _ -> assert false
 
@@ -166,6 +195,7 @@ let pp_xml_tree = function
       |> String.concat ""
   | _ -> assert false
 
+(* Main function in module *)
 let evaluate () =
   let filename = match !Flags.filename with 
   | Some filename -> filename 
@@ -179,14 +209,14 @@ let evaluate () =
   in
 
   List.iteri (fun i ast ->
-    Printf.printf "Output %d:\n" (i+1);
+    if !Flags.debug then Format.fprintf Format.std_formatter "Output %d:\n" (i+1);
     (match !Flags.analysis with 
      | "csv" ->
          let csv = pp_csv_file ast in
-         Printf.printf "%s\n" csv
+         if !Flags.debug then Format.fprintf Format.std_formatter "%s\n" csv
      | "xml" ->
          let xml = pp_xml_tree ast in
-         Printf.printf "%s\n" xml
+         if !Flags.debug then Format.fprintf Format.std_formatter "%s\n" xml
      | _ -> Utils.error "Unknown grammar for post-analysis mode")
   ) sygus_asts
 
