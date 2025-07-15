@@ -465,7 +465,8 @@ let save_time_info filename trace_length =
   print_endline "saving time info.." ;
   let oc = open_out_gen [Open_creat; Open_append] 0o666 filename in
   output_string oc (Printf.sprintf "%d,%.8f,%d,%.8f,%d,%.8f,%d,%.8f,%d,%.8f\n" trace_length (!trace_time /. (float_of_int trace_length)) !sygus_success_calls !sygus_success_execution_time !sygus_fail_calls !sygus_fail_execution_time !oracle_calls !oracle_time !driver_calls !driver_call_time);
-  close_out oc
+  close_out oc;
+  ()
 
 let save_population_info filename population =
   let _ = Unix.system ("touch " ^ filename) in
@@ -483,7 +484,9 @@ let save_mutation_count filename =
   let _ = Unix.system ("touch " ^ filename) in
   Unix.sleepf 0.1 ;
   print_endline "saving mutation info.." ;
-  write_symbol_to_file filename (Printf.sprintf "Addition: %d\nDeletion: %d\nModification: %d\nCrossOver: %d" !addition_count !deletion_count !modify_count !crossover_count);
+  let oc = open_out filename in
+  output_string oc (Printf.sprintf "Addition: %d\nDeletion: %d\nModification: %d\nCrossOver: %d" !addition_count !deletion_count !modify_count !crossover_count);
+  close_out oc;
   ()
 
 let rec save_queue_info queues =
@@ -759,6 +762,12 @@ let population_size_across_queues (x : population) (y : population) (z : populat
     | NOTHING -> NOTHING 
     | RESET -> NOTHING *)
 
+let save_grammar_map filename =
+  let oc = open_out filename in
+  output_string oc !grammar_byte_map;
+  close_out oc;
+  ()
+
 let rec map_packet_to_state (cl : child list) (old_states : state list) (new_states : state list) : state_child list =
   match cl, old_states, new_states with
   | [], [], [] -> []
@@ -851,7 +860,8 @@ let save_updated_queue_sizes a b =
   print_endline "write_queue_sizes" ;
   let oc = open_out "temporal-info/queue-size-updates.txt" in
   output_string oc (Printf.sprintf "Old queue size: %d -- New queue size: %d\n" a b);
-  close_out oc
+  close_out oc;
+  ()
 
 let save_iteration_time (iteration : int) (iteration_timer : float) : unit =
   let time_string = Printf.sprintf "Iteration: %d --> Time taken: %.3f\n" iteration iteration_timer in
@@ -904,8 +914,8 @@ let rec fuzzingAlgorithm
       save_queue_info newQueue ;
       let iteration_timer = Unix.gettimeofday () -. start_time in
       save_iteration_time (currentIteration + 1) iteration_timer ;
-      write_symbol_to_file "temporal-info/grammar-hex-map.txt" !grammar_byte_map;
-      save_mutation_count "temporal-info/mutation-count.txt";
+      save_grammar_map "temporal-info/grammar-hex-map.txt";
+      save_mutation_count "temporal-info/mutation-count.txt"; 
       fuzzingAlgorithm maxCurrentPopulation newQueue (List.append iTraces iT) tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations seed
 
 let initialize_files () =
