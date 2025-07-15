@@ -195,28 +195,37 @@ let pp_xml_tree = function
       |> String.concat ""
   | _ -> assert false
 
-(* Main function in module *)
 let evaluate () =
-  let filename = match !Flags.filename with 
-  | Some filename -> filename 
-  | None -> Utils.error "You must specify an input filename with --file <filename>"
+  let filename =
+    match !Flags.filename with
+    | Some filename -> filename
+    | None -> Utils.error "You must specify an input filename with --file <filename>"
   in
-  let input_string = Utils.read_file filename in 
-  let sygus_ast = Parsing.parse_sygus input_string [] |> Result.get_ok in   
-  let sygus_asts = match sygus_ast with 
-  | SA.Node (_, children) -> children 
-  | _ -> assert false 
+  let input_string = Utils.read_file filename in
+  let sygus_ast = Parsing.parse_sygus input_string [] |> Result.get_ok in
+  let sygus_asts =
+    match sygus_ast with
+    | SA.Node (_, children) -> children
+    | _ -> assert false
   in
 
-  List.iteri (fun i ast ->
-    if !Flags.debug then Format.fprintf Format.std_formatter "Output %d:\n" (i+1);
-    (match !Flags.analysis with 
-     | "csv" ->
-         let csv = pp_csv_file ast in
-         if !Flags.debug then Format.fprintf Format.std_formatter "%s\n" csv
-     | "xml" ->
-         let xml = pp_xml_tree ast in
-         if !Flags.debug then Format.fprintf Format.std_formatter "%s\n" xml
-     | _ -> Utils.error "Unknown grammar for post-analysis mode")
-  ) sygus_asts
+  let outputs = List.mapi (fun i ast ->
+    let output =
+      match !Flags.analysis with
+      | "csv" -> pp_csv_file ast
+      | "xml" -> pp_xml_tree ast
+      | _ -> Utils.error "Unknown grammar for post-analysis mode"
+    in
+    if !Flags.debug then
+      Format.fprintf Format.std_formatter "Output %d:\n%s\n" (i + 1) output;
+    output
+  ) sygus_asts in
+
+  let total_length = List.fold_left (fun acc s -> acc + String.length s) 0 outputs in
+  let count = List.length outputs in
+  if count > 0 then
+    let avg_length = float_of_int total_length /. float_of_int count in
+    Format.printf "Average output length: %.2f\n" avg_length
+  else
+    Format.printf "No outputs found.\n"
 
