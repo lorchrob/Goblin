@@ -253,7 +253,7 @@ let remove_circular_deps: ast -> ast
             let msg = Format.asprintf "Derived field cyclic dependency detected: %a\n" 
               (Lib.pp_print_list Format.pp_print_string " ") cycle
             in
-            Utils.crash msg
+            Utils.error msg
           in 
           Rhs (nt, sygus_exprs @ dependencies)
       ) rhss in 
@@ -282,7 +282,7 @@ let check_scs_for_dep_terms: semantic_constraint list -> semantic_constraint lis
       let msg = Format.asprintf "Derived field %s mentioned in semantic constraint"
         nt 
       in 
-      Utils.crash msg
+      Utils.error msg
     ) else sc :: acc
   | SyGuSExpr _ -> sc :: acc
   ) [] scs |> List.rev
@@ -352,9 +352,33 @@ let str_const_to_ph_const ast =
     ProdRule (nt, rhss)
   ) ast
 
+
+let language_emptiness_check ast = 
+  let add_productive_nts ast productive_nts = 
+    List.fold_left (fun acc element -> match element with 
+    | TypeAnnotation (nt, _, _) -> Utils.StringSet.add nt acc 
+    | ProdRule (nt, rhss) ->
+      (* Does there exist some RHS for which all NTs are productive? *)
+      if List.exists (fun rhs -> 
+        let nts = Ast.nts_of_rhs rhs in 
+        List.for_all (fun nt -> Utils.StringSet.mem nt acc) nts 
+      ) rhss
+      then
+        Utils.StringSet.add nt acc 
+      else acc
+    ) productive_nts ast  
+  in
+  let productive_nt_set = Utils.StringSet.empty in 
+  let productive_nt_set = Utils.recurse_until_fixpoint productive_nt_set Utils.StringSet.equal (add_productive_nts ast) in 
+  if Utils.StringSet.equal productive_nt_set (Ast.nts_of_ast ast) then   
+    () 
+  else 
+    Utils.error "CFG has empty language"
+
 let check_syntax: prod_rule_map -> Utils.StringSet.t -> ast -> ast 
 = fun prm nt_set ast -> 
   let ast = sort_ast ast in
+  let _ = language_emptiness_check ast in
   let ast = str_const_to_ph_const ast in
   let ast = Utils.recurse_until_fixpoint ast (=) remove_circular_deps in
   let ast = Utils.recurse_until_fixpoint ast (=) check_sygus_exprs_for_dep_terms in

@@ -828,7 +828,12 @@ let rec generate_n_solutions n ast model r derivation_tree declared_variables so
 *)
 let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
 = fun ctx ast -> 
-  Random.self_init (); 
+  let _ = match !Flags.seed with 
+  | None -> 
+    Random.self_init ()
+  | Some seed -> 
+    Random.init seed
+  in
 
   let start_symbol, start_path = match List.hd ast with 
   | A.TypeAnnotation (nt, _, _) -> nt, [nt, Some 0]
