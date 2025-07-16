@@ -38,6 +38,10 @@ type trace = packet list
 let sygus_success_execution_time = ref 0.0
 let sygus_fail_execution_time = ref 0.0
 
+let other_success_execution_time = ref 0.0
+let other_fail_execution_time = ref 0.0
+
+
 let oracle_time = ref 0.0
 let oracle_calls = ref 0
 
@@ -609,7 +613,7 @@ let callDriver_new packets packet =
     driver_calls := !driver_calls + 1 ;
     (driver_result, oracle_result)
     
-let run_sequence (c : child) : (provenance * output) * state =
+let run_sequence (flag : bool) (c : child) : (provenance * output) * state =
   if c = (([],[]),0.0) then ((ValidPacket NOTHING, EXPECTED_OUTPUT), IGNORE_)
   else begin 
     let stateTransition = fst c |> fst in
@@ -618,15 +622,15 @@ let run_sequence (c : child) : (provenance * output) * state =
     let sygus_start_time = Unix.gettimeofday () in
     let removed_dead_rules_for_sygus = dead_rule_removal (fst c |> snd) "SAE_PACKET" in
     match removed_dead_rules_for_sygus with
-    | Some grammar_to_sygus ->
-      sygus_success_execution_time := ((Unix.gettimeofday ()) -. sygus_start_time) ;
-      sygus_success_calls := !sygus_success_calls + 1 ;
-      let packetToSend_ = Lwt_main.run (timeout_wrapper 1.0 (fun () -> 
-        let grammar = grammar_to_sygus in
+    | Some grammar_to_sygus -> (
+      let packetToSend_1 = (
+        let grammar = grammar_to_sygus in 
         try 
           Format.printf "%a\n" Ast.pp_print_ast grammar; 
           Format.pp_print_flush Format.std_formatter ();
           let sygus_ast, _, _ = Pipeline.main_pipeline ~grammar "dummy" in 
+          sygus_success_calls := !sygus_success_calls + 1 ;
+          sygus_success_execution_time := ((Unix.gettimeofday ()) -. sygus_start_time) ;
           let sygus_ast = BitFlips.flip_bits sygus_ast in
           grammar_byte_map := !grammar_byte_map ^ (Utils.capture_output Ast.pp_print_ast grammar);
           Format.pp_print_flush Format.std_formatter ();
@@ -635,8 +639,32 @@ let run_sequence (c : child) : (provenance * output) * state =
           let error = Format.asprintf "Exception: %s\n" (Printexc.to_string exn) in 
           let error2 = Format.asprintf "Backtrace:\n%s\n" (Printexc.get_backtrace ()) in 
           Format.pp_print_flush Format.std_formatter ();
-          Error (error ^ error2) 
-        )) in (
+          Error (error ^ error2))
+        in 
+      let packetToSend_2 = (
+        (* try *)
+          let sygus_out = Pipeline.sygusGrammarToPacket grammar_to_sygus in
+          match sygus_out with
+          | Ok (packetToSend, _metadata) ->
+            print_endline "SYGUS CALL SUCCESS";
+            (* let trace_start_time = Unix.gettimeofday () in
+            let driver_output = callDriver_new (run_trace stateTransition) (RawPacket packetToSend) in
+            trace_time := Unix.gettimeofday () -. trace_start_time ;
+            save_time_info "temporal-info/OCaml-time-info.csv" (1 + (List.length (stateTransition))) ; *)
+            Ok (packetToSend,  _metadata)
+          | Error e -> 
+            (* print_endline "ERROR";
+            sygus_fail_execution_time := ((Unix.gettimeofday ()) -. sygus_start_time) ;
+            sygus_fail_calls := !sygus_fail_calls + 1 ; *)
+            (* Ok ((ValidPacket NOTHING, EXPECTED_OUTPUT), IGNORE_) *)
+            Error e
+        (* with exn -> 
+          let error = Format.asprintf "Exception: %s\n" (Printexc.to_string exn) in 
+          let error2 = Format.asprintf "Backtrace:\n%s\n" (Printexc.get_backtrace ()) in 
+          Format.pp_print_flush Format.std_formatter ();
+          Error (error ^ error2)) *)
+       ) in
+        let packetToSend_ = (fun x -> match x with | true -> packetToSend_2 | false -> packetToSend_1) flag in
         match packetToSend_ with
         | Ok (packetToSend, _metadata) ->
           grammar_byte_map := !grammar_byte_map ^ "\n HEX: " ^ bytes_to_hex packetToSend ^ "------------------------------\n";
@@ -654,14 +682,14 @@ let run_sequence (c : child) : (provenance * output) * state =
           sygus_fail_execution_time := ((Unix.gettimeofday ()) -. sygus_start_time) ;
           sygus_fail_calls := !sygus_fail_calls + 1 ;
           ((ValidPacket NOTHING, EXPECTED_OUTPUT), IGNORE_)
-      )
+    )
     | None -> ((ValidPacket NOTHING, EXPECTED_OUTPUT), IGNORE_)
   end
 
-let executeMutatedPopulation (mutatedPopulation : child list) (old_states : state list) : (((provenance list list) * (child list)) * (state list)) * (state list) =
+let executeMutatedPopulation (mutatedPopulation : child list) (old_states : state list) (flag : bool) : (((provenance list list) * (child list)) * (state list)) * (state list) =
   print_endline "EXECUTING MUTATED POPULATION.." ;
 
-  let _outputList = List.map run_sequence mutatedPopulation in
+  let _outputList = List.map (run_sequence flag) mutatedPopulation in
   (* print_endline "List.map2 first try"; *)
   let cat_mutated_population = List.map2 (fun x y -> (x, y)) mutatedPopulation _outputList in
   (* print_endline "List.map2 first try SUCCESS"; *)
@@ -880,7 +908,7 @@ let save_iteration_time (iteration : int) (iteration_timer : float) : unit =
   ()
 
 
-let rec fuzzingAlgorithm 
+let rec fuzzingAlgorithm
 (maxCurrentPopulation : int) 
 (currentQueue : triple_queue) 
 (iTraces : provenance list list)
@@ -890,7 +918,8 @@ let rec fuzzingAlgorithm
 (cleanupIteration : int) 
 (newChildThreshold : int) 
 (mutationOperations : mutationOperations)
-(seed : triple_queue) =
+(seed : triple_queue)
+(flag : bool) =
   let nothing_population = List.nth currentQueue 0 in
   let confirmed_population = List.nth currentQueue 1 in
   let accepted_population = List.nth currentQueue 2 in
@@ -898,9 +927,9 @@ let rec fuzzingAlgorithm
   if currentIteration >= terminationIteration then iTraces
   else
     if currentIteration mod cleanupIteration = 0 then
-      fuzzingAlgorithm maxCurrentPopulation seed iTraces tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations seed
+      fuzzingAlgorithm maxCurrentPopulation seed iTraces tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations seed flag
     else if total_population_size >= maxCurrentPopulation then
-      fuzzingAlgorithm maxCurrentPopulation (cleanup currentQueue) iTraces tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations seed
+      fuzzingAlgorithm maxCurrentPopulation (cleanup currentQueue) iTraces tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations seed flag
     else
       let start_time = Unix.gettimeofday () in
       let currentQueue = 
@@ -913,7 +942,7 @@ let rec fuzzingAlgorithm
       let old_states_ = snd sampled_pop in
       let selectedMutations = mutationList random_element mutationOperations (List.length newPopulation) in
       let mutatedPopulation = newMutatedSet newPopulation selectedMutations (List.length newPopulation) in
-      let score_and_oracle_old_states = executeMutatedPopulation mutatedPopulation old_states_ in
+      let score_and_oracle_old_states = executeMutatedPopulation mutatedPopulation old_states_ flag in
       let old_states = snd score_and_oracle_old_states in
       let score_and_oracle = fst score_and_oracle_old_states in
       let (iT, newPopulation_) = fst score_and_oracle in
@@ -927,7 +956,7 @@ let rec fuzzingAlgorithm
       save_iteration_time (currentIteration + 1) iteration_timer ;
       save_grammar_map "temporal-info/grammar-hex-map.txt";
       save_mutation_count "temporal-info/mutation-count.txt"; 
-      fuzzingAlgorithm maxCurrentPopulation newQueue (List.append iTraces iT) tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations seed
+      fuzzingAlgorithm maxCurrentPopulation newQueue (List.append iTraces iT) tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations seed flag
 
 let initialize_files () =
   initialize_clear_file "temporal-info/NOTHING-queue-info.txt";
@@ -954,6 +983,6 @@ let runFuzzer grammar_list =
   let confirmed_queue = CONFIRMED([([ValidPacket COMMIT], commit_grammar), 0.0; ([ValidPacket COMMIT], confirm_grammar), 0.0; ([ValidPacket COMMIT], commit_confirm_grammar), 0.0;]) in
   let accepted_queue = ACCEPTED([([ValidPacket COMMIT; ValidPacket CONFIRM], commit_grammar), 0.0; ([ValidPacket COMMIT; ValidPacket CONFIRM], confirm_grammar), 0.0; ([ValidPacket COMMIT; ValidPacket CONFIRM], commit_confirm_grammar), 0.0;]) in
 
-  let _ = fuzzingAlgorithm 10000 [nothing_queue; confirmed_queue; accepted_queue] [] 100 0 1150 100 100 [ Modify; Add;CrossOver;Delete; CorrectPacket;] [nothing_queue; confirmed_queue; accepted_queue] in
+  let _ = fuzzingAlgorithm 10000 [nothing_queue; confirmed_queue; accepted_queue] [] 100 0 1150 100 100 [ Modify; Add;CrossOver;Delete; CorrectPacket;] [nothing_queue; confirmed_queue; accepted_queue] true in
   ()
   (* CorrectPacket;  Modify; Add;CrossOver;*)
