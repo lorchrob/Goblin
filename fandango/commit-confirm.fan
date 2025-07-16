@@ -33,8 +33,9 @@
 <bit> ::= "0" | "1";
 
 from z3 import BitVecVal, Not
+from z3 import BitVecVal, Not
 
-where BitVecVal(int(str(<CONFIRM>.<STATUS_CODE>), 2), 16) == BitVecVal(0, 16) or BitVecVal(int(str(<CONFIRM>.<STATUS_CODE>), 2), 16) == BitVecVal(1, 16);
+where (BitVecVal(int(str(<CONFIRM>.<STATUS_CODE>), 2), 16) == BitVecVal(0, 16)) or (BitVecVal(int(str(<CONFIRM>.<STATUS_CODE>), 2), 16) == BitVecVal(1, 16));
 
 where BitVecVal(int(str(<AC_TOKEN_CONTAINER>.<AC_ID_LENGTH>), 2), 8) == BitVecVal((len(str(<AC_TOKEN_CONTAINER>.<AC_TOKEN_ELEMENT>)) // 8) + 1, 8);
 
@@ -44,7 +45,7 @@ where BitVecVal(int(str(<AC_ELEMENT_ID_EXTENSION>), 2), 8) == BitVecVal(93, 8);
 
 where BitVecVal(int(str(<AC_ELEMENT_ID>), 2), 8) == BitVecVal(255, 8);
 
-where BitVecVal(int(str(<RG_ID>), 2), 16) == BitVecVal(20, 16) or BitVecVal(int(str(<RG_ID>), 2), 16) == BitVecVal(21, 16);
+where (BitVecVal(int(str(<RG_ID>), 2), 16) == BitVecVal(20, 16)) or (BitVecVal(int(str(<RG_ID>), 2), 16) == BitVecVal(21, 16));
 
 where BitVecVal(int(str(<REJECTED_GROUPS>.<RG_ID_LENGTH>), 2), 8) == BitVecVal((len(str(<REJECTED_GROUPS>.<RG_ID_LIST>)) // 8) + 1, 8);
 
@@ -60,15 +61,15 @@ where BitVecVal(int(str(<PASSWD_ELEMENT_ID>), 2), 8) == BitVecVal(255, 8);
 
 where BitVecVal(int(str(<PASSWORD_IDENTIFIER>.<PASSWD_ID_LENGTH>), 2), 8) == BitVecVal((len(str(<PASSWORD_IDENTIFIER>.<PASSWD_ID>)) // 8) + 1, 8);
 
-where BitVecVal(int(str(<CONFIRM>.<AUTH_ALGO>), 2), 16) == BitVecVal(3, 16) and BitVecVal(int(str(<CONFIRM>.<AUTH_SEQ_CONFIRM>), 2), 16) == BitVecVal(2, 16);
+where (BitVecVal(int(str(<CONFIRM>.<AUTH_ALGO>), 2), 16) == BitVecVal(3, 16)) and (BitVecVal(int(str(<CONFIRM>.<AUTH_SEQ_CONFIRM>), 2), 16) == BitVecVal(2, 16));
 
-where BitVecVal(int(str(<COMMIT>.<STATUS_CODE>), 2), 16) == BitVecVal(0, 16) or BitVecVal(int(str(<COMMIT>.<STATUS_CODE>), 2), 16) == BitVecVal(1, 16) or BitVecVal(int(str(<COMMIT>.<STATUS_CODE>), 2), 16) == BitVecVal(126, 16);
+where (BitVecVal(int(str(<COMMIT>.<STATUS_CODE>), 2), 16) == BitVecVal(0, 16)) or (BitVecVal(int(str(<COMMIT>.<STATUS_CODE>), 2), 16) == BitVecVal(1, 16)) or (BitVecVal(int(str(<COMMIT>.<STATUS_CODE>), 2), 16) == BitVecVal(126, 16));
 
 where Not(BitVecVal(int(str(<COMMIT>.<STATUS_CODE>), 2), 16) == BitVecVal(1, 16));
 
 where Not(BitVecVal(int(str(<COMMIT>.<STATUS_CODE>), 2), 16) == BitVecVal(0, 16));
 
-where BitVecVal(19, 16) <= BitVecVal(int(str(<COMMIT>.<GROUP_ID>), 2), 16) and BitVecVal(int(str(<COMMIT>.<GROUP_ID>), 2), 16) <= BitVecVal(20, 16);
+where (BitVecVal(19, 16) <= BitVecVal(int(str(<COMMIT>.<GROUP_ID>), 2), 16)) and (BitVecVal(int(str(<COMMIT>.<GROUP_ID>), 2), 16) <= BitVecVal(20, 16));
 
 where BitVecVal(int(str(<COMMIT>.<AUTH_ALGO>), 2), 16) == BitVecVal(3, 16);
 
