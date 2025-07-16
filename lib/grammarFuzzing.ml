@@ -364,14 +364,21 @@ let rec applyMutation (m : mutation) (g : ast) (count : int) : (packet_type * gr
   else
     let nt = random_element nonterminals in
     match m with
-      Add -> print_endline "\n\nADDING\n\n" ; 
+    | Add -> print_endline "\n\nADDING\n\n" ; 
       let random_prod_rule = find_random_production_rule g in
       let added_grammar = (mutation_add_s1 g nt random_prod_rule) in
       if snd added_grammar = false then applyMutation Add g (count - 1)
       else begin
-        pp_print_ast Format.std_formatter (fst added_grammar);
-        addition_count := !addition_count + 1 ;
-        Some (NOTHING, (fst added_grammar))
+        let add_canon = canonicalize (fst added_grammar) in
+        match add_canon with
+        | Some x ->
+          let well_formed_check = check_well_formed_rules x in
+          (
+            match well_formed_check with 
+            | true -> pp_print_ast Format.std_formatter x; addition_count := !addition_count + 1; Some (NOTHING, x)
+            | false -> applyMutation Add g (count - 1)
+          )
+        | None -> applyMutation Add g (count - 1)
       end
     | Delete -> print_endline "\n\nDELETING\n\n" ;
       let delete_attempt = (mutation_delete g nt) in
@@ -380,7 +387,7 @@ let rec applyMutation (m : mutation) (g : ast) (count : int) : (packet_type * gr
         let deleted_grammar = canonicalize (fst delete_attempt) in
         (
           match deleted_grammar with
-        | Some x ->
+        | Some x -> 
           let well_formed_check = check_well_formed_rules x in
           (
             match well_formed_check with
