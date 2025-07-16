@@ -1,32 +1,24 @@
 module SA = SygusAst
 
 let xml_grammar : (string * string list) list = [
-  ("xml-tree0", ["xml-openclose-tag0"]);
-  ("xml-tree0", ["rec-xml-tree0"]);
+  ("xml-tree0", ["rec-xml-tree"; "xml-openclose-tag0"]);
 
-  ("rec-xml-tree0", ["xml-openclose-tag0"]);
-  ("rec-xml-tree0", ["xml-open-tag0"; "inner-xml-tree0"; "xml-close-tag0"]);
+  ("rec-xml-tree0", ["xml-openclose-tag0"; "xml-open-tag0"; "inner-xml-tree0"; "xml-close-tag0"]);
 
-  ("inner-xml-tree0", ["text0"]);
-  ("inner-xml-tree0", ["rec-xml-tree0"]);
-  ("inner-xml-tree0", ["inner-xml-tree0"; "inner-xml-tree0"]);
+  ("inner-xml-tree0", ["text0"; "rec-xml-tree0"; "inner-xml-tree0"; "inner-xml-tree0"]);
 
-  ("xml-open-tag0", ["id0"]);
   ("xml-open-tag0", ["id0"; "xml-attribute0"]);
 
   ("xml-close-tag0", ["id0"]);
 
-  ("xml-openclose-tag0", ["id0"]);
   ("xml-openclose-tag0", ["id0"; "xml-attribute0"]);
 
-  ("xml-attribute0", ["id0"; "text0"]);
-  ("xml-attribute0", ["xml-attribute-10"; "xml-attribute-20"]);
+  ("xml-attribute0", ["id0"; "text0"; "xml-attribute-10"; "xml-attribute-20"]);
 
   ("xml-attribute-10", ["xml-attribute0"]);
   ("xml-attribute-20", ["xml-attribute0"]);
 
-  ("id0", ["id-no-prefix-10"]);
-  ("id0", ["id-with-prefix0"]);
+  ("id0", ["id-no-prefix-10"; "id-with-prefix0"]);
 
   ("id-with-prefix0", ["id-no-prefix-10"; "id-no-prefix-20"]);
 
@@ -37,48 +29,44 @@ let xml_grammar : (string * string list) list = [
 
 let csv_grammar : (string * string list) list = [
   ("csv-file0", ["csv-header0"; "csv-records0"]);
-
   ("csv-header0", ["csv-record0"]);
-
-  ("csv-records0", ["csv-record0"; "csv-records0"]);
-  ("csv-records0", ["nil0"]);
-
-  ("csv-record0", ["raw-field0"]);
+  ("csv-records0", ["csv-records0"; "csv-record0"; "nil0"]);
   ("csv-record0", ["raw-field0"; "csv-record0"]);
-
   ("raw-field0", []);
   ("nil0", []);
 ]
 
-let count_paths (grammar : (string * string list) list) (k : int) : int =
-  let production_map = List.to_seq grammar |> Hashtbl.of_seq in
-
-  let rec explore_paths symbol depth =
-    if depth = 0 then 1
+let count_paths (grammar : (string * string list) list) (k : int) : Utils.StringSet.t * int =
+  let rec explore_paths symbol remaining current_path acc =
+    let new_path = current_path @ [symbol] in
+    if remaining = 1 then
+      Utils.StringSet.add (String.concat "/" new_path) acc
     else
-      match Hashtbl.find_opt production_map symbol with
+      match List.assq_opt symbol grammar with
       | Some children ->
-          if children = [] then 0
+          if children = [] then acc
           else
             List.fold_left
-              (fun acc child -> acc + explore_paths child (depth - 1))
-              0
+              (fun acc child -> explore_paths child (remaining - 1) new_path acc)
+              acc
               children
-      | None -> assert false 
+      | None -> acc
   in
 
-  let symbols = List.map fst grammar in
-  List.fold_left
-    (fun acc symbol -> acc + explore_paths symbol k)
-    0
-    symbols
+  let all_paths =
+    List.fold_left
+      (fun acc (symbol, _) -> explore_paths symbol k [] acc)
+      Utils.StringSet.empty
+      grammar
+  in
+  (all_paths, Utils.StringSet.cardinal all_paths)
 
 let collect_k_paths k ast =
   let rec aux current_path acc = function
-    | SA.Node ((label, idx), children) ->
+    | SA.Node ((label, _), children) ->
         if String.length label > 0 && label.[0] = '_' then acc
         else
-          let label = Format.asprintf "%s%d" label (Option.get idx) in
+          let label = Format.asprintf "%s" label in
           let new_path = current_path @ [label] in
           let acc = if List.length new_path = k then (
               if !Flags.debug then Format.printf "%s\n" (String.concat "/" new_path);
@@ -338,7 +326,7 @@ let evaluate () =
     | "xml" -> xml_grammar
     | _ -> Utils.error "Unknown grammar for path counting"
   in
-  let path_count = count_paths selected_grammar k in
+  let all_paths, path_count = count_paths selected_grammar k in
   if !Flags.debug then Format.printf "%s grammar paths of length %d: %d\n" !Flags.analysis k path_count;
 
   let observed_paths = collect_k_paths_from_outputs k sygus_asts in
@@ -350,4 +338,9 @@ let evaluate () =
   in
 
   if !Flags.debug then Format.printf "Observed distinct %d-paths: %d\n" k observed_count;
+  if !Flags.debug then Format.printf "Total distinct %d-paths: %d\n" k path_count;
+  if !Flags.debug then Format.printf "All distinct %d-paths: %a\n" k 
+    (Lib.pp_print_list Format.pp_print_string ", ") (Utils.StringSet.to_list all_paths); 
+  if !Flags.debug then Format.printf "Observed istinct %d-paths: %a\n" k 
+    (Lib.pp_print_list Format.pp_print_string ", ") (Utils.StringSet.to_list observed_paths); 
   Format.printf "Coverage: %.2f%%\n" coverage
