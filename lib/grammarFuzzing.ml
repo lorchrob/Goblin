@@ -383,10 +383,9 @@ let rec applyMutation (m : mutation) (g : ast) (count : int) : (packet_type * gr
     | Delete -> print_endline "\n\nDELETING\n\n" ;
       let delete_attempt = (mutation_delete g nt) in
       if snd delete_attempt = false then applyMutation Delete g (count - 1)
-      else
+      else begin
         let deleted_grammar = canonicalize (fst delete_attempt) in
-        (
-          match deleted_grammar with
+        match deleted_grammar with
         | Some x -> 
           let well_formed_check = check_well_formed_rules x in
           (
@@ -395,8 +394,7 @@ let rec applyMutation (m : mutation) (g : ast) (count : int) : (packet_type * gr
             | false -> applyMutation Delete g (count - 1)
           )
         | None -> applyMutation Delete g (count - 1)
-        )
-
+      end
     | Modify -> print_endline "\n\nMODIFYING\n\n" ;
       let operation = random_element [Plus; Minus] in
       let (modified_grammar, success_code) = mutation_update g nt operation in

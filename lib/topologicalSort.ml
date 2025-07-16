@@ -82,13 +82,6 @@ module Node = struct
   let hash = Hashtbl.hash                                                          
   let equal = (=)                                                                  
 end
-(* 
-module Edge = struct                                                                
-  type t = string                                                                  
-  let compare = Pervasives.compare                                                 
-  let equal = (=)                                                                  
-  let default = ""                                                                 
-end *)
 
 module G = Imperative.Digraph.Concrete(Node)
 
@@ -107,7 +100,6 @@ let compare = Stdlib.compare
 end
 )
 
-
 let rec create_set_from_list myset  (dependency_list : (string * string) list) = 
   match dependency_list with 
   | [] -> myset 
@@ -119,16 +111,6 @@ let print_tuple_list lst =
 let print_list lst =
   List.iter (fun x -> Printf.printf "%s " x) lst;
   print_endline "" ;;
-(* 
-let remove_duplicates x = 
-  let d_set = StringPairSet.of_list x in 
-   
-  StringPairSet.iter (fun s -> G.add_vertex g s) d_set ;
-  StringPairSet.iter (fun s -> G.add_edge g (fst s) (snd s)) edge_pairs ;  *)
-(* 
-  let set_rep = create_set_from_list StringPairSet.empty x in 
-  StringPairSet.to_list set_rep     *)
-
 
 let rec collect_rules_for_nt (cnt : string) (ogrammar : ast) : ast = 
   match ogrammar with 
@@ -147,21 +129,43 @@ let rec collect_rules (non_term_list : string list ) (ogrammar : ast) (cgrammar 
     let cntr = collect_rules_for_nt x ogrammar in 
     collect_rules xs ogrammar (cgrammar @ cntr)  
 
+(* Check for immediate left recursion where ALL alternatives start with the same non-terminal *)
+let has_problematic_immediate_left_recursion (grammar : ast) : bool =
+  let check_rule = function
+    | ProdRule(lhs, rhs_list) ->
+        (* Check if ALL alternatives start with the same non-terminal (lhs) *)
+        let all_alternatives_left_recursive = 
+          List.for_all (fun rhs ->
+            match rhs with
+            | Rhs(Nonterminal(nt, _) :: _, _) -> nt = lhs
+            | _ -> false
+          ) rhs_list
+        in
+        (* Only problematic if ALL alternatives are left recursive (no base case) *)
+        all_alternatives_left_recursive && (List.length rhs_list > 0)
+    | _ -> false
+  in
+  List.exists check_rule grammar
+
 let canonicalize (ogrammar : ast) : ast option = 
-  let g = G.create () in 
-  let all_nt = get_all_nt ogrammar in 
-  let unique_nts = StringSet.of_list all_nt in 
-  let all_dependencies = get_all_dependencies_from_grammar ogrammar in 
-  let unique_dependencies = StringPairSet.of_list all_dependencies in 
-  StringSet.iter (fun s -> G.add_vertex g s) unique_nts; 
-  StringPairSet.iter (fun s-> G.add_edge g (fst s) (snd s)) unique_dependencies ;
-  let module MyDfs = Traverse.Dfs(G) in
-  if (MyDfs.has_cycle g) then None  
-  else 
-    let module TopSort = Topological.Make_stable(G)  in  
-    let top_sort_nts = TopSort.fold (fun x y -> y @ [x]) g [] in 
-    (* let rev_top_sort_nts = List.rev top_sort_nts in  *)
-    Some (collect_rules top_sort_nts ogrammar [])
+  (* First check for immediate left recursion without base cases *)
+  if has_problematic_immediate_left_recursion ogrammar then None
+  else
+    (* Continue with existing cycle detection for other types of cycles *)
+    let g = G.create () in 
+    let all_nt = get_all_nt ogrammar in 
+    let unique_nts = StringSet.of_list all_nt in 
+    let all_dependencies = get_all_dependencies_from_grammar ogrammar in 
+    let unique_dependencies = StringPairSet.of_list all_dependencies in 
+    StringSet.iter (fun s -> G.add_vertex g s) unique_nts; 
+    StringPairSet.iter (fun s -> G.add_edge g (fst s) (snd s)) unique_dependencies ;
+    let module MyDfs = Traverse.Dfs(G) in
+    if (MyDfs.has_cycle g) then None  
+    else 
+      let module TopSort = Topological.Make_stable(G)  in  
+      let top_sort_nts = TopSort.fold (fun x y -> y @ [x]) g [] in 
+      (* let rev_top_sort_nts = List.rev top_sort_nts in  *)
+      Some (collect_rules top_sort_nts ogrammar [])
 
 let get_all_nt_scs scs = 
   List.fold_left (fun acc sc -> match sc with 
