@@ -217,33 +217,11 @@ let declare_smt_variables: Utils.StringSet.t ref -> A.il_type Utils.StringMap.t 
 let read_check_sat_response solver = 
     input_line solver.in_channel
 
-(*let read_get_model_response solver =
-  let rec loop acc parens =
-    try
-      let line = input_line solver.in_channel in
-      let parens = parens + (List.length (String.split_on_char '(' line) - 1) 
-                          - (List.length (String.split_on_char ')' line) - 1) in
-      let acc = acc ^ "\n" ^ line in
-      if parens <= 0 && (not (String.equal line "sat")) then
-        acc
-      else (
-    Format.fprintf Format.std_formatter "looping: %s \n" acc; 
-    Format.pp_print_flush Format.std_formatter () ;
-        loop acc parens )
-    with End_of_file -> 
-      acc
-  in
-  let result = (loop "" 0) in
-      
-    Format.fprintf Format.std_formatter "got here \n" ; 
-    Format.pp_print_flush Format.std_formatter () ;
-  result*)
-  
-
 let read_get_model_response solver =
   let rec loop acc =
     try
       let line = input_line solver.in_channel in
+      if String.starts_with ~prefix:"(error" line then raise (Failure "cvc5 error");
       let acc = acc ^ "\n" ^ line in
       if String.trim line = ")" then acc
       else loop acc
