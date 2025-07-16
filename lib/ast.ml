@@ -605,3 +605,14 @@ let scs_of_element = function
   | Rhs (_, scs) -> scs
   ) rhss
 | TypeAnnotation (_, _, scs) -> scs
+
+let rec nts_of_ast ast = match ast with 
+| [] -> Utils.StringSet.empty  
+| ProdRule (nt, rhss) :: tl -> 
+  let nts = nt :: (List.concat_map nts_of_rhs rhss) in 
+  let nts = Utils.StringSet.of_list nts in 
+  Utils.StringSet.union nts (nts_of_ast tl)
+| TypeAnnotation (nt, _, _) :: tl -> 
+  let nts = Utils.StringSet.singleton nt in 
+  Utils.StringSet.union nts (nts_of_ast tl)
+

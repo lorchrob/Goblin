@@ -25,6 +25,7 @@ let num_solutions = ref (-1)
 let starting_depth_limit = ref 5 
 let restart_rate = ref 10000 
 let sols_per_iter = ref 10 
+let seed = ref None
 
 let parse_args () = 
   let open Cmdliner in
@@ -119,9 +120,14 @@ let parse_args () =
     Arg.(value & opt int 100 & info ["i"; "sols-per-iter"] ~doc)
   in
 
+  let seed_flag = 
+    let doc = "Random seed" in 
+    Arg.(value & opt (some int) None & info ["seed"] ~doc) 
+  in
+
   let set_flags new_debug new_no_warnings new_only_parse new_show_winner 
                 new_dump_clp new_multiple_solutions new_daniyal new_analysis new_filename new_engine new_num_solutions 
-                new_starting_depth_limit new_restart_rate new_sols_per_iter =
+                new_starting_depth_limit new_restart_rate new_sols_per_iter new_seed =
     Format.pp_print_flush Format.std_formatter ();
     debug := new_debug;
     no_warnings := new_no_warnings;
@@ -137,6 +143,7 @@ let parse_args () =
     starting_depth_limit := new_starting_depth_limit; 
     restart_rate := new_restart_rate; 
     sols_per_iter := new_sols_per_iter;
+    seed := new_seed;
   in
 
   let term =
@@ -154,7 +161,8 @@ let parse_args () =
           $ num_solutions_flag
           $ starting_depth_limit_flag 
           $ restart_rate_flag 
-          $ sols_per_iter_flag)
+          $ sols_per_iter_flag
+          $ seed_flag)
   in
 
   let info = Cmd.info "sbf" in
