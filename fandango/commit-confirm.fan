@@ -32,43 +32,45 @@
 <bv16> ::= <bv8> <bv8> ;
 <bit> ::= "0" | "1";
 
-from z3 import BitVecVal, Not
+from bitstring import BitArray
 
-where (BitVecVal(int(str(<CONFIRM>.<STATUS_CODE>), 2), 16) == BitVecVal(0, 16)) or (BitVecVal(int(str(<CONFIRM>.<STATUS_CODE>), 2), 16) == BitVecVal(1, 16));
+where (BitArray(bin=str(<CONFIRM>.<STATUS_CODE>)).uint == 0) or (BitArray(bin=str(<CONFIRM>.<STATUS_CODE>)).uint == 1);
 
-where BitVecVal(int(str(<AC_TOKEN_CONTAINER>.<AC_ID_LENGTH>), 2), 8) == BitVecVal((len(str(<AC_TOKEN_CONTAINER>.<AC_TOKEN_ELEMENT>)) // 8) + 1, 8);
+where BitArray(bin=str(<AC_TOKEN_CONTAINER>.<AC_ID_LENGTH>)).uint == (len(str(<AC_TOKEN_CONTAINER>.<AC_TOKEN_ELEMENT>)) // 8) + 1;
 
 where not (len(str(<AC_TOKEN_ELEMENT>)) == 0);
 
-where BitVecVal(int(str(<AC_ELEMENT_ID_EXTENSION>), 2), 8) == BitVecVal(93, 8);
+where BitArray(bin=str(<AC_ELEMENT_ID_EXTENSION>)).uint == 93;
 
-where BitVecVal(int(str(<AC_ELEMENT_ID>), 2), 8) == BitVecVal(255, 8);
+where BitArray(bin=str(<AC_ELEMENT_ID>)).uint == 255;
 
-where (BitVecVal(int(str(<RG_ID>), 2), 16) == BitVecVal(20, 16)) or (BitVecVal(int(str(<RG_ID>), 2), 16) == BitVecVal(21, 16));
+where (BitArray(bin=str(<RG_ID>)).uint == 20) or (BitArray(bin=str(<RG_ID>)).uint == 21);
 
-where BitVecVal(int(str(<REJECTED_GROUPS>.<RG_ID_LENGTH>), 2), 8) == BitVecVal((len(str(<REJECTED_GROUPS>.<RG_ID_LIST>)) // 8) + 1, 8);
+where BitArray(bin=str(<REJECTED_GROUPS>.<RG_ID_LENGTH>)).uint == (len(str(<REJECTED_GROUPS>.<RG_ID_LIST>)) // 8) + 1;
 
-where BitVecVal(int(str(<RG_ELEMENT_ID_EXTENSION>), 2), 8) == BitVecVal(92, 8);
+where BitArray(bin=str(<RG_ELEMENT_ID_EXTENSION>)).uint == 92;
 
-where BitVecVal(int(str(<RG_ELEMENT_ID>), 2), 8) == BitVecVal(255, 8);
+where BitArray(bin=str(<RG_ELEMENT_ID>)).uint == 255;
 
-where Not(BitVecVal(int(str(<PASSWD_ID>), 2), 8) == BitVecVal(0, 8));
+where not (BitArray(bin=str(<PASSWD_ID>)).uint == 0);
 
-where BitVecVal(int(str(<PASSWD_ELEMENT_ID_EXTENSION>), 2), 8) == BitVecVal(33, 8);
+where BitArray(bin=str(<PASSWD_ELEMENT_ID_EXTENSION>)).uint == 33;
 
-where BitVecVal(int(str(<PASSWD_ELEMENT_ID>), 2), 8) == BitVecVal(255, 8);
+where BitArray(bin=str(<PASSWD_ELEMENT_ID>)).uint == 255;
 
-where BitVecVal(int(str(<PASSWORD_IDENTIFIER>.<PASSWD_ID_LENGTH>), 2), 8) == BitVecVal((len(str(<PASSWORD_IDENTIFIER>.<PASSWD_ID>)) // 8) + 1, 8);
+where BitArray(bin=str(<PASSWORD_IDENTIFIER>.<PASSWD_ID_LENGTH>)).uint == (len(str(<PASSWORD_IDENTIFIER>.<PASSWD_ID>)) // 8) + 1;
 
-where (BitVecVal(int(str(<CONFIRM>.<AUTH_ALGO>), 2), 16) == BitVecVal(3, 16)) and (BitVecVal(int(str(<CONFIRM>.<AUTH_SEQ_CONFIRM>), 2), 16) == BitVecVal(2, 16));
+where (BitArray(bin=str(<CONFIRM>.<AUTH_ALGO>)).uint == 3) and (BitArray(bin=str(<CONFIRM>.<AUTH_SEQ_CONFIRM>)).uint == 2);
 
-where (BitVecVal(int(str(<COMMIT>.<STATUS_CODE>), 2), 16) == BitVecVal(0, 16)) or (BitVecVal(int(str(<COMMIT>.<STATUS_CODE>), 2), 16) == BitVecVal(1, 16)) or (BitVecVal(int(str(<COMMIT>.<STATUS_CODE>), 2), 16) == BitVecVal(126, 16));
+where (BitArray(bin=str(<COMMIT>.<STATUS_CODE>)).uint == 0) or \
+      (BitArray(bin=str(<COMMIT>.<STATUS_CODE>)).uint == 1) or \
+      (BitArray(bin=str(<COMMIT>.<STATUS_CODE>)).uint == 126);
 
-where Not(BitVecVal(int(str(<COMMIT>.<STATUS_CODE>), 2), 16) == BitVecVal(1, 16));
+where not (BitArray(bin=str(<COMMIT>.<STATUS_CODE>)).uint == 1);
 
-where Not(BitVecVal(int(str(<COMMIT>.<STATUS_CODE>), 2), 16) == BitVecVal(0, 16));
+where not (BitArray(bin=str(<COMMIT>.<STATUS_CODE>)).uint == 0);
 
-where (BitVecVal(19, 16) <= BitVecVal(int(str(<COMMIT>.<GROUP_ID>), 2), 16)) and (BitVecVal(int(str(<COMMIT>.<GROUP_ID>), 2), 16) <= BitVecVal(20, 16));
+where 19 <= BitArray(bin=str(<COMMIT>.<GROUP_ID>)).uint <= 20;
 
-where BitVecVal(int(str(<COMMIT>.<AUTH_ALGO>), 2), 16) == BitVecVal(3, 16);
+where BitArray(bin=str(<COMMIT>.<AUTH_ALGO>)).uint == 3;
 
