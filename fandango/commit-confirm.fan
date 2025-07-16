@@ -33,7 +33,6 @@
 <bit> ::= "0" | "1";
 
 from z3 import BitVecVal, Not
-from z3 import BitVecVal, Not
 
 where (BitVecVal(int(str(<CONFIRM>.<STATUS_CODE>), 2), 16) == BitVecVal(0, 16)) or (BitVecVal(int(str(<CONFIRM>.<STATUS_CODE>), 2), 16) == BitVecVal(1, 16));
 
