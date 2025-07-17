@@ -652,9 +652,15 @@ let run_sequence (flag : bool) (c : child) : (provenance * output) * state =
     let packetToSend_1 = (
       let other_start_time = Unix.gettimeofday () in
       try 
-      (* Format.printf "%a\n" Ast.pp_print_ast grammar;  *)
-      (* Format.pp_print_flush Format.std_formatter (); *)
         let grammar = fst c |> snd in
+        Format.printf "%a\n" Ast.pp_print_ast grammar;
+        let grammar_str = Format.asprintf "%a\n" Ast.pp_print_ast grammar in
+        let timestamp = Unix.gettimeofday () |> string_of_float in
+        let log_entry = "=== GRAMMAR [" ^ timestamp ^ "] ===\n" ^ grammar_str ^ "\n" in
+        let oc = open_out_gen [Open_wronly; Open_append; Open_creat] 0o644 "grammar_hex_log.txt" in
+        output_string oc log_entry;
+        close_out oc;
+        Format.pp_print_flush Format.std_formatter ();
         let sygus_ast, _, _ = Pipeline.main_pipeline ~grammar "dummy" in 
         other_success_execution_time := ((Unix.gettimeofday ()) -. other_start_time) ;
         other_success_calls := !other_success_calls + 1 ;
@@ -691,13 +697,7 @@ let run_sequence (flag : bool) (c : child) : (provenance * output) * state =
           | Some grammar_to_sygus -> (
             (* preprocessing_time := Unix.gettimeofday () -. pre_start; *)
             (* Print grammar to stdout and append to file *)
-            Format.printf "%a\n" Ast.pp_print_ast grammar_to_sygus;
-            let grammar_str = Format.asprintf "%a\n" Ast.pp_print_ast grammar_to_sygus in
-            let timestamp = Unix.gettimeofday () |> string_of_float in
-            let log_entry = "=== GRAMMAR [" ^ timestamp ^ "] ===\n" ^ grammar_str ^ "\n" in
-            let oc = open_out_gen [Open_wronly; Open_append; Open_creat] 0o644 "grammar_hex_log.txt" in
-            output_string oc log_entry;
-            close_out oc;
+            
             let grammar = grammar_to_sygus in 
         try
           let sygus_out = Pipeline.sygusGrammarToPacket grammar in
