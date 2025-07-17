@@ -1,3 +1,8 @@
+(*
+  TODO: 
+    1. Dep map should map nt and prod rule RHS to expr, not just nt 
+*)
+
 open Sbf
 
 let () = 

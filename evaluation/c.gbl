@@ -39,7 +39,7 @@
     <expr>.<_decls_down> = <_decls_down> ; } 
   | <_decls_down> <_decls_up> <id> 
   //!! no redeclaration
-  { lnot (member(<id>, <_decls_down>)) ; <_decls_up> = union(<_decls_down>, singleton(<id>)) ; } ;
+  { lnot (member(<id>, <_decls_down>)) ; <_decls_up> = singleton(<id>) ; } ;
 
 <paren_expr> ::= <_decls_down> <expr> { <expr>.<_decls_down> = <_decls_down> ; } ;
 
