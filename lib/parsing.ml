@@ -17,13 +17,21 @@ let parse: string -> Ast.ast
 
 let parse_sygus: string -> Ast.ast -> (SygusAst.sygus_ast, string) result
 = fun s ast ->
-  let lexbuf = Lexing.from_string s in 
-  let sygus_ast = 
-    try 
-      Ok (SygusParser.s SygusLexer.read lexbuf) 
-    with e ->
-      Error (Printexc.to_string e)
-  in 
+  let lexbuf = Lexing.from_string s in
+  let error_message () =
+    let pos = lexbuf.lex_curr_p in
+    Printf.sprintf "Syntax error at line %d, column %d"
+      pos.pos_lnum (pos.pos_cnum - pos.pos_bol)
+  in
+  let sygus_ast =
+    try
+      Ok (SygusParser.s SygusLexer.read lexbuf)
+    with
+    | SygusParser.Error ->  
+        Error (error_message ())
+    | e ->
+        Error (Printexc.to_string e)
+  in
   match ast, sygus_ast with 
   | ProdRule _ :: _, Error e -> print_endline e; sygus_ast
   | ProdRule _ :: _, Ok _ -> sygus_ast 

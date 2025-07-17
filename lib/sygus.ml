@@ -445,7 +445,7 @@ let pp_print_grammar: Format.formatter -> Ast.semantic_constraint Utils.StringMa
 
 let pp_print_ast: Format.formatter -> (TC.context * Ast.semantic_constraint Utils.StringMap.t * A.ast) -> unit 
 = fun ppf (ctx, dep_map, ast) -> 
-  Format.fprintf ppf "(set-logic QF_BVSLIAFS)\n\n";
+  Format.fprintf ppf "(set-logic BVSLIAFS)\n\n";
 
   pp_print_datatypes ppf ctx dep_map (List.rev ast);
 
