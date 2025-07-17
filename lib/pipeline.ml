@@ -155,6 +155,8 @@ let sygusGrammarToPacket ast =
   let ast, ctx = TypeChecker.build_context ast in
   let ast = TypeChecker.check_types ctx ast in
 
+  let ast = PopulateIndices.populate_indices ast in
+
   (* Merge overlapping constraints *)
   (* let ast = MergeOverlappingConstraints.merge_overlapping_constraints ast in *)
 
