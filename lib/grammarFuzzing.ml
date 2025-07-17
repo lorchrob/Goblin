@@ -48,6 +48,9 @@ let oracle_calls = ref 0
 let sygus_success_calls = ref 0
 let sygus_fail_calls = ref 0
 
+let other_success_calls = ref 0
+let other_fail_calls = ref 0
+
 let trace_time = ref 0.0
 
 let total_execution_time = ref 0.0
@@ -473,7 +476,7 @@ let save_time_info filename trace_length =
   Unix.sleepf 0.1 ;
   print_endline "saving time info.." ;
   let oc = open_out_gen [Open_creat; Open_append] 0o666 filename in
-  output_string oc (Printf.sprintf "%d,%.8f,%d,%.8f,%d,%.8f,%d,%.8f,%d,%.8f\n" trace_length (!trace_time /. (float_of_int trace_length)) !sygus_success_calls !sygus_success_execution_time !sygus_fail_calls !sygus_fail_execution_time !oracle_calls !oracle_time !driver_calls !driver_call_time);
+  output_string oc (Printf.sprintf "%d,%.8f,%d,%.8f,%d,%.8f,%d,%.8f,%d,%.8f,%d,%.8f,%d,%.8f\n" trace_length (!trace_time /. (float_of_int trace_length)) !sygus_success_calls !sygus_success_execution_time !sygus_fail_calls !sygus_fail_execution_time !other_success_calls !other_success_execution_time !other_fail_calls !other_fail_execution_time !oracle_calls !oracle_time !driver_calls !driver_call_time);
   close_out oc;
   ()
 
@@ -619,56 +622,99 @@ let run_sequence (flag : bool) (c : child) : (provenance * output) * state =
     let stateTransition = fst c |> fst in
     (* print_endline "\n\n\nGRAMMAR TO SYGUS:" ;
     pp_print_ast Format.std_formatter (fst c |> snd) ; *)
-    let sygus_start_time = Unix.gettimeofday () in
     let removed_dead_rules_for_sygus = dead_rule_removal (fst c |> snd) "SAE_PACKET" in
     match removed_dead_rules_for_sygus with
     | Some grammar_to_sygus -> (
+      (* Print grammar to stdout and append to file *)
+      Format.printf "%a\n" Ast.pp_print_ast grammar_to_sygus;
+      let grammar_str = Format.asprintf "%a\n" Ast.pp_print_ast grammar_to_sygus in
+      let timestamp = Unix.gettimeofday () |> string_of_float in
+      let log_entry = "=== GRAMMAR [" ^ timestamp ^ "] ===\n" ^ grammar_str ^ "\n" in
+      let oc = open_out_gen [Open_wronly; Open_append; Open_creat] 0o644 "grammar_hex_log.txt" in
+      output_string oc log_entry;
+      close_out oc;
+      
       let packetToSend_1 = (
         let grammar = grammar_to_sygus in 
+        let other_start_time = Unix.gettimeofday () in
         try 
-          Format.printf "%a\n" Ast.pp_print_ast grammar; 
-          Format.pp_print_flush Format.std_formatter ();
+        (* Format.printf "%a\n" Ast.pp_print_ast grammar;  *)
+        (* Format.pp_print_flush Format.std_formatter (); *)
           let sygus_ast, _, _ = Pipeline.main_pipeline ~grammar "dummy" in 
-          sygus_success_calls := !sygus_success_calls + 1 ;
-          sygus_success_execution_time := ((Unix.gettimeofday ()) -. sygus_start_time) ;
+          other_success_execution_time := ((Unix.gettimeofday ()) -. other_start_time) ;
+          other_success_calls := !other_success_calls + 1 ;
           let sygus_ast = BitFlips.flip_bits sygus_ast in
-          grammar_byte_map := !grammar_byte_map ^ (Utils.capture_output Ast.pp_print_ast grammar);
+          (* grammar_byte_map := !grammar_byte_map ^ (Utils.capture_output Ast.pp_print_ast grammar); *)
+          let byte_serial, metadata = SygusAst.serialize_bytes SygusAst.Big sygus_ast in
+          (* Print hex to stdout and append to file *)
+          Format.printf "%s\n" (bytes_to_hex byte_serial);
+          let hex_str = "=== HEX RESULT [" ^ timestamp ^ "] ===\n" ^ (bytes_to_hex byte_serial) ^ "\n\n" in
+          let oc = open_out_gen [Open_wronly; Open_append; Open_creat] 0o644 "grammar_hex_log.txt" in
+          output_string oc hex_str;
+          close_out oc;
           Format.pp_print_flush Format.std_formatter ();
-          Ok (SygusAst.serialize_bytes SygusAst.Big sygus_ast)
+          Ok (byte_serial, metadata)
         with exn -> 
+          other_fail_calls := !other_fail_calls + 1;
+          other_fail_execution_time := ((Unix.gettimeofday ()) -. other_start_time);
           let error = Format.asprintf "Exception: %s\n" (Printexc.to_string exn) in 
-          let error2 = Format.asprintf "Backtrace:\n%s\n" (Printexc.get_backtrace ()) in 
-          Format.pp_print_flush Format.std_formatter ();
+          let error2 = Format.asprintf "Backtrace:\n%s\n" (Printexc.get_backtrace ()) in
+          let error_str = "=== ERROR [" ^ timestamp ^ "] ===\n" ^ (error ^ error2) ^ "\n\n" in
+          let oc = open_out_gen [Open_wronly; Open_append; Open_creat] 0o644 "grammar_hex_log.txt" in
+          output_string oc error_str;
+          close_out oc;
+          Format.pp_print_flush Format.std_formatter (); 
           Error (error ^ error2))
         in 
       let packetToSend_2 = (
         (* try *)
+          let sygus_start_time = Unix.gettimeofday () in
           let sygus_out = Pipeline.sygusGrammarToPacket grammar_to_sygus in
           match sygus_out with
           | Ok (packetToSend, _metadata) ->
-            print_endline "SYGUS CALL SUCCESS";
+            sygus_success_execution_time := ((Unix.gettimeofday ()) -. sygus_start_time) ;
+            sygus_success_calls := !sygus_success_calls + 1 ;
+            Format.printf "SYGUS CALL SUCCESS\n";
+            (* Format.printf "PRINTING SYGUS AST:\n"; *)
+            (* Format.printf "%a\n" Ast.pp_print_ast grammar; *)
+            Format.printf "PRINTING byte serialization SYGUS:\n";
+            (* Print hex to stdout and append to file *)
+            Format.printf "%s\n" (bytes_to_hex packetToSend);
+            let hex_str = "=== SYGUS HEX RESULT [" ^ timestamp ^ "] ===\n" ^ (bytes_to_hex packetToSend) ^ "\n\n" in
+            let oc = open_out_gen [Open_wronly; Open_append; Open_creat] 0o644 "grammar_hex_log.txt" in
+            output_string oc hex_str;
+            close_out oc;
+            Format.printf "\n";
+            Format.pp_print_flush Format.std_formatter ();
             (* let trace_start_time = Unix.gettimeofday () in
             let driver_output = callDriver_new (run_trace stateTransition) (RawPacket packetToSend) in
             trace_time := Unix.gettimeofday () -. trace_start_time ;
             save_time_info "temporal-info/OCaml-time-info.csv" (1 + (List.length (stateTransition))) ; *)
             Ok (packetToSend,  _metadata)
           | Error e -> 
+            sygus_fail_calls := !sygus_fail_calls + 1;
+            sygus_fail_execution_time := ((Unix.gettimeofday ()) -. sygus_start_time);
             (* print_endline "ERROR";
             sygus_fail_execution_time := ((Unix.gettimeofday ()) -. sygus_start_time) ;
             sygus_fail_calls := !sygus_fail_calls + 1 ; *)
             (* Ok ((ValidPacket NOTHING, EXPECTED_OUTPUT), IGNORE_) *)
+            let error_str = "=== ERROR [" ^ timestamp ^ "] ===\n" ^ e ^ "\n\n" in
+            let oc = open_out_gen [Open_wronly; Open_append; Open_creat] 0o644 "grammar_hex_log.txt" in
+            output_string oc error_str;
+            close_out oc;
+            Format.pp_print_flush Format.std_formatter ();
             Error e
         (* with exn -> 
           let error = Format.asprintf "Exception: %s\n" (Printexc.to_string exn) in 
           let error2 = Format.asprintf "Backtrace:\n%s\n" (Printexc.get_backtrace ()) in 
           Format.pp_print_flush Format.std_formatter ();
           Error (error ^ error2)) *)
-       ) in
+        ) in
         let packetToSend_ = (fun x -> match x with | true -> packetToSend_2 | false -> packetToSend_1) flag in
         match packetToSend_ with
         | Ok (packetToSend, _metadata) ->
-          grammar_byte_map := !grammar_byte_map ^ "\n HEX: " ^ bytes_to_hex packetToSend ^ "------------------------------\n";
-          Format.printf "SUCCESS";
+          (* grammar_byte_map := !grammar_byte_map ^ "\n HEX: " ^ bytes_to_hex packetToSend ^ "\n------------------------------\n"; *)
+          Format.printf "\n";
           Format.pp_print_flush Format.std_formatter ();
           let trace_start_time = Unix.gettimeofday () in
           let driver_output = callDriver_new (run_trace stateTransition) (RawPacket packetToSend) in
@@ -676,11 +722,16 @@ let run_sequence (flag : bool) (c : child) : (provenance * output) * state =
           save_time_info "temporal-info/OCaml-time-info.csv" (1 + (List.length (stateTransition))) ;
           (RawPacket packetToSend, (fst driver_output)), (snd driver_output)
         | Error e -> 
-          print_endline "ERROR";
-          Format.printf "%s" e ;
+          Format.printf "ERROR\n";
+          Format.printf "%s\n" e ;
+          (* Log error to grammar_hex_log.txt with timestamp link *)
+          (* let error_str = "=== ERROR [" ^ timestamp ^ "] ===\n" ^ e ^ "\n\n" in
+          let oc = open_out_gen [Open_wronly; Open_append; Open_creat] 0o644 "grammar_hex_log.txt" in
+          output_string oc error_str;
+          close_out oc; *)
           Format.pp_print_flush Format.std_formatter ();
-          sygus_fail_execution_time := ((Unix.gettimeofday ()) -. sygus_start_time) ;
-          sygus_fail_calls := !sygus_fail_calls + 1 ;
+          (* sygus_fail_execution_time := ((Unix.gettimeofday ()) -. sygus_start_time) ; *)
+          (* sygus_fail_calls := !sygus_fail_calls + 1 ; *)
           ((ValidPacket NOTHING, EXPECTED_OUTPUT), IGNORE_)
     )
     | None -> ((ValidPacket NOTHING, EXPECTED_OUTPUT), IGNORE_)
