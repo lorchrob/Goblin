@@ -1,0 +1,79 @@
+<statement> ::= <rec-statement> { <rec-statement>.<_decls_down> = empty_set<String> ; } ; 
+
+<rec-statement> ::= 
+        <_decls_down> <block-statements> 
+      { <block-statements>.<_decls_down> = <_decls_down> ; } |
+        // ITE
+        <_decls_down> <paren_expr> <rec-statement> <rec-statement> 
+      { <rec-statement>.<_decls_down> = <_decls_down> ; <paren_expr>.<_decls_down> = <_decls_down>; } |
+        // IT
+        <_decls_down> <paren_expr> <rec-statement> 
+       { <rec-statement>.<_decls_down> = <_decls_down> ; <paren_expr>.<_decls_down> = <_decls_down>; } |
+        // WHILE
+        <_decls_down> <paren_expr> <rec-statement> 
+      { <rec-statement>.<_decls_down> = <_decls_down> ; <paren_expr>.<_decls_down> = <_decls_down> ; } | 
+        // DO WHILE
+        <_decls_down> <rec-statement> <paren_expr> 
+      { <rec-statement>.<_decls_down> = <_decls_down> ;  <paren_expr>.<_decls_down> = <_decls_down> ; } |
+        // EXPRESSION
+        <_decls_down> <expr> 
+      { <expr>.<_decls_down> = <_decls_down> ; } ;
+
+<block-statements> ::= 
+      <_decls_down> <block-statement> <block-statements> 
+      { <block-statement>.<_decls_down> = <_decls_down> ; 
+        <block-statements>.<_decls_down> = union(<block-statement>.<_decls_up>, <_decls_down>) ; }
+     | <nil> ;
+
+<block-statement> ::= 
+      <_decls_up> <_decls_down> <rec-statement> 
+    { <rec-statement>.<_decls_down> = <_decls_down> ; <_decls_up> = empty_set<String> ; } | 
+      <_decls_up> <_decls_down> <declaration> 
+    { <declaration>.<_decls_down> = <_decls_down> ; <_decls_up> = <declaration>.<_decls_up> ; } ;
+
+// int id = expr or just int id;
+<declaration> ::= 
+    <_decls_down> <_decls_up> <id> <expr> 
+    //!! no redeclaration
+  { lnot (member(<id>, <_decls_down>)) ; <_decls_up> = union(<_decls_down>, singleton(<id>)) ; 
+    <expr>.<_decls_down> = <_decls_down> ; } 
+  | <_decls_down> <_decls_up> <id> 
+  //!! no redeclaration
+  { lnot (member(<id>, <_decls_down>)) ; <_decls_up> = union(<_decls_down>, singleton(<id>)) ; } ;
+
+<paren_expr> ::= <_decls_down> <expr> { <expr>.<_decls_down> = <_decls_down> ; } ;
+
+// first option is id = expr
+<expr> ::=
+    //!! Use after declaration
+    <_decls_down> <id> <expr> 
+  { member(<id>, <_decls_down>); <expr>.<_decls_down> = <_decls_down> ; } 
+  | <_decls_down> <test> 
+  { <test>.<_decls_down> = <_decls_down> ; } ; 
+
+// first option is <sum> < <sum>
+<test> ::= 
+    <_decls_down> <sum> <sum> { <sum>.<_decls_down> = <_decls_down>; } 
+  | <_decls_down> <sum> { <sum>.<_decls_down> = <_decls_down> ; } ;
+
+// addition, just term
+<sum> ::= <_decls_down> <sum> <term>
+    { <term>.<_decls_down> = <_decls_down>; <sum>.<_decls_down> = <_decls_down>; } 
+   | <_decls_down> <term> { <term>.<_decls_down> = <_decls_down> ; } ;
+
+<term> ::= <_decls_down> <paren_expr> 
+         { <paren_expr>.<_decls_down> = <_decls_down> ; } 
+          //!! Use after declaration
+         | <_decls_down> <id> 
+         { member(<id>, <_decls_down>);  } 
+         | <i> ;
+
+//!! lowercase ascii constraint
+<id> :: String { str_in_re (<id>, (re_star (re_range ("a","z")))) ; lnot (<id> = "") ; } ;
+
+<i> :: Int;
+
+<nil> :: Int { <nil> = 0; };
+
+<_decls_down> :: Set(String) ; 
+<_decls_up> :: Set(String) ; 

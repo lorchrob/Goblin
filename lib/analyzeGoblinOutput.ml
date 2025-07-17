@@ -36,6 +36,22 @@ let csv_grammar : (string * string list) list = [
   ("nil0", []);
 ]
 
+let c_grammar : (string * string list) list = [
+  ("statement", ["rec-statement"]);
+  ("rec-statement", ["block-statements"; "paren_expr"; "expr"; "rec-statement"]);
+  ("block-statements", ["block-statement"; "nil"]);
+  ("block-statement", ["rec-statement"; "declaration"]);
+  ("declaration", ["id"; "expr"]);
+  ("paren_expr", ["expr"]);
+  ("expr", ["id"; "test"; "expr"]);
+  ("test", ["sum"]);
+  ("sum", ["sum"; "term"]);
+  ("term", ["paren_expr"; "id"; "i"]);
+  ("id", []);
+  ("i", []);
+  ("nil", [])
+]
+
 let count_paths (grammar : (string * string list) list) (k : int) : Utils.StringSet.t * int =
   let rec explore_paths symbol remaining current_path acc =
     let new_path = current_path @ [symbol] in
@@ -88,6 +104,81 @@ let collect_k_paths k ast =
 
 let collect_k_paths_from_outputs k asts =
   List.fold_left (fun acc ast -> Utils.StringSet.union acc (collect_k_paths k ast)) Utils.StringSet.empty asts
+
+(* C pretty printers *) 
+let rec pp_statement = function
+  | SA.Node (("statement", _), [stmt]) -> pp_rec_statement stmt
+  | _ -> assert false
+
+and pp_rec_statement = function
+  | SA.Node (("rec-statement", _), [_; SA.Node (("block-statements", _), _) as bs]) ->
+      "{\n" ^ pp_block_statements bs ^ "}"
+  | SA.Node (("rec-statement", _), [_;
+      SA.Node (("paren_expr", _), _) as pe;
+      SA.Node (("rec-statement", _), _) as t;
+      SA.Node (("rec-statement", _), _) as f]) ->
+      "if (" ^ pp_paren_expr pe ^ ") " ^ pp_rec_statement t ^
+      " else " ^ pp_rec_statement f
+  | SA.Node (("rec-statement", _), [_;
+      SA.Node (("paren_expr", _), _) as pe;
+      SA.Node (("rec-statement", _), _) as t]) ->
+      if Random.bool () then 
+        "if " ^ pp_paren_expr pe ^ " " ^ pp_rec_statement t
+      else 
+       "while " ^ pp_paren_expr pe ^ " " ^ pp_rec_statement t
+  | SA.Node (("rec-statement", _), [_;
+      SA.Node (("rec-statement", _), _) as body;
+      SA.Node (("paren_expr", _), _) as pe]) ->
+      "do { " ^ pp_rec_statement body ^ " } while (" ^ pp_paren_expr pe ^ ");"
+  | SA.Node (("rec-statement", _), [_; SA.Node (("expr", _), _) as expr]) ->
+      pp_expr expr ^ ";"
+  | _ -> assert false
+
+and pp_block_statements = function
+  | SA.Node (("block-statements", _), [_; stmt; rest]) ->
+      pp_block_statement stmt ^ "\n" ^ pp_block_statements rest
+  | SA.Node (("block-statements", _), [SA.Node (("nil", _), [_])]) -> ""
+  | sa -> SA.pp_print_sygus_ast Format.std_formatter sa; assert false
+
+and pp_block_statement = function
+  | SA.Node (("block-statement", _), [_; _; SA.Node (("rec-statement", _), _) as stmt]) ->
+      pp_rec_statement stmt
+  | SA.Node (("block-statement", _), [_; _; SA.Node (("declaration", _), _) as decl]) ->
+      pp_declaration decl
+  | _ -> assert false
+
+and pp_declaration = function
+  | SA.Node (("declaration", _), [_; _; SA.Node (("id", _), [SA.StrLeaf id]); expr]) ->
+      "int " ^ id ^ " = " ^ pp_expr expr ^ ";"
+  | SA.Node (("declaration", _), [_; _; SA.Node (("id", _), [SA.StrLeaf id])]) ->
+      "int " ^ id ^ ";"
+  | sa -> SA.pp_print_sygus_ast Format.std_formatter sa; assert false
+
+and pp_paren_expr = function
+  | SA.Node (("paren_expr", _), [_; expr]) -> "(" ^ pp_expr expr ^ ")"
+  | _ -> assert false
+
+and pp_expr = function
+  | SA.Node (("expr", _), [_; SA.Node (("id", _), [SA.VarLeaf id]); e]) ->
+      id ^ " = " ^ pp_expr e
+  | SA.Node (("expr", _), [_; test]) -> pp_test test
+  | _ -> assert false
+
+and pp_test = function
+  | SA.Node (("test", _), [_; a; b]) -> pp_sum a ^ " < " ^ pp_sum b
+  | SA.Node (("test", _), [_; s]) -> pp_sum s
+  | _ -> assert false
+
+and pp_sum = function
+  | SA.Node (("sum", _), [_; a; b]) -> pp_sum a ^ " + " ^ pp_term b
+  | SA.Node (("sum", _), [_; t]) -> pp_term t
+  | _ -> assert false
+
+and pp_term = function
+  | SA.Node (("term", _), [_; SA.Node (("paren_expr", _), _) as pe]) -> pp_paren_expr pe
+  | SA.Node (("term", _), [_; SA.Node (("id", _), [SA.VarLeaf id])]) -> id
+  | SA.Node (("term", _), [SA.Node (("i", _), [SA.IntLeaf n])]) -> string_of_int n
+  | _ -> assert false
 
 (* CSV pretty printers *)
 let pp_raw_field = function
@@ -303,6 +394,7 @@ let evaluate () =
       match !Flags.analysis with
       | "csv" -> pp_csv_file ast
       | "xml" -> pp_xml_tree ast
+      | "c" -> pp_statement ast 
       | _ -> Utils.error "Unknown grammar for post-analysis mode"
     in
     if !Flags.debug then
@@ -324,6 +416,7 @@ let evaluate () =
   let selected_grammar = match !Flags.analysis with
     | "csv" -> csv_grammar
     | "xml" -> xml_grammar
+    | "c" -> c_grammar 
     | _ -> Utils.error "Unknown grammar for path counting"
   in
   let all_paths, path_count = count_paths selected_grammar k in
