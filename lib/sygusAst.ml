@@ -50,7 +50,11 @@ let pp_print_sygus_ast: Format.formatter -> sygus_ast -> unit
     (Lib.pp_print_list Format.pp_print_int "") bits
   | VarLeaf id -> Format.fprintf ppf "\"%s\"" id;
   | StrLeaf id -> Format.fprintf ppf "\"%s\"" id;
-  | IntLeaf d -> Format.pp_print_int ppf d;
+  | IntLeaf d -> 
+    if d >= 0 then 
+      Format.pp_print_int ppf d
+    else 
+      Format.fprintf ppf "(- %d)" (d * -1)
   | BoolLeaf b -> Format.pp_print_bool ppf b;
   | SetLeaf (StringSet s) -> 
     Format.pp_print_string Format.std_formatter (smtlib_of_stringset s)

@@ -1,3 +1,7 @@
+(* TODO
+  *!! Fix multiple solutions mode w/ dependencies
+*)
+
 let dpll ppf ctx ast = 
   
   Utils.debug_print Format.pp_print_string ppf "\nLifting overlapping dependencies:\n";

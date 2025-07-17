@@ -159,10 +159,10 @@ and pp_paren_expr = function
   | _ -> assert false
 
 and pp_expr = function
-  | SA.Node (("expr", _), [_; SA.Node (("id", _), [SA.VarLeaf id]); e]) ->
+  | SA.Node (("expr", _), [_; SA.Node (("id", _), [SA.StrLeaf id]); e]) ->
       id ^ " = " ^ pp_expr e
   | SA.Node (("expr", _), [_; test]) -> pp_test test
-  | _ -> assert false
+  | sa -> SygusAst.pp_print_sygus_ast Format.std_formatter sa; assert false
 
 and pp_test = function
   | SA.Node (("test", _), [_; a; b]) -> pp_sum a ^ " < " ^ pp_sum b
@@ -176,9 +176,9 @@ and pp_sum = function
 
 and pp_term = function
   | SA.Node (("term", _), [_; SA.Node (("paren_expr", _), _) as pe]) -> pp_paren_expr pe
-  | SA.Node (("term", _), [_; SA.Node (("id", _), [SA.VarLeaf id])]) -> id
+  | SA.Node (("term", _), [_; SA.Node (("id", _), [SA.StrLeaf id])]) -> id
   | SA.Node (("term", _), [SA.Node (("i", _), [SA.IntLeaf n])]) -> string_of_int n
-  | _ -> assert false
+  | sa -> SA.pp_print_sygus_ast Format.std_formatter sa; assert false
 
 (* CSV pretty printers *)
 let pp_raw_field = function

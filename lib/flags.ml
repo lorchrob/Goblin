@@ -86,7 +86,7 @@ let parse_args () =
   in
 
   let analysis_flag = 
-    let doc = "Post analysis mode for experimental evaluation (--analysis {csv, xml})" in 
+    let doc = "Post analysis mode for experimental evaluation (--analysis {csv, xml, c})" in 
     Arg.(value & opt string "" & info ["analysis"] ~doc)
   in
 
