@@ -378,7 +378,7 @@ let language_emptiness_check ast _start_symbol =
 
 let check_syntax: prod_rule_map -> Utils.StringSet.t -> ast -> ast 
 = fun prm nt_set ast -> 
-  let ast = sort_ast ast in
+  (*let ast = sort_ast ast in*)
   let start_symbol = match ast with 
   | Ast.ProdRule (nt, _) :: _ 
   | Ast.TypeAnnotation (nt, _, _) :: _ -> nt
