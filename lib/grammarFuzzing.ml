@@ -495,7 +495,7 @@ let save_time_info filename trace_length =
   Unix.sleepf 0.1 ;
   print_endline "saving time info.." ;
   let oc = open_out_gen [Open_creat; Open_append] 0o666 filename in
-  output_string oc (Printf.sprintf "%d,%.8f,%d,%.8f,%.8f, %d,%.8f,%d,%.8f,%d,%.8f,%d,%.8f,%d,%.8f\n" trace_length (!trace_time /. (float_of_int trace_length)) !sygus_success_calls !sygus_success_execution_time !preprocessing_time !sygus_fail_calls !sygus_fail_execution_time !other_success_calls !other_success_execution_time !other_fail_calls !other_fail_execution_time !oracle_calls !oracle_time !driver_calls !driver_call_time);
+  output_string oc (Printf.sprintf "%d,%.8f,%d,%.8f,%d,%.8f,%d,%.8f,%d,%.8f,%d,%.8f,%d,%.8f\n" trace_length (!trace_time /. (float_of_int trace_length)) !sygus_success_calls !sygus_success_execution_time !sygus_fail_calls !sygus_fail_execution_time !other_success_calls !other_success_execution_time !other_fail_calls !other_fail_execution_time !oracle_calls !oracle_time !driver_calls !driver_call_time);
   close_out oc;
   ()
 
@@ -634,7 +634,14 @@ let callDriver_new packets packet =
     driver_call_time := ((Unix.gettimeofday ()) -. driver_start_time) ;
     driver_calls := !driver_calls + 1 ;
     (driver_result, oracle_result)
-    
+
+let log_error msg timestamp =
+  let error_str = "=== ERROR [" ^ timestamp ^ "] ===\n" ^ msg ^ "\n\n" in
+  let oc = open_out_gen [Open_wronly; Open_append; Open_creat] 0o644 "grammar_hex_log.txt" in
+  output_string oc error_str;
+  close_out oc;
+  ()
+
 let run_sequence (flag : bool) (c : child) : (provenance * output) * state =
   if c = (([],[]),0.0) then ((ValidPacket NOTHING, EXPECTED_OUTPUT), IGNORE_)
   else begin 
@@ -645,9 +652,9 @@ let run_sequence (flag : bool) (c : child) : (provenance * output) * state =
     let packetToSend_1 = (
       let other_start_time = Unix.gettimeofday () in
       try 
-      (* Format.printf "%a\n" Ast.pp_print_ast grammar;  *)
-      (* Format.pp_print_flush Format.std_formatter (); *)
         let grammar = fst c |> snd in
+        Format.printf "%a\n" Ast.pp_print_ast grammar;
+        Format.pp_print_flush Format.std_formatter ();
         let sygus_ast, _, _ = Pipeline.main_pipeline ~grammar "dummy" in 
         other_success_execution_time := ((Unix.gettimeofday ()) -. other_start_time) ;
         other_success_calls := !other_success_calls + 1 ;
@@ -675,14 +682,14 @@ let run_sequence (flag : bool) (c : child) : (provenance * output) * state =
         Error (error ^ error2))
       in 
       let packetToSend_2 = (
-        let pre_start = Unix.gettimeofday () in
+        let sygus_start_time = Unix.gettimeofday () in
         let canon_grammar = canonicalize (fst c |> snd) in
         match canon_grammar with
         | Some x -> 
           let removed_dead_rules_for_sygus = dead_rule_removal x "SAE_PACKET" in
           (match removed_dead_rules_for_sygus with
           | Some grammar_to_sygus -> (
-            preprocessing_time := Unix.gettimeofday () -. pre_start;
+            (* preprocessing_time := Unix.gettimeofday () -. pre_start; *)
             (* Print grammar to stdout and append to file *)
             Format.printf "%a\n" Ast.pp_print_ast grammar_to_sygus;
             let grammar_str = Format.asprintf "%a\n" Ast.pp_print_ast grammar_to_sygus in
@@ -692,7 +699,6 @@ let run_sequence (flag : bool) (c : child) : (provenance * output) * state =
             output_string oc log_entry;
             close_out oc;
             let grammar = grammar_to_sygus in 
-        let sygus_start_time = Unix.gettimeofday () in
         try
           let sygus_out = Pipeline.sygusGrammarToPacket grammar in
           match sygus_out with
@@ -735,14 +741,14 @@ let run_sequence (flag : bool) (c : child) : (provenance * output) * state =
           let error = Format.asprintf "Exception: %s\n" (Printexc.to_string exn) in 
           let error2 = Format.asprintf "Backtrace:\n%s\n" (Printexc.get_backtrace ()) in 
           let error_str = "=== ERROR [" ^ timestamp ^ "] ===\n" ^ error ^ error2 ^ "\n\n" in
-          let oc = open_out_gen [Open_wronly; Open_append; Open_creat] 0o644 "grammar_hex_log.txt" in
-          output_string oc error_str;
-          close_out oc;
-          Format.pp_print_flush Format.std_formatter ();
+          log_error error_str timestamp;
           Error (error ^ error2))
-      | None -> Error ("SyGuS: Could not remove dead rules"))
-      | None -> Error ("SyGuS: Could not canonicalize grammar"))
-  
+        | None ->
+          log_error "SyGuS: Could not remove dead rules" timestamp;
+          Error "SyGuS: Could not remove dead rules")
+      | None ->
+        log_error "SyGuS: Could not canonicalize grammar" timestamp;
+        Error ("SyGuS: Could not canonicalize grammar"))
         in
         let packetToSend_ = (fun x -> match x with | true -> packetToSend_1 | false -> packetToSend_2) flag in
         match packetToSend_ with
