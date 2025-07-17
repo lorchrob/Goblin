@@ -489,7 +489,7 @@ fun ctx dep_map ast ->
   let cvc5_2 = match Sys.getenv_opt "PATH_TO_SECOND_CVC5" with 
   (* let cvc5_2 = find_command_in_path "cvc5" in *)
   | Some path -> path 
-  | None -> Utils.warning_print Format.pp_print_string Format.std_formatter "Proceeding without a second cvc5 config\n"; cvc5 
+  | None -> cvc5 
   in
   let command = Printf.sprintf "timeout 3 %s --lang=sygus2 --dag-thresh=0 %s > %s" cvc5 input_filename output_filename in
   let command2 = Printf.sprintf "timeout 3 %s --lang=sygus2 --dag-thresh=0 %s > %s" cvc5_2 input_filename output_filename2 in
