@@ -143,67 +143,46 @@ let rec collect_results results =
         | Error e -> Error e)
   | Error e :: _ -> Error e
 
-let sygusGrammarToPacket ast = 
-  (* let ast = sortAst input_grammar in *)
-
-  (* Syntactic checks *)
-  let prm = SyntaxChecker.build_prm ast in
-  let nt_set = SyntaxChecker.build_nt_set ast in
-  let ast = SyntaxChecker.check_syntax prm nt_set ast in 
-
-  (* Type checking *)
-  let ast, ctx = TypeChecker.build_context ast in
-  let ast = TypeChecker.check_types ctx ast in
-
-  let ast = PopulateIndices.populate_indices ast in
-
-  (* Merge overlapping constraints *)
-  (* let ast = MergeOverlappingConstraints.merge_overlapping_constraints ast in *)
-
-  (* Resolve ambiguities in constraints *)
-  let ast = ResolveAmbiguities.resolve_ambiguities ctx ast in
-
-  (* Convert NTExprs to Match expressions *)
-  let ast = NtExprToMatch.convert_nt_exprs_to_matches ctx ast in
-
-  (* Abstract away dependent terms in the grammar *)
-  let dep_map, ast, ctx = AbstractDeps.abstract_dependencies ctx ast in 
-
-  (* Divide and conquer *)
-  let asts = DivideAndConquer.split_ast ast |> Option.get in 
-
-  if not !Flags.only_parse then (
-    (* Call sygus engine *)
+  let sygusGrammarToPacket ast = 
+    (* let ast = sortAst input_grammar in *)
+  
+    (* Step 1: Syntactic checks *)
+    let prm = SyntaxChecker.build_prm ast in
+    let nt_set = SyntaxChecker.build_nt_set ast in
+    let ast = SyntaxChecker.check_syntax prm nt_set ast in 
+  
+    (* Step 2: Type checking *)
+    let ast, ctx = TypeChecker.build_context ast in
+    let ast = TypeChecker.check_types ctx ast in
+  
+    (* Step 3: Abstract away dependent terms in the grammar *)
+    let dep_map, ast, ctx = AbstractDeps.abstract_dependencies ctx ast in 
+  
+    (* Step 4: Divide and conquer *)
+    let asts = DivideAndConquer.split_ast ast in 
+    let asts = match asts with
+    | Some x -> x
+    | None -> assert false in
+    (* Step 5: Prune grammars (both within grammars, and unreachable stubs) *)
+    (* TODO, if needed for better performance *)
+  
+    (* Step 6: Call sygus engine *)
     let sygus_outputs = List.map (Sygus.call_sygus ctx dep_map) asts in
-
-    (* Parse SyGuS output. *)
+  
+    (* Step 7: Parse SyGuS output. *)
     let sygus_asts = List.map2 Parsing.parse_sygus sygus_outputs asts in
     match collect_results sygus_asts with
     | Error e -> Error e
     | Ok sygus_asts -> 
-      (* Catch infeasible response *)
-      let sygus_asts = 
-        if List.mem (SygusAst.VarLeaf "infeasible") sygus_asts 
-        then [SygusAst.VarLeaf "infeasible"]
-        else sygus_asts
-      in
-
-      (* Recombine to single AST *)
+      (* Step 8: Recombine to single AST *)
       let sygus_ast = Recombine.recombine sygus_asts in 
-
-      (* Compute dependencies *)
-      let sygus_ast = 
-        if not (List.mem (SygusAst.VarLeaf "infeasible") sygus_asts)
-        then ComputeDeps.compute_deps dep_map ast sygus_ast 
-        else SygusAst.VarLeaf "infeasible"
-      in  
-
-      (* Bit flip mutations *)
+  
+      (* Step 9: Compute dependencies *)
+      let sygus_ast = ComputeDeps.compute_deps dep_map ast sygus_ast in 
+  
+      (* Step 10: Bit flip mutations *)
       let sygus_ast = BitFlips.flip_bits sygus_ast in
-
-      (* Serialize! *)
+  
+      (* Step 11: Serialize! *)
       let output = SygusAst.serialize_bytes SygusAst.Big sygus_ast in 
-      Ok output) 
-    else 
-      let dummy_output = Bytes.empty, Bytes.empty in
-      Ok dummy_output
+      Ok output
