@@ -140,6 +140,11 @@ let process_sc_to_list: TC.context -> string list -> A.semantic_constraint -> A.
 = fun ctx nts sc -> match sc with 
   | A.Dependency (nt, expr) -> 
     let exprs = generate_all_possible_exprs ctx nts expr in 
+    let _ = match exprs with 
+      | _ :: _ :: _ -> Utils.error ("Dependent term '" ^ nt ^ "' is defined ambiguously")
+      | expr :: _ -> expr
+      | [] -> Utils.crash "unexpected case"
+    in
     List.map (fun expr -> A.Dependency (nt, expr)) exprs
   | SyGuSExpr expr -> 
     let exprs = generate_all_possible_exprs ctx nts expr in
