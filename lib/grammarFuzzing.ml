@@ -652,9 +652,9 @@ let run_sequence (flag : bool) (c : child) : (provenance * output) * state =
     let packetToSend_1 = (
       let other_start_time = Unix.gettimeofday () in
       try 
-      (* Format.printf "%a\n" Ast.pp_print_ast grammar;  *)
-      (* Format.pp_print_flush Format.std_formatter (); *)
         let grammar = fst c |> snd in
+        Format.printf "%a\n" Ast.pp_print_ast grammar;
+        Format.pp_print_flush Format.std_formatter ();
         let sygus_ast, _, _ = Pipeline.main_pipeline ~grammar "dummy" in 
         other_success_execution_time := ((Unix.gettimeofday ()) -. other_start_time) ;
         other_success_calls := !other_success_calls + 1 ;
