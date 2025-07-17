@@ -659,12 +659,16 @@ let run_sequence (flag : bool) (c : child) : (provenance * output) * state =
           other_fail_execution_time := ((Unix.gettimeofday ()) -. other_start_time);
           let error = Format.asprintf "Exception: %s\n" (Printexc.to_string exn) in 
           let error2 = Format.asprintf "Backtrace:\n%s\n" (Printexc.get_backtrace ()) in 
+          let error_str = "=== ERROR [" ^ timestamp ^ "] ===\n" ^ error ^ error2 ^ "\n\n" in
+          let oc = open_out_gen [Open_wronly; Open_append; Open_creat] 0o644 "grammar_hex_log.txt" in
+          output_string oc error_str;
+          close_out oc;
           Format.pp_print_flush Format.std_formatter ();
           Error (error ^ error2))
         in 
       let packetToSend_2 = (
+        let sygus_start_time = Unix.gettimeofday () in
         try
-          let sygus_start_time = Unix.gettimeofday () in
           let sygus_out = Pipeline.sygusGrammarToPacket grammar_to_sygus in
           match sygus_out with
           | Ok (packetToSend, _metadata) ->
@@ -688,16 +692,22 @@ let run_sequence (flag : bool) (c : child) : (provenance * output) * state =
             save_time_info "temporal-info/OCaml-time-info.csv" (1 + (List.length (stateTransition))) ; *)
             Ok (packetToSend,  _metadata)
           | Error e -> 
-            sygus_fail_calls := !sygus_fail_calls + 1;
-            sygus_fail_execution_time := ((Unix.gettimeofday ()) -. sygus_start_time);
+            (* sygus_fail_calls := !sygus_fail_calls + 1; *)
+            (* sygus_fail_execution_time := ((Unix.gettimeofday ()) -. sygus_start_time); *)
             (* print_endline "ERROR";
             sygus_fail_execution_time := ((Unix.gettimeofday ()) -. sygus_start_time) ;
             sygus_fail_calls := !sygus_fail_calls + 1 ; *)
             (* Ok ((ValidPacket NOTHING, EXPECTED_OUTPUT), IGNORE_) *)
             Error e
         with exn -> 
+          sygus_fail_calls := !sygus_fail_calls + 1;
+          sygus_fail_execution_time := ((Unix.gettimeofday ()) -. sygus_start_time);
           let error = Format.asprintf "Exception: %s\n" (Printexc.to_string exn) in 
           let error2 = Format.asprintf "Backtrace:\n%s\n" (Printexc.get_backtrace ()) in 
+          let error_str = "=== ERROR [" ^ timestamp ^ "] ===\n" ^ error ^ error2 ^ "\n\n" in
+          let oc = open_out_gen [Open_wronly; Open_append; Open_creat] 0o644 "grammar_hex_log.txt" in
+          output_string oc error_str;
+          close_out oc;
           Format.pp_print_flush Format.std_formatter ();
           Error (error ^ error2))
         in
@@ -716,10 +726,10 @@ let run_sequence (flag : bool) (c : child) : (provenance * output) * state =
           Format.printf "ERROR\n";
           Format.printf "%s\n" e ;
           (* Log error to grammar_hex_log.txt with timestamp link *)
-          let error_str = "=== ERROR [" ^ timestamp ^ "] ===\n" ^ e ^ "\n\n" in
+          (* let error_str = "=== ERROR [" ^ timestamp ^ "] ===\n" ^ e ^ "\n\n" in
           let oc = open_out_gen [Open_wronly; Open_append; Open_creat] 0o644 "grammar_hex_log.txt" in
           output_string oc error_str;
-          close_out oc;
+          close_out oc; *)
           Format.pp_print_flush Format.std_formatter ();
           (* sygus_fail_execution_time := ((Unix.gettimeofday ()) -. sygus_start_time) ; *)
           (* sygus_fail_calls := !sygus_fail_calls + 1 ; *)
