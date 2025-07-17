@@ -353,7 +353,7 @@ let str_const_to_ph_const ast =
   ) ast
 
 
-let language_emptiness_check ast = 
+let language_emptiness_check ast start_symbol = 
   let add_productive_nts ast productive_nts = 
     List.fold_left (fun acc element -> match element with 
     | TypeAnnotation (nt, _, _) -> Utils.StringSet.add nt acc 
@@ -370,7 +370,7 @@ let language_emptiness_check ast =
   in
   let productive_nt_set = Utils.StringSet.empty in 
   let productive_nt_set = Utils.recurse_until_fixpoint productive_nt_set Utils.StringSet.equal (add_productive_nts ast) in 
-  if Utils.StringSet.equal productive_nt_set (Ast.nts_of_ast ast) then   
+  if Utils.StringSet.mem start_symbol productive_nt_set then   
     () 
   else 
     Utils.error "CFG has empty language"
@@ -378,7 +378,12 @@ let language_emptiness_check ast =
 let check_syntax: prod_rule_map -> Utils.StringSet.t -> ast -> ast 
 = fun prm nt_set ast -> 
   let ast = sort_ast ast in
-  let _ = language_emptiness_check ast in
+  let start_symbol = match ast with 
+  | Ast.ProdRule (nt, _) :: _ 
+  | Ast.TypeAnnotation (nt, _, _) :: _ -> nt
+  | [] -> Utils.crash "empty grammar"
+  in
+  let _ = language_emptiness_check ast start_symbol in
   let ast = str_const_to_ph_const ast in
   let ast = Utils.recurse_until_fixpoint ast (=) remove_circular_deps in
   let ast = Utils.recurse_until_fixpoint ast (=) check_sygus_exprs_for_dep_terms in
