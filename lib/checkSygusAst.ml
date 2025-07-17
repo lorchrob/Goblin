@@ -77,7 +77,7 @@ let handle_scs ast sygus_ast constructor element scs =
   let b = List.exists (fun sc -> match sc with 
   | [A.BConst false] -> true 
   | [BConst true] -> false 
-  | _ -> failwith "Unexpected pattern in check_syntax_semantics"
+  | _ -> Utils.crash "Unexpected pattern in check_syntax_semantics"
   ) scs in
   if b then Error ("Semantic constraint on constructor '" ^ constructor ^ "' is falsified") else
   Ok ()

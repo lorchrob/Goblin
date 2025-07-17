@@ -490,7 +490,7 @@ let sample_excluding n exclude_list =
     |> List.filter (fun x -> not (List.mem x excluded))
   in
   match allowed with
-  | [] -> failwith "No available values to sample"
+  | [] -> Utils.crash "No available values to sample"
   | _ ->
       let idx = Random.int (List.length allowed) in
       List.nth allowed idx 
