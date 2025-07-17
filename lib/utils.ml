@@ -112,7 +112,7 @@ let warning_print pp formatter value =
     Format.ifprintf formatter "%a" pp value
 
 let crash message = 
-  failwith ("Internal error: " ^ message)
+  raise (Failure ("Internal error: " ^ message))
 
 let error message = 
   raise (Failure ("User error: " ^ message))
