@@ -622,7 +622,6 @@ let get_smt_result: A.ast -> solver_instance -> bool -> (model_value Utils.Strin
   issue_solver_command "(check-sat)\n" solver;
   let response = read_check_sat_response solver in
   if !Flags.debug then Format.fprintf Format.std_formatter "Solver response: %s\n" response;
-  Format.pp_print_flush Format.std_formatter ();
   if response = "sat" && get_model then (
     issue_solver_command "(get-model)\n" solver;
     let response = read_get_model_response solver in
@@ -1078,8 +1077,8 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
 
     List.iter (fun r -> Format.fprintf Format.std_formatter "$\n%a" 
       SA.pp_print_sygus_ast r;
-      Format.pp_print_flush Format.std_formatter ();
     ) rs; 
+    Format.pp_print_flush Format.std_formatter ();
 
     (* Need to pop all the way back to zeroth level so we can assert persisting blocking clause *)
     let pop_cmd = Format.asprintf "(pop %d)" !assertion_level in 
