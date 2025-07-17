@@ -724,6 +724,7 @@ let run_sequence (flag : bool) (c : child) : (provenance * output) * state =
         | Error e -> 
           Format.printf "ERROR\n";
           Format.printf "%s\n" e ;
+          save_time_info "temporal-info/OCaml-time-info.csv" (1 + (List.length (stateTransition))) ;
           (* Log error to grammar_hex_log.txt with timestamp link *)
           (* let error_str = "=== ERROR [" ^ timestamp ^ "] ===\n" ^ e ^ "\n\n" in
           let oc = open_out_gen [Open_wronly; Open_append; Open_creat] 0o644 "grammar_hex_log.txt" in
@@ -1017,6 +1018,7 @@ let initialize_files () =
   initialize_clear_file "temporal-info/OCaml-time-info.csv";
   initialize_clear_file "temporal-info/sample-info.txt";
   initialize_clear_file "results/interesting_traces.txt";
+  initialize_clear_file "grammar_hex_log.txt";
   (* initialize_clear_file "sync/driver_oracle.json"; *)
   initialize_clear_file "sync/oracle-response.txt";
   (* initialize_clear_file "sync/placeholders-replace.pkt"; *)
