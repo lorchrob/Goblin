@@ -373,9 +373,12 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -
     match acc, expr with 
     | [(A.IntConst i)], A.BLConst bits -> [IntConst (i + (List.length bits))]
     | [(A.IntConst i)], A.BVConst (_, bits) -> [IntConst (i + (List.length bits))]
+    | [(A.IntConst i)], A.StrConst str  
     | [(A.IntConst i)], A.PhConst str -> 
       if str = "<AC_TOKEN>" || str = "<SCALAR>" then [IntConst (i + 32*8)] 
       else if str = "<ELEMENT>" then [IntConst (i + 64*8)]
+      else if str = "<CONFIRM_HASH>" then [IntConst (32*8)] 
+      else if str = "<SEND_CONFIRM_COUNTER>" then [IntConst (2*8)] 
       else Utils.crash "Tried to compute length of unknown placeholder"
     | _ -> eval_fail 26
     ) [(A.IntConst (0))] exprs
