@@ -203,19 +203,25 @@ let issue_solver_command: string -> solver_instance -> unit
   output_string solver.out_channel cmd_string;
   flush solver.out_channel
 
-let declare_smt_variables: Utils.StringSet.t ref -> A.il_type Utils.StringMap.t -> solver_instance -> unit 
-= fun declared_variables ctx solver -> 
+let declare_smt_variables: 'a -> Utils.StringSet.t ref -> A.il_type Utils.StringMap.t -> solver_instance -> 'b -> 'c -> unit 
+= fun variable_stack declared_variables ctx solver blocking_clause_vars assertion_level -> 
   Utils.StringMap.iter (fun var ty -> 
     if Utils.StringSet.mem var !declared_variables then 
       () 
     else 
       let declaration_string = Format.asprintf "(declare-fun %s () %a)\n" var Sygus.pp_print_ty ty in
       declared_variables := Utils.StringSet.add var !declared_variables;
+      (* Hacky -- if at the zeroth assertion level, we keep variables around by storing them in blocking_clause_vars,
+         even if they aren't part of a blocking clause *)
+      if !assertion_level = 0 then 
+        blocking_clause_vars := Utils.StringSet.add var !blocking_clause_vars; 
+      let top = Stack.top variable_stack in 
+      top := Utils.StringSet.add var !top;
       issue_solver_command declaration_string solver
   ) ctx 
 
 let read_check_sat_response solver = 
-    input_line solver.in_channel
+  input_line solver.in_channel
 
 let read_get_model_response solver =
   let rec loop acc =
@@ -233,7 +239,7 @@ let read_get_model_response solver =
 let initialize_solver () : solver_instance =
   let cvc5 = Utils.find_command_in_path "cvc5" in
   let cmd = 
-    Printf.sprintf "%s --produce-models --global-declarations --dag-thresh=0 --lang=smtlib2 --incremental" 
+    Printf.sprintf "%s --produce-models --dag-thresh=0 --lang=smtlib2 --incremental" 
       cvc5 
   in
   let set_logic_command = Format.asprintf "(set-logic QF_BVSNIAFS)\n" in
@@ -248,7 +254,7 @@ let initialize_solver () : solver_instance =
   let (in_chan, out_chan, err_chan) = Unix.open_process_full cmd (Unix.environment ()) in
   let solver = { in_channel = in_chan; out_channel = out_chan; err_channel = err_chan } in
   issue_solver_command set_logic_command solver;
-  issue_solver_command "(set-option :produce-models true)\n(set-option :global-declarations true)\n" solver;
+  issue_solver_command "(set-option :produce-models true)\n" solver;
   solver
 
 let cleanup_solver (solver : solver_instance) : unit =
@@ -307,8 +313,9 @@ let string_of_path path =
 (* Normalize a derivation tree for a fixed spot in the search tree. 
    Collect the associated constraints discovered during normalization. *)
 let rec normalize_derivation_tree ctx ast declared_variables solver 
-                                  constraints_to_assert dt = 
-let r = normalize_derivation_tree ctx ast declared_variables solver constraints_to_assert in 
+                                  constraints_to_assert variable_stack blocking_clause_vars assertion_level dt = 
+let r = normalize_derivation_tree ctx ast declared_variables solver constraints_to_assert variable_stack 
+                                   blocking_clause_vars assertion_level in 
 match dt with 
 | Node ((nt, idx), path, []) -> 
   let forced_expansion = List.find_map (fun element -> match element with 
@@ -332,7 +339,7 @@ match dt with
         in 
         Utils.StringMap.add str ty acc
       ) Utils.StringMap.empty expr_variables in
-      declare_smt_variables declared_variables ty_ctx solver ;
+      declare_smt_variables variable_stack declared_variables ty_ctx solver blocking_clause_vars assertion_level ;
       constraints_to_assert := ConstraintSet.union !constraints_to_assert (ConstraintSet.of_list constraints_to_add); 
       let children = List.map (fun ge -> match ge with 
         | A.Nonterminal (nt, idx_opt) ->
@@ -350,7 +357,7 @@ match dt with
       | A.SyGuSExpr e -> [universalize_expr true path e] 
       | Dependency _ -> [] 
       ) scs |> ConstraintSet.of_list in
-      declare_smt_variables declared_variables (Utils.StringMap.singleton path' ty) solver;
+      declare_smt_variables variable_stack declared_variables (Utils.StringMap.singleton path' ty) solver blocking_clause_vars assertion_level;
       constraints_to_assert := ConstraintSet.union !constraints_to_assert constraints_to_add;
       Some [SymbolicLeaf (ty, path @ [(nt, idx)])]
     else None 
@@ -364,15 +371,16 @@ match dt with
   Node (nt, path, List.map r children)
 | leaf -> leaf 
 
-let new_decision_level: solver_instance -> int ref -> unit 
-= fun solver assertion_level ->
+let new_decision_level: solver_instance -> int ref -> Utils.StringSet.t ref Stack.t ref -> unit 
+= fun solver assertion_level variable_stack ->
   let push_cmd = Format.asprintf "(push 1)" in
+  Stack.push (ref Utils.StringSet.empty) (!variable_stack);
   assertion_level := !assertion_level + 1;
   issue_solver_command push_cmd solver; 
   ()
 
 let rec collect_constraints_of_dt ast = function 
-  | Node ((nt, _), _, children) -> 
+  | Node ((nt, _), path, children) -> 
     let child_constraints = List.map (collect_constraints_of_dt ast) children in 
     let child_constraints = List.fold_left ConstraintSet.union ConstraintSet.empty child_constraints in
     let grammar_rule = List.find (fun element -> match element with 
@@ -381,7 +389,9 @@ let rec collect_constraints_of_dt ast = function
       ) ast in 
     let constraints = A.scs_of_element grammar_rule |> 
     List.concat_map (fun sc -> match sc with 
-    | A.SyGuSExpr expr -> [expr] 
+    | A.SyGuSExpr expr -> 
+      let expr = (universalize_expr true path expr) in
+        [expr] 
     | Dependency _ -> [] 
     ) |> ConstraintSet.of_list in 
     ConstraintSet.union constraints child_constraints
@@ -466,21 +476,25 @@ let assert_applicable_constraints constraint_set derivation_tree ast solver =
   !constraint_set
 
 let initialize_globals ctx ast derivation_tree start_symbol constraints_to_assert 
-                       decision_stack _declared_variables backtrack_depth curr_st_node declared_variables solver = 
+                       decision_stack _declared_variables backtrack_depth curr_st_node declared_variables solver 
+                       variable_stack blocking_clause_vars assertion_level = 
   (* Keep around constraints we may not need to assert *)
   constraints_to_assert := ConstraintSet.empty; 
   (* Incremental construction of output term so far *)
   derivation_tree := (Node ((start_symbol, Some 0), [start_symbol, Some 0], []));
-  derivation_tree := normalize_derivation_tree ctx ast declared_variables solver constraints_to_assert !derivation_tree ;
+  derivation_tree := normalize_derivation_tree ctx ast declared_variables solver constraints_to_assert !variable_stack blocking_clause_vars assertion_level !derivation_tree ;
   constraints_to_assert := assert_applicable_constraints constraints_to_assert !derivation_tree ast solver;
   (* Set of paths through the tree to help determine when to push constraints from constraints_to_assert *)
   (* let provenance_list = _ in *) (* Challenge: backtracking affects provenance list *)
   (* Keep track of all decisions so we can easily backtrack in the derivation tree *)
   decision_stack := B.Stack.create ();
+  variable_stack := B.Stack.create ();
+  Stack.push (ref Utils.StringSet.empty) !variable_stack;
   (* Track whether, since the last restart, we backtracked due to the depth limit *) 
   backtrack_depth := false; 
   (* Current spot in the search tree *) 
   curr_st_node := STNode (!derivation_tree, None, 0, ref []);
+  declared_variables := !blocking_clause_vars ;
   ()
 
 let sample_excluding n exclude_list =
@@ -565,7 +579,8 @@ let find_new_expansion ast derivation_tree curr_st_node =
   expanded_node, index_to_pick, new_dt, real_choice 
 
 let backtrack ctx ast assertion_level decision_stack solver backtrack_depth declared_variables 
-              constraints_to_assert depth_limit start_symbol derivation_tree curr_st_node = 
+              constraints_to_assert depth_limit start_symbol derivation_tree curr_st_node
+              variable_stack blocking_clause_vars = 
   if !assertion_level = 1 then ( (* restarting *)
     Utils.debug_print Format.pp_print_string Format.std_formatter "Restarting...\n";
     issue_solver_command "(pop 1)" solver; 
@@ -574,16 +589,26 @@ let backtrack ctx ast assertion_level decision_stack solver backtrack_depth decl
     depth_limit := !depth_limit + 1;
     Format.fprintf Format.std_formatter "Increasing depth limit to %d\n" !depth_limit;
     initialize_globals ctx ast derivation_tree start_symbol constraints_to_assert 
-                       decision_stack declared_variables backtrack_depth curr_st_node declared_variables solver; 
+                       decision_stack declared_variables backtrack_depth curr_st_node declared_variables solver
+                       variable_stack blocking_clause_vars assertion_level; 
   ) else ( 
     assertion_level := !assertion_level - 1;
     issue_solver_command "(pop 1)" solver;
     let st_node = Stack.pop !decision_stack in
+    let popped_vars = Stack.pop !variable_stack in 
     let STNode (dt, _, _, _) = st_node in 
     let original_constraints = collect_constraints_of_dt ast !derivation_tree in 
     let maintained_constraints = collect_constraints_of_dt ast dt in 
-    let constraints_to_remove = ConstraintSet.diff original_constraints maintained_constraints in 
+    (*!! TODO: Fix bug where constraints aren't being removed *)
+    (*Format.printf "Original constraints: %a, maintained constraints %a" 
+    (Lib.pp_print_list A.pp_print_expr ", ") (ConstraintSet.to_list original_constraints)
+    (Lib.pp_print_list A.pp_print_expr ", ") (ConstraintSet.to_list maintained_constraints);*)
+    let constraints_to_remove = ConstraintSet.diff original_constraints maintained_constraints in
     constraints_to_assert := ConstraintSet.diff !constraints_to_assert constraints_to_remove;
+    declared_variables := 
+      Utils.StringSet.union
+        (Utils.StringSet.diff !declared_variables !popped_vars)
+        !blocking_clause_vars;
     derivation_tree := dt; 
     curr_st_node := st_node
   )
@@ -769,7 +794,7 @@ let rec get_dt_vars = function
   Utils.StringSet.singleton "" 
 | DependentTermLeaf _ -> Utils.StringSet.empty 
 
-let push_blocking_clause model dt declared_variables solver = 
+let push_blocking_clause variable_stack model dt declared_variables solver blocking_clause_vars assertion_level update_bc_vars = 
   let dt_vars = get_dt_vars !dt in
   let dt_vars = Utils.StringSet.map (fun s -> String.lowercase_ascii s) dt_vars in
   (*Format.fprintf Format.std_formatter "dt_vars: %a, model vars: %a\n" 
@@ -786,23 +811,26 @@ let push_blocking_clause model dt declared_variables solver =
   | ConcretePlaceholder _ -> A.Placeholder 
   ) model in 
   let ctx = ctx_of_model model in 
-  declare_smt_variables declared_variables ctx solver; 
+  declare_smt_variables variable_stack declared_variables ctx solver blocking_clause_vars assertion_level; 
+  if update_bc_vars then 
+    blocking_clause_vars := Utils.StringSet.union !blocking_clause_vars 
+     (Utils.StringMap.bindings model |> List.map fst |> Utils.StringSet.of_list);
   let blocking_clause_str = Format.asprintf "(assert (not (and %a)))" 
     (Lib.pp_print_list pp_print_model_pair " ") (Utils.StringMap.bindings model) in
   issue_solver_command blocking_clause_str solver  
 
-let rec generate_n_solutions n ast model r derivation_tree declared_variables solver = 
+let rec generate_n_solutions n ast model r derivation_tree declared_variables solver blocking_clause_vars variable_stack assertion_level = 
   if n = 1 then 
     [model, r] 
   else (
-    push_blocking_clause model derivation_tree declared_variables solver;
+    push_blocking_clause variable_stack model derivation_tree declared_variables solver blocking_clause_vars assertion_level false;
     let model2 = get_smt_result ast solver true in   
     match model2 with 
     | Some (Ok model2) -> (* sat *)
       if !Flags.debug then Format.pp_print_string Format.std_formatter "it was SAT, instantiating in derivation tree\n"; 
       derivation_tree := instantiate_terminals model2 !derivation_tree; 
       let r2 = sygus_ast_of_derivation_tree !derivation_tree in 
-      (model, r) :: (generate_n_solutions (n-1) ast model2 r2 derivation_tree declared_variables solver) 
+      (model, r) :: (generate_n_solutions (n-1) ast model2 r2 derivation_tree declared_variables solver blocking_clause_vars variable_stack assertion_level) 
     | None  
     | Some (Error ()) -> 
       [model, r]
@@ -854,6 +882,10 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
   try
 
   (*** Set up the key data structures ***)
+  (* Bookkeeping for declared variables *) 
+  let variable_stack : (Utils.StringSet.t ref) Stack.t ref = ref (B.Stack.create ()) in
+  Stack.push (ref Utils.StringSet.empty) !variable_stack;
+  let blocking_clause_vars = ref Utils.StringSet.empty in
   let assertion_level = ref 0 in 
   (* Track declared (SMT-level) variables to avoid redeclaration *)
   let declared_variables = ref Utils.StringSet.empty in 
@@ -861,7 +893,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
   let constraints_to_assert = ref ConstraintSet.empty in 
   (* Incremental construction of output term so far *)
   let derivation_tree = ref (Node ((start_symbol, Some 0), start_path, [])) in 
-  derivation_tree := normalize_derivation_tree ctx ast declared_variables solver constraints_to_assert !derivation_tree ;
+  derivation_tree := normalize_derivation_tree ctx ast declared_variables solver constraints_to_assert !variable_stack blocking_clause_vars assertion_level !derivation_tree ;
   constraints_to_assert := assert_applicable_constraints constraints_to_assert !derivation_tree ast solver;
   (* Current spot in the search tree *) 
   let curr_st_node = ref (STNode (!derivation_tree, None, 0, ref [])) in
@@ -879,13 +911,15 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
   let result = ref None in 
 
   (* we start at decision level 1 so we can undo all pushed assertions when restarting *)
-  new_decision_level solver assertion_level; 
+  new_decision_level solver assertion_level variable_stack; 
   Stack.push !curr_st_node !decision_stack;
 
   (* exit flag allows us to toggle between infinite looping (multiple solutions mode) 
      or stopping after one solution *)
   while !exit_flag do 
   while not (is_complete !derivation_tree) do
+    (*Format.printf "Declared variables: %d\n" (Utils.StringSet.cardinal !declared_variables); 
+    Format.printf "Assertion level: %d\n" !assertion_level; *)
     Format.pp_print_flush Format.std_formatter () ;
     num_iterations := !num_iterations + 1;
 
@@ -902,10 +936,10 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
     let expanded_node, expansion_index, new_dt, real_choice = find_new_expansion ast !derivation_tree curr_st_node in
     derivation_tree := new_dt;
     if real_choice then ( 
-      new_decision_level solver assertion_level; 
+      new_decision_level solver assertion_level variable_stack; 
       Stack.push !curr_st_node !decision_stack;
     );
-    derivation_tree := normalize_derivation_tree ctx ast declared_variables solver constraints_to_assert !derivation_tree ; 
+    derivation_tree := normalize_derivation_tree ctx ast declared_variables solver constraints_to_assert !variable_stack blocking_clause_vars assertion_level !derivation_tree ; 
     curr_st_node := (match !curr_st_node with 
     | STNode (_, _, depth, visited) -> 
       let new_st_node = STNode (!derivation_tree, Some !curr_st_node, depth + 1, ref []) in 
@@ -928,7 +962,8 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
         assertion_level := 1;
         depth_limit := starting_depth_limit;
         initialize_globals ctx ast derivation_tree start_symbol constraints_to_assert 
-                           decision_stack declared_variables backtrack_depth curr_st_node declared_variables solver; 
+                           decision_stack declared_variables backtrack_depth curr_st_node declared_variables solver
+                           variable_stack blocking_clause_vars assertion_level; 
     ) else 
 
     (* Assert constraints for the expanded node *)
@@ -948,6 +983,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
           ("Exceeded depth limit " ^ (string_of_int !depth_limit) ^ "!\n");
         backtrack ctx ast assertion_level decision_stack solver backtrack_depth declared_variables 
                   constraints_to_assert depth_limit start_symbol derivation_tree curr_st_node 
+                  variable_stack blocking_clause_vars
       ) else 
 
       (* Find the associated AST rule for the new expansion *)
@@ -963,7 +999,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
       | A.TypeAnnotation (_, ty, scs) -> 
         List.iter (fun sc -> match sc with 
         | A.SyGuSExpr expr ->
-          declare_smt_variables declared_variables (Utils.StringMap.singleton path' ty) solver; 
+          declare_smt_variables !variable_stack declared_variables (Utils.StringMap.singleton path' ty) solver blocking_clause_vars assertion_level; 
           constraints_to_assert := ConstraintSet.add (universalize_expr true path expr) !constraints_to_assert;
           constraints_to_assert := assert_applicable_constraints constraints_to_assert !derivation_tree ast solver;
           let model = get_smt_result ast solver false in  
@@ -975,6 +1011,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
           | Some (Error ()) -> 
             backtrack ctx ast assertion_level decision_stack solver backtrack_depth declared_variables 
                   constraints_to_assert depth_limit start_symbol derivation_tree curr_st_node
+                  variable_stack blocking_clause_vars
           )
         | A.Dependency _ -> ()
         ) scs;
@@ -1013,7 +1050,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
               let str = path' ^ "_" ^ str in 
               Utils.StringMap.add str ty acc
             ) Utils.StringMap.empty expr_variables in
-            declare_smt_variables declared_variables ty_ctx solver;
+            declare_smt_variables !variable_stack declared_variables ty_ctx solver blocking_clause_vars assertion_level;
             constraints_to_assert := ConstraintSet.add (universalize_expr false path expr) !constraints_to_assert;
             (* don't instantiate yet -- we haven't hit the leaf nodes *)
             (* derivation_tree := instantiate_terminals model derivation_tree;  *)
@@ -1032,6 +1069,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
             if !Flags.debug then Format.pp_print_string Format.std_formatter "it was UNSAT, backtracking\n"; 
             backtrack ctx ast assertion_level decision_stack solver backtrack_depth declared_variables 
                   constraints_to_assert depth_limit start_symbol derivation_tree curr_st_node 
+                  variable_stack blocking_clause_vars
           | Some _ -> assert false
           ); 
 
@@ -1053,6 +1091,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
     if !Flags.debug then Format.pp_print_string Format.std_formatter "it was UNSAT, backtracking\n"; 
     backtrack ctx ast assertion_level decision_stack solver backtrack_depth declared_variables 
                   constraints_to_assert depth_limit start_symbol derivation_tree curr_st_node 
+                  variable_stack blocking_clause_vars
   ); 
 
   (* If we exited the loop, there must be a model. If there was no model, 
@@ -1073,7 +1112,8 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
     exit_flag := (!num_solutions <= num_solutions_to_find) || num_solutions_to_find = (-1);
 
     if !Flags.debug then Format.fprintf Format.std_formatter "Generating %d solutions\n" sols_per_iter;
-    let models, rs = generate_n_solutions sols_per_iter ast model r derivation_tree declared_variables solver |> List.split in 
+    let models, rs = generate_n_solutions sols_per_iter ast model r derivation_tree declared_variables 
+                solver blocking_clause_vars !variable_stack assertion_level |> List.split in 
 
     List.iter (fun r -> Format.fprintf Format.std_formatter "$\n%a" 
       SA.pp_print_sygus_ast r;
@@ -1083,9 +1123,12 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
     (* Need to pop all the way back to zeroth level so we can assert persisting blocking clause *)
     let pop_cmd = Format.asprintf "(pop %d)" !assertion_level in 
     issue_solver_command pop_cmd solver; 
+    declared_variables := !blocking_clause_vars;
+    variable_stack :=  B.Stack.create () ;
+    Stack.push (ref Utils.StringSet.empty) !variable_stack ;
     if !Flags.debug then Format.fprintf Format.std_formatter "Pushing blocking clause\n" ;
     List.iter (fun model -> 
-      push_blocking_clause model derivation_tree declared_variables solver
+      push_blocking_clause !variable_stack model derivation_tree declared_variables solver blocking_clause_vars assertion_level true
     ) models ;
     issue_solver_command "(push 1)" solver;
 
@@ -1093,7 +1136,8 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
     assertion_level := 1;
     depth_limit := starting_depth_limit;
     initialize_globals ctx ast derivation_tree start_symbol constraints_to_assert 
-                       decision_stack declared_variables backtrack_depth curr_st_node declared_variables solver; 
+                       decision_stack declared_variables backtrack_depth curr_st_node declared_variables solver 
+                       variable_stack blocking_clause_vars assertion_level; 
   );
   ()
   done; 

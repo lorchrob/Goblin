@@ -39,7 +39,7 @@ let csv_grammar : (string * string list) list = [
 let c_grammar : (string * string list) list = [
   ("statement", ["rec-statement"]);
   ("rec-statement", ["block-statements"; "paren_expr"; "expr"; "rec-statement"]);
-  ("block-statements", ["block-statement"; "nil"]);
+  ("block-statements", ["block-statements"; "block-statement"; "nil"]);
   ("block-statement", ["rec-statement"; "declaration"]);
   ("declaration", ["id"; "expr"]);
   ("paren_expr", ["expr"]);
