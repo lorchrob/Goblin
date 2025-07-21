@@ -18,7 +18,15 @@
      FUTURE: Something akin to inherited attributes 
      FUTURE: Structural constraints 
      FUTURE: Quantifiers in the DSL 
-     FUTURE: Finite model finding engine
+     FUTURE: Finite model finding engine -- synthesize recursive functions to capture the constraints, 
+             use define-fun-rec, and let the solver do the unfolding
+     FUTURE: Paper Kartik sent about using catamorphisms (generalized folds) for ADT decision procedures. 
+             We should always be able to define folds for the ADTs we have since they have well-founded recursion 
+             and no higher-order function types (leaf-level nonterminals can't have function types)
+     FUTURE: We must be able to handle dot notation constraints better by introducing new variables 
+             and constraint passing
+     FUTURE: Sygus forward declarations
+     FUTURE: Revisit divide and conquer
      FUTURE: Surface level language w/ support for attributes
 *)
 
