@@ -8,7 +8,7 @@ let debug = ref false
 let no_warnings = ref true
 let only_parse = ref false
 let show_winner = ref false
-let daniyal = ref false
+let saecred = ref false
 let filename = ref None
 let selected_engine = ref None
 
@@ -53,9 +53,9 @@ let parse_args () =
     Arg.(value & flag & info ["w"; "show-winner"] ~doc)
   in
 
-  let daniyal_flag =
-    let doc = "Activate daniyal mode" in
-    Arg.(value & flag & info ["a"; "daniyal"] ~doc)
+  let saecred_flag =
+    let doc = "Activate saecred mode" in
+    Arg.(value & flag & info ["a"; "saecred"] ~doc)
   in
 
   let filename_flag =
@@ -68,13 +68,13 @@ let parse_args () =
     Arg.(value & opt (some engine_conv) None & info ["e"; "engine"] ~docv:"ENGINE" ~doc)
   in
 
-  let set_flags new_debug new_no_warnings new_only_parse new_show_winner new_daniyal new_filename new_engine =
+  let set_flags new_debug new_no_warnings new_only_parse new_show_winner new_saecred new_filename new_engine =
     Format.pp_print_flush Format.std_formatter ();
     debug := new_debug;
     no_warnings := new_no_warnings;
     only_parse := new_only_parse;
     show_winner := new_show_winner;
-    daniyal := new_daniyal;
+    saecred := new_saecred;
     filename := new_filename;
     selected_engine := new_engine;
   in
@@ -85,7 +85,7 @@ let parse_args () =
           $ no_warnings_flag
           $ only_parse_flag
           $ show_winner_flag
-          $ daniyal_flag
+          $ saecred_flag
           $ filename_flag
           $ engine_flag)
   in

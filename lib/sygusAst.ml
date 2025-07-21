@@ -6,7 +6,7 @@ type sygus_ast =
 | BLLeaf of bool list
 | BoolLeaf of bool
 | StrLeaf of string
-| VarLeaf of string (* DANIYAL: Placeholder can go here *)
+| VarLeaf of string (* Placeholder can go here *)
 
 type endianness = 
 | Little 

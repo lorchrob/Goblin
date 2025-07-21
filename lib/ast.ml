@@ -94,7 +94,7 @@ type element =
 | ProdRule of string * prod_rule_rhs list
 | TypeAnnotation of string * il_type * semantic_constraint list
 
-(* DANIYAL: This is the type of the grammar terms *)
+(* This is the type of the grammar terms *)
 type ast = element list
 
 (* This function is used before desugaring dot expressions *)
