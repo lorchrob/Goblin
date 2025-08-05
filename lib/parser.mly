@@ -128,45 +128,39 @@ semantic_constraint:
 | nt = nonterminal; ASSIGN; e = expr { Dependency (nt, e) }
 | e = expr { SyGuSExpr e }
 
-binop: 
-| LAND { LAnd } 
-| LOR { LOr } 
-| LXOR { LXor } 
-| LIMPLIES { LImplies }
-| PLUS { Plus } 
-| MINUS { Minus } 
-| TIMES { Times } 
-| DIV { Div } 
-| BVAND { BVAnd } 
-| BVOR { BVOr } 
-| BVXOR { BVXor } 
-| STRCONCAT { StrConcat }
-
-compop:
-| LT { Lt } 
-| LTE { Lte } 
-| GT { Gt }
-| GTE { Gte } 
-| EQ { Eq }
-| BVLT { BVLt }
-| BVLTE { BVLte }
-| BVGT { BVGt }
-| BVGTE { BVGte }
-
-unop: 
-| BVNOT { BVNot } 
-| PLUS { UPlus } 
-| MINUS { UMinus }
-| LNOT { LNot } 
-
 expr: 
 | EMPTYSET; LT; ty = il_type; GT; 
   { EmptySet ty } 
 | SINGLETON; LPAREN; e = expr; RPAREN;
   { Singleton e }
-| LPAREN; op = binop; e1 = expr; e2 = expr; RPAREN; { BinOp (e1, op, e2) }
-| LPAREN; op = compop; e1 = expr; e2 = expr; RPAREN; { CompOp (e1, op, e2) }
-| LPAREN; op = unop; e = expr; RPAREN; { UnOp (op, e) }
+(* Inlined binop *)
+| LPAREN; LAND; e1 = expr; e2 = expr; RPAREN; { BinOp (e1, LAnd, e2) }
+| LPAREN; LOR; e1 = expr; e2 = expr; RPAREN; { BinOp (e1, LOr, e2) }
+| LPAREN; LXOR; e1 = expr; e2 = expr; RPAREN; { BinOp (e1, LXor, e2) }
+| LPAREN; LIMPLIES; e1 = expr; e2 = expr; RPAREN; { BinOp (e1, LImplies, e2) }
+| LPAREN; PLUS; e1 = expr; e2 = expr; RPAREN; { BinOp (e1, Plus, e2) }
+| LPAREN; MINUS; e1 = expr; e2 = expr; RPAREN; { BinOp (e1, Minus, e2) }
+| LPAREN; TIMES; e1 = expr; e2 = expr; RPAREN; { BinOp (e1, Times, e2) }
+| LPAREN; DIV; e1 = expr; e2 = expr; RPAREN; { BinOp (e1, Div, e2) }
+| LPAREN; BVAND; e1 = expr; e2 = expr; RPAREN; { BinOp (e1, BVAnd, e2) }
+| LPAREN; BVOR; e1 = expr; e2 = expr; RPAREN; { BinOp (e1, BVOr, e2) }
+| LPAREN; BVXOR; e1 = expr; e2 = expr; RPAREN; { BinOp (e1, BVXor, e2) }
+| LPAREN; STRCONCAT; e1 = expr; e2 = expr; RPAREN; { BinOp (e1, StrConcat, e2) }
+(* Inlined compop *)
+| LPAREN; LT; e1 = expr; e2 = expr; RPAREN; { CompOp (e1, Lt, e2) }
+| LPAREN; LTE; e1 = expr; e2 = expr; RPAREN; { CompOp (e1, Lte, e2) }
+| LPAREN; GT; e1 = expr; e2 = expr; RPAREN; { CompOp (e1, Gt, e2) }
+| LPAREN; GTE; e1 = expr; e2 = expr; RPAREN; { CompOp (e1, Gte, e2) }
+| LPAREN; EQ; e1 = expr; e2 = expr; RPAREN; { CompOp (e1, Eq, e2) }
+| LPAREN; BVLT; e1 = expr; e2 = expr; RPAREN; { CompOp (e1, BVLt, e2) }
+| LPAREN; BVLTE; e1 = expr; e2 = expr; RPAREN; { CompOp (e1, BVLte, e2) }
+| LPAREN; BVGT; e1 = expr; e2 = expr; RPAREN; { CompOp (e1, BVGt, e2) }
+| LPAREN; BVGTE; e1 = expr; e2 = expr; RPAREN; { CompOp (e1, BVGte, e2) }
+(* Inlined unop *)
+| LPAREN; BVNOT; e = expr; RPAREN; { UnOp (BVNot, e) }
+| LPAREN; PLUS; e = expr; RPAREN; { UnOp (UPlus, e) }
+| LPAREN; MINUS; e = expr; RPAREN; { UnOp (UMinus, e) }
+| LPAREN; LNOT; e = expr; RPAREN; { UnOp (LNot, e) }
 (* Concrete constants *)
 | i = INTEGER; { IntConst (i) }
 | s = STRING; { StrConst (s) } 
