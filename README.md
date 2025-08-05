@@ -1,25 +1,28 @@
-# WiFi SAE Packet Generator
+# Goblin Ubuntu/macOs build instructions
 
 ## Dependencies
 
-OCaml **version >= 5**
+* OCaml **version >= 5.1.1**
+
+  Install Opam and create a switch for version 5.1.1 in the `core` (this) directory:
+  ```
+  cd core
+  bash -c "sh <(curl -fsSL https://opam.ocaml.org/install.sh)"
+  opam init
+  opam switch create 5.1.1
+  eval $(opam env)
+  ```
+
+* cvc5 version **version >= 1.3.0** (https://github.com/cvc5/cvc5/releases/tag/cvc5-1.3.0). You must make the cvc5 binary discoverable from `$PATH` (update `$PATH` environment variable so that `which cvc5` returns a valid path to cvc5)
 
 Required opam packages:
 
-* `opam install menhirLib cmdliner ocamlgraph bitstring yojson lwt batteries ppx_bitstring alcotest lwt_ppx`
+* `opam install menhirLib cmdliner ocamlgraph bitstring yojson lwt batteries ppx_bitstring alcotest lwt_ppx menhir`
 
-
-Other dependencies:
-
-* macOs: `brew install coreutils` (TODO: `timeout` vs `gtimeout` based on OS)
-* `cvc5`
-  * You must make cvc5 discoverable from `$PATH` (update `$PATH` environment variable so that `which cvc5` returns a valid path to cvc5)
-  * If you want to run a portfolio with a second version of `cvc5`, optionally set `$PATH_TO_SECOND_CVC5` to the path to the second `cvc5` executable (including "`cvc5`", not just the folder containing the binary). If you don't want to run a portfolio, no further action is required.
-
-How to run the tool:
+## Building and running
 
 * To build, run `make`
-* To (build and) execute, run `sbf` (SBF stands for SyGuS-based fuzzing)
+* To (build and) execute, run `./sbf` 
 * To run tests, run `make test`
 
 Command-line args:
