@@ -76,6 +76,14 @@ open Ast
 (* Priorities and associativity of operators, lowest first *)
 // %nonassoc OPTION
 // %nonassoc ARROW
+%right LIMPLIES
+%left BVOR BVXOR LOR LXOR
+%left LAND BVAND
+%left GT LTE EQ GTE LT BVGT BVLTE BVGTE BVLT 
+%left PLUS MINUS STRCONCAT
+%left TIMES DIV
+%nonassoc LNOT
+%nonassoc BVNOT 
 // %left SEMICOLON
 
 %start <Ast.ast> s
@@ -133,34 +141,34 @@ expr:
   { EmptySet ty } 
 | SINGLETON; LPAREN; e = expr; RPAREN;
   { Singleton e }
-(* Inlined binop *)
-| LPAREN; LAND; e1 = expr; e2 = expr; RPAREN; { BinOp (e1, LAnd, e2) }
-| LPAREN; LOR; e1 = expr; e2 = expr; RPAREN; { BinOp (e1, LOr, e2) }
-| LPAREN; LXOR; e1 = expr; e2 = expr; RPAREN; { BinOp (e1, LXor, e2) }
-| LPAREN; LIMPLIES; e1 = expr; e2 = expr; RPAREN; { BinOp (e1, LImplies, e2) }
-| LPAREN; PLUS; e1 = expr; e2 = expr; RPAREN; { BinOp (e1, Plus, e2) }
-| LPAREN; MINUS; e1 = expr; e2 = expr; RPAREN; { BinOp (e1, Minus, e2) }
-| LPAREN; TIMES; e1 = expr; e2 = expr; RPAREN; { BinOp (e1, Times, e2) }
-| LPAREN; DIV; e1 = expr; e2 = expr; RPAREN; { BinOp (e1, Div, e2) }
-| LPAREN; BVAND; e1 = expr; e2 = expr; RPAREN; { BinOp (e1, BVAnd, e2) }
-| LPAREN; BVOR; e1 = expr; e2 = expr; RPAREN; { BinOp (e1, BVOr, e2) }
-| LPAREN; BVXOR; e1 = expr; e2 = expr; RPAREN; { BinOp (e1, BVXor, e2) }
-| LPAREN; STRCONCAT; e1 = expr; e2 = expr; RPAREN; { BinOp (e1, StrConcat, e2) }
-(* Inlined compop *)
-| LPAREN; LT; e1 = expr; e2 = expr; RPAREN; { CompOp (e1, Lt, e2) }
-| LPAREN; LTE; e1 = expr; e2 = expr; RPAREN; { CompOp (e1, Lte, e2) }
-| LPAREN; GT; e1 = expr; e2 = expr; RPAREN; { CompOp (e1, Gt, e2) }
-| LPAREN; GTE; e1 = expr; e2 = expr; RPAREN; { CompOp (e1, Gte, e2) }
-| LPAREN; EQ; e1 = expr; e2 = expr; RPAREN; { CompOp (e1, Eq, e2) }
-| LPAREN; BVLT; e1 = expr; e2 = expr; RPAREN; { CompOp (e1, BVLt, e2) }
-| LPAREN; BVLTE; e1 = expr; e2 = expr; RPAREN; { CompOp (e1, BVLte, e2) }
-| LPAREN; BVGT; e1 = expr; e2 = expr; RPAREN; { CompOp (e1, BVGt, e2) }
-| LPAREN; BVGTE; e1 = expr; e2 = expr; RPAREN; { CompOp (e1, BVGte, e2) }
-(* Inlined unop *)
-| LPAREN; BVNOT; e = expr; RPAREN; { UnOp (BVNot, e) }
-| LPAREN; PLUS; e = expr; RPAREN; { UnOp (UPlus, e) }
-| LPAREN; MINUS; e = expr; RPAREN; { UnOp (UMinus, e) }
-| LPAREN; LNOT; e = expr; RPAREN; { UnOp (LNot, e) }
+(* Binary operations *)
+| e1 = expr; LAND; e2 = expr { BinOp (e1, LAnd, e2) }
+| e1 = expr; LOR; e2 = expr { BinOp (e1, LOr, e2) }
+| e1 = expr; LXOR; e2 = expr { BinOp (e1, LXor, e2) }
+| e1 = expr; LIMPLIES; e2 = expr { BinOp (e1, LImplies, e2) }
+| e1 = expr; PLUS; e2 = expr { BinOp (e1, Plus, e2) }
+| e1 = expr; MINUS; e2 = expr { BinOp (e1, Minus, e2) }
+| e1 = expr; TIMES; e2 = expr { BinOp (e1, Times, e2) }
+| e1 = expr; DIV; e2 = expr { BinOp (e1, Div, e2) }
+| e1 = expr; BVAND; e2 = expr { BinOp (e1, BVAnd, e2) }
+| e1 = expr; BVOR; e2 = expr { BinOp (e1, BVOr, e2) }
+| e1 = expr; BVXOR; e2 = expr { BinOp (e1, BVXor, e2) }
+| e1 = expr; STRCONCAT; e2 = expr { BinOp (e1, StrConcat, e2) }
+(* Comparison operations *)
+| e1 = expr; LT; e2 = expr { CompOp (e1, Lt, e2) }
+| e1 = expr; LTE; e2 = expr { CompOp (e1, Lte, e2) }
+| e1 = expr; GT; e2 = expr { CompOp (e1, Gt, e2) }
+| e1 = expr; GTE; e2 = expr { CompOp (e1, Gte, e2) }
+| e1 = expr; EQ; e2 = expr { CompOp (e1, Eq, e2) }
+| e1 = expr; BVLT; e2 = expr { CompOp (e1, BVLt, e2) }
+| e1 = expr; BVLTE; e2 = expr { CompOp (e1, BVLte, e2) }
+| e1 = expr; BVGT; e2 = expr { CompOp (e1, BVGt, e2) }
+| e1 = expr; BVGTE; e2 = expr { CompOp (e1, BVGte, e2) }
+(* Unary operations *)
+| BVNOT; e = expr { UnOp (BVNot, e) }
+| PLUS; e = expr { UnOp (UPlus, e) }
+| MINUS; e = expr { UnOp (UMinus, e) }
+| LNOT; e = expr { UnOp (LNot, e) }
 (* Concrete constants *)
 | i = INTEGER; { IntConst (i) }
 | s = STRING; { StrConst (s) } 
