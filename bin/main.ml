@@ -3,7 +3,7 @@
     1. Dep map should map nt and prod rule RHS to expr, not just nt 
 *)
 
-open Sbf
+open Goblin 
 
 let () = 
   Flags.parse_args ();

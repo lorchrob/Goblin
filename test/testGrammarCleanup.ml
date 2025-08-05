@@ -1,4 +1,4 @@
-open Sbf
+open Goblin 
 open Ast
 
 let input = Parsing.parse "

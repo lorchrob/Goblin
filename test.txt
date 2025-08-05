@@ -12,6 +12,6 @@ bin
 dune-project
 lib
 out
-sbf.opam
+goblin.opam
 test
 test.txt

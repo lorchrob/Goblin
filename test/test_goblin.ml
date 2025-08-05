@@ -1,5 +1,5 @@
-open Sbf.Pipeline
-open Sbf
+open Goblin.Pipeline
+open Goblin 
 open Alcotest
 module SA = SygusAst
 

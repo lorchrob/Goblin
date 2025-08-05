@@ -165,7 +165,7 @@ let parse_args () =
           $ seed_flag)
   in
 
-  let info = Cmd.info "sbf" in
+  let info = Cmd.info "goblin" in
   let cmd = Cmd.v info term in
   let _ = Cmd.eval cmd in 
   ()

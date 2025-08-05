@@ -21,13 +21,13 @@
 ## Building and running
 
 * To build, run `make`
-* To (build and) execute, run `./sbf` 
+* To (build and) execute, run `./goblin` 
 * To run tests, run `make test`
 
 Command-line args:
 
-* Use `--help` for command-line arg documentation that's guaranteed to be up to date (e.g., `sbf --help`)
-* Use `--file <filename>` to specify the input file (**required**) (e.g., `sbf --file ./my_files/input`)
+* Use `--help` for command-line arg documentation that's guaranteed to be up to date (e.g., `goblin --help`)
+* Use `--file <filename>` to specify the input file (**required**) (e.g., `goblin --file ./my_files/input`)
 * Use `--debug` for debug output
 * Use `--only-parse` to run the front end (type checking, syntactic checks, various AST transformations, etc.) without invoking SyGuS
 * Use `--no-warnings` to disable warnings

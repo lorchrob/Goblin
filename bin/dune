@@ -1,5 +1,5 @@
 (executable
- (public_name sbf)
+ (public_name goblin)
  (name main)
- (libraries sbf)
+ (libraries goblin)
  )

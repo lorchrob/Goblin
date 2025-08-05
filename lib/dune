@@ -1,5 +1,5 @@
 (library
- (name sbf)
+ (name goblin)
  (libraries unix menhirLib str cmdliner ocamlgraph bitstring yojson lwt lwt.unix batteries)
  (preprocess (pps ppx_bitstring lwt_ppx))
  )

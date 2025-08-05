@@ -1,4 +1,4 @@
 (test
- (name test_sbf)
- (libraries sbf alcotest)
+ (name test_goblin)
+ (libraries goblin alcotest)
  (flags (:standard -warn-error -A)))
