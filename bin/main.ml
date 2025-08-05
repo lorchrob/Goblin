@@ -8,7 +8,7 @@ open Goblin
 let () = 
   Flags.parse_args ();
 
-  if !Flags.daniyal then 
+  if !Flags.saecred then 
     let commit_grammar = Parsing.parse (GrammarFuzzing.read_grammar "bin/commit.txt") in
     let confirm_grammar = Parsing.parse (GrammarFuzzing.read_grammar "bin/confirm.txt") in
     let commit_confirm_grammar = Parsing.parse (GrammarFuzzing.read_grammar "bin/commit-confirm.txt") in

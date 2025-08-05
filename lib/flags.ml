@@ -17,7 +17,7 @@ let only_parse = ref false
 let show_winner = ref false
 let dump_clp = ref false
 let multiple_solutions = ref false
-let daniyal = ref false
+let saecred = ref false
 let analysis = ref "" 
 let filename = ref None
 let selected_engine = ref DpllMono
@@ -80,9 +80,9 @@ let parse_args () =
     Arg.(value & flag & info ["m"; "multiple-solutions"] ~doc) 
   in
 
-  let daniyal_flag =
-    let doc = "Activate daniyal mode" in
-    Arg.(value & flag & info ["a"; "daniyal"] ~doc)
+  let saecred_flag =
+    let doc = "Activate saecred mode" in
+    Arg.(value & flag & info ["a"; "saecred"] ~doc)
   in
 
   let analysis_flag = 
@@ -126,7 +126,7 @@ let parse_args () =
   in
 
   let set_flags new_debug new_no_warnings new_only_parse new_show_winner 
-                new_dump_clp new_multiple_solutions new_daniyal new_analysis new_filename new_engine new_num_solutions 
+                new_dump_clp new_multiple_solutions new_saecred new_analysis new_filename new_engine new_num_solutions 
                 new_starting_depth_limit new_restart_rate new_sols_per_iter new_seed =
     Format.pp_print_flush Format.std_formatter ();
     debug := new_debug;
@@ -135,7 +135,7 @@ let parse_args () =
     show_winner := new_show_winner;
     dump_clp := new_dump_clp;
     multiple_solutions := new_multiple_solutions; 
-    daniyal := new_daniyal;
+    saecred := new_saecred;
     analysis := new_analysis;
     filename := new_filename;
     selected_engine := new_engine;
@@ -154,7 +154,7 @@ let parse_args () =
           $ show_winner_flag
           $ dump_clp_flag
           $ multiple_solutions_flag
-          $ daniyal_flag
+          $ saecred_flag
           $ analysis_flag
           $ filename_flag
           $ engine_flag
