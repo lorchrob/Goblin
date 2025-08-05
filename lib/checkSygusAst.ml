@@ -51,7 +51,7 @@ let is_sc_applicable: Ast.expr -> SygusAst.sygus_ast -> bool
 
 let handle_scs ast sygus_ast constructor element scs = 
   let scs = List.map (fun sc -> match sc with 
-  | A.SyGuSExpr expr -> 
+  | A.SmtConstraint expr -> 
     if is_sc_applicable expr sygus_ast || (* type annotation constraints are always applicable *)
        match element with | A.TypeAnnotation _ -> true | A.ProdRule _ -> false
     then (
@@ -66,7 +66,7 @@ let handle_scs ast sygus_ast constructor element scs =
         SA.pp_print_sygus_ast sygus_ast
         );
       [BConst true]) (* If sc is not applicable, it trivially holds *)
-  | Dependency (nt, expr) -> 
+  | DerivedField (nt, expr) -> 
     let expr = A.CompOp (NTExpr ([], [nt, None]), Eq, expr) in
     (if !Flags.debug then Format.fprintf Format.std_formatter "Constraint %a is applicable in %a"
       A.pp_print_expr expr

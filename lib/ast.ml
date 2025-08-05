@@ -100,8 +100,8 @@ expr =
 | ReConcat of expr list 
 
 type semantic_constraint = 
-| Dependency of string * expr (* <nonterminal> <- <expression> *)
-| SyGuSExpr of expr (* Any boolean expression *)
+| DerivedField of string * expr (* <nonterminal> <- <expression> *)
+| SmtConstraint of expr (* Any boolean expression *)
 
 type grammar_element = 
 | Nonterminal of string * int option
@@ -420,11 +420,11 @@ and pp_print_expr: Format.formatter -> expr -> unit
 
 let pp_print_semantic_constraint: Format.formatter -> semantic_constraint -> unit 
 = fun ppf sc -> match sc with 
-| Dependency (nt, expr) -> 
+| DerivedField (nt, expr) -> 
   Format.fprintf ppf "<%a> <- %a;"
     Format.pp_print_string nt 
     pp_print_expr expr
-| SyGuSExpr expr -> 
+| SmtConstraint expr -> 
   Format.fprintf ppf "%a;"
     pp_print_expr expr
 
@@ -542,13 +542,13 @@ let rec expr_contains_dangling_nt: Utils.SILSet.t -> expr -> bool
 
 let sc_constrains_nt: string -> semantic_constraint -> bool 
 = fun nt sc -> match sc with 
-| SyGuSExpr expr -> List.mem nt (get_nts_from_expr expr)
-| Dependency (nt2, _) -> nt = nt2
+| SmtConstraint expr -> List.mem nt (get_nts_from_expr expr)
+| DerivedField (nt2, _) -> nt = nt2
 
 let get_nts_from_sc: semantic_constraint -> string list 
 = fun sc -> match sc with 
-| SyGuSExpr expr -> get_nts_from_expr expr
-| Dependency (nt2, _) -> [nt2]
+| SmtConstraint expr -> get_nts_from_expr expr
+| DerivedField (nt2, _) -> [nt2]
 
 (* To be called before desugaring NTs to match expressions and resolving ambiguities.
    This may seem overconservative, but in the sygus_dac approach, we have to have subproblems 

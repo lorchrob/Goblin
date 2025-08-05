@@ -87,8 +87,8 @@ and expr =
 | ReConcat of expr list 
 
 type semantic_constraint =
-| Dependency of string * expr
-| SyGuSExpr of expr
+| DerivedField of string * expr
+| SmtConstraint of expr
 
 type grammar_element =
 | Nonterminal of string * int option

@@ -108,14 +108,14 @@ let rec remove_constraints (nt : string) (clist : semantic_constraint list) : se
     | [] -> [] 
     | x::xs -> 
         match x with 
-        | Dependency(nonTerminal, e) -> 
+        | DerivedField(nonTerminal, e) -> 
             if nonTerminal = nt || isPresentInExpr nt e 
                 then (remove_constraints nt xs) 
-            else Dependency(nonTerminal, e)::(remove_constraints nt xs)  
-        | SyGuSExpr(e) -> 
+            else DerivedField(nonTerminal, e)::(remove_constraints nt xs)  
+        | SmtConstraint(e) -> 
             if isPresentInExpr nt e 
                 then (remove_constraints nt xs)
-            else SyGuSExpr(e)::(remove_constraints nt xs) 
+            else SmtConstraint(e)::(remove_constraints nt xs) 
 
 let rec apply_delete_to_rule nt production_options = 
     match production_options with
@@ -155,20 +155,20 @@ let update_constraint (nt : string) (cList : semantic_constraint list) (operatio
     | [] -> []
     | x :: xs ->
         match x with
-        | Dependency(nonTerminal, (BVCast(i, expr))) -> 
+        | DerivedField(nonTerminal, (BVCast(i, expr))) -> 
             if operation = Plus then
-                Dependency(nonTerminal, BVCast(i, BinOp(expr, Plus, IntConst 1))) :: xs
+                DerivedField(nonTerminal, BVCast(i, BinOp(expr, Plus, IntConst 1))) :: xs
             else if operation = Minus then
-                Dependency(nonTerminal, BVCast(i, BinOp(expr, Minus, IntConst 1))) :: xs
-            else Dependency(nonTerminal, BVCast(i, expr)) :: xs
-        | SyGuSExpr(UnOp(LNot, e)) -> 
+                DerivedField(nonTerminal, BVCast(i, BinOp(expr, Minus, IntConst 1))) :: xs
+            else DerivedField(nonTerminal, BVCast(i, expr)) :: xs
+        | SmtConstraint(UnOp(LNot, e)) -> 
             if isPresentInExpr nt e 
-                then SyGuSExpr(e) :: xs
-            else SyGuSExpr(UnOp(LNot, e)) :: xs
-        | SyGuSExpr(e) -> 
+                then SmtConstraint(e) :: xs
+            else SmtConstraint(UnOp(LNot, e)) :: xs
+        | SmtConstraint(e) -> 
             if isPresentInExpr nt e 
-                then SyGuSExpr(UnOp(LNot, e)) :: xs
-            else SyGuSExpr(e) :: xs
+                then SmtConstraint(UnOp(LNot, e)) :: xs
+            else SmtConstraint(e) :: xs
         | anything -> anything :: xs
 
 let rec apply_update_to_rule nt production_options operation =

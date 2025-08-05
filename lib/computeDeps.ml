@@ -75,8 +75,8 @@ let rec compute_dep: A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -> 
     Utils.crash ("Hanging identifier '" ^ var ^ "' when computing dependencies")
   | Some sc -> (
     match sc with 
-    | SyGuSExpr _ -> Utils.crash "Encountered SyGuSExpr when computing dependencies"
-    | Dependency (_, expr) -> 
+    | SmtConstraint _ -> Utils.crash "Encountered SmtConstraint when computing dependencies"
+    | DerivedField (_, expr) -> 
       evaluate ~dep_map sygus_ast ast element expr |> List.hd |> expr_to_sygus_ast
   )
 

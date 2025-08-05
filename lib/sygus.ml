@@ -72,11 +72,11 @@ let pp_print_datatype_rhs
 let pp_print_datatypes: Format.formatter -> TC.context -> Ast.semantic_constraint Utils.StringMap.t -> A.ast -> unit 
 = fun ppf ctx dep_map ast -> 
   Utils.StringMap.iter (fun stub_id dep -> match dep with 
-  | A.Dependency _ -> 
+  | A.DerivedField _ -> 
     Format.fprintf ppf "(declare-datatype %s (\n\t(%s)\n))\n"
       (String.uppercase_ascii stub_id)
       ((String.lowercase_ascii stub_id) ^ "_con")
-  | SyGuSExpr _ -> Utils.crash "dependency map contains a SyGuSExpr"
+  | SmtConstraint _ -> Utils.crash "dependency map contains a SmtConstraint"
   ) dep_map;
   List.iter (fun element -> match element with 
   | A.TypeAnnotation _ -> ()
@@ -134,11 +134,11 @@ let pp_print_nt_decs: Ast.semantic_constraint Utils.StringMap.t -> Format.format
   pp_print_ty ty
 ) ast;
 Utils.StringMap.iter (fun stub_id dep -> match dep with 
-| A.Dependency _ -> 
+| A.DerivedField _ -> 
   Format.fprintf ppf "\t(%s %s)"
   (String.lowercase_ascii stub_id) 
   (String.uppercase_ascii stub_id) 
-| SyGuSExpr _ -> Utils.crash "dependency map contains a SyGuSExpr"
+| SmtConstraint _ -> Utils.crash "dependency map contains a SmtConstraint"
 ) dep_map
 
 let rec pp_print_match: Format.formatter -> TC.context -> (string * int option) list -> string * int option -> A.case list -> unit 
@@ -309,8 +309,8 @@ and pp_print_expr: ?nt_prefix:string -> TC.context -> Format.formatter -> A.expr
 
 let pp_print_semantic_constraint_ty_annot: TC.context -> Format.formatter -> string -> A.il_type -> A.semantic_constraint -> unit 
 = fun ctx ppf nt ty sc -> match sc with 
-| A.Dependency _ -> () 
-| SyGuSExpr expr -> 
+| A.DerivedField _ -> () 
+| SmtConstraint expr -> 
   let constraint_id = fresh_constraint () in 
   Format.fprintf ppf "(define-fun %s ((%s0 %a)) Bool \n\t%a\n)\n"
     constraint_id
@@ -354,7 +354,7 @@ let pp_print_constraints_rhs: TC.context -> string -> Format.formatter -> A.prod
     ges = List.map Ast.grammar_element_to_string ges |> List.map String.lowercase_ascii 
   in  
   let exprs = List.filter_map (fun sc -> match sc with 
-  | A.SyGuSExpr expr -> Some expr 
+  | A.SmtConstraint expr -> Some expr 
   | _ -> None
   ) scs in
   if List.length exprs > 1 then
@@ -422,12 +422,12 @@ let pp_print_rules: Ast.semantic_constraint Utils.StringMap.t -> Format.formatte
       pp_print_ty ty
   ) ast;
   Utils.StringMap.iter (fun stub_id dep -> match dep with 
-  | A.Dependency _ -> 
+  | A.DerivedField _ -> 
     Format.fprintf ppf "\t(%s %s (%s))"
       (String.lowercase_ascii stub_id) 
       (String.uppercase_ascii stub_id) 
       ((String.lowercase_ascii stub_id) ^ "_con")
-  | SyGuSExpr _ -> Utils.crash "dependency map contains a SyGuSExpr"
+  | SmtConstraint _ -> Utils.crash "dependency map contains a SmtConstraint"
   ) dep_map
 
 let pp_print_grammar: Format.formatter -> Ast.semantic_constraint Utils.StringMap.t -> A.ast -> unit 

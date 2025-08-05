@@ -69,15 +69,15 @@ let merge: A.ast -> A.element -> A.ast
     if A.ast_constrains_nt ast nt then 
       (* To push the scs up a level, we need to prepend a dot notation reference *)
       let scs = List.map (fun sc -> match sc with 
-      | A.SyGuSExpr expr -> 
-        A.SyGuSExpr (A.prepend_nt_to_dot_exprs nt expr)
-      | Dependency (nt2, expr) -> 
+      | A.SmtConstraint expr -> 
+        A.SmtConstraint (A.prepend_nt_to_dot_exprs nt expr)
+      | DerivedField (nt2, expr) -> 
         (* Since there is overlap, replace dependency with equality constraint.
            We can't ignore what it overlaps with, in case it is unsat. *)
         (* We can place None in the index because this pipeline step happens before 
            resolveAmbiguities. *)
         Utils.debug_print Format.pp_print_string Format.std_formatter "Replacing dependency with sygus expr";
-        A.SyGuSExpr (A.prepend_nt_to_dot_exprs nt (A.CompOp (NTExpr([], [nt2, None]), Eq, expr)))
+        A.SmtConstraint (A.prepend_nt_to_dot_exprs nt (A.CompOp (NTExpr([], [nt2, None]), Eq, expr)))
       ) scs in 
       let ast = List.fold_left (fun acc element -> match element with
       | A.TypeAnnotation _ -> acc @ [element]
@@ -112,11 +112,11 @@ let lift: A.ast -> A.element -> A.ast
       (* Lift dependencies to sygus exprs. 
          TODO: This step may be overly conservative. *)
       let scs = List.map (fun sc -> match sc with 
-      | A.SyGuSExpr _ -> sc 
-      | A.Dependency (nt, expr) -> 
+      | A.SmtConstraint _ -> sc 
+      | A.DerivedField (nt, expr) -> 
         Utils.debug_print Format.pp_print_string Format.std_formatter "Lifting dependency to SMT constraint\n";
         let expr = A.CompOp (NTExpr ([], [nt, None]), Eq, expr) in 
-        SyGuSExpr expr
+        SmtConstraint expr
       ) scs in
       ast @ [A.TypeAnnotation (nt, ty, scs)]
     else ast @ [element]
@@ -126,11 +126,11 @@ let lift: A.ast -> A.element -> A.ast
       | A.StubbedRhs _ -> rhs 
       | A.Rhs (ges, scs) -> 
         let scs = List.map (fun sc -> match sc with 
-        | A.SyGuSExpr _ -> sc 
-        | A.Dependency (nt, expr) -> 
+        | A.SmtConstraint _ -> sc 
+        | A.DerivedField (nt, expr) -> 
           Utils.debug_print Format.pp_print_string Format.std_formatter "Lifting dependency to SMT constraint\n";
           let expr = A.CompOp (NTExpr ([], [nt, None]), Eq, expr) in 
-          SyGuSExpr expr
+          SmtConstraint expr
         ) scs in
         Rhs (ges, scs)
       ) rhss in

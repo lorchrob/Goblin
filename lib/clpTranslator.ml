@@ -40,8 +40,8 @@ let rec pp_print_clp_term: Format.formatter -> clp_term -> unit
       (Lib.pp_print_list pp_print_clp_term ", ") ts
 
 let expr_of_sc sc = match sc with 
-| A.SyGuSExpr expr -> expr 
-| Dependency (nt, expr) -> CompOp (NTExpr ([], [nt, None]), Eq, expr)
+| A.SmtConstraint expr -> expr 
+| DerivedField (nt, expr) -> CompOp (NTExpr ([], [nt, None]), Eq, expr)
 
 let pp_print_clp_element: Format.formatter -> clp_element -> unit 
 = fun ppf element -> match element with 

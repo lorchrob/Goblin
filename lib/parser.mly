@@ -133,8 +133,8 @@ grammar_element:
 | nt = nonterminal { Nonterminal(nt, None) }
 
 semantic_constraint:
-| nt = nonterminal; ASSIGN; e = expr { Dependency (nt, e) }
-| e = expr { SyGuSExpr e }
+| nt = nonterminal; ASSIGN; e = expr { DerivedField (nt, e) }
+| e = expr { SmtConstraint e }
 
 expr: 
 | EMPTYSET; LT; ty = il_type; GT; 

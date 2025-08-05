@@ -323,8 +323,8 @@ match dt with
     let path' = (string_of_path (Utils.init path) |> String.lowercase_ascii) in
     if Utils.str_eq_ci nt nt2 then 
       let constraints_to_add = List.concat_map (fun sc -> match sc with 
-      | A.SyGuSExpr e -> [universalize_expr false path e] 
-      | Dependency _ -> [] 
+      | A.SmtConstraint e -> [universalize_expr false path e] 
+      | DerivedField _ -> [] 
       ) scs in
       let expr_variables = List.map A.get_nts_from_expr2 constraints_to_add |> List.flatten in
       let ty_ctx = List.fold_left (fun acc nt -> 
@@ -354,8 +354,8 @@ match dt with
     let path' = string_of_path path |> String.lowercase_ascii in
     if Utils.str_eq_ci nt nt2 then 
       let constraints_to_add = List.concat_map (fun sc -> match sc with 
-      | A.SyGuSExpr e -> [universalize_expr true path e] 
-      | Dependency _ -> [] 
+      | A.SmtConstraint e -> [universalize_expr true path e] 
+      | DerivedField _ -> [] 
       ) scs |> ConstraintSet.of_list in
       declare_smt_variables variable_stack declared_variables (Utils.StringMap.singleton path' ty) solver blocking_clause_vars assertion_level;
       constraints_to_assert := ConstraintSet.union !constraints_to_assert constraints_to_add;
@@ -389,10 +389,10 @@ let rec collect_constraints_of_dt ast = function
       ) ast in 
     let constraints = A.scs_of_element grammar_rule |> 
     List.concat_map (fun sc -> match sc with 
-    | A.SyGuSExpr expr -> 
+    | A.SmtConstraint expr -> 
       let expr = (universalize_expr true path expr) in
         [expr] 
-    | Dependency _ -> [] 
+    | DerivedField _ -> [] 
     ) |> ConstraintSet.of_list in 
     ConstraintSet.union constraints child_constraints
   | _ -> ConstraintSet.empty
@@ -998,7 +998,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
       | A.TypeAnnotation (_, _, []) -> ()
       | A.TypeAnnotation (_, ty, scs) -> 
         List.iter (fun sc -> match sc with 
-        | A.SyGuSExpr expr ->
+        | A.SmtConstraint expr ->
           declare_smt_variables !variable_stack declared_variables (Utils.StringMap.singleton path' ty) solver blocking_clause_vars assertion_level; 
           constraints_to_assert := ConstraintSet.add (universalize_expr true path expr) !constraints_to_assert;
           constraints_to_assert := assert_applicable_constraints constraints_to_assert !derivation_tree ast solver;
@@ -1013,7 +1013,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
                   constraints_to_assert depth_limit start_symbol derivation_tree curr_st_node
                   variable_stack blocking_clause_vars
           )
-        | A.Dependency _ -> ()
+        | A.DerivedField _ -> ()
         ) scs;
       | A.ProdRule (_, rhss) -> 
         (*Format.fprintf Format.std_formatter "Finding the chosen rule for %a\n" 
@@ -1041,7 +1041,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
         | A.StubbedRhs _ -> () 
         | A.Rhs (_, scs) -> 
           List.iter (fun sc -> match sc with 
-          | A.SyGuSExpr expr ->
+          | A.SmtConstraint expr ->
             (* Assert semantic constraints for production rules *)
             let expr_variables = A.get_nts_from_expr2 expr in
             let ty_ctx = List.fold_left (fun acc nt -> 
@@ -1054,7 +1054,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
             constraints_to_assert := ConstraintSet.add (universalize_expr false path expr) !constraints_to_assert;
             (* don't instantiate yet -- we haven't hit the leaf nodes *)
             (* derivation_tree := instantiate_terminals model derivation_tree;  *)
-          | A.Dependency _ -> ()
+          | A.DerivedField _ -> ()
           ) scs;
 
           (* Assert the constraints from this choice (and also try to assert constraints hanging around from earlier on,

@@ -485,21 +485,21 @@ let filter_out_dangling_nts expr =
 
 let process_sc: TC.context -> A.ast -> A.semantic_constraint -> A.semantic_constraint 
 = fun ctx ast sc -> match sc with 
-  | A.Dependency (nt, expr) -> 
+  | A.DerivedField (nt, expr) -> 
     (* let expr = 
       Utils.recurse_until_fixpoint expr (=) 
       (fun expr -> nt_to_match ctx ast expr |> pull_up_match_exprs) 
     in 
     let expr = filter_out_dangling_nts expr in *)
     (* Don't need to desugar for dependencies; they are computed outside of sygus *)
-    Dependency (nt, expr)
-  | SyGuSExpr expr -> 
+    DerivedField (nt, expr)
+  | SmtConstraint expr -> 
     let expr = 
       Utils.recurse_until_fixpoint expr (=) 
       (fun expr -> nt_to_match ctx ast expr |> pull_up_match_exprs) 
     in 
     let expr = filter_out_dangling_nts expr in
-    SyGuSExpr (expr)
+    SmtConstraint (expr)
 
 let convert_nt_exprs_to_matches: TC.context -> A.ast -> A.ast = 
   fun ctx ast -> 

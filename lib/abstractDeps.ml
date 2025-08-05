@@ -39,8 +39,8 @@ let stub_grammar_element: TypeChecker.context -> semantic_constraint list -> gra
 | StubbedNonterminal _ -> None, ge, ctx 
 | Nonterminal (nt, _) -> (
   match List.find_opt (fun sc -> match sc with
-  | SyGuSExpr _ -> false 
-  | Dependency (nt2, _) -> nt = nt2
+  | SmtConstraint _ -> false 
+  | DerivedField (nt2, _) -> nt = nt2
   ) scs with 
   | Some dep -> 
     let stub_id = Utils.mk_fresh_stub_id nt in
@@ -52,8 +52,8 @@ let stub_grammar_element: TypeChecker.context -> semantic_constraint list -> gra
 let stub_ty_annot
 = fun ctx nt ty scs -> 
   match List.find_opt (fun sc -> match sc with
-  | SyGuSExpr _ -> false 
-  | Dependency (nt2, _) -> nt = nt2
+  | SmtConstraint _ -> false 
+  | DerivedField (nt2, _) -> nt = nt2
   ) scs with 
   | Some dep -> 
     let stub_id = Utils.mk_fresh_stub_id nt in
@@ -66,8 +66,8 @@ let simp_rhss: TypeChecker.context -> prod_rule_rhs -> semantic_constraint Utils
 = fun ctx rhss -> match rhss with 
 | Rhs (ges, scs) ->
   let scs = List.map (fun sc -> match sc with 
-  | Dependency (nt, expr) -> Dependency (nt, calculate_casts expr)
-  | SyGuSExpr expr -> SyGuSExpr (calculate_casts expr)
+  | DerivedField (nt, expr) -> DerivedField (nt, calculate_casts expr)
+  | SmtConstraint expr -> SmtConstraint (calculate_casts expr)
   ) scs in 
   (* Abstract away dependent terms. Whenever we abstract away a term, we store 
      a mapping from the abstracted stub ID to the original dependency *)
@@ -99,8 +99,8 @@ let simp_ast: TypeChecker.context -> ast -> (semantic_constraint Utils.StringMap
     dep_map, ProdRule (nt, List.rev rhss) :: acc_elements, ctx 
   | TypeAnnotation (nt, ty, scs) -> 
     let scs = List.map (fun sc -> match sc with 
-    | Dependency (nt, expr) -> Dependency (nt, calculate_casts expr)
-    | SyGuSExpr expr -> SyGuSExpr (calculate_casts expr)
+    | DerivedField (nt, expr) -> DerivedField (nt, calculate_casts expr)
+    | SmtConstraint expr -> SmtConstraint (calculate_casts expr)
     ) scs in 
     let dep_map, element, ctx = stub_ty_annot acc_ctx nt ty scs in
     let dep_map = Utils.StringMap.merge Lib.union_keys dep_map acc_dep_map in

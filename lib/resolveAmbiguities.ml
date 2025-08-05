@@ -123,32 +123,32 @@ let rec generate_all_possible_exprs: TC.context -> string list -> A.expr -> A.ex
 
 let process_sc: TC.context -> string list -> A.semantic_constraint -> A.semantic_constraint 
 = fun ctx nts sc -> match sc with 
-  | A.Dependency (nt, expr) -> 
+  | A.DerivedField (nt, expr) -> 
     let exprs = generate_all_possible_exprs ctx nts expr in
     let expr = match exprs with 
       | _ :: _ :: _ -> Utils.error ("Dependent term '" ^ nt ^ "' is defined ambiguously")
       | expr :: _ -> expr
       | [] -> Utils.crash "unexpected case"
     in
-    Dependency (nt, expr)
-  | SyGuSExpr expr -> 
+    DerivedField (nt, expr)
+  | SmtConstraint expr -> 
     let exprs = generate_all_possible_exprs ctx nts expr in
     let expr = List.fold_left (fun acc expr -> A.BinOp (expr, GLAnd, acc)) (BConst true) exprs in
-    SyGuSExpr expr
+    SmtConstraint expr
 
 let process_sc_to_list: TC.context -> string list -> A.semantic_constraint -> A.semantic_constraint list
 = fun ctx nts sc -> match sc with 
-  | A.Dependency (nt, expr) -> 
+  | A.DerivedField (nt, expr) -> 
     let exprs = generate_all_possible_exprs ctx nts expr in 
     let _ = match exprs with 
       | _ :: _ :: _ -> Utils.error ("Dependent term '" ^ nt ^ "' is defined ambiguously")
       | expr :: _ -> expr
       | [] -> Utils.crash "unexpected case"
     in
-    List.map (fun expr -> A.Dependency (nt, expr)) exprs
-  | SyGuSExpr expr -> 
+    List.map (fun expr -> A.DerivedField (nt, expr)) exprs
+  | SmtConstraint expr -> 
     let exprs = generate_all_possible_exprs ctx nts expr in
-    List.map (fun expr -> A.SyGuSExpr expr) exprs
+    List.map (fun expr -> A.SmtConstraint expr) exprs
 
 (* Same as resolve_ambiguities, but we desugar to a list of 
    semantic constraints rather than a conjunction of generated 
@@ -168,8 +168,8 @@ let resolve_ambiguities_dpll: TC.context -> A.ast -> A.ast
     (* Filter out scs with dot notation expressions of the form <nt1>[n], where 
        [n] does not apply to this production rule *)
     let scs = List.filter (function 
-    | A.SyGuSExpr expr  
-    | A.Dependency (_, expr) ->
+    | A.SmtConstraint expr  
+    | A.DerivedField (_, expr) ->
       let nts = A.get_nts_from_expr2 expr |> List.map List.hd in
       List.for_all (fun (nt1, idx1) -> 
         List.exists (function 

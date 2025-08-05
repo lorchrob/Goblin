@@ -169,14 +169,14 @@ let canonicalize (ogrammar : ast) : ast option =
 
 let get_all_nt_scs scs = 
   List.fold_left (fun acc sc -> match sc with 
-  | Dependency (nt, _) -> nt :: acc
-  | SyGuSExpr _ -> acc
+  | DerivedField (nt, _) -> nt :: acc
+  | SmtConstraint _ -> acc
   ) [] scs
 
 let get_all_dependencies_from_scs scs = 
   List.fold_left (fun acc sc -> match sc with 
-  | SyGuSExpr _ -> acc
-  | Dependency (nt1, expr) -> 
+  | SmtConstraint _ -> acc
+  | DerivedField (nt1, expr) -> 
     let nts = Ast.get_nts_from_expr expr in 
     acc @ List.map (fun nt2 -> (nt1, nt2)) nts
   ) [] scs

@@ -184,16 +184,16 @@ let check_syntax_prod_rule: prod_rule_map -> Utils.StringSet.t -> prod_rule_rhs 
 | Rhs (ges, scs) ->
   let ges' = List.map Ast.grammar_element_to_string ges in
   let scs = List.map (fun sc -> match sc with 
-  | Dependency (nt2, expr) -> 
+  | DerivedField (nt2, expr) -> 
     if (not (Utils.StringSet.mem nt2 nt_set)) then Utils.error ("Dangling identifier " ^ nt2) else
-    if (not (List.mem nt2 ges')) then Utils.error ("Dependency LHS identifier " ^ nt2 ^ " is not present on the RHS of the corresponding production rule") else
+    if (not (List.mem nt2 ges')) then Utils.error ("DerivedField LHS identifier " ^ nt2 ^ " is not present on the RHS of the corresponding production rule") else
     let expr = check_dangling_identifiers nt_set expr in 
     let expr = check_prod_rule_nt_exprs prm (Utils.StringSet.of_list ges') expr in
-    Dependency (nt2, expr)
-  | SyGuSExpr expr -> 
+    DerivedField (nt2, expr)
+  | SmtConstraint expr -> 
     let expr = check_dangling_identifiers nt_set expr in 
     let expr = check_prod_rule_nt_exprs prm (Utils.StringSet.of_list ges') expr in
-    SyGuSExpr expr
+    SmtConstraint expr
   ) scs in 
   Rhs (ges, scs)
 | StubbedRhs _ -> assert false
@@ -240,12 +240,12 @@ let remove_circular_deps: ast -> ast
         | StubbedRhs _ -> rhs 
         | Rhs (nt, scs) -> 
           let sygus_exprs = List.filter (fun sc -> match sc with
-          | SyGuSExpr _ -> true 
-          | Dependency _ -> false
+          | SmtConstraint _ -> true 
+          | DerivedField _ -> false
           ) scs in 
           let dependencies = List.filter (fun sc -> match sc with
-          | SyGuSExpr _ -> false 
-          | Dependency _ -> true
+          | SmtConstraint _ -> false 
+          | DerivedField _ -> true
           ) scs in
           let dependencies = match TopologicalSort.canonicalize_scs dependencies with 
           | None -> dependencies
@@ -263,12 +263,12 @@ let remove_circular_deps: ast -> ast
 let check_scs_for_dep_terms: semantic_constraint list -> semantic_constraint list  
 = fun scs -> 
   let dep_terms = List.fold_left (fun acc sc -> match sc with 
-  | Dependency (nt, _) -> StringSet.add nt acc 
+  | DerivedField (nt, _) -> StringSet.add nt acc 
   | _ -> acc
   ) StringSet.empty scs in
   let deps_to_convert = List.fold_left (fun acc sc -> match sc with 
-  | Dependency _ -> acc
-  | SyGuSExpr expr -> 
+  | DerivedField _ -> acc
+  | SmtConstraint expr -> 
     let nts = Ast.get_nts_from_expr expr |> StringSet.of_list in 
     let intersection = StringSet.inter dep_terms nts in
     if StringSet.is_empty intersection then acc
@@ -277,14 +277,14 @@ let check_scs_for_dep_terms: semantic_constraint list -> semantic_constraint lis
       StringSet.union acc deps_to_convert
   ) StringSet.empty scs in 
   List.fold_left (fun acc sc -> match sc with 
-  | Dependency (nt, _) -> 
+  | DerivedField (nt, _) -> 
     if StringSet.mem nt deps_to_convert then (
       let msg = Format.asprintf "Derived field %s mentioned in semantic constraint"
         nt 
       in 
       Utils.error msg
     ) else sc :: acc
-  | SyGuSExpr _ -> sc :: acc
+  | SmtConstraint _ -> sc :: acc
   ) [] scs |> List.rev
 
 let check_sygus_exprs_for_dep_terms: ast -> ast 
@@ -336,12 +336,12 @@ let str_const_to_ph_const ast =
   in
 
   let handle_sc ty sc = match sc with 
-  | SyGuSExpr _ -> sc 
-  | Dependency (nt, expr) -> 
+  | SmtConstraint _ -> sc 
+  | DerivedField (nt, expr) -> 
     let expr = 
       if ty = Placeholder then handle_expr expr else expr 
     in 
-    Dependency (nt, expr)
+    DerivedField (nt, expr)
   in
 
   List.map (fun element -> match element with 
@@ -403,16 +403,16 @@ let check_syntax: prod_rule_map -> Utils.StringSet.t -> ast -> ast
     ProdRule (nt, rhss)
   | TypeAnnotation (nt, ty, scs) -> 
     let scs = List.map (fun sc -> match sc with 
-    | Dependency (nt2, expr) ->
+    | DerivedField (nt2, expr) ->
       if (not (Utils.StringSet.mem nt2 nt_set)) then Utils.error ("Dangling identifier " ^ nt2) else
-      if (not (nt2 = nt)) then Utils.error ("Dependency LHS identifier " ^ nt2 ^ " is not present in the corresponding type annotation") else
+      if (not (nt2 = nt)) then Utils.error ("DerivedField LHS identifier " ^ nt2 ^ " is not present in the corresponding type annotation") else
       let expr = check_dangling_identifiers nt_set expr in 
       let expr = check_type_annot_nt_exprs prm (Utils.StringSet.singleton nt) expr in
-      Dependency (nt2, expr) 
-    | SyGuSExpr expr -> 
+      DerivedField (nt2, expr) 
+    | SmtConstraint expr -> 
       let expr = check_dangling_identifiers nt_set expr in  
       let expr = check_type_annot_nt_exprs prm (Utils.StringSet.singleton nt) expr in
-      SyGuSExpr expr
+      SmtConstraint expr
     ) scs in 
     TypeAnnotation (nt, ty, scs)
   ) ast in 
