@@ -1,4 +1,4 @@
 <SAE_PACKET> ::= <AUTH_ALGO> <STATUS_CODE>;
 
-<STATUS_CODE> :: BitVector(16);
+<STATUS_CODE> :: BitVec(16);
 <AUTH_ALGO> :: String { <AUTH_ALGO> <- "placeholder"; };

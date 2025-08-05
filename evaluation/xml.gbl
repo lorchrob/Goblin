@@ -2,9 +2,9 @@
 // Inherited attributes for a given LHS NT must be passed by all references to that NT
 
 <xml-tree> ::= <xml-openclose-tag>
-             {  <xml-openclose-tag>.<_defs_down> = empty_set<String> ; }
+             {  <xml-openclose-tag>.<_defs_down> = set.empty<String> ; }
              | <rec-xml-tree> 
-            {  <rec-xml-tree>.<_defs_down> = empty_set<String> ; } ;
+            {  <rec-xml-tree>.<_defs_down> = set.empty<String> ; } ;
 
 <rec-xml-tree> ::= <_defs_down> <_defs_up> <xml-openclose-tag> 
                  { <xml-openclose-tag>.<_defs_down> = <_defs_down> ; 
@@ -25,7 +25,7 @@
 
 <xml-open-tag> ::= 
                    <_defs_down> <_defs_up> <id>
-                 { <_defs_up> = empty_set<String> ; 
+                 { <_defs_up> = set.empty<String> ; 
                    <id>.<_defs_down> = <_defs_down> ; }
                  | 
                    <_defs_down> <_defs_up> <id> <xml-attribute> 
@@ -37,7 +37,7 @@
 
 <xml-openclose-tag> ::= 
                         <_defs_down> <_defs_up> <id> 
-                      { <_defs_up> = empty_set<String> ;
+                      { <_defs_up> = set.empty<String> ;
                         <id>.<_defs_down> = <_defs_down> ; } 
                       | 
                         <_defs_down> <_defs_up> <id> <xml-attribute>  
@@ -46,20 +46,20 @@
                         <xml-attribute>.<_defs_down> = <_defs_down> ; } ;
 
 <xml-attribute> ::= <_defs_down> <_defs_up> <_attributes> <id> <text> 
-                  { <_attributes> = singleton(<id>.<_full_id>) ; 
+                  { <_attributes> = set.singleton(<id>.<_full_id>) ; 
                     <id>.<id-with-prefix>.<id-no-prefix-1> = "xmlns" =>
-                      <_defs_up> = singleton(<id>.<id-with-prefix>.<id-no-prefix-2>) ;
-                    lnot (<id>.<id-with-prefix>.<id-no-prefix-1> = "xmlns") =>
-                      <_defs_up> = empty_set<String> ;
+                      <_defs_up> = set.singleton(<id>.<id-with-prefix>.<id-no-prefix-2>) ;
+                    not (<id>.<id-with-prefix>.<id-no-prefix-1> = "xmlns") =>
+                      <_defs_up> = set.empty<String> ;
                     <id>.<id-no-prefix-1> = <id>.<id-no-prefix-1> => 
-                      <_defs_up> = empty_set<String> ; 
+                      <_defs_up> = set.empty<String> ; 
                     <id>.<_defs_down> = <_defs_down> ; } 
                   | <_defs_down> <_defs_up> <_attributes> <xml-attribute-1> <xml-attribute-2> 
                     { <_attributes> = union(<xml-attribute-1>.<xml-attribute>.<_attributes>, 
                                             <xml-attribute-2>.<xml-attribute>.<_attributes>) ; 
                       // constraint: no redef
-                      intersection(<xml-attribute-1>.<xml-attribute>.<_attributes>, 
-                                <xml-attribute-2>.<xml-attribute>.<_attributes>) = empty_set<String> ; 
+                      set.inter(<xml-attribute-1>.<xml-attribute>.<_attributes>, 
+                                <xml-attribute-2>.<xml-attribute>.<_attributes>) = set.empty<String> ; 
                       <_defs_up> = union (<xml-attribute-1>.<xml-attribute>.<_defs_up>,
                                           <xml-attribute-2>.<xml-attribute>.<_defs_up>) ; 
                       <xml-attribute-1>.<xml-attribute>.<_defs_down> = <_defs_down> ; 
@@ -77,51 +77,51 @@
 // <id-no-prefix-1> is prefix def, <id-no-prefix-2> is prefix use
 <id-with-prefix> ::= <_defs_down> <id-no-prefix-1> <id-no-prefix-2> 
   //!! constraint: namespace definition before use 
-  { member(<id-no-prefix-2>,  <_defs_down>) ; } ;
+  { set.member(<id-no-prefix-2>,  <_defs_down>) ; } ;
 
 <text> :: String {
-str_in_re(<text>,
-  re_star(
-    re_union(
-      re_union(
-        re_union(
-          re_union(
-            re_union(
-              re_union(
-                re_union(
-                  re_union(
-                    // re_union(
-                      re_union(
-                        re_union(
-                          re_union(
-                            re_range("a", "z"),
-                            re_range("A", "Z")
+str.in_re(<text>,
+  re.*(
+    re.union(
+      re.union(
+        re.union(
+          re.union(
+            re.union(
+              re.union(
+                re.union(
+                  re.union(
+                    // re.union(
+                      re.union(
+                        re.union(
+                          re.union(
+                            re.range("a", "z"),
+                            re.range("A", "Z")
                           ),
-                          re_range("0", "9")
+                          re.range("0", "9")
                       //  ),
-                     //   str_to_re("""")
+                     //   str.to_re("""")
                       ),
-                      str_to_re("'")
+                      str.to_re("'")
                     ),
-                    str_to_re(".")
+                    str.to_re(".")
                   ),
-                  str_to_re(" ")
+                  str.to_re(" ")
                 ),
-                str_to_re("\t")
+                str.to_re("\t")
               ),
-              str_to_re("/")
+              str.to_re("/")
             ),
-            str_to_re("?")
+            str.to_re("?")
           ),
-          str_to_re("-")
+          str.to_re("-")
         ),
-        str_to_re(",")
+        str.to_re(",")
       ),
-      re_union(
-        str_to_re("="),
-        re_union(
-          str_to_re(":"),
-          str_to_re("+")
+      re.union(
+        str.to_re("="),
+        re.union(
+          str.to_re(":"),
+          str.to_re("+")
         )
       )
     )
@@ -132,30 +132,30 @@ str_in_re(<text>,
 
 <id-no-prefix-1> :: String 
 {
-str_in_re(<id-no-prefix-1>,
-  re_concat(
-    re_union(
-      re_union(
-        re_range("a", "z"),
-        re_range("A", "Z")
+str.in_re(<id-no-prefix-1>,
+  re.++(
+    re.union(
+      re.union(
+        re.range("a", "z"),
+        re.range("A", "Z")
       ),
-      str_to_re("_")
+      str.to_re("_")
     ),
-    re_star(
-      re_union(
-        re_union(
-          re_union(
-            re_union(
-              re_range("a", "z"),
-              re_range("A", "Z")
+    re.*(
+      re.union(
+        re.union(
+          re.union(
+            re.union(
+              re.range("a", "z"),
+              re.range("A", "Z")
             ),
-            re_range("0", "9")
+            re.range("0", "9")
           ),
-          str_to_re("_")
+          str.to_re("_")
         ),
-        re_union(
-          str_to_re("-"),
-          str_to_re(".")
+        re.union(
+          str.to_re("-"),
+          str.to_re(".")
         )
       )
     )
@@ -165,30 +165,30 @@ str_in_re(<id-no-prefix-1>,
 ; 
 <id-no-prefix-2> :: String
 {
-str_in_re(<id-no-prefix-2>,
-  re_concat(
-    re_union(
-      re_union(
-        re_range("a", "z"),
-        re_range("A", "Z")
+str.in_re(<id-no-prefix-2>,
+  re.++(
+    re.union(
+      re.union(
+        re.range("a", "z"),
+        re.range("A", "Z")
       ),
-      str_to_re("_")
+      str.to_re("_")
     ),
-    re_star(
-      re_union(
-        re_union(
-          re_union(
-            re_union(
-              re_range("a", "z"),
-              re_range("A", "Z")
+    re.*(
+      re.union(
+        re.union(
+          re.union(
+            re.union(
+              re.range("a", "z"),
+              re.range("A", "Z")
             ),
-            re_range("0", "9")
+            re.range("0", "9")
           ),
-          str_to_re("_")
+          str.to_re("_")
         ),
-        re_union(
-          str_to_re("-"),
-          str_to_re(".")
+        re.union(
+          str.to_re("-"),
+          str.to_re(".")
         )
       )
     )

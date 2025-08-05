@@ -10,6 +10,8 @@
      TODO: Always more testing 
       * Fix mixed_dac engine recombine looping bug w/ dependent terms in type annotation
 
+     TODO: Reject "length" in non-derived fields (use seq.len or str.len instead)
+     
      FUTURE: Flag that allows you to disable engines in race mode (useful if one engine is buggy on a class of problems)
      FUTURE: More fine-grained check if divide and conquer engines are usable. Right now,
            rejecting all recursive grammars. But really this only is necessary for sygus_dac.

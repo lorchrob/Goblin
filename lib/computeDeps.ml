@@ -385,7 +385,7 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -
   )
 | BVCast (len, expr) -> (
   match call expr with 
-  | [IntConst i] -> [A.il_int_to_bitvector len i]
+  | [IntConst i] -> [A.il_int_to_bv len i]
   | _ -> eval_fail 27
  )
 | BVConst _ | BLConst _ | IntConst _ | BConst _ | PhConst _ | StrConst _ | EmptySet _ -> [expr]

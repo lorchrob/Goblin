@@ -226,9 +226,9 @@ let serialize_bytes: endianness -> sygus_ast -> bytes * bytes
   let ast = Parsing.parse
   "
   <S> ::= <A> <Placeholder> <B> <Placeholder2> <C> { <Placeholder> <- \"testa\"; <Placeholder2> <- \"testb\";};
-  <A> :: BitVector(16) { <A> <- int_to_bitvector(16, 256); }; 
-  <B> :: BitVector(8) { <B> <- int_to_bitvector(8, 256); }; 
-  <C> :: BitVector(8) { <C> <- int_to_bitvector(8, 256); }; 
+  <A> :: BitVec(16) { <A> <- int_to_bv(16, 256); }; 
+  <B> :: BitVec(8) { <B> <- int_to_bv(8, 256); }; 
+  <C> :: BitVec(8) { <C> <- int_to_bv(8, 256); }; 
   <Placeholder> :: String;
   <Placeholder2> :: String;
   " in 

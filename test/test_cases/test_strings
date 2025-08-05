@@ -1,4 +1,4 @@
-<S> ::= <A> <B> <C> { is_prefix(<A>, <B> ++ <C>); lnot (<A> = <B> ++ <C>); str_length(<A>) < str_length (<B>) + str_length(<C>); }  ;
+<S> ::= <A> <B> <C> { str.prefixof(<A>, <B> str.++ <C>); not (<A> = <B> str.++ <C>); str.len(<A>) < str.len (<B>) + str.len(<C>); }  ;
 <A> :: String;
 <B> :: String;
 <C> :: String;

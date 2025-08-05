@@ -1,4 +1,4 @@
-<statement> ::= <rec-statement> { <rec-statement>.<_decls_down> = empty_set<String> ; } ; 
+<statement> ::= <rec-statement> { <rec-statement>.<_decls_down> = set.empty<String> ; } ; 
 
 <rec-statement> ::= 
         <_decls_down> <block-statements> 
@@ -27,7 +27,7 @@
 
 <block-statement> ::= 
       <_decls_up> <_decls_down> <rec-statement> 
-    { <rec-statement>.<_decls_down> = <_decls_down> ; <_decls_up> = empty_set<String> ; } | 
+    { <rec-statement>.<_decls_down> = <_decls_down> ; <_decls_up> = set.empty<String> ; } | 
       <_decls_up> <_decls_down> <declaration> 
     { <declaration>.<_decls_down> = <_decls_down> ; <_decls_up> = <declaration>.<_decls_up> ; } ;
 
@@ -35,11 +35,11 @@
 <declaration> ::= 
     <_decls_down> <_decls_up> <id> <expr> 
     //!! no redeclaration
-  { lnot (member(<id>, <_decls_down>)) ; <_decls_up> = union(<_decls_down>, singleton(<id>)) ; 
+  { not (set.member(<id>, <_decls_down>)) ; <_decls_up> = union(<_decls_down>, set.singleton(<id>)) ; 
     <expr>.<_decls_down> = <_decls_down> ; } 
   | <_decls_down> <_decls_up> <id> 
   //!! no redeclaration
-  { lnot (member(<id>, <_decls_down>)) ; <_decls_up> = singleton(<id>) ; } ;
+  { not (set.member(<id>, <_decls_down>)) ; <_decls_up> = set.singleton(<id>) ; } ;
 
 <paren_expr> ::= <_decls_down> <expr> { <expr>.<_decls_down> = <_decls_down> ; } ;
 
@@ -47,7 +47,7 @@
 <expr> ::=
     //!! Use after declaration
     <_decls_down> <id> <expr> 
-  { member(<id>, <_decls_down>); <expr>.<_decls_down> = <_decls_down> ; } 
+  { set.member(<id>, <_decls_down>); <expr>.<_decls_down> = <_decls_down> ; } 
   | <_decls_down> <test> 
   { <test>.<_decls_down> = <_decls_down> ; } ; 
 
@@ -65,11 +65,11 @@
          { <paren_expr>.<_decls_down> = <_decls_down> ; } 
           //!! Use after declaration
          | <_decls_down> <id> 
-         { member(<id>, <_decls_down>);  } 
+         { set.member(<id>, <_decls_down>);  } 
          | <i> ;
 
 //!! lowercase ascii constraint
-<id> :: String { str_in_re (<id>, (re_star (re_range ("a","z")))) ; lnot (<id> = "") ; } ;
+<id> :: String { str.in_re (<id>, (re_star (re_range ("a","z")))) ; not (<id> = "") ; } ;
 
 <i> :: Int;
 

@@ -259,9 +259,9 @@ let pp_print_bin_op: Format.formatter -> bin_operator -> unit
 | BVOr -> Format.fprintf ppf "bvor"
 | BVXor -> Format.fprintf ppf "bvxor"
 | GLAnd 
-| LAnd -> Format.fprintf ppf "land"
-| LOr -> Format.fprintf ppf "lor"
-| LXor -> Format.fprintf ppf "lxor"
+| LAnd -> Format.fprintf ppf "and"
+| LOr -> Format.fprintf ppf "or"
+| LXor -> Format.fprintf ppf "xor"
 | LImplies -> Format.fprintf ppf "=>"
 | Plus -> Format.fprintf ppf "+"
 | Minus -> Format.fprintf ppf "-"
@@ -275,7 +275,7 @@ let pp_print_unary_op: Format.formatter -> unary_operator -> unit
 = fun ppf op -> match op with 
 | UPlus -> Format.fprintf ppf  "+"
 | UMinus -> Format.fprintf ppf  "-"
-| LNot -> Format.fprintf ppf  "lnot"
+| LNot -> Format.fprintf ppf  "not"
 | BVNot -> Format.fprintf ppf  "bvnot"
 
 let pp_print_comp_op: Format.formatter -> comp_operator -> unit 
@@ -305,7 +305,7 @@ let rec pp_print_ty: Format.formatter -> il_type -> unit
 | Placeholder -> Format.fprintf ppf "Placeholder"
 | String -> Format.fprintf ppf "String"
 | BitList -> Format.fprintf ppf "BitList" 
-| BitVector width -> Format.fprintf ppf "BitVector(%d)" width
+| BitVector width -> Format.fprintf ppf "BitVec(%d)" width
 | Set ty -> Format.fprintf ppf "Set(%a)" pp_print_ty ty
 | ADT rules -> 
   Format.fprintf ppf "ADT: %a"
@@ -325,21 +325,21 @@ let rec pp_print_case: Format.formatter -> case -> unit
 and pp_print_expr: Format.formatter -> expr -> unit 
 = fun ppf expr -> let r = pp_print_expr in match expr with
 | EmptySet ty -> 
-  Format.fprintf ppf "empty_set<%a>"
+  Format.fprintf ppf "set.empty<%a>"
     pp_print_ty ty
 | Singleton expr -> 
-  Format.fprintf ppf "singleton(%a)" 
+  Format.fprintf ppf "set.singleton(%a)" 
     pp_print_expr expr
 | BinOp (expr1, SetMembership, expr2) -> 
-  Format.fprintf ppf "member(%a, %a)"
+  Format.fprintf ppf "set.member(%a, %a)"
     pp_print_expr expr1
     pp_print_expr expr2
 | BinOp (expr1, SetUnion, expr2) -> 
-  Format.fprintf ppf "union(%a, %a)"
+  Format.fprintf ppf "set.union(%a, %a)"
     pp_print_expr expr1
     pp_print_expr expr2
 | BinOp (expr1, SetIntersection, expr2) -> 
-  Format.fprintf ppf "intersect(%a, %a)"
+  Format.fprintf ppf "set.intersect(%a, %a)"
     pp_print_expr expr1
     pp_print_expr expr2
 | BinOp (expr1, op, expr2) -> 
@@ -357,13 +357,13 @@ and pp_print_expr: Format.formatter -> expr -> unit
     pp_print_comp_op op 
     pp_print_expr expr2
 | StrLength expr -> 
-  Format.fprintf ppf "str_length(%a)"
+  Format.fprintf ppf "str.len(%a)"
     pp_print_expr expr 
 | Length expr -> 
   Format.fprintf ppf "length(%a)"
     pp_print_expr expr 
 | BVCast (width, expr) -> 
-  Format.fprintf ppf "int_to_bitvector(%d, %a)" 
+  Format.fprintf ppf "int_to_bv(%d, %a)" 
     width 
     pp_print_expr expr 
 | Match (nts, nt, cases) -> 
@@ -469,7 +469,7 @@ let pp_print_ast: Format.formatter -> ast ->  unit
   Format.fprintf ppf "%a\n"
     (Lib.pp_print_list pp_print_element "\n") ast
 
-let il_int_to_bitvector: int -> int -> expr 
+let il_int_to_bv: int -> int -> expr 
 = fun length n ->
   if n >= (1 lsl length) then
     (* NOTE: If we overflow, return max value *)

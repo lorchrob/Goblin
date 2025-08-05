@@ -6,9 +6,9 @@ let input = Parsing.parse "
 <S> ::= <A> <C> | <S> ;
 <A> ::= <B> | <S> ;
 <Z> ::= <L> <N> <Z> ;
-<B> :: BitVector(16) ;
-<L> :: BitVector(16) ;
-<N> :: BitVector(16) ;
+<B> :: BitVec(16) ;
+<L> :: BitVec(16) ;
+<N> :: BitVec(16) ;
 
 " in 
 let x = canonicalize input in

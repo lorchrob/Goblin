@@ -4,7 +4,6 @@ open Ast
 
 %token BOOL
 %token INT
-%token PLACEHOLDER
 %token STRINGTYPE
 %token BITVECTOR
 %token INTTOBITVECTOR
@@ -18,6 +17,7 @@ open Ast
 %token LXOR
 %token LNOT
 %token SET
+%token LIST
 %token BVAND
 %token BVOR
 %token BVXOR
@@ -84,7 +84,6 @@ open Ast
 %left TIMES DIV
 %nonassoc LNOT
 %nonassoc BVNOT 
-// %left DOT 
 // %left SEMICOLON
 
 %start <Ast.ast> s
@@ -118,10 +117,9 @@ rhs:
 il_type: 
 | BOOL { Bool }
 | INT { Int }
-| PLACEHOLDER { Placeholder }
 | STRINGTYPE { String }
 | BITVECTOR; LPAREN; len = INTEGER; RPAREN; { BitVector (len) }
-| BITLIST { BitList }
+| LIST; LPAREN; BOOL; RPAREN; { BitList }
 | SET; LPAREN; ty = il_type; RPAREN; { Set ty } 
 
 semantic_constraints:
@@ -200,19 +198,10 @@ expr:
 | RE_CONCAT; LPAREN; es = separated_nonempty_list(COMMA, expr); RPAREN; { ReConcat es }
 | RE_STAR; LPAREN; e = expr; RPAREN; { ReStar e } 
 
-(* Case expressions *)
-// | CASE; e = nt_expr; OF; cs = case_list { Match (e, cs) }
 (* Variables *)
 | e = nt_expr; (* _ = option(index); *) { NTExpr ([], e) }
 (* Arbitrary parens *)
 | LPAREN; e = expr; RPAREN; { e }
-
-// case_list:
-// | OPTION; e1 = nt_expr; ARROW; e2 = expr; { [(e1, e2)] }
-// | OPTION; e1 = nt_expr; ARROW; e2 = expr; cs = case_list { (e1, e2) :: cs }
-
-// index:
-// | LPAREN; index = INTEGER; RPAREN; { index }
 
 nt_expr: 
 | nt = nonterminal { [nt, None] }

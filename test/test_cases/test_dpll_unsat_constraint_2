@@ -1,4 +1,4 @@
-<S> ::= <A> { <A>.<B> = <A>.<C> land lnot (<A>.<B> = <A>.<C>); false; }  ;
+<S> ::= <A> { <A>.<B> = <A>.<C> and not (<A>.<B> = <A>.<C>); false; }  ;
 <A> ::= <D> | <B> <C> ;
 <B> :: Int ;
 <C> :: Int ;

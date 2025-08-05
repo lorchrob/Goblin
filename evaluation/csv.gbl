@@ -20,21 +20,21 @@
 <raw-field> :: String 
 {
 // simple field 
-str_in_re(<raw-field>, 
-              re_concat(re_concat(re_star(str_to_re(" ")), 
-                    re_union(
-                        re_union(re_range("!", "!"), re_range("#", ":")), re_range("<", "~"))), 
-                    re_star(str_to_re(" "))))
-lor 
+str.in_re(<raw-field>, 
+              re.++(re.++(re.*(str.to_re(" ")), 
+                    re.union(
+                        re.union(re.range("!", "!"), re.range("#", ":")), re.range("<", "~"))), 
+                    re.*(str.to_re(" "))))
+or 
 // quoted field
-str_in_re(<raw-field>,
-  re_union(re_union(
-    re_range("!", "!"), 
-   re_range("#", "~")), 
-    re_union(
-      re_union(str_to_re("\t"), 
-      str_to_re("\n")),
-      str_to_re("\r")
+str.in_re(<raw-field>,
+  re.union(re.union(
+    re.range("!", "!"), 
+    re.range("#", "~")), 
+    re.union(
+      re.union(str.to_re("\t"), 
+      str.to_re("\n")),
+      str.to_re("\r")
     ))
   ) ; 
 }

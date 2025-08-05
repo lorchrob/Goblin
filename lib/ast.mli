@@ -115,7 +115,7 @@ val pp_print_expr : Format.formatter -> expr -> unit
 val pp_print_ty : Format.formatter -> il_type -> unit
 val pp_print_semantic_constraint: Format.formatter -> semantic_constraint -> unit
 val pp_print_prod_rule_rhs: Format.formatter -> prod_rule_rhs -> unit
-val il_int_to_bitvector : int -> int -> expr
+val il_int_to_bv : int -> int -> expr
 val grammar_element_to_string : grammar_element -> string
 val nts_of_rhs: prod_rule_rhs -> string list 
 val expr_contains_dangling_nt: Utils.SILSet.t -> expr -> bool 

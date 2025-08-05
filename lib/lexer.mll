@@ -9,45 +9,43 @@
     tbl
 
   let keyword_table = mk_hashtbl [
-    "empty_set", EMPTYSET ;
-    "member", MEMBER ; 
-    "union", UNION ;
-    "intersection", INTERSECTION ;
-    "singleton", SINGLETON ;
+    "set.empty", EMPTYSET ;
+    "set.member", MEMBER ; 
+    "set.union", UNION ;
+    "set.inter", INTERSECTION ;
+    "set.singleton", SINGLETON ;
     "Bool", BOOL ;
     "Set", SET ;
+    "List", LIST ; 
     "Int", INT ;
-    "Placeholder", PLACEHOLDER ;
     "String", STRINGTYPE ; 
-    "BitVector", BITVECTOR ;
-    "int_to_bitvector", INTTOBITVECTOR ;
+    "BitVec", BITVECTOR ;
+    "int_to_bv", INTTOBITVECTOR ;
     "BitList", BITLIST ; 
     "length", LENGTH ;
-    "str_length", STRLENGTH ;
-    "land", LAND ;
-    "lor", LOR ;
-    "lxor", LXOR ;
-    "lnot", LNOT ;
+    "str.len", STRLENGTH ;
+    "and", LAND ;
+    "or", LOR ;
+    "xor", LXOR ;
+    "not", LNOT ;
     "bvand", BVAND ;
     "bvor", BVOR ; 
     "bvxor", BVXOR ; 
     "bvnot", BVNOT ;
     "true", TRUE ; 
     "false", FALSE ;
-    "bvlt", BVLT ;
-    "bvlte", BVLTE ;
-    "bvgt", BVGT ; 
-    "bvgte", BVGTE ;
-
-    "is_prefix", STRPREFIX ;
-    "contains", STRCONTAINS ; 
-
-    "str_to_re", STR_TO_RE ; 
-    "str_in_re", STR_IN_RE ; 
-    "re_range", RE_RANGE ; 
-    "re_union", RE_UNION ; 
-    "re_star", RE_STAR ; 
-    "re_concat", RE_CONCAT ;
+    "bvult", BVLT ;
+    "bvulte", BVLTE ;
+    "bvugt", BVGT ; 
+    "bvugte", BVGTE ;
+    "str.prefixof", STRPREFIX ;
+    "str.contains", STRCONTAINS ; 
+    "str.to_re", STR_TO_RE ; 
+    "str.in_re", STR_IN_RE ; 
+    "re.range", RE_RANGE ; 
+    "re.union", RE_UNION ; 
+    "re.*", RE_STAR ; 
+    "re.++", RE_CONCAT ;
   ] 
 }
 
@@ -57,7 +55,7 @@ let digit = ['0'-'9']
 let bit = ['0' '1']
 let int = digit+
 let letter = ['a'-'z' 'A'-'Z']
-let id = ['a'-'z' 'A'-'Z' '_'] ['a'-'z' 'A'-'Z' '_' '-' '0'-'9']*
+let id = ['a'-'z' 'A'-'Z' '_'] ['a'-'z' 'A'-'Z' '_' '-' '.' '+' '*' '0'-'9']*
 
 rule read = 
   parse
@@ -77,7 +75,7 @@ rule read =
   | "}" { RCURLY }
   | "<-" { ASSIGN }
   (* | "->" { ARROW } *)
-  | "++" { STRCONCAT }
+  | "str.++" { STRCONCAT }
   | "+" { PLUS }
   | "-" { MINUS }
   | "*" { TIMES }
