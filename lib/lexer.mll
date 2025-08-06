@@ -22,6 +22,7 @@
     "BitVec", BITVECTOR ;
     "int_to_bv", INTTOBITVECTOR ;
     "BitList", BITLIST ; 
+    "seq.len", LENGTH ; (*!! Use different symbol *)
     "length", LENGTH ;
     "str.len", STRLENGTH ;
     "and", LAND ;
@@ -79,7 +80,7 @@ rule read =
   | "+" { PLUS }
   | "-" { MINUS }
   | "*" { TIMES }
-  | "/" { DIV }
+  | "div" { DIV }
   | "(" { LPAREN }
   | ")" { RPAREN }
   | "," { COMMA }
