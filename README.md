@@ -1,6 +1,4 @@
-# Goblin Ubuntu/macOs build instructions
-
-## Dependencies
+### Goblin dependencies
 
 * OCaml **version >= 5.1.1**
 
@@ -18,16 +16,17 @@
 * Required opam packages:
   `opam install menhirLib cmdliner ocamlgraph bitstring yojson lwt batteries ppx_bitstring alcotest lwt_ppx menhir`
 
-## Building and running
+### Building Goblin
 
-* To build, run `make`
-* To (build and) execute, run `./goblin` 
+Run `make` from the `core` directory 
+
+### Running Goblin
+
+* To (build and) execute, run `./goblin`  from the `core` directory
 * To run tests, run `make test`
+* Use `--help` for command-line arg documentation 
+* Example invocation: `./goblin --file ./test/test_cases/test2`
 
-Command-line args:
+### User documentation
 
-* Use `--help` for command-line arg documentation that's guaranteed to be up to date (e.g., `goblin --help`)
-* Use `--file <filename>` to specify the input file (**required**) (e.g., `goblin --file ./my_files/input`)
-* Use `--debug` for debug output
-* Use `--only-parse` to run the front end (type checking, syntactic checks, various AST transformations, etc.) without invoking SyGuS
-* Use `--no-warnings` to disable warnings
+See the files within the `doc` directory
