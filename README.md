@@ -2,9 +2,8 @@
 
 * OCaml **version >= 5.1.1**
 
-  Install Opam and create a switch for version 5.1.1 in the `core` (this) directory:
+  Install Opam and create a switch for version 5.1.1 in the top-level directory:
   ```
-  cd core
   bash -c "sh <(curl -fsSL https://opam.ocaml.org/install.sh)"
   opam init
   opam switch create 5.1.1
@@ -18,11 +17,11 @@
 
 ### Building Goblin
 
-Run `make` from the `core` directory 
+Run `make` from the top-level directory 
 
 ### Running Goblin
 
-* To (build and) execute, run `./goblin`  from the `core` directory
+* To (build and) execute, run `./goblin`  from the top-level directory
 * To run tests, run `make test`
 * Use `--help` for command-line arg documentation 
 * Example invocation: `./goblin --file ./test/test_cases/test2`
