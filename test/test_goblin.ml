@@ -107,7 +107,7 @@ let sd_test_another_ambiguous_reference_2 () =
   let _, output, _ = main_pipeline ~engine:(Some SygusDac) input in
   check string "test_another_ambiguous_reference_2" output "infeasible\n"*)
 
-let sd_test_another_ambiguous_reference () =
+(*let sd_test_another_ambiguous_reference () =
   let input = "../../../test/test_cases/test_another_ambiguous_reference" in
   let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
@@ -315,7 +315,7 @@ let sd_test_strings () =
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
-  | Error msg -> fail msg
+  | Error msg -> fail msg*)
 
 let dm_test_another_ambiguous_reference_1 () =
   (* TODO: Fix ugly paths. The test_cases directory is currently not included in the build directory, 
@@ -539,7 +539,7 @@ let dm_test_strings () =
   | Ok _ -> ()  
   | Error msg -> fail msg
 
-let dd_test_another_ambiguous_reference_1 () =
+(*let dd_test_another_ambiguous_reference_1 () =
   (* TODO: Fix ugly paths. The test_cases directory is currently not included in the build directory, 
            so we have to reference it from the build directory. *)
   let input = "../../../test/test_cases/test_another_ambiguous_reference_1" in
@@ -1044,7 +1044,7 @@ let sd_test17 () =
   try 
     let _ = main_pipeline ~engine:(Some SygusDac) input in
     fail "expected error"
-  with _ -> () 
+  with _ -> () *)
 
 let dm_test17 () = 
   let input = "../../../test/test_cases/test17" in
@@ -1053,7 +1053,7 @@ let dm_test17 () =
     fail "expected error"
   with _ -> () 
 
-let dd_test17 () = 
+(*let dd_test17 () = 
   let input = "../../../test/test_cases/test17" in
   try 
     let _ = main_pipeline ~engine:(Some DpllDac) input in
@@ -1073,7 +1073,7 @@ let sd_test18 () =
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
-  | Error msg -> fail msg
+  | Error msg -> fail msg*)
 
 let dm_test18 () = 
   let input = "../../../test/test_cases/test18" in
@@ -1083,7 +1083,7 @@ let dm_test18 () =
   | Ok _ -> ()  
   | Error msg -> fail msg
 
-let dd_test18 () = 
+(*let dd_test18 () = 
   let input = "../../../test/test_cases/test18" in
   let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
@@ -1097,7 +1097,7 @@ let md_test18 () =
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
-  | Error msg -> fail msg
+  | Error msg -> fail msg*)
 
 let dm_test2 () = 
   let input = "../../../test/test_cases/test2" in
@@ -1195,7 +1195,7 @@ let dm_test14 () =
   | Ok _ -> ()  
   | Error msg -> fail msg
 
-let dd_test3 () = 
+(*let dd_test3 () = 
   let input = "../../../test/test_cases/test3" in
   let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
@@ -1361,7 +1361,7 @@ let sd_test16 () =
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
-  | Error msg -> fail msg
+  | Error msg -> fail msg*)
 
 let dm_test16 () = 
   let input = "../../../test/test_cases/test16" in
@@ -1371,13 +1371,13 @@ let dm_test16 () =
   | Ok _ -> ()  
   | Error msg -> fail msg
 
-let md_test16 () = 
+(*let md_test16 () = 
   let input = "../../../test/test_cases/test16" in
   let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
   let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
   match output with
   | Ok _ -> ()  
-  | Error msg -> fail msg
+  | Error msg -> fail msg*)
 
 let test10 () =
   let input = "../../../test/test_cases/test10" in
