@@ -55,6 +55,7 @@ and expr =
 | CompOp of expr * comp_operator * expr
 | Length of expr
 | StrLength of expr
+| SeqLength of expr
 | BVCast of int * expr
 (* First string list track the context of the nonterminal being matched 
    Int options are for clarifying ambiguous dot notation references, as in NTExpr *)

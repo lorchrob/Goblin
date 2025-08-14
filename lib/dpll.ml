@@ -286,6 +286,7 @@ let rec universalize_expr: bool -> (string * int option) list -> Ast.expr -> Ast
   | UnOp (op, expr) -> UnOp (op, r expr) 
   | CompOp (expr1, op, expr2) -> CompOp (r expr1, op, r expr2) 
   | StrLength expr -> StrLength (r expr)
+  | SeqLength expr -> SeqLength (r expr)
   | Length expr -> Length (r expr) 
   | Singleton expr -> Singleton (r expr)
   | Match _ -> Utils.crash "Unexpected case in universalize_expr"

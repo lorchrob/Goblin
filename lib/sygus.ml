@@ -259,9 +259,10 @@ and pp_print_expr: ?nt_prefix:string -> TC.context -> Format.formatter -> A.expr
   | StrLength expr -> 
     Format.fprintf ppf "(str.len %a)"
       r expr
-  | Length expr -> 
+  | SeqLength expr -> 
     Format.fprintf ppf "(seq.len %a)"
       r expr
+  | Length _ -> Utils.crash "length is not supported in SMT constraints"
   | EmptySet ty -> 
     Format.fprintf ppf "(as set.empty (Set %a))"
       pp_print_ty ty  

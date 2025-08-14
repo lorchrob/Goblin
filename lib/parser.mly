@@ -12,6 +12,7 @@ open Ast
 // %token OF
 %token LENGTH
 %token STRLENGTH
+%token SEQLENGTH
 %token LAND
 %token LOR
 %token LXOR
@@ -187,6 +188,7 @@ expr:
   LPAREN; width = INTEGER; COMMA; e = expr; RPAREN; { BVCast (width, e) }
 | LENGTH; LPAREN; e = expr; RPAREN; { Length (e) }
 | STRLENGTH; LPAREN; e = expr; RPAREN; { StrLength (e) }
+| SEQLENGTH; LPAREN; e = expr; RPAREN; { SeqLength (e) }
 | STRPREFIX; LPAREN; e1 = expr; COMMA; e2 = expr; RPAREN; { CompOp (e1, StrPrefix, e2) }
 | STRCONTAINS; LPAREN; e1 = expr; COMMA; e2 = expr; RPAREN; { CompOp (e1, StrContains, e2) }
 | STR_TO_RE; LPAREN; e = expr; RPAREN; { StrToRe e }

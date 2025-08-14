@@ -1,5 +1,5 @@
 <S> ::= <A> <B> { <A> <- length(<B>); };
 <B> ::= <C> <D>;
-<C> :: List(Bool) { length(<C>) > 0; }; 
+<C> :: List(Bool) { seq.len(<C>) > 0; }; 
 <D> :: BitVec(8);
 <A> :: Int;

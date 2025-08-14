@@ -68,6 +68,7 @@ expr =
 | CompOp of expr * comp_operator * expr 
 | Length of expr
 | StrLength of expr
+| SeqLength of expr
 | BVCast of int * expr
 (* First string list track the context of the nonterminal being matched 
    Int options are for clarifying ambiguous dot notation references, as in NTExpr *)
@@ -138,6 +139,7 @@ let rec get_nts_from_expr: expr -> string list
   | CompOp (expr1, _, expr2) -> 
     r expr1 @ r expr2
   | StrLength expr
+  | SeqLength expr
   | StrToRe expr 
   | ReStar expr 
   | Length expr -> 
@@ -171,6 +173,7 @@ let rec get_nts_from_expr2: expr -> (string * int option) list list
   | CompOp (expr1, _, expr2) -> 
     r expr1 @ r expr2
   | StrLength expr
+  | SeqLength expr
   | StrToRe expr
   | Length expr -> 
     r expr
@@ -211,6 +214,7 @@ let rec get_nts_from_expr_after_desugaring_dot_notation: expr -> (string * int o
   | CompOp (expr1, _, expr2) -> 
     r expr1 @ r expr2
   | StrLength expr
+  | SeqLength expr
   | StrToRe expr 
   | Length expr -> 
     r expr
@@ -358,6 +362,9 @@ and pp_print_expr: Format.formatter -> expr -> unit
     pp_print_expr expr2
 | StrLength expr -> 
   Format.fprintf ppf "str.len(%a)"
+    pp_print_expr expr 
+| SeqLength expr -> 
+  Format.fprintf ppf "seq.len(%a)"
     pp_print_expr expr 
 | Length expr -> 
   Format.fprintf ppf "length(%a)"
@@ -519,6 +526,7 @@ let rec expr_contains_dangling_nt: Utils.SILSet.t -> expr -> bool
   | CompOp (expr1, _, expr2) -> 
     r expr1 || r expr2
   | StrLength expr
+  | SeqLength expr
   | ReStar expr  
   | Length expr -> 
     r expr
@@ -581,6 +589,7 @@ let rec prepend_nt_to_dot_exprs: string -> expr -> expr
   | CompOp (expr1, op, expr2) -> CompOp (r expr1, op, r expr2) 
   | StrLength expr -> StrLength (r expr)
   | Length expr -> Length (r expr) 
+  | SeqLength expr -> SeqLength (r expr) 
   | Singleton expr -> Singleton (r expr)
   | ReRange (expr1, expr2) -> ReRange (r expr1, r expr2) 
   | ReConcat exprs -> ReConcat (List.map r exprs)

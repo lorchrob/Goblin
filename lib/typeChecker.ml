@@ -65,6 +65,9 @@ let rec infer_type_expr: context -> mode -> expr -> il_type option
     Utils.error error_message
   | None -> None
   )
+| SeqLength (expr) -> 
+  let _ = check_type_expr ctx mode BitList expr in 
+  Some Int
 | StrLength (expr) -> 
   let _ = check_type_expr ctx mode String expr in 
   Some Int

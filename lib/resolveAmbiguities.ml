@@ -101,6 +101,9 @@ let rec generate_all_possible_exprs: TC.context -> string list -> A.expr -> A.ex
   | StrLength expr -> 
     let exprs = r expr in 
     List.map (fun e -> A.StrLength e) exprs
+  | SeqLength expr -> 
+    let exprs = r expr in 
+    List.map (fun e -> A.SeqLength e) exprs
   | Singleton expr -> 
     let exprs = r expr in 
     List.map (fun e -> A.Singleton e) exprs

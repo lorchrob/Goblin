@@ -16,6 +16,7 @@ let rec calculate_casts: expr -> expr
 | Singleton expr -> Singleton (calculate_casts expr)
 | CompOp (expr1, op, expr2) -> CompOp (calculate_casts expr1, op, calculate_casts expr2) 
 | StrLength expr -> StrLength (calculate_casts expr) 
+| SeqLength expr -> SeqLength (calculate_casts expr) 
 | Length expr -> Length (calculate_casts expr) 
 | Match (nt_ctx, nt, cases) -> 
   let cases = List.map (fun case -> match case with 

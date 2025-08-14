@@ -15,8 +15,26 @@ type sygus_ast =
 | BoolLeaf of bool
 | StrLeaf of string
 | SetLeaf of concrete_set 
-| VarLeaf of string (* DANIYAL: Placeholder can go here *)
+| VarLeaf of string 
 
+(*!!
+type expr = 
+| Op of expr * expr 
+| ...
+
+type q = Forall | Exists
+
+(* First string is variable name, second string is type *)
+type bound_vars = (string * string) list
+
+type formula = 
+| Quantifier of q * bound_vars * formula
+| Implies of formula * formula
+| Equality of expr * expr 
+| Disequality of expr * expr
+
+type ast = formula list
+*)
 type endianness = 
 | Little 
 | Big

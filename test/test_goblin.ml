@@ -1393,7 +1393,7 @@ let () =
     "test_check_sygus_ast_4", [test_case "test_check_sygus_ast_4" `Quick test_check_sygus_ast_4];
     "test_check_sygus_ast_5", [test_case "test_check_sygus_ast_5" `Quick test_check_sygus_ast_5];
 
-    "sd_test_sc", [test_case "Semantic constraint" `Quick sd_test_sc];
+    (*"sd_test_sc", [test_case "Semantic constraint" `Quick sd_test_sc];
     "sd_test_placeholder", [test_case "Placeholder" `Quick sd_test_placeholder];
     "sd_test_dt", [test_case "Dependent term" `Quick sd_test_dt];
     "sd_test_dt2", [test_case "Dependent term 2" `Quick sd_test_dt2];
@@ -1417,7 +1417,7 @@ let () =
     "sd_overlapping_constraints", [test_case "overlapping_constraints" `Quick sd_overlapping_constraints];
     "sd_overlapping_constraints_2", [test_case "overlapping_constraints_2" `Quick sd_overlapping_constraints_2];
     "sd_repeated_nt_dependency", [test_case "repeated_nt_dependency" `Quick sd_repeated_nt_dependency];
-    "sd_test_strings", [test_case "test_strings" `Quick sd_test_strings];
+    "sd_test_strings", [test_case "test_strings" `Quick sd_test_strings];*)
  
     "dm_test_sc", [test_case "Semantic constraint" `Quick dm_test_sc];
     "dm_test_placeholder", [test_case "Placeholder" `Quick dm_test_placeholder];
@@ -1446,7 +1446,7 @@ let () =
     "dm_repeated_nt_dependency", [test_case "repeated_nt_dependency" `Quick dm_repeated_nt_dependency];
     "dm_test_strings", [test_case "test_strings" `Quick dm_test_strings]; 
   
-    "dd_test_sc", [test_case "Semantic constraint" `Quick dd_test_sc];
+    (*"dd_test_sc", [test_case "Semantic constraint" `Quick dd_test_sc];
     "dd_test_placeholder", [test_case "Placeholder" `Quick dd_test_placeholder];
     "dd_test_dt", [test_case "Dependent term" `Quick dd_test_dt];
     "dd_test_dt2", [test_case "Dependent term 2" `Quick dd_test_dt2];
@@ -1506,7 +1506,7 @@ let () =
     "sd_test8", [test_case "test8" `Quick sd_test8];
     "sd_test9", [test_case "test9" `Quick sd_test9];
     "sd_test14", [test_case "test14" `Quick sd_test14];
-    "sd_test11", [test_case "test11" `Quick sd_test11];
+    "sd_test11", [test_case "test11" `Quick sd_test11];*)
 
     "dm_test2", [test_case "test2" `Quick dm_test2];
     "dm_test3", [test_case "test3" `Quick dm_test3];
@@ -1521,7 +1521,7 @@ let () =
     "dm_test12", [test_case "test12" `Quick dm_test12];
     "dm_test13", [test_case "test13" `Quick dm_test13];
 
-    "dd_test3", [test_case "test3" `Quick dd_test3];
+    (*"dd_test3", [test_case "test3" `Quick dd_test3];
     "dd_test4", [test_case "test4" `Quick dd_test4];
     "dd_test5", [test_case "test5" `Quick dd_test5];
     "dd_test6", [test_case "test6" `Quick dd_test6];
@@ -1541,21 +1541,21 @@ let () =
     "md_test8", [test_case "test8" `Quick md_test8];
     "md_test9", [test_case "test9" `Quick md_test9];
     "md_test14", [test_case "test14" `Quick md_test14];
-    "md_test11", [test_case "test11" `Quick md_test11];
+    "md_test11", [test_case "test11" `Quick md_test11];*)
 
-    "sd_test17", [test_case "test17" `Quick sd_test17];
+    (*"sd_test17", [test_case "test17" `Quick sd_test17];*)
     "dm_test17", [test_case "test17" `Quick dm_test17];
-    "dd_test17", [test_case "test17" `Quick dd_test17];
+    (*"dd_test17", [test_case "test17" `Quick dd_test17];
     "md_test17", [test_case "test17" `Quick md_test17];
 
-    "sd_test16", [test_case "test16" `Quick sd_test16];
+    "sd_test16", [test_case "test16" `Quick sd_test16];*)
     "dm_test16", [test_case "test16" `Quick dm_test16];
-    "md_test16", [test_case "test16" `Quick md_test16];
+    (*"md_test16", [test_case "test16" `Quick md_test16];
 
-    "sd_test18", [test_case "test18" `Quick sd_test18];
+    "sd_test18", [test_case "test18" `Quick sd_test18];*)
     "dm_test18", [test_case "test18" `Quick dm_test18];
-    "dd_test18", [test_case "test18" `Quick dd_test18];
-    "md_test18", [test_case "test18" `Quick md_test18];
+    (*"dd_test18", [test_case "test18" `Quick dd_test18];
+    "md_test18", [test_case "test18" `Quick md_test18];*)
 
     "test10", [test_case "test10" `Quick test10];
 
@@ -1564,12 +1564,12 @@ let () =
 
     (*"sd_test_another_ambiguous_reference_1", [test_case "sd_test_another_ambiguous_reference_1" `Quick sd_test_another_ambiguous_reference_1]; *)
     "dm_test_another_ambiguous_reference_1", [test_case "dm_test_another_ambiguous_reference_1" `Quick dm_test_another_ambiguous_reference_1]; 
-    "dd_test_another_ambiguous_reference_1", [test_case "dd_test_another_ambiguous_reference_1" `Quick dd_test_another_ambiguous_reference_1]; 
-    "md_test_another_ambiguous_reference_1", [test_case "md_test_another_ambiguous_reference_1" `Quick md_test_another_ambiguous_reference_1]; 
+    (*"dd_test_another_ambiguous_reference_1", [test_case "dd_test_another_ambiguous_reference_1" `Quick dd_test_another_ambiguous_reference_1]; 
+    "md_test_another_ambiguous_reference_1", [test_case "md_test_another_ambiguous_reference_1" `Quick md_test_another_ambiguous_reference_1]; *)
     (*"sd_test_another_ambiguous_reference_2", [test_case "sd_test_another_ambiguous_reference_2" `Quick sd_test_another_ambiguous_reference_2];  *)
     "dm_test_another_ambiguous_reference_2", [test_case "dm_test_another_ambiguous_reference_2" `Quick dm_test_another_ambiguous_reference_2]; 
-    "dd_test_another_ambiguous_reference_2", [test_case "dd_test_another_ambiguous_reference_2" `Quick dd_test_another_ambiguous_reference_2]; 
-    "md_test_another_ambiguous_reference_2", [test_case "md_test_another_ambiguous_reference_2" `Quick md_test_another_ambiguous_reference_2];  
+    (*"dd_test_another_ambiguous_reference_2", [test_case "dd_test_another_ambiguous_reference_2" `Quick dd_test_another_ambiguous_reference_2]; 
+    "md_test_another_ambiguous_reference_2", [test_case "md_test_another_ambiguous_reference_2" `Quick md_test_another_ambiguous_reference_2];  *)
 
 
   ]

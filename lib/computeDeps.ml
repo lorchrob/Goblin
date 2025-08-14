@@ -177,6 +177,7 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -
   | [BVConst (len, b)] -> [BVConst (len, List.map not b)]
   | _ -> eval_fail 9
   )
+| SeqLength expr 
 | StrLength expr -> (
   match call expr with 
   | [StrConst str ] -> [IntConst (String.length str)]

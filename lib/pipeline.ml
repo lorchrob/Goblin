@@ -4,11 +4,6 @@
      * Optimization: infer tighter set-logic 
      TODO: Clean up crud in output when Utils.crash is called 
      TODO: Look at Shankar paper Omar sent in Zulip
-     TODO: Write paper 
-     TODO: Experimental evaluation -- XML, CSV
-     TODO: Remove placeholder type  
-     TODO: Always more testing 
-      * Fix mixed_dac engine recombine looping bug w/ dependent terms in type annotation
 
      TODO: Reject "length" in non-derived fields (use seq.len or str.len instead)
      

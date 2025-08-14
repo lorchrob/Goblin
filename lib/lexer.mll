@@ -22,7 +22,7 @@
     "BitVec", BITVECTOR ;
     "int_to_bv", INTTOBITVECTOR ;
     "BitList", BITLIST ; 
-    "seq.len", LENGTH ; (*!! Use different symbol *)
+    "seq.len", SEQLENGTH ; 
     "length", LENGTH ;
     "str.len", STRLENGTH ;
     "and", LAND ;

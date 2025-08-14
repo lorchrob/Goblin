@@ -86,6 +86,7 @@ let rec check_dangling_identifiers: Utils.StringSet.t -> expr -> expr
   | CompOp (expr1, op, expr2) -> CompOp (call expr1, op, call expr2) 
   | StrLength expr -> StrLength (call expr)
   | Length expr -> Length (call expr) 
+  | SeqLength expr -> SeqLength (call expr) 
   | Match _ -> assert false (* -> Match (check_d_ids_nt_expr nt_expr, cases) *)
   | StrInRe (expr1, expr2) -> StrInRe (call expr1, call expr2) 
   | ReStar expr -> ReStar (call expr)
@@ -131,6 +132,7 @@ let rec check_prod_rule_nt_exprs: prod_rule_map -> Utils.StringSet.t -> expr -> 
   | StrLength expr -> StrLength (call expr)
   | ReStar expr -> ReStar (call expr)
   | Length expr -> Length (call expr) 
+  | SeqLength expr -> SeqLength (call expr) 
   | StrInRe (expr1, expr2) -> StrInRe (call expr1, call expr2) 
   | StrToRe expr -> StrToRe (call expr) 
   | ReConcat exprs -> ReConcat (List.map call exprs)
@@ -164,6 +166,7 @@ let rec check_type_annot_nt_exprs: prod_rule_map -> Utils.StringSet.t -> expr ->
   | CompOp (expr1, op, expr2) -> CompOp (call expr1, op, call expr2) 
   | StrLength expr -> StrLength (call expr)
   | Length expr -> Length (call expr) 
+  | SeqLength expr -> SeqLength (call expr) 
   | Match _ -> assert false(* -> Match (check_nt_expr_refs prm nt_expr, cases) *)
   | StrInRe (expr1, expr2) -> StrInRe (call expr1, call expr2) 
   | ReStar expr -> ReStar (call expr)
@@ -314,6 +317,7 @@ let str_const_to_ph_const ast =
   | UnOp (op, expr) -> UnOp (op, handle_expr expr) 
   | CompOp (expr1, op, expr2) -> CompOp (handle_expr expr1, op, handle_expr expr2) 
   | StrLength expr -> StrLength (handle_expr expr) 
+  | SeqLength expr -> SeqLength (handle_expr expr) 
   | Length expr -> Length (handle_expr expr) 
   | Match (nt_ctx, nt, cases) -> 
     let cases = List.map (fun case -> match case with 
