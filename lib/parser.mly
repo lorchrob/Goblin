@@ -154,7 +154,6 @@ expr:
 | e1 = expr; BVAND; e2 = expr { BinOp (e1, BVAnd, e2) }
 | e1 = expr; BVOR; e2 = expr { BinOp (e1, BVOr, e2) }
 | e1 = expr; BVXOR; e2 = expr { BinOp (e1, BVXor, e2) }
-| e1 = expr; STRCONCAT; e2 = expr { BinOp (e1, StrConcat, e2) }
 (* Comparison operations *)
 | e1 = expr; LT; e2 = expr { CompOp (e1, Lt, e2) }
 | e1 = expr; LTE; e2 = expr { CompOp (e1, Lte, e2) }
@@ -178,6 +177,7 @@ expr:
 | bv = BITS { BVConst (List.length bv, bv) }
 | LPAREN; BITLIST; bl = BITS; RPAREN; { BLConst bl }
 (* Built-in functions *)
+| STRCONCAT; LPAREN; e1 = expr; COMMA; e2 = expr RPAREN; { BinOp (e1, StrConcat, e2) }
 | MEMBER; LPAREN; e1 = expr; COMMA; e2 = expr; RPAREN; 
   { BinOp (e1, SetMembership, e2) }
 | UNION; LPAREN; e1 = expr; COMMA; e2 = expr; RPAREN; 

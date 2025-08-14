@@ -1,11 +1,8 @@
 (* 
-     TODO: Docs for all built-in functions, and make it align with SMT-LIB syntax where possible
      TODO: Give positions in error messages 
      * Optimization: infer tighter set-logic 
      TODO: Clean up crud in output when Utils.crash is called 
-     TODO: Look at Shankar paper Omar sent in Zulip
-
-     TODO: Reject "length" in non-derived fields (use seq.len or str.len instead)
+     TODO: examples.md in user doc
      
      FUTURE: Flag that allows you to disable engines in race mode (useful if one engine is buggy on a class of problems)
      FUTURE: More fine-grained check if divide and conquer engines are usable. Right now,
