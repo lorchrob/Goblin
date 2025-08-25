@@ -81,7 +81,7 @@ open Ast
 %left BVOR BVXOR LOR LXOR
 %left LAND BVAND
 %left GT LTE EQ GTE LT BVGT BVLTE BVGTE BVLT 
-%left PLUS MINUS STRCONCAT
+%left PLUS MINUS 
 %left TIMES DIV
 %nonassoc LNOT
 %nonassoc BVNOT 
