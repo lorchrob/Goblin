@@ -32,7 +32,7 @@ let rec pp_print_ty: Format.formatter -> A.il_type -> unit
 
 let pp_print_constructor: TC.context -> Ast.semantic_constraint Utils.StringMap.t -> Ast.ast ->  Format.formatter -> A.grammar_element -> unit 
 = fun ctx dep_map ast ppf ge -> match ge with 
-| A.Nonterminal (nt, _) ->
+| A.Nonterminal (nt, _, _) ->
   let d_str = fresh_destructor () in 
   let ty_str = 
   match Utils.StringMap.find_opt nt dep_map,
@@ -42,7 +42,7 @@ let pp_print_constructor: TC.context -> Ast.semantic_constraint Utils.StringMap.
   | _, Some ty -> 
     let type_annot = List.find_opt (fun element -> match element with 
     | A.ProdRule _ -> false 
-    | TypeAnnotation (nt2, _, _) -> nt = nt2 
+    | TypeAnnotation (nt2, _, _, _) -> nt = nt2 
     ) ast
     in (
     match type_annot with 
@@ -61,7 +61,7 @@ let pp_print_constructor: TC.context -> Ast.semantic_constraint Utils.StringMap.
 
 let pp_print_datatype_rhs 
 = fun ctx dep_map nt ast ppf (rhs, idx) -> match rhs with 
-| A.Rhs (ges, _) -> 
+| A.Rhs (ges, _, _) -> 
   Format.fprintf ppf "\n\t(%s %a)"
     ((String.lowercase_ascii nt) ^ "_con" ^ (string_of_int idx))
     (Lib.pp_print_list (pp_print_constructor ctx dep_map ast) " ") ges
@@ -80,7 +80,7 @@ let pp_print_datatypes: Format.formatter -> TC.context -> Ast.semantic_constrain
   ) dep_map;
   List.iter (fun element -> match element with 
   | A.TypeAnnotation _ -> ()
-  | ProdRule (nt, rhss) -> 
+  | ProdRule (nt, rhss, _) -> 
     Format.fprintf ppf "(declare-datatype %s (%a\n))\n"
       (String.uppercase_ascii nt)
       (Lib.pp_print_list (pp_print_datatype_rhs ctx dep_map nt ast) " ") (List.mapi (fun i rhs -> (rhs, i)) rhss);
@@ -124,11 +124,11 @@ let pp_print_compop: Format.formatter -> A.comp_operator -> unit
 
 let pp_print_nt_decs: Ast.semantic_constraint Utils.StringMap.t -> Format.formatter -> A.ast -> unit 
 = fun dep_map ppf ast -> List.iter (fun element -> match element with 
-| A.ProdRule (nt, _) ->
+  | A.ProdRule (nt, _, _) ->
   Format.fprintf ppf "\t(%s %s)\n"
   (String.lowercase_ascii nt)
   (String.uppercase_ascii nt) 
-| TypeAnnotation (nt, ty, _) -> 
+| TypeAnnotation (nt, ty, _, _) -> 
   Format.fprintf ppf "\t(%s %a)\n"
   (String.lowercase_ascii nt) 
   pp_print_ty ty
@@ -149,7 +149,7 @@ let rec pp_print_match: Format.formatter -> TC.context -> (string * int option) 
   in
   let match_rules = List.map (fun case -> match case with 
   | A.Case (nts, expr) -> nts, expr 
-  | CaseStub nts -> nts, BConst true 
+  | CaseStub nts -> nts, BConst (true, Lexing.dummy_pos) 
   ) cases in 
   let match_rules = List.map (fun (pattern, expr) -> 
     let original_nts = List.map (fun (_, (b, _)) -> b) pattern in
@@ -185,124 +185,124 @@ and pp_print_expr: ?nt_prefix:string -> TC.context -> Format.formatter -> A.expr
 = fun ?(nt_prefix="") ctx ppf expr -> 
   let r = pp_print_expr ~nt_prefix ctx in
   match expr with 
-  | NTExpr (nt_ctx, [nt]) ->
+  | NTExpr (nt_ctx, [nt], _) ->
     (* TODO: Use a representation that prevents name clashes with user names *)
     let nts = List.map (fun (str, idx) -> String.lowercase_ascii str, idx) (nt_ctx @ [nt]) in
     (if not (String.equal nt_prefix "") then
       Format.pp_print_string ppf (nt_prefix ^ "_"));
     Lib.pp_print_list pp_print_nt_helper "_" ppf nts
-  | A.Match (nt_ctx, nt, cases)  -> pp_print_match ppf ctx nt_ctx nt cases
-  | NTExpr (nts1, nts2) -> 
+  | A.Match (nt_ctx, nt, cases, _)  -> pp_print_match ppf ctx nt_ctx nt cases
+  | NTExpr (nts1, nts2, p) -> 
     let nt_ctx = nts1 @ Utils.init nts2 in 
     let nt = nts2 |> List.rev |> List.hd in 
-    r ppf (Ast.NTExpr (nt_ctx, [nt]))
-  | BinOp (expr1, SetMembership, expr2) ->
+    r ppf (Ast.NTExpr (nt_ctx, [nt], p))
+  | BinOp (expr1, SetMembership, expr2, _) ->
     Format.fprintf ppf "(set.member %a %a)"
       r expr1 
       r expr2
-  | BinOp (expr1, SetUnion, expr2) ->
+  | BinOp (expr1, SetUnion, expr2, _) ->
     Format.fprintf ppf "(set.union %a %a)"
       r expr1 
       r expr2
-  | BinOp (expr1, SetIntersection, expr2) ->
+  | BinOp (expr1, SetIntersection, expr2, _) ->
     Format.fprintf ppf "(set.inter %a %a)"
       r expr1 
       r expr2
-  | BinOp (expr1, BVXor, expr2) -> 
+  | BinOp (expr1, BVXor, expr2, _) -> 
     Format.fprintf ppf "(and (or %a %a) (not (and %a %a)))"
       r expr1 
       r expr2
       r expr1 
       r expr2
-  | BinOp (expr1, op, expr2) -> 
+  | BinOp (expr1, op, expr2, _) -> 
     Format.fprintf ppf "(%a %a %a)"
       pp_print_binop op 
       r expr1 
       r expr2
-  | CompOp (expr1, BVLt, expr2) -> 
+  | CompOp (expr1, BVLt, expr2, _) -> 
     Format.fprintf ppf "(bvult %a %a)"
       r expr1 
       r expr2
-  | CompOp (expr1, BVLte, expr2) -> 
+  | CompOp (expr1, BVLte, expr2, _) -> 
     Format.fprintf ppf "(or (bvult %a %a) (= %a %a))"
       r expr1 
       r expr2
       r expr1 
       r expr2
-  | CompOp (expr1, BVGt, expr2) -> 
+  | CompOp (expr1, BVGt, expr2, _) -> 
     Format.fprintf ppf "(bvult %a %a)"
       r expr2
       r expr1 
-  | CompOp (expr1, BVGte, expr2) -> 
+  | CompOp (expr1, BVGte, expr2, _) -> 
     Format.fprintf ppf "(or (bvult %a %a) (= %a %a))"
       r expr2
       r expr1 
       r expr2
       r expr1 
-  | CompOp (expr1, StrPrefix, expr2) -> 
+  | CompOp (expr1, StrPrefix, expr2, _) -> 
     Format.fprintf ppf "(str.prefixof %a %a)"
       r expr1
       r expr2 
-  | CompOp (expr1, StrContains, expr2) -> 
+  | CompOp (expr1, StrContains, expr2, _) -> 
     Format.fprintf ppf "(str.contains %a %a)"
       r expr1
       r expr2 
-  | CompOp (expr1, op, expr2) -> 
+  | CompOp (expr1, op, expr2, _) -> 
     Format.fprintf ppf "(%a %a %a)"
       pp_print_compop op 
       r expr1 
       r expr2
-  | UnOp (op, expr) -> 
+  | UnOp (op, expr, _) -> 
     Format.fprintf ppf "(%a %a)"
       pp_print_unop op 
       r expr
-  | StrLength expr -> 
+  | StrLength (expr, _) -> 
     Format.fprintf ppf "(str.len %a)"
       r expr
-  | SeqLength expr -> 
+  | SeqLength (expr, _) -> 
     Format.fprintf ppf "(seq.len %a)"
       r expr
   | Length _ -> Utils.crash "length is not supported in SMT constraints"
-  | EmptySet ty -> 
+  | EmptySet (ty, _) -> 
     Format.fprintf ppf "(as set.empty (Set %a))"
       pp_print_ty ty  
-  | Singleton expr -> 
+  | Singleton (expr, _) -> 
     Format.fprintf ppf "(set.singleton %a)" 
       r expr
-  | BVConst (_, bits) -> 
+  | BVConst (_, bits, _) -> 
     let bits = List.map Bool.to_int bits in
     Format.fprintf ppf "#b%a"
       (Lib.pp_print_list Format.pp_print_int "") bits
-  | BConst b ->  Format.fprintf ppf "%b" b
-  | IntConst i -> 
+  | BConst (b, _) ->  Format.fprintf ppf "%b" b
+  | IntConst (i, _) -> 
     if i >= 0 then 
       Format.fprintf ppf "%d" i
     else 
       Format.fprintf ppf "(- %d)" (i * -1)
-  | StrConst str -> Format.fprintf ppf "\"%s\"" str
+  | StrConst (str, _) -> Format.fprintf ppf "\"%s\"" str
   | PhConst _ -> Utils.crash "Error: String constants can only be in dependencies (of the form 'nonterminal <- string_literal')"
   | BLConst _ -> Utils.crash "BitList literals not yet fully supported"
-  | BVCast (width, e) -> 
+  | BVCast (width, e, _) -> 
     Format.fprintf ppf "((_ int_to_bv %d) %a)"
       width 
       r e 
-  | ReStar e -> 
+  | ReStar (e, _) -> 
   Format.fprintf ppf "(re.* %a)" 
     r e 
-  | ReConcat es -> 
+  | ReConcat (es, _) -> 
     Format.fprintf ppf "(re.++ %a)" 
     (Lib.pp_print_list r " ") es  
-  | StrToRe e -> 
+  | StrToRe (e, _) -> 
       Format.fprintf ppf "(str.to_re %a)" 
         r e 
-  | StrInRe (e1, e2) -> 
+  | StrInRe (e1, e2, _) -> 
     Format.fprintf ppf "(str.in_re %a %a)" 
       r e1 
       r e2
-  | ReUnion es -> 
+  | ReUnion (es, _) -> 
     Format.fprintf ppf "(re.union %a)" 
       (Lib.pp_print_list r " ") es  
-  | ReRange (e1, e2) ->  
+  | ReRange (e1, e2, _) ->  
     Format.fprintf ppf "(re.range %a %a)" 
       r e1 
       r e2
@@ -311,7 +311,7 @@ and pp_print_expr: ?nt_prefix:string -> TC.context -> Format.formatter -> A.expr
 let pp_print_semantic_constraint_ty_annot: TC.context -> Format.formatter -> string -> A.il_type -> A.semantic_constraint -> unit 
 = fun ctx ppf nt ty sc -> match sc with 
 | A.DerivedField _ -> () 
-| SmtConstraint expr -> 
+| SmtConstraint (expr, _) -> 
   let constraint_id = fresh_constraint () in 
   Format.fprintf ppf "(define-fun %s ((%s0 %a)) Bool \n\t%a\n)\n"
     constraint_id
@@ -350,12 +350,12 @@ let pp_print_ges_pattern: Format.formatter -> string list -> unit
 let pp_print_constraints_rhs: TC.context -> string -> Format.formatter -> A.prod_rule_rhs * int -> unit
 = fun ctx nt ppf (rhs, idx) -> match rhs with 
 | StubbedRhs _ -> Format.fprintf ppf "2STUB\n"
-| Rhs (ges, scs) ->
+| Rhs (ges, scs, _) ->
   let 
     ges = List.map Ast.grammar_element_to_string ges |> List.map String.lowercase_ascii 
   in  
   let exprs = List.filter_map (fun sc -> match sc with 
-  | A.SmtConstraint expr -> Some expr 
+  | A.SmtConstraint (expr, _) -> Some expr 
   | _ -> None
   ) scs in
   if List.length exprs > 1 then
@@ -389,16 +389,16 @@ let pp_print_semantic_constraints_prod_rule
 let pp_print_constraints: TC.context -> Format.formatter -> A.ast -> unit 
 = fun ctx ppf ast -> match ast with 
 | [] -> Utils.crash "Input grammar must have at least one production rule or type annotation"
-| A.ProdRule (nt, rhss) :: _ -> 
-  if List.exists (fun rhs -> match rhs with | A.Rhs (_, _ :: _) -> true | _ -> false) rhss then
+| A.ProdRule (nt, rhss, _) :: _ -> 
+      if List.exists (fun rhs -> match rhs with | A.Rhs (_, _ :: _, _) -> true | _ -> false) rhss then
   let rhss = List.mapi (fun i rhs -> (rhs, i)) rhss in
   pp_print_semantic_constraints_prod_rule ctx ppf nt rhss
-| TypeAnnotation (nt, ty, scs) :: _ -> 
+| TypeAnnotation (nt, ty, scs, _) :: _ -> 
   List.iter (pp_print_semantic_constraint_ty_annot ctx ppf nt ty) scs
 
 let pp_print_rhs: string -> Format.formatter -> A.prod_rule_rhs * int -> unit
 = fun nt ppf (rhs, idx) -> match rhs with 
-| A.Rhs (ges, _) ->
+| A.Rhs (ges, _, _) ->
   let ges = List.map Ast.grammar_element_to_string ges in 
   let ges = List.map String.lowercase_ascii ges in
   Format.fprintf ppf "(%s %a)"
@@ -411,12 +411,12 @@ let pp_print_rhs: string -> Format.formatter -> A.prod_rule_rhs * int -> unit
 let pp_print_rules: Ast.semantic_constraint Utils.StringMap.t -> Format.formatter -> A.ast -> unit 
 = fun dep_map ppf ast -> 
   List.iter (fun element -> match element with 
-  | A.ProdRule (nt, rhss) -> 
+  | A.ProdRule (nt, rhss, _) -> 
     Format.fprintf ppf "\t(%s %s (%a))\n"
       (String.lowercase_ascii nt) 
       (String.uppercase_ascii nt) 
       (Lib.pp_print_list (pp_print_rhs nt) " ") (List.mapi (fun i rhs -> (rhs, i)) rhss)
-  | TypeAnnotation (nt, ty, _) -> 
+  | TypeAnnotation (nt, ty, _, _) -> 
     Format.fprintf ppf "\t(%s %a ((Constant %a)))\n"
       (String.lowercase_ascii nt) 
       pp_print_ty ty
@@ -434,8 +434,8 @@ let pp_print_rules: Ast.semantic_constraint Utils.StringMap.t -> Format.formatte
 let pp_print_grammar: Format.formatter -> Ast.semantic_constraint Utils.StringMap.t -> A.ast -> unit 
 = fun ppf dep_map ast -> 
   let top_datatype_str = match List.hd ast with 
-  | A.ProdRule (nt, _) -> String.uppercase_ascii nt
-  | TypeAnnotation (_, ty, _) -> 
+  | A.ProdRule (nt, _, _) -> String.uppercase_ascii nt
+  | TypeAnnotation (_, ty, _, _) -> 
     Utils.capture_output pp_print_ty ty
   in
   Format.fprintf ppf 
@@ -469,8 +469,8 @@ let pp_print_ast: Format.formatter -> (TC.context * Ast.semantic_constraint Util
 let call_sygus : TC.context -> Ast.semantic_constraint Utils.StringMap.t -> A.ast -> string =
 fun ctx dep_map ast ->
   let top_nt = match ast with
-  | ProdRule (nt, _) :: _ -> nt
-  | TypeAnnotation (nt, _, _) :: _ -> nt
+  | ProdRule (nt, _, _) :: _ -> nt
+  | TypeAnnotation (nt, _, _, _) :: _ -> nt
   | _ -> assert false
   in
   

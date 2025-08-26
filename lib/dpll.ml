@@ -276,26 +276,26 @@ let rec universalize_expr: bool -> (string * int option) list -> Ast.expr -> Ast
 = fun is_type_annotation prefix expr ->
   let r = universalize_expr is_type_annotation prefix in
   match expr with
-  | A.NTExpr (nts1, nts2) -> 
+  | A.NTExpr (nts1, nts2, p) -> 
     (* In the derivation tree structure, type annotation NTs have a duplicate at the end of the path. 
        Remove it. *)
     let prefix = if is_type_annotation then Utils.init prefix else prefix in
-    A.NTExpr (nts1, prefix @ nts2)
-  | BVCast (len, expr) -> BVCast (len, r expr)
-  | BinOp (expr1, op, expr2) -> BinOp (r expr1, op, r expr2) 
-  | UnOp (op, expr) -> UnOp (op, r expr) 
-  | CompOp (expr1, op, expr2) -> CompOp (r expr1, op, r expr2) 
-  | StrLength expr -> StrLength (r expr)
-  | SeqLength expr -> SeqLength (r expr)
-  | Length expr -> Length (r expr) 
-  | Singleton expr -> Singleton (r expr)
+    A.NTExpr (nts1, prefix @ nts2, p)
+  | BVCast (len, expr, p) -> BVCast (len, r expr, p)
+  | BinOp (expr1, op, expr2, p) -> BinOp (r expr1, op, r expr2, p) 
+  | UnOp (op, expr, p) -> UnOp (op, r expr, p) 
+  | CompOp (expr1, op, expr2, p) -> CompOp (r expr1, op, r expr2, p) 
+  | StrLength (expr, p) -> StrLength (r expr, p)
+  | SeqLength (expr, p) -> SeqLength (r expr, p)
+  | Length (expr, p) -> Length (r expr, p) 
+  | Singleton (expr, p) -> Singleton (r expr, p)
   | Match _ -> Utils.crash "Unexpected case in universalize_expr"
-  | ReStar expr -> ReStar (r expr)
-  | StrToRe expr -> StrToRe (r expr) 
-  | StrInRe (expr1, expr2) -> StrInRe (r expr1, r expr2) 
-  | ReConcat exprs -> ReConcat (List.map r exprs)
-  | ReUnion exprs -> ReUnion (List.map r exprs) 
-  | ReRange (expr1, expr2) -> ReRange (r expr1, r expr2)
+  | ReStar (expr, p) -> ReStar (r expr, p)
+  | StrToRe (expr, p) -> StrToRe (r expr, p) 
+  | StrInRe (expr1, expr2, p) -> StrInRe (r expr1, r expr2, p) 
+  | ReConcat (exprs, p) -> ReConcat (List.map r exprs, p)
+  | ReUnion (exprs, p) -> ReUnion (List.map r exprs, p) 
+  | ReRange (expr1, expr2, p) -> ReRange (r expr1, r expr2, p)
   | BVConst _ 
   | BLConst _ 
   | BConst _ 
@@ -320,11 +320,11 @@ let r = normalize_derivation_tree ctx ast declared_variables solver constraints_
 match dt with 
 | Node ((nt, idx), path, []) -> 
   let forced_expansion = List.find_map (fun element -> match element with 
-  | A.ProdRule (nt2, [Rhs (ges, scs)]) -> 
+  | A.ProdRule (nt2, [Rhs (ges, scs, _)], _) -> 
     let path' = (string_of_path (Utils.init path) |> String.lowercase_ascii) in
     if Utils.str_eq_ci nt nt2 then 
       let constraints_to_add = List.concat_map (fun sc -> match sc with 
-      | A.SmtConstraint e -> [universalize_expr false path e] 
+      | A.SmtConstraint (e, _) -> [universalize_expr false path e] 
       | DerivedField _ -> [] 
       ) scs in
       let expr_variables = List.map A.get_nts_from_expr2 constraints_to_add |> List.flatten in
@@ -343,19 +343,19 @@ match dt with
       declare_smt_variables variable_stack declared_variables ty_ctx solver blocking_clause_vars assertion_level ;
       constraints_to_assert := ConstraintSet.union !constraints_to_assert (ConstraintSet.of_list constraints_to_add); 
       let children = List.map (fun ge -> match ge with 
-        | A.Nonterminal (nt, idx_opt) ->
+        | A.Nonterminal (nt, idx_opt, _) ->
           Node ((nt, idx_opt), path @ [nt, idx_opt], [])  
         | StubbedNonterminal (_, stub_id) -> DependentTermLeaf stub_id
         ) ges in
        Some children 
     else 
       None
-  | A.ProdRule (_, _) -> None 
-  | TypeAnnotation (nt2, ty, scs) ->
+  | A.ProdRule (_, _, _) -> None 
+  | TypeAnnotation (nt2, ty, scs, _) ->
     let path' = string_of_path path |> String.lowercase_ascii in
     if Utils.str_eq_ci nt nt2 then 
       let constraints_to_add = List.concat_map (fun sc -> match sc with 
-      | A.SmtConstraint e -> [universalize_expr true path e] 
+      | A.SmtConstraint (e, _) -> [universalize_expr true path e] 
       | DerivedField _ -> [] 
       ) scs |> ConstraintSet.of_list in
       declare_smt_variables variable_stack declared_variables (Utils.StringMap.singleton path' ty) solver blocking_clause_vars assertion_level;
@@ -385,12 +385,12 @@ let rec collect_constraints_of_dt ast = function
     let child_constraints = List.map (collect_constraints_of_dt ast) children in 
     let child_constraints = List.fold_left ConstraintSet.union ConstraintSet.empty child_constraints in
     let grammar_rule = List.find (fun element -> match element with 
-      | A.ProdRule (nt2, _) 
-      | TypeAnnotation (nt2, _, _) -> nt = nt2
+      | A.ProdRule (nt2, _, _) 
+      | TypeAnnotation (nt2, _, _, _) -> nt = nt2
       ) ast in 
     let constraints = A.scs_of_element grammar_rule |> 
     List.concat_map (fun sc -> match sc with 
-    | A.SmtConstraint expr -> 
+    | A.SmtConstraint (expr, _) -> 
       let expr = (universalize_expr true path expr) in
         [expr] 
     | DerivedField _ -> [] 
@@ -407,11 +407,11 @@ let rec nt_will_be_reached derivation_tree ast nt =
   | [] -> true 
   | new_head :: nts -> 
     let rule = List.find (fun element -> match element with
-    | A.TypeAnnotation (nt2, _, _) 
-    | A.ProdRule (nt2, _) -> nt2 = (fst head)
+    | A.TypeAnnotation (nt2, _, _, _) 
+    | A.ProdRule (nt2, _, _) -> nt2 = (fst head)
     ) ast in 
     match rule with 
-    | ProdRule (_, rhss) -> 
+    | ProdRule (_, rhss, _) -> 
       (* There are multiple options. Conservatively say the nt may not be reached. 
          TODO: This is a safe approximation. A more exact analysis would see if the nt is reachable in all cases. *)
       if List.length rhss <> 1 then false
@@ -518,9 +518,9 @@ let find_new_expansion ast derivation_tree curr_st_node =
   let rec num_expansions derivation_tree = match derivation_tree with 
   | Node ((nt, _), _, []) ->  
     List.find_map (function 
-    | A.ProdRule (nt2, rhss) -> 
+    | A.ProdRule (nt2, rhss, _) -> 
       if Utils.str_eq_ci nt nt2 then Some (List.length rhss) else None 
-    | A.TypeAnnotation (nt2, _, _) ->
+    | A.TypeAnnotation (nt2, _, _, _) ->
       if Utils.str_eq_ci nt nt2 then Some 1 else None 
     ) ast |> Option.get  
   | Node (_, _, children) -> 
@@ -547,21 +547,21 @@ let find_new_expansion ast derivation_tree curr_st_node =
     )
   | Node ((nt, idx), path, []) -> 
     let element = List.find (fun element -> match element with 
-    | A.TypeAnnotation (nt2, _, _) 
-    | ProdRule (nt2, _) -> Utils.str_eq_ci nt nt2
+    | A.TypeAnnotation (nt2, _, _, _) 
+    | ProdRule (nt2, _, _) -> Utils.str_eq_ci nt nt2
     ) ast in (
     match element with 
-    | TypeAnnotation (_, ty, _) -> 
+    | TypeAnnotation (_, ty, _, _) -> 
       if n = 1 then 
         let expanded_node = Node ((nt, idx), path, [SymbolicLeaf (ty, path @ [(nt, idx)])]) in 
         expanded_node, expanded_node 
       else assert false 
-    | ProdRule (_, rhss) -> 
+    | ProdRule (_, rhss, _) -> 
       let rhs = List.nth rhss (n-1) in 
       match rhs with 
-      | A.Rhs (ges, _) -> 
+      | A.Rhs (ges, _, _) -> 
         let children = List.map (fun ge -> match ge with 
-        | A.Nonterminal (nt, idx_opt) ->
+        | A.Nonterminal (nt, idx_opt, _) ->
           Node ((nt, idx_opt), path @ [nt, idx_opt], [])  
         | StubbedNonterminal (_, stub_id) -> DependentTermLeaf stub_id
         ) ges in 
@@ -864,8 +864,8 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
   in
 
   let start_symbol, start_path = match List.hd ast with 
-  | A.TypeAnnotation (nt, _, _) -> nt, [nt, Some 0]
-  | ProdRule (nt, _) -> nt, [nt, Some 0]
+  | A.TypeAnnotation (nt, _, _, _) -> nt, [nt, Some 0]
+  | ProdRule (nt, _, _) -> nt, [nt, Some 0]
   in 
 
   (* Solver object *)
@@ -989,17 +989,17 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
 
       (* Find the associated AST rule for the new expansion *)
       let grammar_rule = List.find (fun element -> match element with 
-      | A.ProdRule (nt2, _) 
-      | TypeAnnotation (nt2, _, _) -> Utils.str_eq_ci (fst nt) nt2
+      | A.ProdRule (nt2, _, _) 
+      | A.TypeAnnotation (nt2, _, _, _) -> Utils.str_eq_ci (fst nt) nt2
       ) ast in 
       let path' = string_of_path path |> String.lowercase_ascii in
 
       (* Assert semantic constraints for the new expansion (backtrack if necessary) *)
       match grammar_rule with 
-      | A.TypeAnnotation (_, _, []) -> ()
-      | A.TypeAnnotation (_, ty, scs) -> 
+      | A.TypeAnnotation (_, _, [], _) -> ()
+      | A.TypeAnnotation (_, ty, scs, _) -> 
         List.iter (fun sc -> match sc with 
-        | A.SmtConstraint expr ->
+        | A.SmtConstraint (expr, _) ->
           declare_smt_variables !variable_stack declared_variables (Utils.StringMap.singleton path' ty) solver blocking_clause_vars assertion_level; 
           constraints_to_assert := ConstraintSet.add (universalize_expr true path expr) !constraints_to_assert;
           constraints_to_assert := assert_applicable_constraints constraints_to_assert !derivation_tree ast solver;
@@ -1016,7 +1016,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
           )
         | A.DerivedField _ -> ()
         ) scs;
-      | A.ProdRule (_, rhss) -> 
+      | A.ProdRule (_, rhss, _) -> 
         (*Format.fprintf Format.std_formatter "Finding the chosen rule for %a\n" 
           pp_print_derivation_tree expanded_node; *)
         let chosen_rule = List.find (fun rhs -> match rhs with 
@@ -1025,10 +1025,10 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
           | [DependentTermLeaf str2] -> Utils.str_eq_ci str1 str2 
           | _ -> false 
           )
-        | Rhs (ges, _) -> 
+        | A.Rhs (ges, _, _) -> 
           if List.length ges = List.length children then 
             List.for_all2 (fun child ge -> match child, ge with 
-            | Node ((nt, idx), _, _), A.Nonterminal (nt2, idx2) -> 
+            | Node ((nt, idx), _, _), A.Nonterminal (nt2, idx2, _) -> 
               Utils.str_eq_ci nt nt2 && idx = idx2
             | DependentTermLeaf stub_id1, A.StubbedNonterminal (_, stub_id2) -> 
               Utils.str_eq_ci stub_id1 stub_id2
@@ -1040,9 +1040,9 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
           A.pp_print_prod_rule_rhs chosen_rule;
         match chosen_rule with 
         | A.StubbedRhs _ -> () 
-        | A.Rhs (_, scs) -> 
+        | A.Rhs (_, scs, _) -> 
           List.iter (fun sc -> match sc with 
-          | A.SmtConstraint expr ->
+          | A.SmtConstraint (expr, _) ->
             (* Assert semantic constraints for production rules *)
             let expr_variables = A.get_nts_from_expr2 expr in
             let ty_ctx = List.fold_left (fun acc nt -> 

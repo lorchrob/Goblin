@@ -15,13 +15,18 @@ let parse: string -> Ast.ast
         pos.Lexing.pos_lnum (pos.Lexing.pos_cnum - pos.Lexing.pos_bol);
       exit 1
 
+(* Helper function to format position information *)
+let format_position (pos : Lexing.position) : string =
+  Printf.sprintf "line %d, column %d" 
+    pos.Lexing.pos_lnum 
+    (pos.Lexing.pos_cnum - pos.Lexing.pos_bol)
+
 let parse_sygus: string -> Ast.ast -> (SygusAst.sygus_ast, string) result
 = fun s ast ->
   let lexbuf = Lexing.from_string s in
   let error_message () =
     let pos = lexbuf.lex_curr_p in
-    Printf.sprintf "Syntax error at line %d, column %d"
-      pos.pos_lnum (pos.pos_cnum - pos.pos_bol)
+    Printf.sprintf "Syntax error at %s" (format_position pos)
   in
   let sygus_ast =
     try
@@ -36,7 +41,7 @@ let parse_sygus: string -> Ast.ast -> (SygusAst.sygus_ast, string) result
   | ProdRule _ :: _, Error e -> print_endline e; sygus_ast
   | ProdRule _ :: _, Ok _ -> sygus_ast 
   (* Sygus files with top-level type annotations lose their constructor name *)
-  | TypeAnnotation (nt, _, _) :: _, Ok sygus_ast -> 
+  | TypeAnnotation (nt, _, _, _) :: _, Ok sygus_ast -> 
     let constructor = String.lowercase_ascii nt ^ "_con0" in
     Ok (SygusAst.Node ((constructor, None), [sygus_ast]))
   | _, Error e -> print_endline e; sygus_ast

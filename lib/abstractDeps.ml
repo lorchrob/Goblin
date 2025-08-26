@@ -2,30 +2,30 @@ open Ast
 
 let rec calculate_casts: expr -> expr 
 = fun expr -> match expr with 
-| BVCast (len, expr) -> (
+| BVCast (len, expr, p) -> (
   match expr with 
-  | IntConst i -> Ast.il_int_to_bv len i
-  | _ -> BVCast (len, expr)
+  | IntConst (i, p) -> Ast.il_int_to_bv len i p
+  | _ -> BVCast (len, expr, p)
   )
-| ReRange (expr1, expr2) -> ReRange (calculate_casts expr1, calculate_casts expr2) 
-| StrInRe (expr1, expr2) -> StrInRe (calculate_casts expr1, calculate_casts expr2) 
-| BinOp (expr1, op, expr2) -> BinOp (calculate_casts expr1, op, calculate_casts expr2) 
-| ReStar expr -> ReStar (calculate_casts expr) 
-| StrToRe (expr) -> StrToRe (calculate_casts expr)
-| UnOp (op, expr) -> UnOp (op, calculate_casts expr) 
-| Singleton expr -> Singleton (calculate_casts expr)
-| CompOp (expr1, op, expr2) -> CompOp (calculate_casts expr1, op, calculate_casts expr2) 
-| StrLength expr -> StrLength (calculate_casts expr) 
-| SeqLength expr -> SeqLength (calculate_casts expr) 
-| Length expr -> Length (calculate_casts expr) 
-| Match (nt_ctx, nt, cases) -> 
+| ReRange (expr1, expr2, p) -> ReRange (calculate_casts expr1, calculate_casts expr2, p) 
+| StrInRe (expr1, expr2, p) -> StrInRe (calculate_casts expr1, calculate_casts expr2, p) 
+| BinOp (expr1, op, expr2, p) -> BinOp (calculate_casts expr1, op, calculate_casts expr2, p) 
+| ReStar (expr, p) -> ReStar (calculate_casts expr, p) 
+| StrToRe (expr, p) -> StrToRe (calculate_casts expr, p)
+| UnOp (op, expr, p) -> UnOp (op, calculate_casts expr, p) 
+| Singleton (expr, p) -> Singleton (calculate_casts expr, p)
+| CompOp (expr1, op, expr2, p) -> CompOp (calculate_casts expr1, op, calculate_casts expr2, p) 
+| StrLength (expr, p) -> StrLength (calculate_casts expr, p) 
+| SeqLength (expr, p) -> SeqLength (calculate_casts expr, p) 
+| Length (expr, p) -> Length (calculate_casts expr, p) 
+| Match (nt_ctx, nt, cases, p) -> 
   let cases = List.map (fun case -> match case with 
   | CaseStub _ -> case 
   | Case (nts, e) -> Case (nts, calculate_casts e)
   ) cases in
-  Match (nt_ctx, nt, cases)
-| ReConcat exprs -> ReConcat (List.map calculate_casts exprs)
-| ReUnion exprs -> ReUnion (List.map calculate_casts exprs)
+  Match (nt_ctx, nt, cases, p)
+| ReConcat (exprs, p) -> ReConcat (List.map calculate_casts exprs, p)
+| ReUnion (exprs, p) -> ReUnion (List.map calculate_casts exprs, p)
 | NTExpr _ 
 | BVConst _ 
 | BLConst _ 
@@ -38,10 +38,10 @@ let rec calculate_casts: expr -> expr
 let stub_grammar_element: TypeChecker.context -> semantic_constraint list -> grammar_element -> semantic_constraint option * grammar_element * TypeChecker.context
 = fun ctx scs ge -> match ge with 
 | StubbedNonterminal _ -> None, ge, ctx 
-| Nonterminal (nt, _) -> (
+| Nonterminal (nt, _, _) -> (
   match List.find_opt (fun sc -> match sc with
   | SmtConstraint _ -> false 
-  | DerivedField (nt2, _) -> nt = nt2
+  | DerivedField (nt2, _, _) -> nt = nt2
   ) scs with 
   | Some dep -> 
     let stub_id = Utils.mk_fresh_stub_id nt in
@@ -51,24 +51,24 @@ let stub_grammar_element: TypeChecker.context -> semantic_constraint list -> gra
   )
 
 let stub_ty_annot
-= fun ctx nt ty scs -> 
+= fun ctx nt ty scs p -> 
   match List.find_opt (fun sc -> match sc with
   | SmtConstraint _ -> false 
-  | DerivedField (nt2, _) -> nt = nt2
+  | DerivedField (nt2, _, _) -> nt = nt2
   ) scs with 
   | Some dep -> 
     let stub_id = Utils.mk_fresh_stub_id nt in
     let ctx = Utils.StringMap.remove nt ctx in
-    Utils.StringMap.singleton stub_id dep, ProdRule (nt, [Rhs ([StubbedNonterminal(nt, stub_id)], [])]), ctx
-  | None -> Utils.StringMap.empty, TypeAnnotation (nt, ty, scs), ctx
+    Utils.StringMap.singleton stub_id dep, ProdRule (nt, [Rhs ([StubbedNonterminal(nt, stub_id)], [], p)], p), ctx
+  | None -> Utils.StringMap.empty, TypeAnnotation (nt, ty, scs, p), ctx
 
 
 let simp_rhss: TypeChecker.context -> prod_rule_rhs -> semantic_constraint Utils.StringMap.t * prod_rule_rhs * TypeChecker.context 
 = fun ctx rhss -> match rhss with 
-| Rhs (ges, scs) ->
+| Rhs (ges, scs, p) ->
   let scs = List.map (fun sc -> match sc with 
-  | DerivedField (nt, expr) -> DerivedField (nt, calculate_casts expr)
-  | SmtConstraint expr -> SmtConstraint (calculate_casts expr)
+  | DerivedField (nt, expr, p) -> DerivedField (nt, calculate_casts expr, p)
+  | SmtConstraint (expr, p) -> SmtConstraint (calculate_casts expr, p)
   ) scs in 
   (* Abstract away dependent terms. Whenever we abstract away a term, we store 
      a mapping from the abstracted stub ID to the original dependency *)
@@ -81,7 +81,7 @@ let simp_rhss: TypeChecker.context -> prod_rule_rhs -> semantic_constraint Utils
     | None, ge, ctx -> acc_dep_map, acc_ges @ [ge], ctx
     | Some _, _, _ -> assert false 
   ) (Utils.StringMap.empty, [], ctx) ges in 
-  dep_map, Rhs (ges, scs), ctx
+  dep_map, Rhs (ges, scs, p), ctx
 | StubbedRhs _ as rhs -> Utils.StringMap.empty, rhs, ctx 
 
 
@@ -90,20 +90,20 @@ let simp_rhss: TypeChecker.context -> prod_rule_rhs -> semantic_constraint Utils
 let simp_ast: TypeChecker.context -> ast -> (semantic_constraint Utils.StringMap.t * ast * TypeChecker.context) 
 = fun ctx ast -> 
   let dep_map, ast, ctx = List.fold_left (fun (acc_dep_map, acc_elements, acc_ctx) element -> match element with 
-  | ProdRule (nt, rhss) -> 
+  | ProdRule (nt, rhss, p) -> 
     let dep_map, rhss, ctx = List.fold_left (fun (acc_dep_map, acc_rhss, acc_ctx) rhs -> 
       let dep_map, rhs, ctx = (simp_rhss acc_ctx rhs) in 
       let dep_map = Utils.StringMap.merge Lib.union_keys dep_map acc_dep_map in
       dep_map, rhs :: acc_rhss, ctx
     ) (acc_dep_map, [], acc_ctx)  rhss in
     let dep_map = Utils.StringMap.merge Lib.union_keys dep_map Utils.StringMap.empty in
-    dep_map, ProdRule (nt, List.rev rhss) :: acc_elements, ctx 
-  | TypeAnnotation (nt, ty, scs) -> 
+    dep_map, ProdRule (nt, List.rev rhss, p) :: acc_elements, ctx 
+  | TypeAnnotation (nt, ty, scs, p) -> 
     let scs = List.map (fun sc -> match sc with 
-    | DerivedField (nt, expr) -> DerivedField (nt, calculate_casts expr)
-    | SmtConstraint expr -> SmtConstraint (calculate_casts expr)
+    | DerivedField (nt, expr, p) -> DerivedField (nt, calculate_casts expr, p)
+    | SmtConstraint (expr, p) -> SmtConstraint (calculate_casts expr, p)
     ) scs in 
-    let dep_map, element, ctx = stub_ty_annot acc_ctx nt ty scs in
+    let dep_map, element, ctx = stub_ty_annot acc_ctx nt ty scs p in
     let dep_map = Utils.StringMap.merge Lib.union_keys dep_map acc_dep_map in
     dep_map, element :: acc_elements, ctx
   ) (Utils.StringMap.empty, [], ctx) ast  in 

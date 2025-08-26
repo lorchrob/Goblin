@@ -379,7 +379,7 @@ let evaluate () =
   let filename =
     match !Flags.filename with
     | Some filename -> filename
-    | None -> Utils.error "You must specify an input filename with --file <filename>"
+    | None -> Utils.error_no_pos "You must specify an input filename with --file <filename>"
   in
   let input_string = Utils.read_file filename in
   let sygus_ast = Parsing.parse_sygus input_string [] |> Result.get_ok in
@@ -395,7 +395,7 @@ let evaluate () =
       | "csv" -> pp_csv_file ast
       | "xml" -> pp_xml_tree ast
       | "c" -> pp_statement ast 
-      | _ -> Utils.error "Unknown grammar for post-analysis mode"
+      | _ -> Utils.error_no_pos "Unknown grammar for post-analysis mode"
     in
     if !Flags.debug then
       Format.fprintf Format.std_formatter "Output %d:\n%s\n" (i + 1) output;
@@ -417,7 +417,7 @@ let evaluate () =
     | "csv" -> csv_grammar
     | "xml" -> xml_grammar
     | "c" -> c_grammar 
-    | _ -> Utils.error "Unknown grammar for path counting"
+    | _ -> Utils.error_no_pos "Unknown grammar for path counting"
   in
   let all_paths, path_count = count_paths selected_grammar k in
   if !Flags.debug then Format.printf "%s grammar paths of length %d: %d\n" !Flags.analysis k path_count;

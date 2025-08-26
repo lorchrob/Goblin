@@ -22,7 +22,7 @@ let (let*) = Res.(>>=)
 
 let check_start_symbol: Ast.ast -> SygusAst.sygus_ast -> (unit, string) result 
 = fun ast sygus_ast -> match ast, sygus_ast with 
-| A.ProdRule (nt, _) :: _, SA.Node ((constructor, _), _) -> 
+| A.ProdRule (nt, _, _) :: _, SA.Node ((constructor, _), _) -> 
   if Utils.str_eq_ci nt (Utils.extract_base_name constructor) 
     then Ok () 
   else 
@@ -51,7 +51,7 @@ let is_sc_applicable: Ast.expr -> SygusAst.sygus_ast -> bool
 
 let handle_scs ast sygus_ast constructor element scs = 
   let scs = List.map (fun sc -> match sc with 
-  | A.SmtConstraint expr -> 
+  | A.SmtConstraint (expr, p) -> 
     if is_sc_applicable expr sygus_ast || (* type annotation constraints are always applicable *)
        match element with | A.TypeAnnotation _ -> true | A.ProdRule _ -> false
     then (
@@ -65,9 +65,9 @@ let handle_scs ast sygus_ast constructor element scs =
         A.pp_print_expr expr
         SA.pp_print_sygus_ast sygus_ast
         );
-      [BConst true]) (* If sc is not applicable, it trivially holds *)
-  | DerivedField (nt, expr) -> 
-    let expr = A.CompOp (NTExpr ([], [nt, None]), Eq, expr) in
+      [BConst (true, p)]) (* If sc is not applicable, it trivially holds *)
+  | DerivedField (nt, expr, p) -> 
+    let expr = A.CompOp (NTExpr ([], [nt, None], p), Eq, expr, p) in
     (if !Flags.debug then Format.fprintf Format.std_formatter "Constraint %a is applicable in %a"
       A.pp_print_expr expr
       SA.pp_print_sygus_ast sygus_ast
@@ -75,8 +75,8 @@ let handle_scs ast sygus_ast constructor element scs =
     ComputeDeps.evaluate sygus_ast ast element expr
   ) scs in
   let b = List.exists (fun sc -> match sc with 
-  | [A.BConst false] -> true 
-  | [BConst true] -> false 
+  | [A.BConst (false, _)] -> true 
+  | [BConst (true, _)] -> false 
   | _ -> Utils.crash "Unexpected pattern in check_syntax_semantics"
   ) scs in
   if b then Error ("Semantic constraint on constructor '" ^ constructor ^ "' is falsified") else
@@ -99,28 +99,28 @@ let rec check_syntax_semantics: Ast.ast -> SygusAst.sygus_ast -> (unit, string) 
     let* _ = R.seq (List.map (check_syntax_semantics ast) children) in
     (* Find this node's corresponding AST element *) 
     let element = List.find_opt (fun element -> match element with
-    | A.TypeAnnotation (nt, _, _) -> 
+    | A.TypeAnnotation (nt, _, _, _) -> 
       Utils.str_eq_ci (Utils.extract_base_name constructor) nt 
-    | A.ProdRule (nt, _) -> 
+    | A.ProdRule (nt, _, _) -> 
       Utils.str_eq_ci (Utils.extract_base_name constructor) nt 
     ) ast in (
     match element with 
     | None -> Error ("Dangling constructor identifier " ^ (Utils.extract_base_name constructor))
-    | Some (TypeAnnotation (_, _, scs) as element) -> 
+    | Some (TypeAnnotation (_, _, scs, _) as element) -> 
       Format.fprintf Format.std_formatter "Semantic constraints: %a\n"
         (Lib.pp_print_list A.pp_print_semantic_constraint "; ") scs;
       handle_scs ast sygus_ast constructor element scs
-    | Some (A.ProdRule (_, rhss) as element) ->
+    | Some (A.ProdRule (_, rhss, _) as element) ->
       (* Find the matching production rule from ast, if one exists *)
       let rhs = List.find_opt (fun rhs -> match rhs with 
       | A.StubbedRhs _ -> false 
-      | A.Rhs (ges, _) -> 
+      | A.Rhs (ges, _, _) -> 
         if List.length ges != List.length children then false 
         else 
           List.for_all2 (fun child ge ->  
             match child, ge with 
             | _, A.StubbedNonterminal _ -> false 
-            | SA.Node ((constructor, _), _), Nonterminal (nt, _) -> Utils.str_eq_ci (Utils.extract_base_name constructor) nt
+            | SA.Node ((constructor, _), _), Nonterminal (nt, _, _) -> Utils.str_eq_ci (Utils.extract_base_name constructor) nt
             | _, _ -> true
           ) children ges
       ) rhss in 
@@ -129,7 +129,7 @@ let rec check_syntax_semantics: Ast.ast -> SygusAst.sygus_ast -> (unit, string) 
       else 
         let scs = match Option.get rhs with 
         | (StubbedRhs _) -> assert false 
-        | (Rhs (_, scs)) -> scs 
+        | (Rhs (_, scs, _)) -> scs 
         in 
         handle_scs ast sygus_ast constructor element scs)
   | _ -> Ok ()

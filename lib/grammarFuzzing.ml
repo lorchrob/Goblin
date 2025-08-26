@@ -362,8 +362,8 @@ let nonterminals = ["AC_TOKEN" ; "RG_ID"; "RG_ID_LIST"; "REJECTED_GROUPS"; "RG_I
 let rec check_well_formed_rules (grammar : ast) : bool =
   match grammar with
   | [] -> true
-  | ProdRule(nt, rhsList) :: xs -> (not (List.length rhsList = 1 && isNonTerminalPresent nt rhsList)) && check_well_formed_rules xs
-  | TypeAnnotation(_,_,_) :: xs -> check_well_formed_rules xs
+  | ProdRule(nt, rhsList, _) :: xs -> (not (List.length rhsList = 1 && isNonTerminalPresent nt rhsList)) && check_well_formed_rules xs
+  | TypeAnnotation(_, _, _, _) :: xs -> check_well_formed_rules xs
     
 
 let rec applyMutation (m : mutation) (g : ast) (count : int) : (packet_type * grammar) option =

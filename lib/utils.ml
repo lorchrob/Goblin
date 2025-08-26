@@ -114,8 +114,16 @@ let warning_print pp formatter value =
 let crash message = 
   raise (Failure ("Internal error: " ^ message))
 
-let error message = 
-  raise (Failure ("User error: " ^ message))
+exception User_error of string
+
+let error message (pos : Lexing.position) =
+  let line = pos.Lexing.pos_lnum in
+  let col  = pos.Lexing.pos_cnum - pos.Lexing.pos_bol in
+  let msg = Printf.sprintf "Error (line %d, column %d): %s" line col message in
+  raise (User_error msg)
+
+let error_no_pos message =
+  raise (User_error ("Error: " ^ message))
 
 let find_command_in_path cmd =
   match Sys.getenv_opt "PATH" with

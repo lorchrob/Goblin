@@ -40,8 +40,8 @@ let rec pp_print_clp_term: Format.formatter -> clp_term -> unit
       (Lib.pp_print_list pp_print_clp_term ", ") ts
 
 let expr_of_sc sc = match sc with 
-| A.SmtConstraint expr -> expr 
-| DerivedField (nt, expr) -> CompOp (NTExpr ([], [nt, None]), Eq, expr)
+| A.SmtConstraint (expr, _) -> expr 
+| DerivedField (nt, expr, p) -> CompOp (NTExpr ([], [nt, None], p), Eq, expr, p)
 
 let pp_print_clp_element: Format.formatter -> clp_element -> unit 
 = fun ppf element -> match element with 
@@ -85,15 +85,15 @@ let rec create_field_extractors: A.ast -> string list -> clp_rule list
 | nt1 :: nt2 :: [] -> 
   let extractor = nt1 ^ "_" ^ nt2 ^ "s" in 
   let nt1_rhss = List.find_map (function 
-  | A.ProdRule (nt, rhss) -> if nt1 = nt then Some rhss else None
+  | A.ProdRule (nt, rhss, _) -> if nt1 = nt then Some rhss else None
   | TypeAnnotation _ -> None
   ) ast |> Option.get in
   List.mapi (fun i rhs -> match rhs with 
     | A.StubbedRhs _ -> assert false 
-    | A.Rhs (ges, _) ->
+    | A.Rhs (ges, _, _) ->
       let leaves = List.map (function 
       | A.StubbedNonterminal _ -> assert false
-      | Nonterminal (nt, _) -> 
+      | Nonterminal (nt, _, _) -> 
         if nt2 = nt then nt2 else "_"
       ) ges in
       let instances_of_nt2 = List.filter (fun leaf -> leaf <> "_") leaves in
@@ -111,15 +111,15 @@ let rec create_field_extractors: A.ast -> string list -> clp_rule list
   let nt1_extractor = String.concat "_" (nt1 :: nt2 :: rest) ^ "s" in 
   let nt2_extractor = String.concat "_" (nt2 :: rest) ^ "s" in 
   let nt1_rhss = List.find_map (function 
-  | A.ProdRule (nt, rhss) -> if nt1 = nt then Some rhss else None
+  | A.ProdRule (nt, rhss, _) -> if nt1 = nt then Some rhss else None
   | TypeAnnotation _ -> None
   ) ast |> Option.get in
   let field_extractors = List.mapi (fun i rhs -> match rhs with
     | A.StubbedRhs _ -> assert false 
-    | A.Rhs (ges, _) -> 
+    | A.Rhs (ges, _, _) -> 
       let instances_of_nt2 = List.filter_map (function 
       | A.StubbedNonterminal _ -> None
-      | Nonterminal (nt, _) -> 
+      | Nonterminal (nt, _, _) -> 
         if nt2 = nt then Some nt2 else None
       ) ges in
       if List.is_empty instances_of_nt2 then [] else
@@ -169,11 +169,11 @@ let extract_str input =
 
 let clp_program_of_ast: Ast.ast -> clp_program 
 = fun ast -> List.fold_left (fun acc element -> match element with 
-| A.ProdRule (nt, rhss) -> 
+| A.ProdRule (nt, rhss, _) -> 
   (* Create a CLP rule for each prod rule RHS *)
   let rules = List.mapi (fun i rhs -> match rhs with 
   | A.StubbedRhs _ -> Utils.crash "unexpected case in clp_program_of_ast"
-  | A.Rhs (_, scs) -> 
+  | A.Rhs (_, scs, _) -> 
     let nts = A.nts_of_rhs rhs |> annotate_occurrences in
     let leaves = List.map (fun nt -> Leaf nt) nts in 
     let t = FunctionApp (nt, [FunctionApp (nt ^ (string_of_int i), leaves)]) in
@@ -208,7 +208,7 @@ let clp_program_of_ast: Ast.ast -> clp_program
   let nt_exprs = List.filter (fun nt_expr -> List.length nt_expr > 1) nt_exprs in
   let field_extractors = List.concat_map (create_field_extractors ast) (List.map (List.map fst) nt_exprs) in
   acc @ rules @ field_extractors
-| TypeAnnotation (nt, ty, scs) -> 
+| TypeAnnotation (nt, ty, scs, _) -> 
   (* Create a CLP rule for each type annotation *)
   let scs = List.map expr_of_sc scs in
   acc @ [LeafRule (FunctionApp(nt, [Leaf nt]), nt, ty, scs)]

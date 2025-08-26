@@ -49,22 +49,22 @@ let process_constructor_str: string -> string
 
 let expr_to_sygus_ast: A.expr -> SA.sygus_ast 
 = fun expr -> match expr with 
-| IntConst i -> IntLeaf i 
-| PhConst s -> VarLeaf s
-| BVConst (len, bits) -> BVLeaf (len, bits)
-| BLConst bits -> BLLeaf bits 
-| StrConst s -> StrLeaf s
+| IntConst (i, _) -> IntLeaf i 
+  | PhConst (s, _) -> VarLeaf s
+  | BVConst (len, bits, _) -> BVLeaf (len, bits)
+  | BLConst (bits, _) -> BLLeaf bits
+  | StrConst (s, _) -> StrLeaf s
 | _ -> A.pp_print_expr Format.std_formatter expr; eval_fail 1
 
 let rec sygus_ast_to_expr: SA.sygus_ast -> A.expr list
 = fun sygus_ast -> 
   match sygus_ast with 
-| IntLeaf i -> [IntConst i]
-| BVLeaf (len, bits) -> [BVConst (len, bits)]
-| BLLeaf bits -> [BLConst bits]
-| VarLeaf s -> [PhConst s]
-| StrLeaf s -> [StrConst s]
-| BoolLeaf b -> [BConst b]
+| IntLeaf i -> [IntConst (i, Lexing.dummy_pos)]
+  | BVLeaf (len, bits) -> [BVConst (len, bits, Lexing.dummy_pos)]
+  | BLLeaf bits -> [BLConst (bits, Lexing.dummy_pos)]
+  | VarLeaf s -> [PhConst (s, Lexing.dummy_pos)]
+  | StrLeaf s -> [StrConst (s, Lexing.dummy_pos)]
+  | BoolLeaf b -> [BConst (b, Lexing.dummy_pos)]
 | SetLeaf _ -> Utils.crash "unsupported (sets)"
 | Node (_, sygus_asts) -> List.map sygus_ast_to_expr sygus_asts |> List.flatten
 
@@ -76,7 +76,7 @@ let rec compute_dep: A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -> 
   | Some sc -> (
     match sc with 
     | SmtConstraint _ -> Utils.crash "Encountered SmtConstraint when computing dependencies"
-    | DerivedField (_, expr) -> 
+    | DerivedField (_, expr, _) -> 
       evaluate ~dep_map sygus_ast ast element expr |> List.hd |> expr_to_sygus_ast
   )
 
@@ -101,17 +101,17 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -
 = fun ?(dep_map=Utils.StringMap.empty) sygus_ast ast element expr -> 
   let call = evaluate ~dep_map sygus_ast ast element in
   match expr with 
-| NTExpr (_, []) -> Utils.crash "Unexpected case in evaluate 1"
-| NTExpr (_, (id, idx0) :: rest) ->
+| NTExpr (_, [], _) -> Utils.crash "Unexpected case in evaluate 1"
+| NTExpr (_, (id, idx0) :: rest, p) ->
   let child_index = match element with 
   | A.TypeAnnotation _ -> Some 0
-  | A.ProdRule (_, rhss) ->
+  | A.ProdRule (_, rhss, _) ->
     (* Find child_index within the rule, not across all rules *) 
       List.find_map (fun rhs -> match rhs with 
       | A.StubbedRhs _ -> None 
-      | Rhs (ges, _) ->
+      | Rhs (ges, _, _) ->
         Utils.find_index_opt (fun ge -> match ge with 
-        | A.Nonterminal (nt, idx) -> 
+        | A.Nonterminal (nt, idx, _) -> 
           Utils.str_eq_ci id nt && 
           idx0 = idx 
         | StubbedNonterminal (nt, _) -> 
@@ -149,254 +149,254 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -
     | Node _ when rest <> [] -> 
       (* Evaluate dot notation *)
       let element = List.find (fun element -> match element with 
-      | A.ProdRule (nt, _) -> 
+      | A.ProdRule (nt, _, _) -> 
         Utils.str_eq_ci id nt
       | TypeAnnotation _ -> false
       ) ast in
-      evaluate ~dep_map child_sygus_ast ast element (NTExpr ([], rest))
+      evaluate ~dep_map child_sygus_ast ast element (NTExpr ([], rest, p))
     | _ ->
       evaluate_sygus_ast dep_map element ast child_sygus_ast |> sygus_ast_to_expr
   )
-| UnOp (UPlus, expr) -> (
+| UnOp (UPlus, expr, _) -> (
   match call expr with 
-  | [IntConst i] -> [IntConst i]
+  | [IntConst (i, p)] -> [IntConst (i, p)]
   | _ -> eval_fail 6
   )
-| UnOp (UMinus, expr) -> (
+| UnOp (UMinus, expr, _) -> (
   match call expr with 
-  | [IntConst i] -> [IntConst (-1 * i)]
+  | [IntConst (i, p)] -> [IntConst (-1 * i, p)]
   | _ -> eval_fail 7
   )
-| UnOp (LNot, expr) -> (
+| UnOp (LNot, expr, _) -> (
   match call expr with 
-  | [BConst b] -> [BConst (not b)]
+  | [BConst (b, p)] -> [BConst (not b, p)]
   | _ -> eval_fail 8
   )
-| UnOp (BVNot, expr) -> (
+| UnOp (BVNot, expr, _) -> (
   match call expr with 
-  | [BVConst (len, b)] -> [BVConst (len, List.map not b)]
+  | [BVConst (len, b, p)] -> [BVConst (len, List.map not b, p)]
   | _ -> eval_fail 9
   )
-| SeqLength expr 
-| StrLength expr -> (
+| SeqLength (expr, _) 
+| StrLength (expr, _) -> (
   match call expr with 
-  | [StrConst str ] -> [IntConst (String.length str)]
+  | [StrConst (str, p)] -> [IntConst (String.length str, p)]
   | _ -> eval_fail 9
   )
-| BinOp (expr1, BVAnd, expr2) -> 
+| BinOp (expr1, BVAnd, expr2, p) -> 
   let expr1 = call expr1 in 
   let expr2 = call expr2 in (
   match expr1, expr2 with 
-  | [BVConst (len, bv1)], [BVConst (_, bv2)] -> [BVConst (len, List.map2 (&&) bv1 bv2)] 
+  | [BVConst (len, bv1, _)], [BVConst (_, bv2, _)] -> [BVConst (len, List.map2 (&&) bv1 bv2, p)] 
   | _ -> eval_fail 10
   )
-| BinOp (expr1, BVOr, expr2) -> 
+| BinOp (expr1, BVOr, expr2, p) -> 
   let expr1 = call expr1 in 
   let expr2 = call expr2 in (
   match expr1, expr2 with 
-  | [BVConst (len, bv1)], [BVConst (_, bv2)] -> [BVConst (len, List.map2 (||) bv1 bv2)]
+  | [BVConst (len, bv1, _)], [BVConst (_, bv2, _)] -> [BVConst (len, List.map2 (||) bv1 bv2, p)]
   | _ -> eval_fail 11
   )
-| BinOp (expr1, BVXor, expr2) -> 
+| BinOp (expr1, BVXor, expr2, p) -> 
   let expr1 = call expr1 in 
   let expr2 = call expr2 in (
   match expr1, expr2 with 
-  | [BVConst (len, bv1)], [BVConst (_, bv2)] -> [BVConst (len, List.map2 (fun a b -> (a || b) && not (a && b)) bv1 bv2)] 
+  | [BVConst (len, bv1, _)], [BVConst (_, bv2, _)] -> [BVConst (len, List.map2 (fun a b -> (a || b) && not (a && b)) bv1 bv2, p)] 
   | _ -> eval_fail 12
   )
-| BinOp (expr1, GLAnd, expr2)
-| BinOp (expr1, LAnd, expr2) -> 
+| BinOp (expr1, GLAnd, expr2, p)
+| BinOp (expr1, LAnd, expr2, p) -> 
   let expr1 = call expr1 in 
   let expr2 = call expr2 in (
   match expr1, expr2 with 
-  | [BConst b1], [BConst b2] -> [BConst (b1 && b2)]
+  | [BConst (b1, _)], [BConst (b2, _)] -> [BConst (b1 && b2, p)]
   | _ -> eval_fail 13
   )
-| BinOp (expr1, LOr, expr2) -> 
+| BinOp (expr1, LOr, expr2, p) -> 
   let expr1 = call expr1 in 
   let expr2 = call expr2 in (
   match expr1, expr2 with 
-  | [BConst b1], [BConst b2] -> [BConst (b1 || b2)]
+  | [BConst (b1, _)], [BConst (b2, _)] -> [BConst (b1 || b2, p)]
   | _ -> eval_fail 14
   )
-| BinOp (expr1, LXor, expr2) -> 
+| BinOp (expr1, LXor, expr2, p) -> 
   let expr1 = call expr1 in 
   let expr2 = call expr2 in (
   match expr1, expr2 with 
-  | [BConst b1], [BConst b2] -> [BConst ((b1 || b2) && not (b1 && b2))] 
+  | [BConst (b1, _)], [BConst (b2, _)] -> [BConst ((b1 || b2) && not (b1 && b2), p)] 
   | _ -> eval_fail 15
   )
-| BinOp (expr1, LImplies, expr2) -> 
+| BinOp (expr1, LImplies, expr2, p) -> 
   let expr1 = call expr1 in 
   let expr2 = call expr2 in (
   match expr1, expr2 with 
-  | [BConst b1], [BConst b2] -> [BConst ((not b1) || b2)] 
+  | [BConst (b1, _)], [BConst (b2, _)] -> [BConst ((not b1) || b2, p)] 
   | _ -> eval_fail 16
   )
-| BinOp (expr1, Plus, expr2) -> 
+| BinOp (expr1, Plus, expr2, p) -> 
   let expr1 = call expr1 in 
   let expr2 = call expr2 in (
   match expr1, expr2 with 
-  | [IntConst i1], [IntConst i2] -> [IntConst (i1 + i2)] 
+  | [IntConst (i1, _)], [IntConst (i2, _)] -> [IntConst (i1 + i2, p)] 
   | _ -> eval_fail 17
   )
-| BinOp (expr1, Minus, expr2) -> 
+| BinOp (expr1, Minus, expr2, p) -> 
   let expr1 = call expr1 in 
   let expr2 = call expr2 in (
   match expr1, expr2 with 
-  | [IntConst i1], [IntConst i2] -> [IntConst (i1 - i2)] 
+  | [IntConst (i1, _)], [IntConst (i2, _)] -> [IntConst (i1 - i2, p)] 
   | _ -> eval_fail 18
   )
-| BinOp (expr1, Times, expr2) -> 
+| BinOp (expr1, Times, expr2, p) -> 
   let expr1 = call expr1 in 
   let expr2 = call expr2 in (
   match expr1, expr2 with 
-  | [IntConst i1], [IntConst i2] -> [IntConst (i1 * i2)] 
+  | [IntConst (i1, _)], [IntConst (i2, _)] -> [IntConst (i1 * i2, p)] 
   | _ -> eval_fail 19
   )
-| BinOp (expr1, Div, expr2) ->
+| BinOp (expr1, Div, expr2, p) ->
   let expr1 = call expr1 in 
   let expr2 = call expr2 in (
   match expr1, expr2 with 
-  | [IntConst i1], [IntConst i2] -> [IntConst (i1 / i2)] 
+  | [IntConst (i1, _)], [IntConst (i2, _)] -> [IntConst (i1 / i2, p)] 
   | _ -> eval_fail 20
   )
-| BinOp (expr1, StrConcat, expr2) ->
+| BinOp (expr1, StrConcat, expr2, p) ->
   let expr1 = call expr1 in 
   let expr2 = call expr2 in (
   match expr1, expr2 with 
-  | [StrConst str1], [StrConst str2] -> [StrConst (str1 ^ str2)] 
+  | [StrConst (str1, _)], [StrConst (str2, _)] -> [StrConst (str1 ^ str2, p)] 
   | _ -> eval_fail 20
   )
-| CompOp (expr1, Lt, expr2) -> 
+| CompOp (expr1, Lt, expr2, p) -> 
   let expr1 = call expr1 in 
   let expr2 = call expr2 in (
   match expr1, expr2 with 
-  | [IntConst i1], [IntConst i2] -> [BConst (i1 < i2)] 
+  | [IntConst (i1, _)], [IntConst (i2, _)] -> [BConst (i1 < i2, p)] 
   | _ -> eval_fail 21
   )
-| CompOp (expr1, Lte, expr2) -> 
+| CompOp (expr1, Lte, expr2, p) -> 
   let expr1 = call expr1 in 
   let expr2 = call expr2 in (
   match expr1, expr2 with 
-  | [IntConst i1], [IntConst i2] -> [BConst (i1 <= i2)] 
+  | [IntConst (i1, _)], [IntConst (i2, _)] -> [BConst (i1 <= i2, p)] 
   | _ -> eval_fail 22
   )
-| CompOp (expr1, Gt, expr2) -> 
+| CompOp (expr1, Gt, expr2, p) -> 
   let expr1 = call expr1 in 
   let expr2 = call expr2 in (
   match expr1, expr2 with 
-  | [IntConst i1], [IntConst i2] -> [BConst (i1 > i2)] 
+  | [IntConst (i1, _)], [IntConst (i2, _)] -> [BConst (i1 > i2, p)] 
   | _ -> eval_fail 23
   )
-| CompOp (expr1, Gte, expr2) -> 
+| CompOp (expr1, Gte, expr2, p) -> 
   let expr1 = call expr1 in 
   let expr2 = call expr2 in (
   match expr1, expr2 with 
-  | [IntConst i1], [IntConst i2] -> [BConst (i1 >= i2)]
+  | [IntConst (i1, _)], [IntConst (i2, _)] -> [BConst (i1 >= i2, p)]
   | _ -> eval_fail 24
   )
-| CompOp (expr1, Eq, expr2) ->
+| CompOp (expr1, Eq, expr2, p) ->
   let expr1 = call expr1 in 
   let expr2 = call expr2 in (
   match expr1, expr2 with 
-  | [IntConst i1], [IntConst i2] -> [BConst (i1 = i2)]
-  | [BConst b1], [BConst b2] -> [BConst (b1 = b2)]
-  | [BVConst (_, bv1)], [BVConst (_, bv2)] -> [BConst (bv1 = bv2)]
-  | [BLConst bl1], [BLConst bl2] -> [BConst (bl1 = bl2)]
-  | [StrConst str1], [StrConst str2]
-  | [PhConst str1], [PhConst str2] -> [BConst (String.equal str1 str2)]
+  | [IntConst (i1, _)], [IntConst (i2, _)] -> [BConst (i1 = i2, p)]
+  | [BConst (b1, _)], [BConst (b2, _)] -> [BConst (b1 = b2, p)]
+  | [BVConst (_, bv1, _)], [BVConst (_, bv2, _)] -> [BConst (bv1 = bv2, p)]
+  | [BLConst (bl1, _)], [BLConst (bl2, _)] -> [BConst (bl1 = bl2, p)]
+  | [StrConst (str1, _)], [StrConst (str2, _)]
+  | [PhConst (str1, _)], [PhConst (str2, _)] -> [BConst (String.equal str1 str2, p)]
   | _ ->
     Format.fprintf Format.std_formatter "Debug info: %a %a\n"
       (Lib.pp_print_list A.pp_print_expr "; ") expr1
       (Lib.pp_print_list A.pp_print_expr "; ") expr2;
     eval_fail 25
   )
-| CompOp (expr1, BVLt, expr2) -> 
+| CompOp (expr1, BVLt, expr2, p) -> 
   let expr1 = call expr1 in 
   let expr2 = call expr2 in (
   match expr1, expr2 with 
-  | [BVConst (_, bv1)], [BVConst (_, bv2)] ->
-    [BConst (bvult bv1 bv2)] 
+  | [BVConst (_, bv1, _)], [BVConst (_, bv2, _)] ->
+    [BConst (bvult bv1 bv2, p)] 
   | _ -> eval_fail 12
   )
-| CompOp (expr1, BVLte, expr2) -> 
+| CompOp (expr1, BVLte, expr2, p) -> 
   let expr1 = call expr1 in 
   let expr2 = call expr2 in (
   match expr1, expr2 with 
-  | [BVConst (_, bv1)], [BVConst (_, bv2)] ->
-    [BConst (bvult bv1 bv2 || bv1 = bv2)] 
+  | [BVConst (_, bv1, _)], [BVConst (_, bv2, _)] ->
+    [BConst (bvult bv1 bv2 || bv1 = bv2, p)] 
   | _ -> eval_fail 12
   )
-| CompOp (expr1, BVGt, expr2) -> 
+| CompOp (expr1, BVGt, expr2, p) -> 
   let expr1 = call expr1 in 
   let expr2 = call expr2 in (
   match expr1, expr2 with 
-  | [BVConst (_, bv1)], [BVConst (_, bv2)] ->
-    [BConst (bvult bv2 bv1)] 
+  | [BVConst (_, bv1, _)], [BVConst (_, bv2, _)] ->
+    [BConst (bvult bv2 bv1, p)] 
   | _ -> eval_fail 12
   )
-| CompOp (expr1, BVGte, expr2) -> 
+| CompOp (expr1, BVGte, expr2, p) -> 
   let expr1 = call expr1 in 
   let expr2 = call expr2 in (
   match expr1, expr2 with 
-  | [BVConst (_, bv1)], [BVConst (_, bv2)] ->
-    [BConst (bvult bv2 bv1 || bv1 = bv2)] 
+  | [BVConst (_, bv1, _)], [BVConst (_, bv2, _)] ->
+    [BConst (bvult bv2 bv1 || bv1 = bv2, p)] 
   | _ -> eval_fail 12
   )
-| CompOp (expr1, StrPrefix, expr2) -> 
+| CompOp (expr1, StrPrefix, expr2, p) -> 
   let expr1 = call expr1 in 
   let expr2 = call expr2 in (
   match expr1, expr2 with 
-  | [StrConst str1], [StrConst str2] ->
+  | [StrConst (str1, _)], [StrConst (str2, _)] ->
     let len1 = String.length str1 in
     let len2 = String.length str2 in
-    [BConst (len1 <= len2 && String.sub str2 0 len1 = str1)] 
+    [BConst (len1 <= len2 && String.sub str2 0 len1 = str1, p)] 
   | _ -> eval_fail 12
   )
-| CompOp (expr1, StrContains, expr2) -> 
+| CompOp (expr1, StrContains, expr2, p) -> 
   let expr1 = call expr1 in 
   let expr2 = call expr2 in (
   match expr1, expr2 with 
-  | [StrConst str1], [StrConst str2] ->
+  | [StrConst (str1, _)], [StrConst (str2, _)] ->
     (* TODO: Check this function *)
     let contains s1 s2 =
       let re = Str.regexp_string s2 in
       try ignore (Str.search_forward re s1 0); true
       with Not_found -> false
     in
-    [BConst (contains str1 str2)] 
+    [BConst (contains str1 str2, p)] 
   | _ -> eval_fail 12
   )
-| Length expr -> (
+| Length (expr, p) -> (
   let exprs = call expr in 
   List.fold_left (fun acc expr ->
     match acc, expr with 
-    | [(A.IntConst i)], A.BLConst bits -> [IntConst (i + (List.length bits))]
-    | [(A.IntConst i)], A.BVConst (_, bits) -> [IntConst (i + (List.length bits))]
-    | [(A.IntConst i)], A.StrConst str  
-    | [(A.IntConst i)], A.PhConst str -> 
-      if str = "<AC_TOKEN>" || str = "<SCALAR>" then [IntConst (i + 32*8)] 
-      else if str = "<ELEMENT>" then [IntConst (i + 64*8)]
-      else if str = "<CONFIRM_HASH>" then [IntConst (32*8)] 
-      else if str = "<SEND_CONFIRM_COUNTER>" then [IntConst (2*8)] 
+    | [(A.IntConst (i, _))], A.BLConst (bits, _) -> [IntConst (i + (List.length bits), p)]
+    | [(A.IntConst (i, _))], A.BVConst (_, bits, _) -> [IntConst (i + (List.length bits), p)]
+    | [(A.IntConst (i, _))], A.StrConst (str, _)  
+    | [(A.IntConst (i, _))], A.PhConst (str, _) -> 
+      if str = "<AC_TOKEN>" || str = "<SCALAR>" then [IntConst (i + 32*8, p)] 
+      else if str = "<ELEMENT>" then [IntConst (i + 64*8, p)]
+      else if str = "<CONFIRM_HASH>" then [IntConst (32*8, p)] 
+      else if str = "<SEND_CONFIRM_COUNTER>" then [IntConst (2*8, p)] 
       else Utils.crash "Tried to compute length of unknown placeholder"
     | _ -> eval_fail 26
-    ) [(A.IntConst (0))] exprs
+    ) [(A.IntConst (0, p))] exprs
   )
-| BVCast (len, expr) -> (
+| BVCast (len, expr, p) -> (
   match call expr with 
-  | [IntConst i] -> [A.il_int_to_bv len i]
+  | [IntConst (i, _)] -> [A.il_int_to_bv len i p]
   | _ -> eval_fail 27
  )
 | BVConst _ | BLConst _ | IntConst _ | BConst _ | PhConst _ | StrConst _ | EmptySet _ -> [expr]
 | Match _ -> Utils.crash "Match not yet supported in dependency computation"
-| BinOp (_, SetMembership, _) 
-| BinOp (_, SetUnion, _) 
-| BinOp (_, SetIntersection, _) 
-| Singleton _ ->
+| BinOp (_, SetMembership, _, _) 
+| BinOp (_, SetUnion, _, _) 
+| BinOp (_, SetIntersection, _, _) 
+| Singleton (_, _) ->
   Utils.crash "Set operations not yet supported in dependency computation"
-| ReRange _ | ReUnion _ | ReStar _ | ReConcat _ | StrToRe _ | StrInRe _ -> 
+| ReRange (_, _, _) | ReUnion (_, _) | ReStar (_, _) | ReConcat (_, _) | StrToRe (_, _) | StrInRe (_, _, _) -> 
   Utils.crash "Regex operations not yet supported in dependency computation"
 
 
@@ -409,8 +409,8 @@ let rec compute_deps: A.semantic_constraint Utils.StringMap.t -> A.ast -> SA.syg
   | SygusAst.Node _ -> compute_deps dep_map ast subterm
   | VarLeaf var -> 
     let element = List.find_opt (fun element -> match element with 
-    | A.TypeAnnotation (nt, _, _)  
-    | ProdRule (nt, _) -> 
+    | A.TypeAnnotation (nt, _, _, _)  
+    | ProdRule (nt, _, _) -> 
       Utils.str_eq_ci nt (Utils.extract_base_name constructor)
     ) ast in
     let element = match element with 

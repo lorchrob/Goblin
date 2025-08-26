@@ -100,19 +100,21 @@ element:
   scs = option(semantic_constraints); SEMICOLON;
   { 
     match scs with 
-    | None -> TypeAnnotation (nt, t, []) 
-    | Some scs -> TypeAnnotation (nt, t, scs) 
+    | None -> TypeAnnotation (nt, t, [], $startpos) 
+    | Some scs -> TypeAnnotation (nt, t, scs, $startpos) 
   }
 (* Production rule *)
 | nt = nonterminal; PRODUCTION; rhss = separated_nonempty_list(OPTION, rhs); SEMICOLON;
-  { ProdRule (nt, rhss) }
+  { 
+    ProdRule (nt, rhss, $startpos) 
+  }
 
 rhs:
 | ges = nonempty_list(grammar_element); scs = option(semantic_constraints);
   { 
     match scs with 
-    | None -> Rhs (ges, [])
-    | Some scs -> Rhs (ges, scs) 
+    | None -> Rhs (ges, [], $startpos)
+    | Some scs -> Rhs (ges, scs, $startpos) 
   }
 
 il_type: 
@@ -131,75 +133,179 @@ semantic_constraint_list:
 | sc = semantic_constraint; SEMICOLON; scs = semantic_constraint_list; { sc :: scs }
 
 grammar_element:
-| nt = nonterminal { Nonterminal(nt, None) }
+| nt = nonterminal { 
+    Nonterminal(nt, None, $startpos) 
+  }
 
 semantic_constraint:
-| nt = nonterminal; ASSIGN; e = expr { DerivedField (nt, e) }
-| e = expr { SmtConstraint e }
+| nt = nonterminal; ASSIGN; e = expr { 
+    DerivedField (nt, e, $startpos) 
+  }
+| e = expr { 
+    SmtConstraint (e, $startpos) 
+  }
 
 expr: 
 | EMPTYSET; LT; ty = il_type; GT; 
-  { EmptySet ty } 
+  { 
+    EmptySet (ty, $startpos) 
+  } 
 | SINGLETON; LPAREN; e = expr; RPAREN;
-  { Singleton e }
+  { 
+    Singleton (e, $startpos) 
+  }
 (* Binary operations *)
-| e1 = expr; LAND; e2 = expr { BinOp (e1, LAnd, e2) }
-| e1 = expr; LOR; e2 = expr { BinOp (e1, LOr, e2) }
-| e1 = expr; LXOR; e2 = expr { BinOp (e1, LXor, e2) }
-| e1 = expr; LIMPLIES; e2 = expr { BinOp (e1, LImplies, e2) }
-| e1 = expr; PLUS; e2 = expr { BinOp (e1, Plus, e2) }
-| e1 = expr; MINUS; e2 = expr { BinOp (e1, Minus, e2) }
-| e1 = expr; TIMES; e2 = expr { BinOp (e1, Times, e2) }
-| e1 = expr; DIV; e2 = expr { BinOp (e1, Div, e2) }
-| e1 = expr; BVAND; e2 = expr { BinOp (e1, BVAnd, e2) }
-| e1 = expr; BVOR; e2 = expr { BinOp (e1, BVOr, e2) }
-| e1 = expr; BVXOR; e2 = expr { BinOp (e1, BVXor, e2) }
+| e1 = expr; LAND; e2 = expr { 
+    BinOp (e1, LAnd, e2, $startpos) 
+  }
+| e1 = expr; LOR; e2 = expr { 
+    BinOp (e1, LOr, e2, $startpos) 
+  }
+| e1 = expr; LXOR; e2 = expr { 
+    BinOp (e1, LXor, e2, $startpos) 
+  }
+| e1 = expr; LIMPLIES; e2 = expr { 
+    BinOp (e1, LImplies, e2, $startpos) 
+  }
+| e1 = expr; PLUS; e2 = expr { 
+    BinOp (e1, Plus, e2, $startpos) 
+  }
+| e1 = expr; MINUS; e2 = expr { 
+    BinOp (e1, Minus, e2, $startpos) 
+  }
+| e1 = expr; TIMES; e2 = expr { 
+    BinOp (e1, Times, e2, $startpos) 
+  }
+| e1 = expr; DIV; e2 = expr { 
+    BinOp (e1, Div, e2, $startpos) 
+  }
+| e1 = expr; BVAND; e2 = expr { 
+    BinOp (e1, BVAnd, e2, $startpos) 
+  }
+| e1 = expr; BVOR; e2 = expr { 
+    BinOp (e1, BVOr, e2, $startpos) 
+  }
+| e1 = expr; BVXOR; e2 = expr { 
+    BinOp (e1, BVXor, e2, $startpos) 
+  }
 (* Comparison operations *)
-| e1 = expr; LT; e2 = expr { CompOp (e1, Lt, e2) }
-| e1 = expr; LTE; e2 = expr { CompOp (e1, Lte, e2) }
-| e1 = expr; GT; e2 = expr { CompOp (e1, Gt, e2) }
-| e1 = expr; GTE; e2 = expr { CompOp (e1, Gte, e2) }
-| e1 = expr; EQ; e2 = expr { CompOp (e1, Eq, e2) }
-| e1 = expr; BVLT; e2 = expr { CompOp (e1, BVLt, e2) }
-| e1 = expr; BVLTE; e2 = expr { CompOp (e1, BVLte, e2) }
-| e1 = expr; BVGT; e2 = expr { CompOp (e1, BVGt, e2) }
-| e1 = expr; BVGTE; e2 = expr { CompOp (e1, BVGte, e2) }
+| e1 = expr; LT; e2 = expr { 
+    CompOp (e1, Lt, e2, $startpos) 
+  }
+| e1 = expr; LTE; e2 = expr { 
+    CompOp (e1, Lte, e2, $startpos) 
+  }
+| e1 = expr; GT; e2 = expr { 
+    CompOp (e1, Gt, e2, $startpos) 
+  }
+| e1 = expr; GTE; e2 = expr { 
+    CompOp (e1, Gte, e2, $startpos) 
+  }
+| e1 = expr; EQ; e2 = expr { 
+    CompOp (e1, Eq, e2, $startpos) 
+  }
+| e1 = expr; BVLT; e2 = expr { 
+    CompOp (e1, BVLt, e2, $startpos) 
+  }
+| e1 = expr; BVLTE; e2 = expr { 
+    CompOp (e1, BVLte, e2, $startpos) 
+  }
+| e1 = expr; BVGT; e2 = expr { 
+    CompOp (e1, BVGt, e2, $startpos) 
+  }
+| e1 = expr; BVGTE; e2 = expr { 
+    CompOp (e1, BVGte, e2, $startpos) 
+  }
 (* Unary operations *)
-| BVNOT; e = expr { UnOp (BVNot, e) }
-| PLUS; e = expr { UnOp (UPlus, e) }
-| MINUS; e = expr { UnOp (UMinus, e) }
-| LNOT; e = expr { UnOp (LNot, e) }
+| BVNOT; e = expr { 
+    UnOp (BVNot, e, $startpos) 
+  }
+| PLUS; e = expr { 
+    UnOp (UPlus, e, $startpos) 
+  }
+| MINUS; e = expr { 
+    UnOp (UMinus, e, $startpos) 
+  }
+| LNOT; e = expr { 
+    UnOp (LNot, e, $startpos) 
+  }
 (* Concrete constants *)
-| i = INTEGER; { IntConst (i) }
-| s = STRING; { StrConst (s) } 
-| TRUE; { BConst true }
-| FALSE; { BConst false }
-| bv = BITS { BVConst (List.length bv, bv) }
-| LPAREN; BITLIST; bl = BITS; RPAREN; { BLConst bl }
+| i = INTEGER; { 
+    IntConst (i, $startpos) 
+  }
+| s = STRING; { 
+    StrConst (s, $startpos) 
+  } 
+| TRUE; { 
+    BConst (true, $startpos) 
+  }
+| FALSE; { 
+    BConst (false, $startpos) 
+  }
+| bv = BITS { 
+    BVConst (List.length bv, bv, $startpos) 
+  }
+| LPAREN; BITLIST; bl = BITS; RPAREN; { 
+    BLConst (bl, $startpos) 
+  }
 (* Built-in functions *)
-| STRCONCAT; LPAREN; e1 = expr; COMMA; e2 = expr RPAREN; { BinOp (e1, StrConcat, e2) }
+| STRCONCAT; LPAREN; e1 = expr; COMMA; e2 = expr RPAREN; { 
+    BinOp (e1, StrConcat, e2, $startpos) 
+  }
 | MEMBER; LPAREN; e1 = expr; COMMA; e2 = expr; RPAREN; 
-  { BinOp (e1, SetMembership, e2) }
+  { 
+    BinOp (e1, SetMembership, e2, $startpos) 
+  }
 | UNION; LPAREN; e1 = expr; COMMA; e2 = expr; RPAREN; 
-  { BinOp (e1, SetUnion, e2) }
+  { 
+    BinOp (e1, SetUnion, e2, $startpos) 
+  }
 | INTERSECTION; LPAREN; e1 = expr; COMMA; e2 = expr; RPAREN; 
-  { BinOp (e1, SetIntersection, e2) }
+  { 
+    BinOp (e1, SetIntersection, e2, $startpos) 
+  }
 | INTTOBITVECTOR; 
-  LPAREN; width = INTEGER; COMMA; e = expr; RPAREN; { BVCast (width, e) }
-| LENGTH; LPAREN; e = expr; RPAREN; { Length (e) }
-| STRLENGTH; LPAREN; e = expr; RPAREN; { StrLength (e) }
-| SEQLENGTH; LPAREN; e = expr; RPAREN; { SeqLength (e) }
-| STRPREFIX; LPAREN; e1 = expr; COMMA; e2 = expr; RPAREN; { CompOp (e1, StrPrefix, e2) }
-| STRCONTAINS; LPAREN; e1 = expr; COMMA; e2 = expr; RPAREN; { CompOp (e1, StrContains, e2) }
-| STR_TO_RE; LPAREN; e = expr; RPAREN; { StrToRe e }
-| STR_IN_RE; LPAREN; e1 = expr; COMMA; e2 = expr; RPAREN; { StrInRe (e1, e2) }
-| RE_UNION; LPAREN; es = separated_nonempty_list(COMMA, expr); RPAREN; { ReUnion es } 
-| RE_RANGE; LPAREN; e1 = expr; COMMA; e2 = expr; RPAREN; { ReRange (e1, e2) } 
-| RE_CONCAT; LPAREN; es = separated_nonempty_list(COMMA, expr); RPAREN; { ReConcat es }
-| RE_STAR; LPAREN; e = expr; RPAREN; { ReStar e } 
+  LPAREN; width = INTEGER; COMMA; e = expr; RPAREN; { 
+    BVCast (width, e, $startpos) 
+  }
+| LENGTH; LPAREN; e = expr; RPAREN; { 
+    Length (e, $startpos) 
+  }
+| STRLENGTH; LPAREN; e = expr; RPAREN; { 
+    StrLength (e, $startpos) 
+  }
+| SEQLENGTH; LPAREN; e = expr; RPAREN; { 
+    SeqLength (e, $startpos) 
+  }
+| STRPREFIX; LPAREN; e1 = expr; COMMA; e2 = expr; RPAREN; { 
+    CompOp (e1, StrPrefix, e2, $startpos) 
+  }
+| STRCONTAINS; LPAREN; e1 = expr; COMMA; e2 = expr; RPAREN; { 
+    CompOp (e1, StrContains, e2, $startpos) 
+  }
+| STR_TO_RE; LPAREN; e = expr; RPAREN; { 
+    StrToRe (e, $startpos) 
+  }
+| STR_IN_RE; LPAREN; e1 = expr; COMMA; e2 = expr; RPAREN; { 
+    StrInRe (e1, e2, $startpos) 
+  }
+| RE_UNION; LPAREN; es = separated_nonempty_list(COMMA, expr); RPAREN; { 
+    ReUnion (es, $startpos) 
+  } 
+| RE_RANGE; LPAREN; e1 = expr; COMMA; e2 = expr; RPAREN; { 
+    ReRange (e1, e2, $startpos) 
+  } 
+| RE_CONCAT; LPAREN; es = separated_nonempty_list(COMMA, expr); RPAREN; { 
+    ReConcat (es, $startpos) 
+  }
+| RE_STAR; LPAREN; e = expr; RPAREN; { 
+    ReStar (e, $startpos) 
+  } 
 
 (* Variables *)
-| e = nt_expr; (* _ = option(index); *) { NTExpr ([], e) }
+| e = nt_expr; (* _ = option(index); *) { 
+    NTExpr ([], e, $startpos) 
+  }
 (* Arbitrary parens *)
 | LPAREN; e = expr; RPAREN; { e }
 

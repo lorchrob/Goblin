@@ -11,7 +11,7 @@ let random_element (lst: 'a list) : 'a =
 let rec isNonTerminalPresent nt_name prod_options = 
     match prod_options with 
     | [] -> false 
-    | Rhs(ge_list, _) :: xs -> (List.mem (Nonterminal (nt_name, None)) ge_list) || (isNonTerminalPresent nt_name xs) 
+    | Rhs(ge_list, _, p) :: xs -> (List.mem (Nonterminal (nt_name, None, p)) ge_list) || (isNonTerminalPresent nt_name xs) 
     | _ :: ys -> isNonTerminalPresent nt_name ys 
 
 let rec removeFromList nt lst =
@@ -21,47 +21,47 @@ let rec removeFromList nt lst =
 
 let apply_add_s1_to_rule production_options nt = 
     List.map (fun rhs_prod_rul -> match rhs_prod_rul with 
-    | Rhs(geList, scList) -> 
-        if List.mem (Nonterminal (nt, None)) geList
-            then Rhs(geList @ [Nonterminal(nt, None)], scList) 
-        else Rhs(geList, scList)
+    | Rhs(geList, scList, pos) -> 
+        if List.mem (Nonterminal (nt, None, pos)) geList
+            then Rhs(geList @ [Nonterminal(nt, None, pos)], scList, pos) 
+        else Rhs(geList, scList, pos)
     | StubbedRhs(s) -> StubbedRhs(s) 
     ) production_options 
 
 let rec find_random_production_rule (grammar : ast) : element option = 
     let candidate = random_element grammar in
     match candidate with
-    | ProdRule (x, y) -> Some (ProdRule (x, y))
+    | ProdRule (x, y, pos) -> Some (ProdRule (x, y, pos))
     | _ -> find_random_production_rule grammar
 
 let rec grammar_element_addition (geList : grammar_element list) (nt : string) (insertion_index : int) : grammar_element list = 
     match insertion_index, geList with
-    | _, [] -> [Nonterminal (nt, None)]
-    | 0, xs -> (Nonterminal (nt, None)) :: xs
+    | _, [] -> [Nonterminal (nt, None, Lexing.dummy_pos)]
+    | 0, xs -> (Nonterminal (nt, None, Lexing.dummy_pos)) :: xs
     | count, x :: xs -> x :: (grammar_element_addition xs nt (count - 1))
      
 let rec mutation_add_s1 (g : ast) (nt : string) (pr : element option) : ast * bool = 
     match pr with 
-    | Some (ProdRule (nt_name, _)) -> (
+    | Some (ProdRule (nt_name, _, _)) -> (
         match g with
         | [] -> [], false
-        | ProdRule (nonterminal, pr_rhs) :: xs ->
+        | ProdRule (nonterminal, pr_rhs, pos) :: xs ->
             if nonterminal = nt_name then ( 
                 match pr_rhs with 
                 | [] -> ([], false)
-                | Rhs (geList, scList) :: ys -> 
+                | Rhs (geList, scList, pos2) :: ys -> 
                     let list_length = List.length geList in
                     let insertion_index = Random.int list_length in
-                    (ProdRule (nonterminal, Rhs ((grammar_element_addition geList nt insertion_index), scList) :: ys) :: xs), true
+                    (ProdRule (nonterminal, Rhs ((grammar_element_addition geList nt insertion_index), scList, pos2) :: ys, pos) :: xs), true
                 (* | StubbedRhs x :: ys -> StubbedRhs x :: ys, false *)
-                | StubbedRhs(x) :: ys -> (ProdRule (nonterminal, StubbedRhs(x) :: ys) :: xs), false
+                | StubbedRhs(x) :: ys -> (ProdRule (nonterminal, StubbedRhs(x) :: ys, pos) :: xs), false
             )
             else
                 let (gg, r) = mutation_add_s1 xs nt pr in 
-                    (ProdRule (nonterminal, pr_rhs) :: gg, r)
-        | TypeAnnotation(x,y,z) :: xs -> 
+                    (ProdRule (nonterminal, pr_rhs, pos) :: gg, r)
+        | TypeAnnotation(x,y,z,pos) :: xs -> 
             let (gg, r) = mutation_add_s1 xs nt pr in 
-                ((TypeAnnotation(x,y,z) :: gg), r)
+                ((TypeAnnotation(x,y,z,pos) :: gg), r)
             (* x :: mutation_add_s1 (xs nt pr) *)
     )
     | Some _ -> g, false
@@ -94,13 +94,13 @@ let rec isPresentInCaseList (nt:string) (caselist : case list) : bool =
 
 and isPresentInExpr (nt:string) (e:expr) : bool = 
     match e with 
-    | BinOp (e1, _, e2) -> (isPresentInExpr nt e1) || (isPresentInExpr nt e2)
-    | UnOp (_, e) -> (isPresentInExpr nt e)
-    | CompOp (e1, _, e2) -> (isPresentInExpr nt e1) || (isPresentInExpr nt e2)
-    | Length (e) -> (isPresentInExpr nt e)
-    | BVCast (_, e) -> (isPresentInExpr nt e)
-    | NTExpr (_, n) -> (List.mem nt (List.map fst n))
-    | Match (_, (nt2, _), caselist) -> (nt = nt2) || isPresentInCaseList nt caselist
+    | BinOp (e1, _, e2, _) -> (isPresentInExpr nt e1) || (isPresentInExpr nt e2)
+    | UnOp (_, e, _) -> (isPresentInExpr nt e)
+    | CompOp (e1, _, e2, _) -> (isPresentInExpr nt e1) || (isPresentInExpr nt e2)
+    | Length (e, _) -> (isPresentInExpr nt e)
+    | BVCast (_, e, _) -> (isPresentInExpr nt e)
+    | NTExpr (_, n, _) -> (List.mem nt (List.map fst n))
+    | Match (_, (nt2, _), caselist, _) -> (nt = nt2) || isPresentInCaseList nt caselist
     | _ -> false 
     
 let rec remove_constraints (nt : string) (clist : semantic_constraint list) : semantic_constraint list = 
@@ -108,97 +108,97 @@ let rec remove_constraints (nt : string) (clist : semantic_constraint list) : se
     | [] -> [] 
     | x::xs -> 
         match x with 
-        | DerivedField(nonTerminal, e) -> 
+        | DerivedField(nonTerminal, e, pos) -> 
             if nonTerminal = nt || isPresentInExpr nt e 
                 then (remove_constraints nt xs) 
-            else DerivedField(nonTerminal, e)::(remove_constraints nt xs)  
-        | SmtConstraint(e) -> 
+            else DerivedField(nonTerminal, e, pos)::(remove_constraints nt xs)  
+        | SmtConstraint(e, pos) -> 
             if isPresentInExpr nt e 
                 then (remove_constraints nt xs)
-            else SmtConstraint(e)::(remove_constraints nt xs) 
+            else SmtConstraint(e, pos)::(remove_constraints nt xs) 
 
 let rec apply_delete_to_rule nt production_options = 
     match production_options with
     | [] -> [] 
-    | Rhs(geList, scList) :: xs -> 
+    | Rhs(geList, scList, pos) :: xs -> 
         if (List.length geList) > 1 then
-            let deleteFromGrammarElementList = removeFromList (Nonterminal (nt, None)) geList in
+            let deleteFromGrammarElementList = removeFromList (Nonterminal (nt, None, pos)) geList in
             let deleteFromConstraintList = remove_constraints nt scList in
-            Rhs(deleteFromGrammarElementList, deleteFromConstraintList) :: xs 
-        else Rhs(geList, scList) :: xs
+            Rhs(deleteFromGrammarElementList, deleteFromConstraintList, pos) :: xs 
+        else Rhs(geList, scList, pos) :: xs
     | StubbedRhs(s)::xs -> StubbedRhs(s) :: (apply_delete_to_rule nt xs) 
 
 let rec mutation_delete g nt =
     match g with
     | [] -> ([], false)
-    | ProdRule(nonTerminal, production_options) :: xs ->
+    | ProdRule(nonTerminal, production_options, pos) :: xs ->
         (* if (nonTerminal = "SAE_PACKET")
         then *)
             let found = isNonTerminalPresent nt production_options in
             if found then
                 let po = apply_delete_to_rule nt production_options in
-                    (ProdRule(nonTerminal, po) :: xs, true)
+                    (ProdRule(nonTerminal, po, pos) :: xs, true)
             else 
                 let (gg, r) = mutation_delete xs nt in
-                (ProdRule(nonTerminal, production_options) :: gg, r) 
+                (ProdRule(nonTerminal, production_options, pos) :: gg, r) 
                 (* (ProdRule(nonTerminal, production_options)::xs, false)        *)
             (* else 
                 let (gg, r) = mutation_delete xs nt
                         in 
                 (ProdRule(nonTerminal, production_options) :: gg, r)    *)
-    | TypeAnnotation(v, w, x) :: ys -> 
+    | TypeAnnotation(v, w, x, pos) :: ys -> 
         let (gg, r) = mutation_delete ys nt 
-                in (TypeAnnotation(v, w, x) :: gg, r)
+                in (TypeAnnotation(v, w, x, pos) :: gg, r)
 
 let update_constraint (nt : string) (cList : semantic_constraint list) (operation : bin_operator) : semantic_constraint list =
     match cList with 
     | [] -> []
     | x :: xs ->
         match x with
-        | DerivedField(nonTerminal, (BVCast(i, expr))) -> 
+        | DerivedField(nonTerminal, (BVCast(i, expr, p)), pos) -> 
             if operation = Plus then
-                DerivedField(nonTerminal, BVCast(i, BinOp(expr, Plus, IntConst 1))) :: xs
+                DerivedField(nonTerminal, BVCast(i, BinOp(expr, Plus, IntConst(1, p), p), p), pos) :: xs
             else if operation = Minus then
-                DerivedField(nonTerminal, BVCast(i, BinOp(expr, Minus, IntConst 1))) :: xs
-            else DerivedField(nonTerminal, BVCast(i, expr)) :: xs
-        | SmtConstraint(UnOp(LNot, e)) -> 
+                DerivedField(nonTerminal, BVCast(i, BinOp(expr, Minus, IntConst(1, p), p), p), pos) :: xs
+            else DerivedField(nonTerminal, BVCast(i, expr, p), pos) :: xs
+        | SmtConstraint(UnOp(LNot, e, p), pos) -> 
             if isPresentInExpr nt e 
-                then SmtConstraint(e) :: xs
-            else SmtConstraint(UnOp(LNot, e)) :: xs
-        | SmtConstraint(e) -> 
+                then SmtConstraint(e, pos) :: xs
+            else SmtConstraint(UnOp(LNot, e, p), pos) :: xs
+        | SmtConstraint(e, pos) -> 
             if isPresentInExpr nt e 
-                then SmtConstraint(UnOp(LNot, e)) :: xs
-            else SmtConstraint(e) :: xs
+                then SmtConstraint(UnOp(LNot, e, pos), pos) :: xs
+            else SmtConstraint(e, pos) :: xs
         | anything -> anything :: xs
 
 let rec apply_update_to_rule nt production_options operation =
     match production_options with
     | [] -> []
-    | Rhs(geList, scList) :: xs -> 
+    | Rhs(geList, scList, p) :: xs -> 
         let updated_constraints = update_constraint nt scList operation in
-        Rhs(geList, updated_constraints) :: xs
+        Rhs(geList, updated_constraints, p) :: xs
     | StubbedRhs(s) :: xs -> StubbedRhs(s) :: (apply_update_to_rule nt xs operation)
 
 let rec mutation_update g nt operation =
     match g with
     | [] -> ([], false)
-    | ProdRule(nonTerminal, production_options) :: xs ->
+    | ProdRule(nonTerminal, production_options, p) :: xs ->
         let found = isNonTerminalPresent nt production_options in
             if found then
                 let po = apply_update_to_rule nt production_options operation in
-                    (ProdRule(nonTerminal, po) :: xs, true)
+                    (ProdRule(nonTerminal, po, p) :: xs, true)
             else 
                 let (gg, r) = mutation_update xs nt operation
                     in 
-            (ProdRule(nonTerminal, production_options) :: gg, r)
-    | TypeAnnotation(v, w, x) :: ys -> 
+            (ProdRule(nonTerminal, production_options, p) :: gg, r)
+    | TypeAnnotation(v, w, x, p) :: ys -> 
         if v = nt then
             let po = update_constraint nt x operation in
-                (TypeAnnotation(v, w, po) :: ys, true)
+                (TypeAnnotation(v, w, po, p) :: ys, true)
         else
             let (gg, r) = mutation_update ys nt operation
                 in 
-                (TypeAnnotation(v, w, x) :: gg , r)
+                (TypeAnnotation(v, w, x, p) :: gg , r)
 
 let rec replace_element geList nt1 nt2 =
     match geList with
@@ -210,7 +210,7 @@ let rec get_production_rules_for_crossover g =
     let r1 = random_element g in
     let r2 = random_element g in
     match r1, r2 with
-    | ProdRule(a, _), ProdRule(c, _) -> 
+    | ProdRule(a, _, _), ProdRule(c, _, _) -> 
         if a = "SAE_PACKET" || c = "SAE_PACKET" then get_production_rules_for_crossover g
         else r1, r2
     | _, _ -> get_production_rules_for_crossover g
@@ -234,16 +234,16 @@ let rec replace_geList b rhs1 rhs2 crossoverPRs =
 let rec grammarUpdateAfterCrossover (nt : string) (g : ast) (rhs1 : prod_rule_rhs) (rhs2 : prod_rule_rhs) (crossoverPRs : (prod_rule_rhs * prod_rule_rhs)) : ast = 
     match g with
     | [] -> []
-    | ProdRule(a, b) :: xs -> 
+    | ProdRule(a, b, p) :: xs -> 
     if a = nt then  
         let newPR = replace_geList b rhs1 rhs2 crossoverPRs in
-        ProdRule(a, newPR) :: (grammarUpdateAfterCrossover nt xs rhs1 rhs2 crossoverPRs)
-    else ProdRule(a, b) :: (grammarUpdateAfterCrossover nt xs rhs1 rhs2 crossoverPRs)
-    | TypeAnnotation(x,y,z) :: xs -> TypeAnnotation(x,y,z) :: (grammarUpdateAfterCrossover nt xs rhs1 rhs2 crossoverPRs)
+        ProdRule(a, newPR, p) :: (grammarUpdateAfterCrossover nt xs rhs1 rhs2 crossoverPRs)
+    else ProdRule(a, b, p) :: (grammarUpdateAfterCrossover nt xs rhs1 rhs2 crossoverPRs)
+    | TypeAnnotation(x,y,z, p) :: xs -> TypeAnnotation(x,y,z, p) :: (grammarUpdateAfterCrossover nt xs rhs1 rhs2 crossoverPRs)
 
 let extract_nt_po pr1 pr2 =
 match pr1, pr2 with
-| ProdRule(a, b), ProdRule(c, d) -> a, c, b, d
+| ProdRule(a, b, _), ProdRule(c, d, _) -> a, c, b, d
 | _, _ -> Utils.crash "bad random for crossover"
 
 let log_grammar msg =
@@ -255,17 +255,17 @@ close_out oc;
 let mutation_crossover (rhs1 : prod_rule_rhs) (rhs2 : prod_rule_rhs) : (prod_rule_rhs * prod_rule_rhs) =
     Random.self_init () ;
     match rhs1, rhs2 with
-    | Rhs([],[]), Rhs([],[]) -> Rhs([],[]), Rhs([],[])
-    | Rhs(geList1, scList1), Rhs (geList2, scList2) -> 
+    | Rhs([],[], p1), Rhs([],[], p2) -> Rhs([],[], p1), Rhs([],[], p2)
+    | Rhs(geList1, scList1, p1), Rhs (geList2, scList2, p2) -> 
         let randomGe1 = random_element geList1 in
         let randomGe2 = random_element geList2 in
         let crossoverList1 = replace_element geList1 randomGe1 randomGe2 in
         let crossoverList2 = replace_element geList2 randomGe2 randomGe1 in (
             match randomGe1, randomGe2 with
-            | (Nonterminal (a, _)), (Nonterminal (b, _)) -> 
-                (Rhs(crossoverList1, (remove_constraints a scList1)), Rhs(crossoverList2, (remove_constraints b scList2)))
+            | (Nonterminal (a, _, _)), (Nonterminal (b, _, _)) -> 
+                (Rhs(crossoverList1, (remove_constraints a scList1), p1), Rhs(crossoverList2, (remove_constraints b scList2), p2))
             | (Nonterminal _, (StubbedNonterminal (_, _))) -> Utils.crash "unexpected crossover"
             | ((StubbedNonterminal (_, _)), _) -> Utils.crash "unexpected crossover"
         )
-    | (Rhs (_, _), StubbedRhs _) -> Utils.crash "unexpected crossover"
+    | (Rhs (_, _, _), StubbedRhs _) -> Utils.crash "unexpected crossover"
     | (StubbedRhs _, _) -> Utils.crash "unexpected crossover"

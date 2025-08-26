@@ -81,15 +81,15 @@ let main_pipeline ?(engine: Flags.engine option = None) ?(grammar: Ast.ast optio
     | Some DpllDac, _  -> 
       (match DpllDac.dpll ppf ctx ast with
       | Some result -> result 
-      | None -> Utils.error "dpll_dac engine not applicable to this input")
+      | None -> Utils.error_no_pos "dpll_dac engine not applicable to this input")
     | Some SygusDac, _ -> 
       (match SygusDac.sygus ppf ctx ast with  
       | Some result -> result 
-      | None -> Utils.error "sygus_dac engine not applicable to this input")
+      | None -> Utils.error_no_pos "sygus_dac engine not applicable to this input")
     | Some MixedDac, _ -> 
       (match MixedDac.dac ppf ctx ast with
       | Some result -> result 
-      | None -> Utils.error "mixed_dac engine not applicable to this input")
+      | None -> Utils.error_no_pos "mixed_dac engine not applicable to this input")
     (* Race mode *)
     | Some Race, _ -> (
       try 
@@ -106,15 +106,15 @@ let main_pipeline ?(engine: Flags.engine option = None) ?(grammar: Ast.ast optio
     | _, DpllDac -> 
       (match DpllDac.dpll ppf ctx ast with
       | Some result -> result 
-      | None -> Utils.error "dpll_dac engine not applicable to this input")
+      | None -> Utils.error_no_pos "dpll_dac engine not applicable to this input")
     | _, SygusDac -> 
       (match SygusDac.sygus ppf ctx ast with  
       | Some result -> result 
-      | None -> Utils.error "sygus_dac engine not applicable to this input")
+      | None -> Utils.error_no_pos "sygus_dac engine not applicable to this input")
     | _, MixedDac -> 
       (match MixedDac.dac ppf ctx ast with
       | Some result -> result 
-      | None -> Utils.error "mixed_dac engine not applicable to this input")
+      | None -> Utils.error_no_pos "mixed_dac engine not applicable to this input")
     (* Race mode *)
     | _, Race -> 
       try 
