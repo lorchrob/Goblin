@@ -566,6 +566,7 @@ let callDriver_new packets packet =
   | RawPacket y ->
     (* write_symbol_to_file "sync/trace-length.txt" (Printf.sprintf "%d" ((List.length packets) + 1)) ;  *)
     let bytes_to_send = bytes_to_hex y in
+    print_endline bytes_to_send;
     write_trace_to_file (packets @ [bytes_to_send]);
     parse_packet (Bitstring.bitstring_of_string (Bytes.to_string y)) ;
     (* write_symbol_to_file message_file (packets ^ (Bytes.to_string y) ^ ", "); *)
