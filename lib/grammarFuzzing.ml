@@ -210,6 +210,22 @@ let wait_for_python_response response_file =
   in
   loop ()
 
+let wait_for_score score_file = 
+  print_endline "Getting score" ;
+  let rec loop () =
+    match read_from_file score_file with
+    | Some response ->
+      let score = float_of_string (String.trim response) in
+      let oc = open_out score_file in
+      close_out oc;
+      score
+    | None -> 
+      sleepf 0.1;
+      loop ()
+  in
+  loop ()
+    
+
 let wait_for_python_bin_response response_file =
   let _ = Unix.system ("touch " ^ response_file) in
   Unix.sleepf 0.1 ;
@@ -276,15 +292,17 @@ let rec scoreFunction (pktStatus : (provenance * output) list) (mutatedPopulatio
     let future_provenance_and_population = scoreFunction xs ys in
     match output_symbol with
     | TIMEOUT | EXPECTED_OUTPUT ->
-      if output_symbol = TIMEOUT then
+      (* if output_symbol = TIMEOUT then
         ((fst future_provenance_and_population)), (((old_provenance @ [packet], current_grammar), score +. 0.1) :: (snd future_provenance_and_population))
-      else 
-        ((fst future_provenance_and_population)), (((old_provenance @ [packet], current_grammar), score +. 0.3) :: (snd future_provenance_and_population))
+      else  *)
+        (* ((fst future_provenance_and_population)), (((old_provenance @ [packet], current_grammar), score +. 0.3) :: (snd future_provenance_and_population)) *)
+        ((fst future_provenance_and_population)), (((old_provenance @ [packet], current_grammar), score) :: (snd future_provenance_and_population))
     | CRASH | UNEXPECTED_OUTPUT ->
-      if output_symbol = CRASH then 
+      (* if output_symbol = CRASH then 
         ((old_provenance @ [packet])  :: (fst future_provenance_and_population)), (((old_provenance @ [packet], current_grammar), score +. 0.5) :: (snd future_provenance_and_population))
-      else 
-        ((old_provenance @ [packet]) :: (fst future_provenance_and_population)), (((old_provenance @ [packet], current_grammar), score +. 0.7) :: (snd future_provenance_and_population))        
+      else  *)
+      (* ((old_provenance @ [packet]) :: (fst future_provenance_and_population)), (((old_provenance @ [packet], current_grammar), score +. 0.7) :: (snd future_provenance_and_population))         *)
+      ((old_provenance @ [packet]) :: (fst future_provenance_and_population)), (((old_provenance @ [packet], current_grammar), score) :: (snd future_provenance_and_population))        
     | Message _ -> Utils.crash "Message type should not be matched in score func.."
 
     
@@ -563,12 +581,13 @@ let callDriver_new packets packet =
     (* print_endline "oracle result success" ; *)
     let driver_start_time = Unix.gettimeofday () in
     let driver_result = wait_for_python_response response_file in
+    let driver_score = wait_for_score "sync/score.txt" in
     driver_call_time := ((Unix.gettimeofday ()) -. driver_start_time) ;
     driver_calls := !driver_calls + 1 ;
-    (driver_result, oracle_result)
+    (driver_result, oracle_result, driver_score)
     
-let run_sequence (c : child) : (provenance * output) * state =
-  if c = (([],[]),0.0) then ((ValidPacket Config.num_packets, EXPECTED_OUTPUT), -1)
+let run_sequence (c : child) : (provenance * output) * state * score =
+  if c = (([],[]),0.0) then ((ValidPacket Config.num_packets, EXPECTED_OUTPUT), -1, -1.0)
   else begin 
     let stateTransition = fst c |> fst in
     (* print_endline "\n\n\nGRAMMAR TO SYGUS:" ;
@@ -584,17 +603,17 @@ let run_sequence (c : child) : (provenance * output) * state =
         | Ok (packetToSend, _metadata) ->
           print_endline "SUCCESS";
           let trace_start_time = Unix.gettimeofday () in
-          let driver_output = callDriver_new (run_trace stateTransition) (RawPacket packetToSend) in
+          let (driver_result, oracle_result, driver_score) = callDriver_new (run_trace stateTransition) (RawPacket packetToSend) in
           trace_time := Unix.gettimeofday () -. trace_start_time ;
           save_time_info "temporal-info/OCaml-time-info.csv" (1 + (List.length (stateTransition))) ;
-          (RawPacket packetToSend, (fst driver_output)), (snd driver_output)
+          ((RawPacket packetToSend, (driver_result)), oracle_result, driver_score)
         | Error _ -> 
           print_endline "ERROR";
           sygus_fail_execution_time := ((Unix.gettimeofday ()) -. sygus_start_time) ;
           sygus_fail_calls := !sygus_fail_calls + 1 ;
-          ((ValidPacket Config.num_packets, EXPECTED_OUTPUT), -1)
+          ((ValidPacket Config.num_packets, EXPECTED_OUTPUT), -1, -1.0)
       )
-    | None -> ((ValidPacket Config.num_packets, EXPECTED_OUTPUT), -1)
+    | None -> ((ValidPacket Config.num_packets, EXPECTED_OUTPUT), -1, -1.0)
   end
 
 let executeMutatedPopulation (mutatedPopulation : child list) (old_states : state list) : (((provenance list list) * (child list)) * (state list)) * (state list) =
@@ -602,7 +621,7 @@ let executeMutatedPopulation (mutatedPopulation : child list) (old_states : stat
 
   let _outputList = List.map run_sequence mutatedPopulation in
   (* print_endline "List.map2 first try"; *)
-  let cat_mutated_population = List.map2 (fun x y -> (x, y)) mutatedPopulation _outputList in
+  let cat_mutated_population = List.map2 (fun ((a, b), _) (d, e, f) -> (((a, b), f), (d, e))) mutatedPopulation _outputList in
   (* print_endline "List.map2 first try SUCCESS"; *)
   let old_new_states = List.map2 (fun x y -> (x, y)) cat_mutated_population old_states in
   (* print_endline "List.map2 second one SUCCESS"; *)
