@@ -217,6 +217,22 @@ let wait_for_python_response response_file =
   in
   loop ()
 
+let wait_for_score score_file = 
+  print_endline "Getting score" ;
+  let rec loop () =
+    match read_from_file score_file with
+    | Some response ->
+      let score = float_of_string (String.trim response) in
+      let oc = open_out score_file in
+      close_out oc;
+      score
+    | None -> 
+      sleepf 0.1;
+      loop ()
+  in
+  loop ()
+    
+
 let wait_for_python_bin_response response_file =
   let _ = Unix.system ("touch " ^ response_file) in
   Unix.sleepf 0.1 ;
@@ -283,15 +299,17 @@ let rec scoreFunction (pktStatus : (provenance * output) list) (mutatedPopulatio
     let future_provenance_and_population = scoreFunction xs ys in
     match output_symbol with
     | TIMEOUT | EXPECTED_OUTPUT ->
-      if output_symbol = TIMEOUT then
+      (* if output_symbol = TIMEOUT then
         ((fst future_provenance_and_population)), (((old_provenance @ [packet], current_grammar), score +. 0.1) :: (snd future_provenance_and_population))
-      else 
-        ((fst future_provenance_and_population)), (((old_provenance @ [packet], current_grammar), score +. 0.3) :: (snd future_provenance_and_population))
+      else  *)
+        (* ((fst future_provenance_and_population)), (((old_provenance @ [packet], current_grammar), score +. 0.3) :: (snd future_provenance_and_population)) *)
+        ((fst future_provenance_and_population)), (((old_provenance @ [packet], current_grammar), score) :: (snd future_provenance_and_population))
     | CRASH | UNEXPECTED_OUTPUT ->
-      if output_symbol = CRASH then 
+      (* if output_symbol = CRASH then 
         ((old_provenance @ [packet])  :: (fst future_provenance_and_population)), (((old_provenance @ [packet], current_grammar), score +. 0.5) :: (snd future_provenance_and_population))
-      else 
-        ((old_provenance @ [packet]) :: (fst future_provenance_and_population)), (((old_provenance @ [packet], current_grammar), score +. 0.7) :: (snd future_provenance_and_population))        
+      else  *)
+      (* ((old_provenance @ [packet]) :: (fst future_provenance_and_population)), (((old_provenance @ [packet], current_grammar), score +. 0.7) :: (snd future_provenance_and_population))         *)
+      ((old_provenance @ [packet]) :: (fst future_provenance_and_population)), (((old_provenance @ [packet], current_grammar), score) :: (snd future_provenance_and_population))        
     | Message _ -> Utils.crash "Message type should not be matched in score func.."
 
     
@@ -730,7 +748,7 @@ let executeMutatedPopulation (mutatedPopulation : child list) (old_states : stat
 
   let _outputList = List.map (run_sequence flag) mutatedPopulation in
   (* print_endline "List.map2 first try"; *)
-  let cat_mutated_population = List.map2 (fun x y -> (x, y)) mutatedPopulation _outputList in
+  let cat_mutated_population = List.map2 (fun ((a, b), _) (d, e, f) -> (((a, b), f), (d, e))) mutatedPopulation _outputList in
   (* print_endline "List.map2 first try SUCCESS"; *)
   let old_new_states = List.map2 (fun x y -> (x, y)) cat_mutated_population old_states in
   (* print_endline "List.map2 second one SUCCESS"; *)
