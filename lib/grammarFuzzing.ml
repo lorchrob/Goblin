@@ -289,6 +289,7 @@ let rec scoreFunction (pktStatus : (provenance * output) list) (mutatedPopulatio
   | [], [] | _, [] -> [], []
   | [], p -> [], p
   | (packet, output_symbol) :: xs, ((old_provenance, current_grammar), score) :: ys ->
+    Printf.printf "Updated score from driver: %.8f\n" score ;
     let future_provenance_and_population = scoreFunction xs ys in
     match output_symbol with
     | TIMEOUT | EXPECTED_OUTPUT ->
