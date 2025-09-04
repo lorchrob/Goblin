@@ -18,6 +18,7 @@
     "Set", SET ;
     "List", LIST ; 
     "Int", INT ;
+    "Unit", UNIT ;
     "String", STRINGTYPE ; 
     "BitVec", BITVECTOR ;
     "int_to_bv", INTTOBITVECTOR ;

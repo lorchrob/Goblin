@@ -21,6 +21,7 @@ let fresh_constraint: unit -> string
 
 let rec pp_print_ty: Format.formatter -> A.il_type -> unit 
 = fun ppf ty -> match ty with 
+| Unit -> Format.fprintf ppf "Unit" 
 | Int -> Format.fprintf ppf "Int"
 | Bool -> Format.fprintf ppf "Bool"
 | Placeholder -> Format.fprintf ppf "String"

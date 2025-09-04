@@ -16,6 +16,7 @@ type sygus_ast =
 | StrLeaf of string
 | SetLeaf of concrete_set 
 | VarLeaf of string 
+| UnitLeaf
 
 (*!!
 type expr = 
@@ -60,7 +61,7 @@ let pp_print_sygus_ast: Format.formatter -> sygus_ast -> unit
     (Lib.pp_print_list pp_print_sygus_ast' " ") subterms 
   | Node ((constructor, None), subterms) -> 
     Format.fprintf ppf "(%s %a)"
-    constructor
+    constructor 
     (Lib.pp_print_list pp_print_sygus_ast' " ") subterms 
   | BVLeaf (_, bits) -> 
     let bits = List.map Bool.to_int bits in
@@ -74,6 +75,7 @@ let pp_print_sygus_ast: Format.formatter -> sygus_ast -> unit
     else 
       Format.fprintf ppf "(- %d)" (d * -1)
   | BoolLeaf b -> Format.pp_print_bool ppf b;
+  | UnitLeaf -> Format.fprintf ppf "()" 
   | SetLeaf (StringSet s) -> 
     Format.pp_print_string Format.std_formatter (smtlib_of_stringset s)
   | BLLeaf bits ->
@@ -112,6 +114,7 @@ let serialize: Format.formatter -> sygus_ast -> unit
   | VarLeaf id 
   | StrLeaf id -> Format.fprintf ppf "%s" id;
   | IntLeaf i -> Format.pp_print_int ppf i
+  | UnitLeaf -> ()
   | BoolLeaf b -> Format.pp_print_bool ppf b
   | SetLeaf (StringSet s) -> 
     Format.fprintf Format.std_formatter "{%a}" 
@@ -229,7 +232,8 @@ let serialize_bytes: endianness -> sygus_ast -> bytes * bytes
       
     | BoolLeaf _ -> Utils.crash "serializing final packet, unhandled case 1"
     | IntLeaf _ -> Utils.crash "serializing final packet, unhandled case 2"
-    | SetLeaf _ -> Utils.crash "unsupported"
+    | SetLeaf _ 
+    | UnitLeaf  -> Utils.crash "unsupported"
   in
   let initial_metadata = {
     var_leaf_count = 0;

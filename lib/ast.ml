@@ -45,6 +45,7 @@ type bin_operator =
 | SetMembership 
 
 type il_type = 
+| Unit
 | Bool 
 | Int 
 | Placeholder
@@ -304,6 +305,7 @@ let pp_print_pattern: Format.formatter -> ((string * int option) list * (string 
 
 let rec pp_print_ty: Format.formatter -> il_type -> unit 
 = fun ppf ty -> match ty with 
+| Unit -> Format.printf "Unit"
 | Bool -> Format.fprintf ppf "Bool"
 | Int -> Format.fprintf ppf "Int"
 | Placeholder -> Format.fprintf ppf "Placeholder"

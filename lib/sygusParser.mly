@@ -14,6 +14,7 @@ open SygusAst
 %token EMPTY
 %token BOOL
 %token UNIT
+%token UNIT_TYPE
 %token TRUE
 %token FALSE
 %token PLUSPLUS
@@ -30,6 +31,7 @@ open SygusAst
 %token UNION
 %token SINGLETON
 %token DOLLAR
+%token AT
 %token<string> STRCONST
 
 %token<bool list> BITS
@@ -53,9 +55,14 @@ sygus_model:
 | LPAREN; values = list(model_value); RPAREN; { Node (("smt_model", None), values) }
 
 model_value:
+| LPAREN; DEFINEFUN; id = ID; LPAREN; RPAREN; UNIT_TYPE; 
+    LPAREN; AS; AT; ID; UNIT_TYPE; RPAREN;
+  RPAREN; 
+ { let id, idx = Utils.parse_str_nat_suffix id in 
+   Node ((id, idx), [UnitLeaf]) }
 | LPAREN; DEFINEFUN; id = ID; LPAREN; RPAREN; il_ty; t = lisp_term; RPAREN;
  { let id, idx = Utils.parse_str_nat_suffix id in
-  Node ((id, idx), [t]) }
+   Node ((id, idx), [t]) }
 	
 sygus_term:
 | LPAREN; LPAREN; DEFINEFUN; TOP; LPAREN; RPAREN; top_type; t = lisp_term; RPAREN; RPAREN;

@@ -20,6 +20,7 @@
     "Seq", CAPSEQ ;
     "Bool", BOOL ;
     "empty", EMPTY ;
+    "Unit", UNIT_TYPE ;
     "unit", UNIT ;
     "true", TRUE ;
     "false", FALSE ;
@@ -40,11 +41,13 @@ let bit = ['0' '1']
 let int = digit+
 let letter = ['a'-'z' 'A'-'Z']
 let id = ['a'-'z' 'A'-'Z' '_'] ['a'-'z' 'A'-'Z' '_' '-' '0'-'9']*
+let comment = ';' [^ '\n' '\r']* 
 
 rule read = 
   parse
   | white { read lexbuf }
   | newline { Lexing.new_line lexbuf ; read lexbuf }
+  | comment   { read lexbuf }  
   | "-" { Utils.debug_print Format.pp_print_string Format.std_formatter "-"; HYPHEN }
   | "(" { Utils.debug_print Format.pp_print_string Format.std_formatter "("; LPAREN }
   | ")" { Utils.debug_print Format.pp_print_string Format.std_formatter ")"; RPAREN }
@@ -54,6 +57,7 @@ rule read =
   | "#b" { Utils.debug_print Format.pp_print_string Format.std_formatter "BITS"; read_bits lexbuf }
   |  '"' ([^ '"'] | "\"\"" )* '"' as s   { Utils.debug_print Format.pp_print_string Format.std_formatter (String.sub s 1 (String.length s - 2)); STRCONST (String.sub s 1 (String.length s - 2)) }
   | "$" { Utils.debug_print Format.pp_print_string Format.std_formatter "$"; DOLLAR }
+  | "@" { Utils.debug_print Format.pp_print_string Format.std_formatter "@"; AT }
   | int as p { INTEGER (int_of_string p) }
   | id as p {
     try (

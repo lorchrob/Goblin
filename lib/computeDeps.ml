@@ -66,6 +66,7 @@ let rec sygus_ast_to_expr: SA.sygus_ast -> A.expr list
   | StrLeaf s -> [StrConst (s, Lexing.dummy_pos)]
   | BoolLeaf b -> [BConst (b, Lexing.dummy_pos)]
 | SetLeaf _ -> Utils.crash "unsupported (sets)"
+| UnitLeaf -> Utils.crash "Unexpected case"
 | Node (_, sygus_asts) -> List.map sygus_ast_to_expr sygus_asts |> List.flatten
 
 let rec compute_dep: A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -> A.ast -> A.element -> string -> SA.sygus_ast
@@ -85,7 +86,7 @@ let rec compute_dep: A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -> 
 and evaluate_sygus_ast: A.semantic_constraint Utils.StringMap.t -> A.element -> A.ast -> SA.sygus_ast  -> SA.sygus_ast 
 = fun dep_map element ast sygus_ast ->
   match sygus_ast with 
-| IntLeaf _ | BVLeaf _ | BLLeaf _ | BoolLeaf _ | StrLeaf _ | SetLeaf _ -> sygus_ast
+| IntLeaf _ | BVLeaf _ | BLLeaf _ | BoolLeaf _ | StrLeaf _ | SetLeaf _ | UnitLeaf -> sygus_ast
 | VarLeaf var ->
   if Utils.StringMap.mem (remove_suffix var |> String.uppercase_ascii) dep_map 
     then
@@ -133,7 +134,7 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -
   in
   (
   match sygus_ast with 
-  | VarLeaf _ | BVLeaf _ | IntLeaf _ | BLLeaf _ | BoolLeaf _ | StrLeaf _ | SetLeaf _  -> 
+  | VarLeaf _ | BVLeaf _ | IntLeaf _ | BLLeaf _ | BoolLeaf _ | StrLeaf _ | SetLeaf _ | UnitLeaf -> 
     sygus_ast_to_expr sygus_ast
   | Node (_, subterms) ->
     let child_sygus_ast = List.nth subterms child_index in 
@@ -403,6 +404,7 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -
 let rec compute_deps: A.semantic_constraint Utils.StringMap.t -> A.ast -> SA.sygus_ast -> SA.sygus_ast 
 = fun dep_map ast sygus_ast -> match sygus_ast with
 | VarLeaf _ -> eval_fail 28
+| UnitLeaf -> Utils.crash "Unexpected case"
 | Node ((constructor, idx), subterms) -> 
   let subterms = 
   List.map (fun subterm -> match subterm with 

@@ -33,6 +33,7 @@ type bin_operator =
 | SetMembership
 
 type il_type = 
+| Unit
 | Bool 
 | Int 
 | Placeholder 

@@ -2,6 +2,7 @@
 open Ast
 %}
 
+%token UNIT
 %token BOOL
 %token INT
 %token STRINGTYPE
@@ -118,6 +119,7 @@ rhs:
   }
 
 il_type: 
+| UNIT { Unit }
 | BOOL { Bool }
 | INT { Int }
 | STRINGTYPE { String }
