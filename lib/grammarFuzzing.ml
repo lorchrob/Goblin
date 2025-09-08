@@ -217,20 +217,40 @@ let wait_for_python_response response_file =
   in
   loop ()
 
-let wait_for_score score_file = 
-  print_endline "Getting score" ;
+let wait_for_score (score_file : string) : (bool * score) =
+  print_endline "Getting score";
+
   let rec loop () =
-    match read_from_file score_file with
-    | Some response ->
-      let score = float_of_string (String.trim response) in
-      let oc = open_out score_file in
-      close_out oc;
-      score
-    | None -> 
-      sleepf 0.1;
+    try
+      let ic = open_in score_file in
+      let line1 = try input_line ic with End_of_file -> "" in
+      let line2 = try input_line ic with End_of_file -> "" in
+      close_in ic;
+
+      let score_line = String.trim line2 in
+
+      if score_line = "" then (
+        Unix.sleepf 0.1;
+        loop ()
+      ) else (
+        let is_interesting = String.trim line1 = "interesting" in
+        match float_of_string_opt score_line with
+        | Some score_ ->
+            let oc = open_out score_file in
+            close_out oc;
+            (is_interesting, score_)
+        | None ->
+            Unix.sleepf 0.1;
+            loop ()
+      )
+    with _ ->
+      Unix.sleepf 0.1;
       loop ()
   in
   loop ()
+
+  
+  
     
 
 let wait_for_python_bin_response response_file =
@@ -749,7 +769,9 @@ let executeMutatedPopulation (mutatedPopulation : child list) (old_states : stat
 
   let _outputList = List.map (run_sequence flag) mutatedPopulation in
   (* print_endline "List.map2 first try"; *)
-  let cat_mutated_population = List.map2 (fun ((a, b), _) (d, e, f) -> (((a, b), f), (d, e))) mutatedPopulation _outputList in
+  let cat_mutated_population = List.map2 (fun ((a, b), _) (d, e, (tf, f)) -> if tf then (((a, b), f), (d, e)) else 
+    (((a, b), f) ,((ValidPacket Config.num_packets, EXPECTED_OUTPUT), -1)))
+    mutatedPopulation _outputList in
   (* print_endline "List.map2 first try SUCCESS"; *)
   let old_new_states = List.map2 (fun x y -> (x, y)) cat_mutated_population old_states in
   (* print_endline "List.map2 second one SUCCESS"; *)
