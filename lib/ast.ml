@@ -72,6 +72,8 @@ expr =
 | StrLength of expr * Lexing.position
 | SeqLength of expr * Lexing.position
 | BVCast of int * expr * Lexing.position
+| UbvToInt of expr * Lexing.position
+| SbvToInt of expr * Lexing.position
 (* First string list track the context of the nonterminal being matched 
    Int options are for clarifying ambiguous dot notation references, as in NTExpr *)
 | Match of (string * int option) list * (string * int option) * case list * Lexing.position
@@ -154,6 +156,8 @@ let rec get_nts_from_expr: expr -> string list
   | BLConst _ 
   | BConst _ 
   | BVCast _  
+  | UbvToInt _ 
+  | SbvToInt _
   | PhConst _
   | IntConst _ 
   | StrConst _
@@ -188,6 +192,8 @@ let rec get_nts_from_expr2: expr -> (string * int option) list list
   | BLConst _ 
   | BConst _ 
   | BVCast _  
+  | UbvToInt _ 
+  | SbvToInt _
   | PhConst _
   | IntConst _ 
   | StrConst _ 
@@ -228,6 +234,8 @@ let rec get_nts_from_expr_after_desugaring_dot_notation: expr -> (string * int o
   | BLConst _ 
   | BConst _ 
   | BVCast _  
+  | UbvToInt _ 
+  | SbvToInt _
   | PhConst _
   | IntConst _ 
   | StrConst _ 
@@ -376,6 +384,12 @@ and pp_print_expr: Format.formatter -> expr -> unit
 | BVCast (width, expr, _) -> 
   Format.fprintf ppf "int_to_bv(%d, %a)" 
     width 
+    pp_print_expr expr 
+| UbvToInt (expr, _) -> 
+  Format.fprintf ppf "ubv_to_int(%a)" 
+    pp_print_expr expr 
+| SbvToInt (expr, _) -> 
+  Format.fprintf ppf "sbv_to_int(%a)" 
     pp_print_expr expr 
 | Match (nts, nt, cases, _) -> 
   Format.fprintf ppf "(match %a with %a)"
@@ -544,6 +558,8 @@ let rec expr_contains_dangling_nt: Utils.SILSet.t -> expr -> bool
   | BLConst _ 
   | BConst _ 
   | BVCast _  
+  | UbvToInt _ 
+  | SbvToInt _
   | PhConst _
   | IntConst _ 
   | StrConst _ 
@@ -588,6 +604,8 @@ let rec prepend_nt_to_dot_exprs: string -> expr -> expr
   match expr with
   | NTExpr ([], nts, pos) -> NTExpr ([], (nt, None) :: nts, pos)
   | BVCast (len, expr, pos) -> BVCast (len, r expr, pos)
+  | UbvToInt (expr, pos) -> UbvToInt (r expr, pos)
+  | SbvToInt (expr, pos) -> SbvToInt (r expr, pos)
   | BinOp (expr1, op, expr2, pos) -> BinOp (r expr1, op, r expr2, pos) 
   | UnOp (op, expr, pos) -> UnOp (op, r expr, pos) 
   | CompOp (expr1, op, expr2, pos) -> CompOp (r expr1, op, r expr2, pos) 

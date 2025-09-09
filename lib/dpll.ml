@@ -285,6 +285,8 @@ let rec universalize_expr: bool -> (string * int option) list -> Ast.expr -> Ast
     let prefix = if is_type_annotation then Utils.init prefix else prefix in
     A.NTExpr (nts1, prefix @ nts2, p)
   | BVCast (len, expr, p) -> BVCast (len, r expr, p)
+  | UbvToInt (expr, p) -> UbvToInt (r expr, p)
+  | SbvToInt (expr, p) -> SbvToInt (r expr, p)
   | BinOp (expr1, op, expr2, p) -> BinOp (r expr1, op, r expr2, p) 
   | UnOp (op, expr, p) -> UnOp (op, r expr, p) 
   | CompOp (expr1, op, expr2, p) -> CompOp (r expr1, op, r expr2, p) 

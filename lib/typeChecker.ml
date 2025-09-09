@@ -259,6 +259,28 @@ let rec infer_type_expr: context -> mode -> expr -> il_type option
 | BVCast (len, expr, p)  -> 
   let _ = check_type_expr ctx mode Int expr p in 
   Some (BitVector len)
+| UbvToInt (expr, p)  -> 
+  let inf_ty = infer_type_expr ctx mode expr in (
+  match inf_ty with 
+  | Some (BitVector _) -> Some Int
+  | Some inf_ty ->
+    let expr_str = Utils.capture_output Ast.pp_print_expr expr in 
+    let inf_ty_str = Utils.capture_output Ast.pp_print_ty inf_ty in
+    let error_message = "Type checking error: Input to `ubv_to_int` " ^ expr_str ^ " has type " ^ inf_ty_str ^ " but must have type BitVector" in 
+    Utils.error error_message p
+  | None -> None
+  )
+| SbvToInt (expr, p)  -> 
+  let inf_ty = infer_type_expr ctx mode expr in (
+  match inf_ty with 
+  | Some (BitVector _) -> Some Int
+  | Some inf_ty ->
+    let expr_str = Utils.capture_output Ast.pp_print_expr expr in 
+    let inf_ty_str = Utils.capture_output Ast.pp_print_ty inf_ty in
+    let error_message = "Type checking error: Input to `sbv_to_int` " ^ expr_str ^ " has type " ^ inf_ty_str ^ " but must have type BitVector" in 
+    Utils.error error_message p
+  | None -> None
+  )
 | BVConst (len1, bits, p) -> 
   let len2 = List.length bits in
   if len1 != len2 then 

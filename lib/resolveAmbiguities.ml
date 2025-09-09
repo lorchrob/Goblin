@@ -116,6 +116,12 @@ let rec generate_all_possible_exprs: TC.context -> string list -> A.expr -> A.ex
   | BVCast (i, expr, p) -> 
     let exprs = r expr in 
     List.map (fun e -> A.BVCast (i, e, p)) exprs 
+  | UbvToInt (expr, p) -> 
+    let exprs = r expr in 
+    List.map (fun e -> A.UbvToInt (e, p)) exprs 
+  | SbvToInt (expr, p) -> 
+    let exprs = r expr in 
+    List.map (fun e -> A.SbvToInt (e, p)) exprs 
   | BVConst _ 
   | BLConst _ 
   | BConst _ 

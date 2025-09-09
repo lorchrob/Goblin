@@ -288,6 +288,12 @@ and pp_print_expr: ?nt_prefix:string -> TC.context -> Format.formatter -> A.expr
     Format.fprintf ppf "((_ int_to_bv %d) %a)"
       width 
       r e 
+  | UbvToInt (e, _) -> 
+    Format.fprintf ppf "(ubv_to_int %a)"
+      r e 
+  | SbvToInt (e, _) -> 
+    Format.fprintf ppf "(sbv_to_int %a)"
+      r e 
   | ReStar (e, _) -> 
   Format.fprintf ppf "(re.* %a)" 
     r e 

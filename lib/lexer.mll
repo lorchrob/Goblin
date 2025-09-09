@@ -22,6 +22,8 @@
     "String", STRINGTYPE ; 
     "BitVec", BITVECTOR ;
     "int_to_bv", INTTOBITVECTOR ;
+    "ubv_to_int", UBV_TO_INT ; 
+    "sbv_to_int", SBV_TO_INT ;
     "BitList", BITLIST ; 
     "seq.len", SEQLENGTH ; 
     "length", LENGTH ;

@@ -94,10 +94,12 @@ let rec check_dangling_identifiers: Utils.StringSet.t -> Lexing.position -> expr
   | ReConcat (exprs, p) -> ReConcat (List.map call exprs, p)
   | ReUnion (exprs, p) -> ReUnion (List.map call exprs, p) 
   | ReRange (expr1, expr2, p) -> ReRange (call expr1, call expr2, p)
+  | BVCast (width, expr, p) -> BVCast (width, call expr, p)
+  | UbvToInt (expr, p) -> UbvToInt (call expr, p)
+  | SbvToInt (expr, p) -> SbvToInt (call expr, p)
   | BVConst _ 
   | BLConst _ 
   | BConst _ 
-  | BVCast _  
   | IntConst _ 
   | PhConst _ 
   | StrConst _ -> expr
@@ -138,11 +140,13 @@ let rec check_prod_rule_nt_exprs: prod_rule_map -> Utils.StringSet.t -> expr -> 
   | ReConcat (exprs, p) -> ReConcat (List.map call exprs, p)
   | ReUnion (exprs, p) -> ReUnion (List.map call exprs, p) 
   | ReRange (expr1, expr2, p) -> ReRange (call expr1, call expr2, p)
+  | BVCast (width, expr, p) -> BVCast (width, call expr, p)
+  | UbvToInt (expr, p) -> UbvToInt (call expr, p)
+  | SbvToInt (expr, p) -> SbvToInt (call expr, p)
   | Match _ -> assert false (* -> Match (check_nt_expr_refs prm nt_expr, cases) *)
   | BVConst _ 
   | BLConst _ 
   | BConst _ 
-  | BVCast _  
   | IntConst _ 
   | PhConst _ 
   | StrConst _ -> expr
@@ -174,10 +178,12 @@ let rec check_type_annot_nt_exprs: prod_rule_map -> Utils.StringSet.t -> expr ->
   | ReConcat (exprs, p) -> ReConcat (List.map call exprs, p)
   | ReUnion (exprs, p) -> ReUnion (List.map call exprs, p) 
   | ReRange (expr1, expr2, p) -> ReRange (call expr1, call expr2, p)
+  | BVCast (width, expr, p) -> BVCast (width, call expr, p)
+  | UbvToInt (expr, p) -> UbvToInt (call expr, p)
+  | SbvToInt (expr, p) -> SbvToInt (call expr, p)
   | BVConst _ 
   | BLConst _ 
   | BConst _ 
-  | BVCast _  
   | IntConst _ 
   | PhConst _ 
   | StrConst _ -> expr
@@ -313,6 +319,8 @@ let str_const_to_ph_const ast =
   | StrConst (ph, p) -> PhConst (ph, p)
   | Singleton (expr, p) -> Singleton (handle_expr expr, p)
   | BVCast (len, expr, p) -> BVCast (len, handle_expr expr, p)
+  | UbvToInt (expr, p) -> UbvToInt (handle_expr expr, p)
+  | SbvToInt (expr, p) -> SbvToInt (handle_expr expr, p)
   | BinOp (expr1, op, expr2, p) -> BinOp (handle_expr expr1, op, handle_expr expr2, p) 
   | UnOp (op, expr, p) -> UnOp (op, handle_expr expr, p) 
   | CompOp (expr1, op, expr2, p) -> CompOp (handle_expr expr1, op, handle_expr expr2, p) 

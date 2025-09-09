@@ -59,6 +59,8 @@ and expr =
 | StrLength of expr * Lexing.position
 | SeqLength of expr * Lexing.position
 | BVCast of int * expr * Lexing.position
+| UbvToInt of expr * Lexing.position
+| SbvToInt of expr * Lexing.position
 (* First string list track the context of the nonterminal being matched 
    Int options are for clarifying ambiguous dot notation references, as in NTExpr *)
 | Match of (string * int option) list * (string * int option) * case list * Lexing.position

@@ -8,6 +8,8 @@ open Ast
 %token STRINGTYPE
 %token BITVECTOR
 %token INTTOBITVECTOR
+%token UBV_TO_INT
+%token SBV_TO_INT
 %token BITLIST
 // %token CASE
 // %token OF
@@ -273,6 +275,14 @@ expr:
 | INTTOBITVECTOR; 
   LPAREN; width = INTEGER; COMMA; e = expr; RPAREN; { 
     BVCast (width, e, $startpos) 
+  }
+| UBV_TO_INT; 
+  LPAREN; e = expr; RPAREN; { 
+    UbvToInt (e, $startpos) 
+  }
+| SBV_TO_INT; 
+  LPAREN; e = expr; RPAREN; { 
+    SbvToInt (e, $startpos) 
   }
 | LENGTH; LPAREN; e = expr; RPAREN; { 
     Length (e, $startpos) 

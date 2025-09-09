@@ -81,6 +81,20 @@ let rec compute_dep: A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -> 
       evaluate ~dep_map sygus_ast ast element expr |> List.hd |> expr_to_sygus_ast
   )
 
+and bool_list_to_il_int (signed : bool) (bits : bool list) p : A.expr =
+  (* convert list of bools (MSB first) to int, treating them as 0/1 bits *)
+  let rec to_uint acc = function
+    | [] -> acc
+    | b :: bs -> to_uint ((acc lsl 1) lor (if b then 1 else 0)) bs
+  in
+  let n = List.length bits in
+  let unsigned_val = to_uint 0 bits in
+  if signed && n > 0 && List.hd bits then
+    (* negative number in two's complement *)
+    A.IntConst (unsigned_val - (1 lsl n), p)
+  else
+    A.IntConst (unsigned_val, p)
+
 (* NOTE: This code assumes that the dependent term is a bitvector. If we wanted to make it general,
          we would have to have composite il_types to track the various nesting. *)
 and evaluate_sygus_ast: A.semantic_constraint Utils.StringMap.t -> A.element -> A.ast -> SA.sygus_ast  -> SA.sygus_ast 
@@ -397,6 +411,16 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -
   | [IntConst (i, _)] -> [A.il_int_to_bv len i p]
   | _ -> eval_fail 27
  )
+| UbvToInt (expr, p) -> (
+  match call expr with 
+  | [BVConst (_, i, _) ] -> [bool_list_to_il_int false i p]
+  | _ -> eval_fail 27
+) 
+| SbvToInt (expr, p) -> (
+  match call expr with 
+  | [BVConst (_, i, _)] -> [bool_list_to_il_int true i p]
+  | _ -> eval_fail 27
+)
 | BVConst _ | BLConst _ | IntConst _ | BConst _ | PhConst _ | StrConst _ | EmptySet _ -> [expr]
 | Match _ -> Utils.crash "Match not yet supported in dependency computation"
 | BinOp (_, SetMembership, _, _) 

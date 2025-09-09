@@ -7,6 +7,8 @@ let rec calculate_casts: expr -> expr
   | IntConst (i, p) -> Ast.il_int_to_bv len i p
   | _ -> BVCast (len, expr, p)
   )
+| UbvToInt (expr, p) -> UbvToInt (calculate_casts expr, p) 
+| SbvToInt (expr, p) -> SbvToInt (calculate_casts expr, p) 
 | ReRange (expr1, expr2, p) -> ReRange (calculate_casts expr1, calculate_casts expr2, p) 
 | StrInRe (expr1, expr2, p) -> StrInRe (calculate_casts expr1, calculate_casts expr2, p) 
 | BinOp (expr1, op, expr2, p) -> BinOp (calculate_casts expr1, op, calculate_casts expr2, p) 
