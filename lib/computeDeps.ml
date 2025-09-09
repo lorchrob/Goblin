@@ -255,6 +255,13 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -
   | [IntConst (i1, _)], [IntConst (i2, _)] -> [IntConst (i1 * i2, p)] 
   | _ -> eval_fail 19
   )
+| BinOp (expr1, Mod, expr2, p) ->
+  let expr1 = call expr1 in 
+  let expr2 = call expr2 in (
+  match expr1, expr2 with 
+  | [IntConst (i1, _)], [IntConst (i2, _)] -> [IntConst (i1 mod i2, p)] 
+  | _ -> eval_fail 20
+  )
 | BinOp (expr1, Div, expr2, p) ->
   let expr1 = call expr1 in 
   let expr2 = call expr2 in (

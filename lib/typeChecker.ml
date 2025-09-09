@@ -148,6 +148,7 @@ let rec infer_type_expr: context -> mode -> expr -> il_type option
 | BinOp (expr1, Plus, expr2, p) 
 | BinOp (expr1, Minus, expr2, p) 
 | BinOp (expr1, Times, expr2, p) 
+| BinOp (expr1, Mod, expr2, p)
 | BinOp (expr1, Div, expr2, p) -> 
   let _ = check_type_expr ctx mode Int expr1 p in 
   let _ = check_type_expr ctx mode Int expr2 p in

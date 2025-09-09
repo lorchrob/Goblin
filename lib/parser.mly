@@ -40,6 +40,7 @@ open Ast
 %token MINUS
 %token TIMES
 %token DIV
+%token MOD
 %token RPAREN
 %token LPAREN 
 %token TYPEANNOT
@@ -83,7 +84,7 @@ open Ast
 %left LAND BVAND
 %left GT LTE EQ GTE LT BVGT BVLTE BVGTE BVLT 
 %left PLUS MINUS 
-%left TIMES DIV
+%left TIMES DIV MOD
 %nonassoc LNOT
 %nonassoc BVNOT 
 // %left SEMICOLON
@@ -180,6 +181,9 @@ expr:
   }
 | e1 = expr; DIV; e2 = expr { 
     BinOp (e1, Div, e2, $startpos) 
+  }
+| e1 = expr; MOD; e2 = expr { 
+    BinOp (e1, Mod, e2, $startpos) 
   }
 | e1 = expr; BVAND; e2 = expr { 
     BinOp (e1, BVAnd, e2, $startpos) 

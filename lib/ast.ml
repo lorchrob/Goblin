@@ -39,6 +39,7 @@ type bin_operator =
 | Minus 
 | Times 
 | Div
+| Mod
 | StrConcat
 | SetUnion
 | SetIntersection
@@ -271,7 +272,8 @@ let pp_print_bin_op: Format.formatter -> bin_operator -> unit
 | Plus -> Format.fprintf ppf "+"
 | Minus -> Format.fprintf ppf "-"
 | Times -> Format.fprintf ppf "*"
-| Div -> Format.fprintf ppf "/"
+| Div -> Format.fprintf ppf "div"
+| Mod -> Format.fprintf ppf "mod"
 | StrConcat -> Format.fprintf ppf ("str.++")
 | SetMembership | SetUnion | SetIntersection -> 
   Utils.crash "Unexpected case in pp_print_bin_op"

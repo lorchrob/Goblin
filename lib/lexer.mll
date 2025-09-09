@@ -30,6 +30,7 @@
     "or", LOR ;
     "xor", LXOR ;
     "not", LNOT ;
+    "mod", MOD ; 
     "bvand", BVAND ;
     "bvor", BVOR ; 
     "bvxor", BVXOR ; 

@@ -107,6 +107,7 @@ let pp_print_binop: Format.formatter -> A.bin_operator -> unit
 | Minus -> Format.fprintf ppf "-"
 | Times -> Format.fprintf ppf "*"
 | Div -> Format.fprintf ppf "div"
+| Mod -> Format.fprintf ppf "mod"
 | StrConcat -> Format.fprintf ppf "str.++"
 | SetMembership 
 | SetUnion 

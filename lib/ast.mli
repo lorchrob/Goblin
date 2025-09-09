@@ -27,6 +27,7 @@ type bin_operator =
 | Minus
 | Times
 | Div
+| Mod
 | StrConcat
 | SetUnion
 | SetIntersection
