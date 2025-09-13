@@ -1,5 +1,5 @@
 let num_packets = 3
-let num_queues = 3
+let num_queues = 1
 
 type packet_type = int
 
