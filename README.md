@@ -21,9 +21,9 @@ Run `make` from the top-level directory
 
 ### Running Goblin
 
-* To (build and) execute, run `./goblin`  from the top-level directory
+* To execute, run `goblin` 
 * To run tests, run `make test`
-* Use `--help` for command-line arg documentation 
+* Use `goblin --help` for command-line arg documentation 
 * Example invocation: `./goblin --file ./test/test_cases/test2`
 
 ### User documentation
