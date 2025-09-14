@@ -91,6 +91,7 @@ rule read =
   | ";" { SEMICOLON }
   | "." { DOT }
   | "0b" { read_bits lexbuf }
+  | "0x" { read_hex lexbuf }
   | '"'[^ '"']*'"' as s   { STRING (String.sub s 1 (String.length s - 2)) }
   | int as p { INTEGER (int_of_string p) }
   | id as p {
@@ -105,3 +106,26 @@ rule read =
 and read_bits = parse
   | bit+ as b { BITS (List.of_seq (String.to_seq b |> Seq.map (fun c -> c = '1'))) }
   | _ { Utils.crash "Invalid bit sequence" }
+
+and read_hex = parse
+  | ['0'-'9''a'-'f''A'-'F']+ as h {
+      let bits =
+        h
+        |> String.to_seq
+        |> Seq.map (fun c ->
+             let v =
+               if '0' <= c && c <= '9' then Char.code c - Char.code '0'
+               else if 'a' <= c && c <= 'f' then 10 + Char.code c - Char.code 'a'
+               else 10 + Char.code c - Char.code 'A'
+             in
+             (* expand nibble to four booleans, MSB first *)
+             [ (v land 8) <> 0;
+               (v land 4) <> 0;
+               (v land 2) <> 0;
+               (v land 1) <> 0 ])
+        |> List.of_seq
+        |> List.flatten
+      in
+      BITS bits
+    }
+  | _ { Utils.crash "Invalid hex sequence" }
