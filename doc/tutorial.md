@@ -7,15 +7,17 @@ in this document).
 To understand the high-level intuition for Goblin, consider the situation of 
 fuzzing a `.pdf` file viewer. An example high-level workflow could proceed as follows:
 
+```
                           (1)        (2)
-`.pdf` file specification --> Goblin --> concrete `.pdf` file 
+.pdf file specification --> Goblin --> concrete .pdf file 
                                  ^              | (3)
                                  |              v         (4)
-                                  ------- fuzzing driver  --> SUT (`.pdf` viewer)  
+                                  ------- fuzzing driver  --> SUT (.pdf viewer)  
                                    (7)          ^                   | (5)
                                                 |                   v
                                                 -------------  SUT output 
                                                       (6)
+```
 
 In the above workflow, Goblin's job is to take as input a `.pdf` file specification 
 and produce as output a concrete `.pdf` file that conforms to the `.pdf` file specification. 
@@ -76,8 +78,9 @@ The Goblin input is much simpler because Goblin works at the level of
 **abstract syntax** rather than **concrete syntax**. 
 In fact, our workflow above was over-simplified. In fact, we should have:
 
+```
 `.pdf` file specification --> Goblin --> abstract `.pdf` file --> concrete `.pdf` file
-                                    ...
+```
 
 where the concrete `.pdf` file is produced from the abstract `.pdf` file outside of Goblin.
 Returning to the Goblin input: 
