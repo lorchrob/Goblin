@@ -1,0 +1,47 @@
+<csv-file> ::= <_num_cols> <csv-header> <csv-records> 
+             { <_num_cols> = <csv-header>.<_num_cols> ;
+               <csv-records>.<_num_cols> = <_num_cols> ; } ; 
+
+<csv-header> ::= <csv-record> <_num_cols> 
+               { <csv-record>.<_count> = <_num_cols> ; 
+                 <_num_cols> > 2; } ; 
+
+<csv-records> ::= <_num_cols> <csv-record> <csv-records> 
+                { <csv-record>.<_count> = <_num_cols> ; 
+                  <csv-records>.<_num_cols> = <_num_cols> ; }
+                | <_num_cols> <nil> ; 
+
+<csv-record> ::= <_count> <raw-field> 
+               { <_count> = 1; } 
+               | <_count> <raw-field> <csv-record> 
+               { <_count> = 1 + <csv-record>.<_count> ; } ;
+
+
+<raw-field> :: String 
+{
+// simple field 
+str.in_re(<raw-field>, 
+              re.++(re.++(re.*(str.to_re(" ")), 
+                    re.union(
+                        re.union(re.range("!", "!"), re.range("#", ":")), re.range("<", "~"))), 
+                    re.*(str.to_re(" "))))
+or 
+// quoted field
+str.in_re(<raw-field>,
+  re.union(re.union(
+    re.range("!", "!"), 
+    re.range("#", "~")), 
+    re.union(
+      re.union(str.to_re("\t"), 
+      str.to_re("\n")),
+      str.to_re("\r")
+    ))
+  ) ; 
+}
+; 
+
+<nil> :: String 
+  { <nil> = ""; } ; 
+
+<_count> :: Int ;
+<_num_cols> :: Int ;

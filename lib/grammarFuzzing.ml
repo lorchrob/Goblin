@@ -38,11 +38,19 @@ type trace = packet list
 let sygus_success_execution_time = ref 0.0
 let sygus_fail_execution_time = ref 0.0
 
+let other_success_execution_time = ref 0.0
+let other_fail_execution_time = ref 0.0
+
+let preprocessing_time = ref 0.0
+
 let oracle_time = ref 0.0
 let oracle_calls = ref 0
 
 let sygus_success_calls = ref 0
 let sygus_fail_calls = ref 0
+
+let other_success_calls = ref 0
+let other_fail_calls = ref 0
 
 let trace_time = ref 0.0
 
@@ -51,6 +59,12 @@ let total_execution_calls = ref 0
 
 let driver_call_time = ref 0.0
 let driver_calls = ref 0
+
+let addition_count = ref 0
+let deletion_count = ref 0
+let modify_count = ref 0
+let crossover_count = ref 0
+let grammar_byte_map = ref ""
 
 let preprocess_map (f : 'a) (p : population) : population =
   match p with
@@ -348,8 +362,8 @@ let nonterminals = ["AC_TOKEN" ; "RG_ID"; "RG_ID_LIST"; "REJECTED_GROUPS"; "RG_I
 let rec check_well_formed_rules (grammar : ast) : bool =
   match grammar with
   | [] -> true
-  | ProdRule(nt, rhsList) :: xs -> (not (List.length rhsList = 1 && isNonTerminalPresent nt rhsList)) && check_well_formed_rules xs
-  | TypeAnnotation(_,_,_) :: xs -> check_well_formed_rules xs
+  | ProdRule(nt, rhsList, _) :: xs -> (not (List.length rhsList = 1 && isNonTerminalPresent nt rhsList)) && check_well_formed_rules xs
+  | TypeAnnotation(_, _, _, _) :: xs -> check_well_formed_rules xs
     
 
 let rec applyMutation (m : mutation) (g : ast) (count : int) : (packet_type * grammar) option =
@@ -358,36 +372,57 @@ let rec applyMutation (m : mutation) (g : ast) (count : int) : (packet_type * gr
   else
     let nt = random_element nonterminals in
     match m with
-      Add -> print_endline "\n\nADDING\n\n" ; 
+    | Add -> print_endline "\n\nADDING\n\n" ; 
       let random_prod_rule = find_random_production_rule g in
-      let added_grammar = (mutation_add_s1 g nt random_prod_rule) in
-      if snd added_grammar = false then applyMutation Add g (count - 1)
+      let added_grammar, success = (mutation_add_s1 g nt random_prod_rule) in
+      if success = false then applyMutation Add g (count - 1)
       else begin
-        pp_print_ast Format.std_formatter (fst added_grammar); 
-        Some (NOTHING, (fst added_grammar))
-      end
-    | Delete -> print_endline "\n\nDELETING\n\n" ;
-      let delete_attempt = (mutation_delete g nt) in
-      if snd delete_attempt = false then applyMutation Delete g (count - 1)
-      else
-        let deleted_grammar = canonicalize (fst delete_attempt) in
-        (
-          match deleted_grammar with
+        pp_print_ast Format.std_formatter added_grammar; 
+        addition_count := !addition_count + 1; 
+        Some (NOTHING, added_grammar)
+
+          (* let pre_start = Unix.gettimeofday () in
+          let add_canon = 
+          canonicalize (fst added_grammar) in
+        match add_canon with 
         | Some x ->
           let well_formed_check = check_well_formed_rules x in
           (
-            match well_formed_check with
-            | true -> pp_print_ast Format.std_formatter x; Some (NOTHING, x)
-            | false -> applyMutation Delete g (count - 1)
+            match well_formed_check with 
+            | true -> pp_print_ast Format.std_formatter x; addition_count := !addition_count + 1; preprocessing_time := Unix.gettimeofday () -. pre_start; Some (NOTHING, x)
+            | false -> applyMutation Add g (count - 1)
           )
-        | None -> applyMutation Delete g (count - 1)
-        )
-
+        | None -> applyMutation Add g (count - 1) *)
+        
+        (* | false -> Some (NOTHING, fst added_grammar) *)
+      end
+    | Delete -> print_endline "\n\nDELETING\n\n" ;
+      let delete_attempt, success = (mutation_delete g nt) in
+      if success = false then applyMutation Delete g (count - 1)
+      else begin
+        pp_print_ast Format.std_formatter delete_attempt;
+        deletion_count := !deletion_count + 1; 
+        Some (NOTHING, delete_attempt)
+          (* let pre_start = Unix.gettimeofday () in
+        let deleted_grammar = canonicalize (fst delete_attempt) in
+        match deleted_grammar with
+        | Some x -> 
+          let well_formed_check = check_well_formed_rules x in
+          (
+            match well_formed_check with *)
+            (* | true -> pp_print_ast Format.std_formatter x; deletion_count := !deletion_count + 1; preprocessing_time := Unix.gettimeofday () -. pre_start;Some (NOTHING, x) *)
+            (* | false -> applyMutation Delete g (count - 1)
+          )
+        | None -> applyMutation Delete g (count - 1) *)
+        (* | false -> Some (NOTHING, fst delete_attempt) *)
+      end
     | Modify -> print_endline "\n\nMODIFYING\n\n" ;
       let operation = random_element [Plus; Minus] in
       let (modified_grammar, success_code) = mutation_update g nt operation in
-      if success_code then 
+      if success_code then begin
+        modify_count := !modify_count + 1;
         Some (NOTHING, modified_grammar)
+      end
       else applyMutation Modify g (count - 1)
 
     | CrossOver -> print_endline "\n\n\nENTERING CROSSOVER\n\n\n" ;
@@ -398,16 +433,22 @@ let rec applyMutation (m : mutation) (g : ast) (count : int) : (packet_type * gr
         let crossoverPRs = mutation_crossover rhs1 rhs2 in
         let newPR = grammarUpdateAfterCrossover nt1 g rhs1 rhs2 crossoverPRs in
         let finalGrammar = grammarUpdateAfterCrossover nt2 newPR rhs1 rhs2 crossoverPRs in
-        let canonicalizedGrammar = canonicalize finalGrammar in
-          (match canonicalizedGrammar with
+        crossover_count := !crossover_count + 1;
+        Some (NOTHING, finalGrammar)
+        (* let pre_start = Unix.gettimeofday () in *)
+        (* let canonicalizedGrammar = canonicalize finalGrammar in *)
+      
+          (* (match canonicalizedGrammar with
           | Some(x) -> 
             let well_formed_check = check_well_formed_rules x in
             (match well_formed_check with
             | true ->
+              preprocessing_time := Unix.gettimeofday () -. pre_start;
               Some (NOTHING, x)
             | false -> applyMutation CrossOver g (count - 1)
             )
-          | None -> (applyMutation CrossOver g (count - 1)))
+          | None -> (applyMutation CrossOver g (count - 1))) *)
+        (* | false -> Some (NOTHING, finalGrammar)) *)
     | CorrectPacket -> 
       let x = random_element [COMMIT; CONFIRM; ASSOCIATION_REQUEST] in (
         match x with 
@@ -454,8 +495,9 @@ let save_time_info filename trace_length =
   Unix.sleepf 0.1 ;
   print_endline "saving time info.." ;
   let oc = open_out_gen [Open_creat; Open_append] 0o666 filename in
-  output_string oc (Printf.sprintf "%d,%.8f,%d,%.8f,%d,%.8f,%d,%.8f,%d,%.8f\n" trace_length (!trace_time /. (float_of_int trace_length)) !sygus_success_calls !sygus_success_execution_time !sygus_fail_calls !sygus_fail_execution_time !oracle_calls !oracle_time !driver_calls !driver_call_time);
-  close_out oc
+  output_string oc (Printf.sprintf "%d,%.8f,%d,%.8f,%d,%.8f,%d,%.8f,%d,%.8f,%d,%.8f,%d,%.8f\n" trace_length (!trace_time /. (float_of_int trace_length)) !sygus_success_calls !sygus_success_execution_time !sygus_fail_calls !sygus_fail_execution_time !other_success_calls !other_success_execution_time !other_fail_calls !other_fail_execution_time !oracle_calls !oracle_time !driver_calls !driver_call_time);
+  close_out oc;
+  ()
 
 let save_population_info filename population =
   let _ = Unix.system ("touch " ^ filename) in
@@ -469,6 +511,14 @@ let save_population_info filename population =
   output_string oc string_to_save ;
   close_out oc
 
+let save_mutation_count filename = 
+  let _ = Unix.system ("touch " ^ filename) in
+  Unix.sleepf 0.1 ;
+  print_endline "saving mutation info.." ;
+  let oc = open_out filename in
+  output_string oc (Printf.sprintf "Addition: %d\nDeletion: %d\nModification: %d\nCrossOver: %d" !addition_count !deletion_count !modify_count !crossover_count);
+  close_out oc;
+  ()
 
 let rec save_queue_info queues =
   match queues with
@@ -584,41 +634,152 @@ let callDriver_new packets packet =
     driver_call_time := ((Unix.gettimeofday ()) -. driver_start_time) ;
     driver_calls := !driver_calls + 1 ;
     (driver_result, oracle_result)
-    
-let run_sequence (c : child) : (provenance * output) * state =
+
+let log_error msg timestamp =
+  let error_str = "=== ERROR [" ^ timestamp ^ "] ===\n" ^ msg ^ "\n\n" in
+  let oc = open_out_gen [Open_wronly; Open_append; Open_creat] 0o644 "grammar_hex_log.txt" in
+  output_string oc error_str;
+  close_out oc;
+  ()
+
+let run_sequence (flag : bool) (c : child) : (provenance * output) * state =
   if c = (([],[]),0.0) then ((ValidPacket NOTHING, EXPECTED_OUTPUT), IGNORE_)
   else begin 
     let stateTransition = fst c |> fst in
     (* print_endline "\n\n\nGRAMMAR TO SYGUS:" ;
     pp_print_ast Format.std_formatter (fst c |> snd) ; *)
-    let sygus_start_time = Unix.gettimeofday () in
-    let removed_dead_rules_for_sygus = dead_rule_removal (fst c |> snd) "SAE_PACKET" in
-    match removed_dead_rules_for_sygus with
-    | Some grammar_to_sygus ->
-      sygus_success_execution_time := ((Unix.gettimeofday ()) -. sygus_start_time) ;
-      sygus_success_calls := !sygus_success_calls + 1 ;
-      let packetToSend_ = Lwt_main.run (timeout_wrapper 5.0 (fun () -> (Pipeline.sygusGrammarToPacket grammar_to_sygus))) in (
+    let timestamp = string_of_float (Unix.gettimeofday ()) in
+    let packetToSend_1 = (
+      let other_start_time = Unix.gettimeofday () in
+      try 
+        let grammar = fst c |> snd in
+        Format.printf "%a\n" Ast.pp_print_ast grammar;
+        let grammar_str = Format.asprintf "%a\n" Ast.pp_print_ast grammar in
+        let timestamp = Unix.gettimeofday () |> string_of_float in
+        let log_entry = "=== GRAMMAR [" ^ timestamp ^ "] ===\n" ^ grammar_str ^ "\n" in
+        let oc = open_out_gen [Open_wronly; Open_append; Open_creat] 0o644 "grammar_hex_log.txt" in
+        output_string oc log_entry;
+        close_out oc;
+        Format.pp_print_flush Format.std_formatter ();
+        let sygus_ast, _, _ = Pipeline.main_pipeline ~grammar "dummy" in 
+        other_success_execution_time := ((Unix.gettimeofday ()) -. other_start_time) ;
+        other_success_calls := !other_success_calls + 1 ;
+        let sygus_ast = BitFlips.flip_bits sygus_ast in
+        (* grammar_byte_map := !grammar_byte_map ^ (Utils.capture_output Ast.pp_print_ast grammar); *)
+        let byte_serial, metadata = SygusAst.serialize_bytes SygusAst.Big sygus_ast in
+        (* Print hex to stdout and append to file *)
+        Format.printf "%s\n" (bytes_to_hex byte_serial);
+        let hex_str = "=== HEX RESULT [" ^ timestamp ^ "] ===\n" ^ (bytes_to_hex byte_serial) ^ "\n\n" in
+        let oc = open_out_gen [Open_wronly; Open_append; Open_creat] 0o644 "grammar_hex_log.txt" in
+        output_string oc hex_str;
+        close_out oc;
+        Format.pp_print_flush Format.std_formatter ();
+        Ok (byte_serial, metadata)
+      with exn -> 
+        other_fail_calls := !other_fail_calls + 1;
+        other_fail_execution_time := ((Unix.gettimeofday ()) -. other_start_time);
+        let error = Format.asprintf "Exception: %s\n" (Printexc.to_string exn) in 
+        let error2 = Format.asprintf "Backtrace:\n%s\n" (Printexc.get_backtrace ()) in 
+        let error_str = "=== ERROR [" ^ timestamp ^ "] ===\n" ^ error ^ error2 ^ "\n\n" in
+        let oc = open_out_gen [Open_wronly; Open_append; Open_creat] 0o644 "grammar_hex_log.txt" in
+        output_string oc error_str;
+        close_out oc;
+        Format.pp_print_flush Format.std_formatter ();
+        Error (error ^ error2))
+      in 
+      let packetToSend_2 = (
+        let sygus_start_time = Unix.gettimeofday () in
+        let canon_grammar = canonicalize (fst c |> snd) in
+        match canon_grammar with
+        | Some x -> 
+          let removed_dead_rules_for_sygus = dead_rule_removal x "SAE_PACKET" in
+          (match removed_dead_rules_for_sygus with
+          | Some grammar_to_sygus -> (
+            (* preprocessing_time := Unix.gettimeofday () -. pre_start; *)
+            (* Print grammar to stdout and append to file *)
+            
+            let grammar = grammar_to_sygus in 
+        try
+          let sygus_out = Pipeline.sygusGrammarToPacket grammar in
+          match sygus_out with
+          | Ok (packetToSend, _metadata) ->
+            sygus_success_execution_time := ((Unix.gettimeofday ()) -. sygus_start_time) ;
+            sygus_success_calls := !sygus_success_calls + 1 ;
+            Format.printf "SYGUS CALL SUCCESS\n";
+            (* Format.printf "PRINTING SYGUS AST:\n"; *)
+            (* Format.printf "%a\n" Ast.pp_print_ast grammar; *)
+            Format.printf "PRINTING byte serialization SYGUS:\n";
+            (* Print hex to stdout and append to file *)
+            Format.printf "%s\n" (bytes_to_hex packetToSend);
+            let hex_str = "=== SYGUS HEX RESULT [" ^ timestamp ^ "] ===\n" ^ (bytes_to_hex packetToSend) ^ "\n\n" in
+            let oc = open_out_gen [Open_wronly; Open_append; Open_creat] 0o644 "grammar_hex_log.txt" in
+            output_string oc hex_str;
+            close_out oc;
+            Format.printf "\n";
+            Format.pp_print_flush Format.std_formatter ();
+            (* let trace_start_time = Unix.gettimeofday () in
+            let driver_output = callDriver_new (run_trace stateTransition) (RawPacket packetToSend) in
+            trace_time := Unix.gettimeofday () -. trace_start_time ;
+            save_time_info "temporal-info/OCaml-time-info.csv" (1 + (List.length (stateTransition))) ; *)
+            Ok (packetToSend,  _metadata)
+          | Error e -> 
+            sygus_fail_calls := !sygus_fail_calls + 1;
+            sygus_fail_execution_time := ((Unix.gettimeofday ()) -. sygus_start_time);
+            let error_str = "=== ERROR [" ^ timestamp ^ "] ===\n" ^ e ^ "\n\n" in
+            let oc = open_out_gen [Open_wronly; Open_append; Open_creat] 0o644 "grammar_hex_log.txt" in
+            output_string oc error_str;
+            close_out oc;
+            Format.pp_print_flush Format.std_formatter ();
+            (* print_endline "ERROR";
+            sygus_fail_execution_time := ((Unix.gettimeofday ()) -. sygus_start_time) ;
+            sygus_fail_calls := !sygus_fail_calls + 1 ; *)
+            (* Ok ((ValidPacket NOTHING, EXPECTED_OUTPUT), IGNORE_) *)
+            Error e
+        with exn -> 
+          sygus_fail_calls := !sygus_fail_calls + 1;
+          sygus_fail_execution_time := ((Unix.gettimeofday ()) -. sygus_start_time);
+          let error = Format.asprintf "Exception: %s\n" (Printexc.to_string exn) in 
+          let error2 = Format.asprintf "Backtrace:\n%s\n" (Printexc.get_backtrace ()) in 
+          let error_str = "=== ERROR [" ^ timestamp ^ "] ===\n" ^ error ^ error2 ^ "\n\n" in
+          log_error error_str timestamp;
+          Error (error ^ error2))
+        | None ->
+          log_error "SyGuS: Could not remove dead rules" timestamp;
+          Error "SyGuS: Could not remove dead rules")
+      | None ->
+        log_error "SyGuS: Could not canonicalize grammar" timestamp;
+        Error ("SyGuS: Could not canonicalize grammar"))
+        in
+        let packetToSend_ = (fun x -> match x with | true -> packetToSend_1 | false -> packetToSend_2) flag in
         match packetToSend_ with
         | Ok (packetToSend, _metadata) ->
-          print_endline "SUCCESS";
+          (* grammar_byte_map := !grammar_byte_map ^ "\n HEX: " ^ bytes_to_hex packetToSend ^ "\n------------------------------\n"; *)
+          Format.printf "\n";
+          Format.pp_print_flush Format.std_formatter ();
           let trace_start_time = Unix.gettimeofday () in
           let driver_output = callDriver_new (run_trace stateTransition) (RawPacket packetToSend) in
           trace_time := Unix.gettimeofday () -. trace_start_time ;
           save_time_info "temporal-info/OCaml-time-info.csv" (1 + (List.length (stateTransition))) ;
           (RawPacket packetToSend, (fst driver_output)), (snd driver_output)
-        | Error _ -> 
-          print_endline "ERROR";
-          sygus_fail_execution_time := ((Unix.gettimeofday ()) -. sygus_start_time) ;
-          sygus_fail_calls := !sygus_fail_calls + 1 ;
+        | Error e -> 
+          Format.printf "ERROR\n";
+          Format.printf "%s\n" e ;
+          (* Log error to grammar_hex_log.txt with timestamp link *)
+          (* let error_str = "=== ERROR [" ^ timestamp ^ "] ===\n" ^ e ^ "\n\n" in
+          let oc = open_out_gen [Open_wronly; Open_append; Open_creat] 0o644 "grammar_hex_log.txt" in
+          output_string oc error_str;
+          close_out oc;
+          Format.pp_print_flush Format.std_formatter (); *)
+          (* sygus_fail_execution_time := ((Unix.gettimeofday ()) -. sygus_start_time) ; *)
+          (* sygus_fail_calls := !sygus_fail_calls + 1 ; *)
           ((ValidPacket NOTHING, EXPECTED_OUTPUT), IGNORE_)
-      )
-    | None -> ((ValidPacket NOTHING, EXPECTED_OUTPUT), IGNORE_)
+    (* | None -> ((ValidPacket NOTHING, EXPECTED_OUTPUT), IGNORE_) *)
   end
 
-let executeMutatedPopulation (mutatedPopulation : child list) (old_states : state list) : (((provenance list list) * (child list)) * (state list)) * (state list) =
+let executeMutatedPopulation (mutatedPopulation : child list) (old_states : state list) (flag : bool) : (((provenance list list) * (child list)) * (state list)) * (state list) =
   print_endline "EXECUTING MUTATED POPULATION.." ;
 
-  let _outputList = List.map run_sequence mutatedPopulation in
+  let _outputList = List.map (run_sequence flag) mutatedPopulation in
   (* print_endline "List.map2 first try"; *)
   let cat_mutated_population = List.map2 (fun x y -> (x, y)) mutatedPopulation _outputList in
   (* print_endline "List.map2 first try SUCCESS"; *)
@@ -661,7 +822,6 @@ let sample_population (p : population) : population =
   | ACCEPTED _ -> ACCEPTED new_population
 
 let cleanup (q : triple_queue) : population list = [sample_population (List.nth q 0); sample_population (List.nth q 1); sample_population (List.nth q 2)]
-
 
 let dump_queue_info a b c =
   let _ = Unix.system ("touch " ^ "temporal-info/sample-info.txt") in
@@ -730,6 +890,12 @@ let population_size_across_queues (x : population) (y : population) (z : populat
     | NOTHING -> NOTHING 
     | RESET -> NOTHING *)
 
+let save_grammar_map filename =
+  let oc = open_out filename in
+  output_string oc !grammar_byte_map;
+  close_out oc;
+  ()
+
 let rec map_packet_to_state (cl : child list) (old_states : state list) (new_states : state list) : state_child list =
   match cl, old_states, new_states with
   | [], [], [] -> []
@@ -764,7 +930,7 @@ let filter_state (qh : queue_handle) (c : state_child) : bool =
 
 let removeDuplicates (currentList : child list) : child list = 
   let s = PopulationSet.of_list currentList in 
-  PopulationSet.elements s  
+  PopulationSet.elements s
   
 let bucket_oracle (q : triple_queue) (clist : child list) (old_states : state list) (new_states : state list) : triple_queue =
   print_endline "NEW QUEUES GENERATING.." ;
@@ -822,14 +988,16 @@ let save_updated_queue_sizes a b =
   print_endline "write_queue_sizes" ;
   let oc = open_out "temporal-info/queue-size-updates.txt" in
   output_string oc (Printf.sprintf "Old queue size: %d -- New queue size: %d\n" a b);
-  close_out oc
+  close_out oc;
+  ()
 
 let save_iteration_time (iteration : int) (iteration_timer : float) : unit =
   let time_string = Printf.sprintf "Iteration: %d --> Time taken: %.3f\n" iteration iteration_timer in
   append_to_file "temporal-info/iteration-times.txt" time_string ;
   ()
 
-let rec fuzzingAlgorithm 
+
+let rec fuzzingAlgorithm
 (maxCurrentPopulation : int) 
 (currentQueue : triple_queue) 
 (iTraces : provenance list list)
@@ -839,7 +1007,9 @@ let rec fuzzingAlgorithm
 (cleanupIteration : int) 
 (newChildThreshold : int) 
 (mutationOperations : mutationOperations)
-(seed : triple_queue) =
+(seed : triple_queue)
+(flag : bool)
+=
   let nothing_population = List.nth currentQueue 0 in
   let confirmed_population = List.nth currentQueue 1 in
   let accepted_population = List.nth currentQueue 2 in
@@ -847,9 +1017,9 @@ let rec fuzzingAlgorithm
   if currentIteration >= terminationIteration then iTraces
   else
     if currentIteration mod cleanupIteration = 0 then
-      fuzzingAlgorithm maxCurrentPopulation seed iTraces tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations seed
+      fuzzingAlgorithm maxCurrentPopulation seed iTraces tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations seed flag
     else if total_population_size >= maxCurrentPopulation then
-      fuzzingAlgorithm maxCurrentPopulation (cleanup currentQueue) iTraces tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations seed
+      fuzzingAlgorithm maxCurrentPopulation (cleanup currentQueue) iTraces tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations seed flag
     else
       let start_time = Unix.gettimeofday () in
       let currentQueue = 
@@ -862,7 +1032,7 @@ let rec fuzzingAlgorithm
       let old_states_ = snd sampled_pop in
       let selectedMutations = mutationList random_element mutationOperations (List.length newPopulation) in
       let mutatedPopulation = newMutatedSet newPopulation selectedMutations (List.length newPopulation) in
-      let score_and_oracle_old_states = executeMutatedPopulation mutatedPopulation old_states_ in
+      let score_and_oracle_old_states = executeMutatedPopulation mutatedPopulation old_states_ flag in
       let old_states = snd score_and_oracle_old_states in
       let score_and_oracle = fst score_and_oracle_old_states in
       let (iT, newPopulation_) = fst score_and_oracle in
@@ -874,7 +1044,9 @@ let rec fuzzingAlgorithm
       save_queue_info newQueue ;
       let iteration_timer = Unix.gettimeofday () -. start_time in
       save_iteration_time (currentIteration + 1) iteration_timer ;
-      fuzzingAlgorithm maxCurrentPopulation newQueue (List.append iTraces iT) tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations seed
+      save_grammar_map "temporal-info/grammar-hex-map.txt";
+      save_mutation_count "temporal-info/mutation-count.txt"; 
+      fuzzingAlgorithm maxCurrentPopulation newQueue (List.append iTraces iT) tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations seed flag
 
 let initialize_files () =
   initialize_clear_file "temporal-info/NOTHING-queue-info.txt";
@@ -884,6 +1056,7 @@ let initialize_files () =
   initialize_clear_file "temporal-info/OCaml-time-info.csv";
   initialize_clear_file "temporal-info/sample-info.txt";
   initialize_clear_file "results/interesting_traces.txt";
+  initialize_clear_file "grammar_hex_log.txt";
   (* initialize_clear_file "sync/driver_oracle.json"; *)
   initialize_clear_file "sync/oracle-response.txt";
   (* initialize_clear_file "sync/placeholders-replace.pkt"; *)
@@ -901,6 +1074,6 @@ let runFuzzer grammar_list =
   let confirmed_queue = CONFIRMED([([ValidPacket COMMIT], commit_grammar), 0.0; ([ValidPacket COMMIT], confirm_grammar), 0.0; ([ValidPacket COMMIT], commit_confirm_grammar), 0.0;]) in
   let accepted_queue = ACCEPTED([([ValidPacket COMMIT; ValidPacket CONFIRM], commit_grammar), 0.0; ([ValidPacket COMMIT; ValidPacket CONFIRM], confirm_grammar), 0.0; ([ValidPacket COMMIT; ValidPacket CONFIRM], commit_confirm_grammar), 0.0;]) in
 
-  let _ = fuzzingAlgorithm 10000 [nothing_queue; confirmed_queue; accepted_queue] [] 100 0 1150 100 100 [CorrectPacket; Modify; Add;CrossOver;Delete;] [nothing_queue; confirmed_queue; accepted_queue] in
+  let _ = fuzzingAlgorithm 10000 [nothing_queue; confirmed_queue; accepted_queue] [] 100 0 1150 100 100 [CorrectPacket; Modify; Add;CrossOver;Delete;] [nothing_queue; confirmed_queue; accepted_queue] true in
   ()
   (* CorrectPacket;  Modify; Add;CrossOver;*)

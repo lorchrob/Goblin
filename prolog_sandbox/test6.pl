@@ -23,6 +23,7 @@ c(C) :- C in 0..10.
 d(D) :- D in 0..10.
 
 % Field extractor for A.E.C
+% A -> E E
 a_cs(a1(E1, E2), Cs) :-
     e_cs(E1, Cs1),
     e_cs(E2, Cs2),

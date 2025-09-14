@@ -4,7 +4,7 @@ all:
 	@dune build
 
 test:
-	@dune test
+	OCAMLRUNPARAM=b dune test -j 1 --verbose
 
 clean:
 	@dune clean

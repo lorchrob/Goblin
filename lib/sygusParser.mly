@@ -2,10 +2,9 @@
 open SygusAst
 %}
 
-%token DEFINE
-%token FUN 
-%token TOP
 %token HYPHEN
+%token DEFINEFUN
+%token TOP
 %token LPAREN 
 %token RPAREN
 %token AS
@@ -15,6 +14,7 @@ open SygusAst
 %token EMPTY
 %token BOOL
 %token UNIT
+%token UNIT_TYPE
 %token TRUE
 %token FALSE
 %token PLUSPLUS
@@ -22,9 +22,16 @@ open SygusAst
 %token UNDERSCORE
 %token BITVEC
 %token STR
-%token STRING
+%token STRINGTYPE
 %token INFEASIBLE
 %token UNSAT
+%token SAT
+%token SET
+%token SETTYPE
+%token UNION
+%token SINGLETON
+%token DOLLAR
+%token AT
 %token<string> STRCONST
 
 %token<bool list> BITS
@@ -38,18 +45,27 @@ open SygusAst
 %%
 
 s: 
+| DOLLAR; children = separated_nonempty_list(DOLLAR, lisp_term); EOF { Node (("outputs", None), children) }
 | d = sygus_term; EOF { d } 
+| SAT; model = sygus_model; EOF { model } 
 | model = sygus_model; EOF { model } 
 | UNSAT; EOF { VarLeaf "infeasible" }
 
 sygus_model: 
-| LPAREN; values = list(model_value); RPAREN; { Node ("smt_model", values) }
+| LPAREN; values = list(model_value); RPAREN; { Node (("smt_model", None), values) }
 
 model_value:
-| LPAREN; DEFINE; HYPHEN; FUN; id = ID; LPAREN; RPAREN; il_ty; t = lisp_term; RPAREN; { Node (id, [t]) }
+| LPAREN; DEFINEFUN; id = ID; LPAREN; RPAREN; UNIT_TYPE; 
+    LPAREN; AS; AT; ID; UNIT_TYPE; RPAREN;
+  RPAREN; 
+ { let id, idx = Utils.parse_str_nat_suffix id in 
+   Node ((id, idx), [UnitLeaf]) }
+| LPAREN; DEFINEFUN; id = ID; LPAREN; RPAREN; il_ty; t = lisp_term; RPAREN;
+ { let id, idx = Utils.parse_str_nat_suffix id in
+   Node ((id, idx), [t]) }
 	
 sygus_term:
-| LPAREN; LPAREN; DEFINE; HYPHEN; FUN; TOP; LPAREN; RPAREN; top_type; t = lisp_term; RPAREN; RPAREN;
+| LPAREN; LPAREN; DEFINEFUN; TOP; LPAREN; RPAREN; top_type; t = lisp_term; RPAREN; RPAREN;
   { t }
 | INFEASIBLE;
   { VarLeaf "infeasible" }
@@ -61,25 +77,41 @@ top_type:
 il_ty:
 | INT; {}
 | BOOL; {}
-| STRING; {}
+| STRINGTYPE; {}
 | LPAREN; CAPSEQ; BOOL; RPAREN; {}
 | LPAREN; UNDERSCORE; BITVEC; INTEGER; RPAREN; {}
+| LPAREN; SETTYPE; il_ty; RPAREN; {}
 
 lisp_term: 
 | LPAREN; id = ID; ts = list(lisp_term); RPAREN; 
-  { Node (id, ts) }
+  { let id, idx = Utils.parse_str_nat_suffix id in
+    Node ((id, idx), ts) }
 | bits = BITS; 
   { BVLeaf (List.length bits, bits) }
 | id = ID; 
   { VarLeaf id }
 | bits = bit_list; 
   { BLLeaf bits }
+| ss = string_set; 
+  { SetLeaf (StringSet ss) }
 | i = INTEGER; 
   { IntLeaf i }
 | LPAREN; HYPHEN; i = INTEGER; RPAREN; 
   { IntLeaf (-i) }
+| TRUE; 
+  { BoolLeaf true }
+| FALSE; 
+  { BoolLeaf false }
 | str = STRCONST;
   { StrLeaf str }
+
+string_set:
+| LPAREN; AS; SET; DOT; EMPTY; LPAREN; SETTYPE; STRINGTYPE; RPAREN; RPAREN; 
+  { Utils.StringSet.empty }
+| LPAREN; SET; DOT; SINGLETON; s = STRCONST; RPAREN;
+  { Utils.StringSet.singleton s }
+| LPAREN; SET; DOT; UNION; sss = nonempty_list(string_set); RPAREN;
+  { List.fold_left Utils.StringSet.union Utils.StringSet.empty sss }
 
 bit_list:
 | LPAREN; AS; SEQ; DOT; EMPTY; LPAREN; CAPSEQ; BOOL; RPAREN; RPAREN; 

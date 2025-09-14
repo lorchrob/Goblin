@@ -1,0 +1,6 @@
+// Overlapping constraints test
+<S> ::= <A> { <A>.<B>.<D> > 4; } ;
+<A> ::= <B> ;
+<B> ::= <C> <D> { <C> > 5; <D> > 5; } ;
+<C> :: Int ;
+<D> :: Int ;

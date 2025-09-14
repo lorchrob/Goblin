@@ -1,2 +1,2 @@
-<S> ::= <A> { <A> <- int_to_bitvector(8, length(0b00000)); } ;
-<A> :: BitVector(8);
+<S> ::= <A> { <A> <- int_to_bv(8, length(0b00000)); } ;
+<A> :: BitVec(8);

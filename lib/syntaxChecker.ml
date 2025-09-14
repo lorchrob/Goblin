@@ -10,6 +10,11 @@
        If we allow this, then match statements are a bit harder to generate, 
        because you could accidentally match the same constructor twice 
        rather than the distinct constructors. *)
+
+  (*!! TODO: 
+       Revisit dangling identifier checks (esp., for nonterminals on RHS not in constraints 
+
+  *)
 *)
 
 open Ast
@@ -27,25 +32,25 @@ type prod_rule_map = (Utils.StringSet.t) Utils.StringMap.t
 let build_prm: ast -> prod_rule_map
 = fun ast -> 
   let prm = List.fold_left (fun acc element -> match element with 
-  | ProdRule (nt, rhss) -> 
+  | ProdRule (nt, rhss, p) -> 
     List.fold_left (fun acc rhss -> match rhss with 
-    | Rhs (ges, _) -> 
+    | Rhs (ges, _, _) -> 
       let grammar_elements = List.map Ast.grammar_element_to_string ges in
       let grammar_elements = Utils.StringSet.of_list grammar_elements in (
       match Utils.StringMap.find_opt nt acc with 
       | Some mem -> 
         if (Utils.StringSet.is_empty mem) then 
-          Utils.error ("Nonterminal " ^ nt ^ " has both a type annotation and a production rule")
+          Utils.error ("Nonterminal " ^ nt ^ " has both a type annotation and a production rule") p
         else Utils.StringMap.add nt (Utils.StringSet.union mem grammar_elements) acc 
       | None -> 
-        Utils.StringMap.add nt grammar_elements acc     
+        Utils.StringMap.add nt grammar_elements acc
       )
     | StubbedRhs _ -> acc
     ) acc rhss
-  | TypeAnnotation (nt, _, _) -> 
+  | TypeAnnotation (nt, _, _, p) -> 
     match Utils.StringMap.find_opt nt acc with 
     | Some _ -> 
-      Utils.error ("Nonterminal " ^ nt ^ " either has two type annotations, or has both a type annotation and a production rule")
+      Utils.error ("Nonterminal " ^ nt ^ " either has two type annotations, or has both a type annotation and a production rule") p
     | None -> 
       Utils.StringMap.add nt Utils.StringSet.empty acc 
   ) Utils.StringMap.empty ast in 
@@ -56,46 +61,57 @@ let build_prm: ast -> prod_rule_map
 let build_nt_set: ast -> Utils.StringSet.t 
 = fun ast -> 
   List.fold_left (fun acc element -> match element with 
-  | ProdRule (nt, _)
-  | TypeAnnotation (nt, _, _) -> Utils.StringSet.add nt acc
+  | ProdRule (nt, _, _)
+  | TypeAnnotation (nt, _, _, _) -> Utils.StringSet.add nt acc
   ) Utils.StringSet.empty ast
 
-let rec check_dangling_identifiers: Utils.StringSet.t -> expr -> expr 
-= fun nt_set expr -> 
-  let call = check_dangling_identifiers nt_set in 
+let rec check_dangling_identifiers: Utils.StringSet.t -> Lexing.position -> expr -> expr 
+= fun nt_set p expr -> 
+  let call = check_dangling_identifiers nt_set p in 
   let check_d_ids_nt_expr nt_expr = 
     List.iter (fun nt -> match Utils.StringSet.find_opt nt nt_set with 
-    | None -> Utils.error ("Dangling identifier " ^ nt)
+    | None -> Utils.error ("Dangling identifier " ^ nt) p
     | Some _ -> ()
     ) nt_expr
   in
   match expr with 
-  | NTExpr (nt_ctx, nt_expr) -> 
+  | NTExpr (nt_ctx, nt_expr, p) -> 
     let nt_expr' = List.map fst nt_expr in
     let _ = check_d_ids_nt_expr nt_expr' in 
-    NTExpr (nt_ctx, nt_expr)
-  | BinOp (expr1, op, expr2) -> BinOp (call expr1, op, call expr2) 
-  | UnOp (op, expr) -> UnOp (op, call expr) 
-  | CompOp (expr1, op, expr2) -> CompOp (call expr1, op, call expr2) 
-  | StrLength expr -> StrLength (call expr)
-  | Length expr -> Length (call expr) 
+    NTExpr (nt_ctx, nt_expr, p)
+  | EmptySet (ty, p) -> EmptySet (ty, p)
+  | Singleton (expr, p) -> Singleton (call expr, p)
+  | BinOp (expr1, op, expr2, p) -> BinOp (call expr1, op, call expr2, p) 
+  | UnOp (op, expr, p) -> UnOp (op, call expr, p) 
+  | CompOp (expr1, op, expr2, p) -> CompOp (call expr1, op, call expr2, p) 
+  | StrLength (expr, p) -> StrLength (call expr, p)
+  | Length (expr, p) -> Length (call expr, p) 
+  | SeqLength (expr, p) -> SeqLength (call expr, p) 
   | Match _ -> assert false (* -> Match (check_d_ids_nt_expr nt_expr, cases) *)
+  | StrInRe (expr1, expr2, p) -> StrInRe (call expr1, call expr2, p) 
+  | ReStar (expr, p) -> ReStar (call expr, p)
+  | StrToRe (expr, p) -> StrToRe (call expr, p) 
+  | ReConcat (exprs, p) -> ReConcat (List.map call exprs, p)
+  | ReUnion (exprs, p) -> ReUnion (List.map call exprs, p) 
+  | ReRange (expr1, expr2, p) -> ReRange (call expr1, call expr2, p)
+  | BVCast (width, expr, p) -> BVCast (width, call expr, p)
+  | UbvToInt (expr, p) -> UbvToInt (call expr, p)
+  | SbvToInt (expr, p) -> SbvToInt (call expr, p)
   | BVConst _ 
   | BLConst _ 
   | BConst _ 
-  | BVCast _  
   | IntConst _ 
   | PhConst _ 
   | StrConst _ -> expr
 
-let rec check_nt_expr_refs: prod_rule_map -> (string * int option) list -> (string * int option) list 
-= fun prm nt_expr -> match nt_expr with 
+let rec check_nt_expr_refs: prod_rule_map -> (string * int option) list -> Lexing.position -> (string * int option) list 
+= fun prm nt_expr p -> match nt_expr with 
 | (nt1, idx1) :: (nt2, idx2) :: tl ->
   if (not (Utils.StringSet.mem nt2 (Utils.StringMap.find nt1 prm))) 
   then 
     let sub_expr_str = Utils.capture_output Ast.pp_print_nt_with_dots [(nt1, idx1); (nt2, idx2)] in
-    Utils.error ("Dot notation " ^ sub_expr_str ^ " is an invalid reference" )
-  else (nt1, idx1) :: check_nt_expr_refs prm ((nt2, idx2) :: tl)
+    Utils.error ("Dot notation " ^ sub_expr_str ^ " is an invalid reference" ) p
+  else (nt1, idx1) :: check_nt_expr_refs prm ((nt2, idx2) :: tl) p
 | _ -> nt_expr
 
 (* Check each nonterminal expression begins with a valid nonterminal
@@ -104,22 +120,33 @@ let rec check_prod_rule_nt_exprs: prod_rule_map -> Utils.StringSet.t -> expr -> 
 = fun prm nts expr -> 
   let call = check_prod_rule_nt_exprs prm nts in
   match expr with 
-  | NTExpr (nt_context, nt_expr) -> 
+  | NTExpr (nt_context, nt_expr, p) -> 
     if (not (Utils.StringSet.mem (List.hd nt_expr |> fst) nts)) 
-    then Utils.error ("Nonterminal " ^  (List.hd nt_expr |> fst) ^ " not found in current production rule or type annotation")
+    then Utils.error ("Nonterminal " ^  (List.hd nt_expr |> fst) ^ " not found in current production rule or type annotation") p
     else
-      let nt_expr = check_nt_expr_refs prm nt_expr in 
-      NTExpr (nt_context, nt_expr) 
-  | BinOp (expr1, op, expr2) -> BinOp (call expr1, op, call expr2) 
-  | UnOp (op, expr) -> UnOp (op, call expr) 
-  | CompOp (expr1, op, expr2) -> CompOp (call expr1, op, call expr2) 
-  | StrLength expr -> StrLength (call expr)
-  | Length expr -> Length (call expr) 
+      let nt_expr = check_nt_expr_refs prm nt_expr p in 
+      NTExpr (nt_context, nt_expr, p) 
+  | EmptySet (ty, p) -> EmptySet (ty, p)
+  | Singleton (expr, p) -> Singleton (call expr, p)
+  | BinOp (expr1, op, expr2, p) -> BinOp (call expr1, op, call expr2, p) 
+  | UnOp (op, expr, p) -> UnOp (op, call expr, p) 
+  | CompOp (expr1, op, expr2, p) -> CompOp (call expr1, op, call expr2, p) 
+  | StrLength (expr, p) -> StrLength (call expr, p)
+  | ReStar (expr, p) -> ReStar (call expr, p)
+  | Length (expr, p) -> Length (call expr, p) 
+  | SeqLength (expr, p) -> SeqLength (call expr, p) 
+  | StrInRe (expr1, expr2, p) -> StrInRe (call expr1, call expr2, p) 
+  | StrToRe (expr, p) -> StrToRe (call expr, p) 
+  | ReConcat (exprs, p) -> ReConcat (List.map call exprs, p)
+  | ReUnion (exprs, p) -> ReUnion (List.map call exprs, p) 
+  | ReRange (expr1, expr2, p) -> ReRange (call expr1, call expr2, p)
+  | BVCast (width, expr, p) -> BVCast (width, call expr, p)
+  | UbvToInt (expr, p) -> UbvToInt (call expr, p)
+  | SbvToInt (expr, p) -> SbvToInt (call expr, p)
   | Match _ -> assert false (* -> Match (check_nt_expr_refs prm nt_expr, cases) *)
   | BVConst _ 
   | BLConst _ 
   | BConst _ 
-  | BVCast _  
   | IntConst _ 
   | PhConst _ 
   | StrConst _ -> expr
@@ -130,116 +157,127 @@ let rec check_type_annot_nt_exprs: prod_rule_map -> Utils.StringSet.t -> expr ->
 = fun prm nts expr -> 
   let call = check_type_annot_nt_exprs prm nts in
   match expr with 
-  | NTExpr (nt_context, nt_expr) -> 
+  | NTExpr (nt_context, nt_expr, p) -> 
     if (not (Utils.StringSet.mem (List.hd nt_expr |> fst) nts)) 
-    then Utils.error ("Nonterminal " ^  (List.hd nt_expr |> fst) ^ " not found in current production rule or type annotation")
+    then Utils.error ("Nonterminal " ^  (List.hd nt_expr |> fst) ^ " not found in current production rule or type annotation") p
     else
-      let nt_expr = check_nt_expr_refs prm nt_expr in 
-      NTExpr (nt_context, nt_expr) 
-  | BinOp (expr1, op, expr2) -> BinOp (call expr1, op, call expr2) 
-  | UnOp (op, expr) -> UnOp (op, call expr) 
-  | CompOp (expr1, op, expr2) -> CompOp (call expr1, op, call expr2) 
-  | StrLength expr -> StrLength (call expr)
-  | Length expr -> Length (call expr) 
+      let nt_expr = check_nt_expr_refs prm nt_expr p in 
+      NTExpr (nt_context, nt_expr, p) 
+  | EmptySet (ty, p) -> EmptySet (ty, p)
+  | Singleton (expr, p) -> Singleton (call expr, p)
+  | BinOp (expr1, op, expr2, p) -> BinOp (call expr1, op, call expr2, p) 
+  | UnOp (op, expr, p) -> UnOp (op, call expr, p) 
+  | CompOp (expr1, op, expr2, p) -> CompOp (call expr1, op, call expr2, p) 
+  | StrLength (expr, p) -> StrLength (call expr, p)
+  | Length (expr, p) -> Length (call expr, p) 
+  | SeqLength (expr, p) -> SeqLength (call expr, p) 
   | Match _ -> assert false(* -> Match (check_nt_expr_refs prm nt_expr, cases) *)
+  | StrInRe (expr1, expr2, p) -> StrInRe (call expr1, call expr2, p) 
+  | ReStar (expr, p) -> ReStar (call expr, p)
+  | StrToRe (expr, p) -> StrToRe (call expr, p) 
+  | ReConcat (exprs, p) -> ReConcat (List.map call exprs, p)
+  | ReUnion (exprs, p) -> ReUnion (List.map call exprs, p) 
+  | ReRange (expr1, expr2, p) -> ReRange (call expr1, call expr2, p)
+  | BVCast (width, expr, p) -> BVCast (width, call expr, p)
+  | UbvToInt (expr, p) -> UbvToInt (call expr, p)
+  | SbvToInt (expr, p) -> SbvToInt (call expr, p)
   | BVConst _ 
   | BLConst _ 
   | BConst _ 
-  | BVCast _  
   | IntConst _ 
   | PhConst _ 
   | StrConst _ -> expr
 
 let check_syntax_prod_rule: prod_rule_map -> Utils.StringSet.t -> prod_rule_rhs -> prod_rule_rhs
 = fun prm nt_set rhss -> match rhss with 
-| Rhs (ges, scs) ->
+| Rhs (ges, scs, p) ->
   let ges' = List.map Ast.grammar_element_to_string ges in
   let scs = List.map (fun sc -> match sc with 
-  | Dependency (nt2, expr) -> 
-    if (not (Utils.StringSet.mem nt2 nt_set)) then Utils.error ("Dangling identifier " ^ nt2) else
-    if (not (List.mem nt2 ges')) then Utils.error ("Dependency LHS identifier " ^ nt2 ^ " is not present on the RHS of the corresponding production rule") else
-    let expr = check_dangling_identifiers nt_set expr in 
+  | DerivedField (nt2, expr, p) -> 
+    if (not (Utils.StringSet.mem nt2 nt_set)) then Utils.error ("Dangling identifier " ^ nt2) p else
+    if (not (List.mem nt2 ges')) then Utils.error ("DerivedField LHS identifier " ^ nt2 ^ " is not present on the RHS of the corresponding production rule") p else
+    let expr = check_dangling_identifiers nt_set p expr in 
     let expr = check_prod_rule_nt_exprs prm (Utils.StringSet.of_list ges') expr in
-    Dependency (nt2, expr)
-  | SyGuSExpr expr -> 
-    let expr = check_dangling_identifiers nt_set expr in 
+    DerivedField (nt2, expr, p)
+  | SmtConstraint (expr, p) -> 
+    let expr = check_dangling_identifiers nt_set p expr in 
     let expr = check_prod_rule_nt_exprs prm (Utils.StringSet.of_list ges') expr in
-    SyGuSExpr expr
+    SmtConstraint (expr, p)
   ) scs in 
-  Rhs (ges, scs)
+  Rhs (ges, scs, p)
 | StubbedRhs _ -> assert false
 
 let rhss_contains_nt nt rhss = 
-  List.iter (fun rhs -> match rhs with 
-  | Rhs (ges, _) -> List.iter (fun ge -> match ge with 
-    | Nonterminal nt2
+  List.exists (fun rhs -> match rhs with 
+  | Rhs (ges, _, _) -> List.exists (fun ge -> match ge with 
+    | Nonterminal (nt2, _, _)
     | StubbedNonterminal (nt2, _) -> 
-      if nt = nt2 then 
-        Utils.warning_print Format.pp_print_string Format.std_formatter "Warning: Grammar is recursive. Constraints on recursive production rules may not be respected.\n"
-      else ()
+      nt = nt2
   ) ges
-  | StubbedRhs _ -> ()
+  | StubbedRhs _ -> false
   ) rhss
 
-(* let check_if_recursive: ast -> ast 
+let sort_ast: ast -> ast 
 = fun ast -> 
   match TopologicalSort.canonicalize ast with 
-  | Some ast -> List.map (fun element -> match element with
-    | ProdRule (nt, rhss) -> 
-      let _ = rhss_contains_nt nt rhss in
-      ProdRule (nt, rhss)
-    | _ -> element
-  ) ast 
-  | None -> Utils.error "Recursive grammars are not supported" *)
+  | Some ast -> ast
+  (* In recursive grammars, ast does not need to be sorted, 
+     as we cannot use the divide and conquer engines. *)
+  | None -> ast
+
+let check_if_recursive: ast -> bool 
+= fun ast -> 
+  match TopologicalSort.canonicalize ast with 
+  | Some ast -> 
+    List.exists (fun element -> match element with
+    | ProdRule (nt, rhss, _) -> 
+      rhss_contains_nt nt rhss 
+    | _ -> false
+    ) ast
+  | None -> true
 
 let check_vacuity: ast -> ast 
 = fun ast -> 
-  if ast = [] then Utils.error "Grammar is empty after dead rule removal"
+  if ast = [] then Utils.error_no_pos "Grammar is empty after dead rule removal"
   else ast
 
 let remove_circular_deps: ast -> ast 
 = fun ast -> 
   List.map (fun element -> match element with
     | TypeAnnotation _ -> element 
-    | ProdRule (nt, rhss) -> let rhss = List.map (fun rhs -> match rhs with
+    | ProdRule (nt, rhss, p) -> let rhss = List.map (fun rhs -> match rhs with
         | StubbedRhs _ -> rhs 
-        | Rhs (nt, scs) -> 
+        | Rhs (nt, scs, p) -> 
           let sygus_exprs = List.filter (fun sc -> match sc with
-          | SyGuSExpr _ -> true 
-          | Dependency _ -> false
+          | SmtConstraint _ -> true 
+          | DerivedField _ -> false
           ) scs in 
           let dependencies = List.filter (fun sc -> match sc with
-          | SyGuSExpr _ -> false 
-          | Dependency _ -> true
+          | SmtConstraint _ -> false 
+          | DerivedField _ -> true
           ) scs in
           let dependencies = match TopologicalSort.canonicalize_scs dependencies with 
           | None -> dependencies
-          | Some cycle -> 
-            List.fold_left (fun acc dep -> match dep with 
-            | SyGuSExpr _ -> dep :: acc  
-            | Dependency (nt, expr) -> 
-              (* Change dependent terms in cycle to sygus level constraints *)
-              if List.mem nt cycle
-              then (
-                Utils.debug_print Format.pp_print_string Format.std_formatter "Replacing dependency with SyGuS constraint\n";
-                SyGuSExpr (CompOp (NTExpr ([], [nt, None]), Eq, expr)) :: acc
-              ) else dep :: acc
-            ) [] dependencies
+          | Some cycle ->
+            let msg = Format.asprintf "Derived field cyclic dependency detected: %a\n" 
+              (Lib.pp_print_list Format.pp_print_string " ") cycle
+            in
+            Utils.error msg p
           in 
-          Rhs (nt, sygus_exprs @ dependencies)
+          Rhs (nt, sygus_exprs @ dependencies, p)
       ) rhss in 
-      ProdRule (nt, rhss)
+      ProdRule (nt, rhss, p)
   ) ast
 
 let check_scs_for_dep_terms: semantic_constraint list -> semantic_constraint list  
 = fun scs -> 
   let dep_terms = List.fold_left (fun acc sc -> match sc with 
-  | Dependency (nt, _) -> StringSet.add nt acc 
+| DerivedField (nt, _, _) -> StringSet.add nt acc 
   | _ -> acc
   ) StringSet.empty scs in
   let deps_to_convert = List.fold_left (fun acc sc -> match sc with 
-  | Dependency _ -> acc
-  | SyGuSExpr expr -> 
+  | DerivedField _ -> acc
+  | SmtConstraint (expr, _) -> 
     let nts = Ast.get_nts_from_expr expr |> StringSet.of_list in 
     let intersection = StringSet.inter dep_terms nts in
     if StringSet.is_empty intersection then acc
@@ -248,51 +286,146 @@ let check_scs_for_dep_terms: semantic_constraint list -> semantic_constraint lis
       StringSet.union acc deps_to_convert
   ) StringSet.empty scs in 
   List.fold_left (fun acc sc -> match sc with 
-  | Dependency (nt, expr) -> 
+  | DerivedField (nt, _, p) -> 
     if StringSet.mem nt deps_to_convert then (
-      Utils.debug_print Format.pp_print_string Format.std_formatter "Replacing dependency with SyGuS constraint\n";
-      SyGuSExpr (CompOp (NTExpr ([], [nt, None]), Eq, expr)) :: acc
+      let msg = Format.asprintf "Derived field %s mentioned in semantic constraint"
+        nt 
+      in 
+      Utils.error msg p
     ) else sc :: acc
-  | SyGuSExpr _ -> sc :: acc
+  | SmtConstraint _ -> sc :: acc
   ) [] scs |> List.rev
 
 let check_sygus_exprs_for_dep_terms: ast -> ast 
 = fun ast -> 
   List.map (fun element -> match element with 
-  | TypeAnnotation (nt, ty, scs) -> 
+  | TypeAnnotation (nt, ty, scs, p) -> 
     let scs = check_scs_for_dep_terms scs in 
-    TypeAnnotation (nt, ty, scs)
-  | ProdRule (nt, rhss) -> 
+    TypeAnnotation (nt, ty, scs, p)
+  | ProdRule (nt, rhss, p) -> 
     let rhss = List.map (fun rhs -> match rhs with
-    | Rhs (ges, scs) -> Rhs (ges, check_scs_for_dep_terms scs)
+    | Rhs (ges, scs, p) -> Rhs (ges, check_scs_for_dep_terms scs, p)
     | StubbedRhs _ -> rhs
     ) rhss in 
-    ProdRule (nt, rhss)
+    ProdRule (nt, rhss, p)
   ) ast
+
+(* The parser automatically parses all hardcoded string as string constants. 
+   But, sometimes, they are actually placeholders, which are handled differently 
+   by the type system. So, do the conversion here where necessary. *)
+let str_const_to_ph_const ast = 
+  let rec handle_expr = function 
+  | EmptySet (ty, p) -> EmptySet (ty, p)
+  | StrConst (ph, p) -> PhConst (ph, p)
+  | Singleton (expr, p) -> Singleton (handle_expr expr, p)
+  | BVCast (len, expr, p) -> BVCast (len, handle_expr expr, p)
+  | UbvToInt (expr, p) -> UbvToInt (handle_expr expr, p)
+  | SbvToInt (expr, p) -> SbvToInt (handle_expr expr, p)
+  | BinOp (expr1, op, expr2, p) -> BinOp (handle_expr expr1, op, handle_expr expr2, p) 
+  | UnOp (op, expr, p) -> UnOp (op, handle_expr expr, p) 
+  | CompOp (expr1, op, expr2, p) -> CompOp (handle_expr expr1, op, handle_expr expr2, p) 
+  | StrLength (expr, p) -> StrLength (handle_expr expr, p) 
+  | SeqLength (expr, p) -> SeqLength (handle_expr expr, p) 
+  | Length (expr, p) -> Length (handle_expr expr, p) 
+  | Match (nt_ctx, nt, cases, p) -> 
+    let cases = List.map (fun case -> match case with 
+    | CaseStub _ -> case 
+    | Case (nts, e) -> Case (nts, handle_expr e)
+    ) cases in
+    Match (nt_ctx, nt, cases, p) 
+  | StrInRe (expr1, expr2, p) -> StrInRe (handle_expr expr1, handle_expr expr2, p) 
+  | ReStar (expr, p) -> ReStar (handle_expr expr, p)
+  | StrToRe (expr, p) -> StrToRe (handle_expr expr, p) 
+  | ReConcat (exprs, p) -> ReConcat (List.map handle_expr exprs, p) 
+  | ReUnion (exprs, p) -> ReUnion (List.map handle_expr exprs, p) 
+  | ReRange (expr1, expr2, p) -> ReRange (handle_expr expr1, handle_expr expr2, p)
+  | NTExpr _ 
+  | BVConst _ 
+  | BLConst _ 
+  | BConst _ 
+  | IntConst _ 
+  | PhConst _ as expr -> expr
+  in
+
+  let handle_sc ty sc = match sc with 
+  | SmtConstraint _ -> sc 
+  | DerivedField (nt, expr, p) -> 
+    let expr = 
+      if ty = Placeholder then handle_expr expr else expr 
+    in 
+    DerivedField (nt, expr, p)
+  in
+
+  List.map (fun element -> match element with 
+  | TypeAnnotation (nt, ty, scs, p) -> 
+    let scs = List.map (handle_sc ty) scs in 
+    TypeAnnotation (nt, ty, scs, p)
+  | ProdRule (nt, rhss, p) -> 
+    ProdRule (nt, rhss, p)
+  ) ast
+
+
+let language_emptiness_check ast start_symbol = 
+  let start_element = List.hd ast in 
+  let ast = TopologicalSort.dead_rule_removal_2 ast start_symbol in 
+  (* Dead rule removal may change order -- put start symbol back *)
+  let ast = start_element :: List.filter (fun element -> match element with 
+  | Ast.ProdRule (nt, _, _) 
+  | Ast.TypeAnnotation (nt, _, _, _) -> nt <> start_symbol 
+  ) ast 
+  in
+  let add_productive_nts ast productive_nts = 
+    List.fold_left (fun acc element -> match element with 
+    | TypeAnnotation (nt, _, _, _) -> Utils.StringSet.add nt acc 
+    | ProdRule (nt, rhss, _) ->
+      (* Does there exist some RHS for which all NTs are productive? *)
+      if List.exists (fun rhs -> 
+        let nts = Ast.nts_of_rhs rhs in 
+        List.for_all (fun nt -> Utils.StringSet.mem nt acc) nts 
+      ) rhss
+      then
+        Utils.StringSet.add nt acc 
+      else acc
+    ) productive_nts ast  
+  in
+  let productive_nt_set = Utils.StringSet.empty in 
+  let productive_nt_set = Utils.recurse_until_fixpoint productive_nt_set Utils.StringSet.equal (add_productive_nts ast) in 
+  if Utils.StringSet.equal productive_nt_set (Ast.nts_of_ast ast) then
+  (*if Utils.StringSet.mem start_symbol productive_nt_set then   *)
+    () 
+  else 
+    Utils.error_no_pos "CFG has empty language"
 
 let check_syntax: prod_rule_map -> Utils.StringSet.t -> ast -> ast 
 = fun prm nt_set ast -> 
-  (* let ast = check_if_recursive ast in *)
+  (*let ast = sort_ast ast in*) (*!! Maybe need this in non-dpll engines? *)
+  let start_symbol = match ast with 
+  | Ast.ProdRule (nt, _, _) :: _ 
+  | Ast.TypeAnnotation (nt, _, _, _) :: _ -> nt
+  | [] -> Utils.crash "empty grammar"
+  in 
+  let _ = language_emptiness_check ast start_symbol in
+  let ast = str_const_to_ph_const ast in
   let ast = Utils.recurse_until_fixpoint ast (=) remove_circular_deps in
   let ast = Utils.recurse_until_fixpoint ast (=) check_sygus_exprs_for_dep_terms in
   let ast = check_vacuity ast in
   let ast = List.map (fun element -> match element with 
-  | ProdRule (nt, rhss) -> 
+  | ProdRule (nt, rhss, p) -> 
     let rhss = List.map (check_syntax_prod_rule prm nt_set) rhss in
-    ProdRule (nt, rhss)
-  | TypeAnnotation (nt, ty, scs) -> 
+    ProdRule (nt, rhss, p)
+  | TypeAnnotation (nt, ty, scs, p) -> 
     let scs = List.map (fun sc -> match sc with 
-    | Dependency (nt2, expr) ->
-      if (not (Utils.StringSet.mem nt2 nt_set)) then Utils.error ("Dangling identifier " ^ nt2) else
-      if (not (nt2 = nt)) then Utils.error ("Dependency LHS identifier " ^ nt2 ^ " is not present in the corresponding type annotation") else
-      let expr = check_dangling_identifiers nt_set expr in 
+    | DerivedField (nt2, expr, p) ->
+      if (not (Utils.StringSet.mem nt2 nt_set)) then Utils.error ("Dangling identifier " ^ nt2) p else
+      if (not (nt2 = nt)) then Utils.error ("DerivedField LHS identifier " ^ nt2 ^ " is not present in the corresponding type annotation") p else
+      let expr = check_dangling_identifiers nt_set p expr in 
       let expr = check_type_annot_nt_exprs prm (Utils.StringSet.singleton nt) expr in
-      Dependency (nt2, expr) 
-    | SyGuSExpr expr -> 
-      let expr = check_dangling_identifiers nt_set expr in  
+      DerivedField (nt2, expr, p) 
+    | SmtConstraint (expr, p) -> 
+      let expr = check_dangling_identifiers nt_set p expr in  
       let expr = check_type_annot_nt_exprs prm (Utils.StringSet.singleton nt) expr in
-      SyGuSExpr expr
+      SmtConstraint (expr, p)
     ) scs in 
-    TypeAnnotation (nt, ty, scs)
+    TypeAnnotation (nt, ty, scs, p)
   ) ast in 
   ast

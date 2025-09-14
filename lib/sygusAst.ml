@@ -1,21 +1,65 @@
 (* TODO: Distinguish between strings, placeholders, dep terms in sygus_ast type *)
+(* Using sygus asts to represent two different things. 
+      1. Lisp-style terms compatible with any input grammar, and 
+      2. SMT solver models upon calling check-sat and get-model 
+         (essentially a single node with a list of leaf children) *)
+
+type concrete_set = 
+| StringSet of Utils.StringSet.t 
+
 type sygus_ast = 
-| Node of string * sygus_ast list 
+| Node of (string * int option) * sygus_ast list 
 | BVLeaf of int * bool list 
 | IntLeaf of int
 | BLLeaf of bool list
 | BoolLeaf of bool
 | StrLeaf of string
-| VarLeaf of string (* Placeholder can go here *)
+| SetLeaf of concrete_set 
+| VarLeaf of string 
+| UnitLeaf
 
+(*!!
+type expr = 
+| Op of expr * expr 
+| ...
+
+type q = Forall | Exists
+
+(* First string is variable name, second string is type *)
+type bound_vars = (string * string) list
+
+type formula = 
+| Quantifier of q * bound_vars * formula
+| Implies of formula * formula
+| Equality of expr * expr 
+| Disequality of expr * expr
+
+type ast = formula list
+*)
 type endianness = 
 | Little 
 | Big
 
+let rec smtlib_of_stringset set =
+  match Utils.StringSet.elements set with
+  | [] ->
+      "(as set.empty (Set String))"
+  | [x] ->
+      Printf.sprintf "(set.singleton \"%s\")" x
+  | x :: xs ->
+      let rest = Utils.StringSet.of_list xs in
+      Printf.sprintf "(set.union %s %s)"
+        (Printf.sprintf "(set.singleton \"%s\")" x)
+        (smtlib_of_stringset rest)
+
 let pp_print_sygus_ast: Format.formatter -> sygus_ast -> unit 
 = fun ppf sygus_ast -> 
   let rec pp_print_sygus_ast' ppf sygus_ast = match sygus_ast with 
-  | Node (constructor, subterms) -> 
+  | Node ((constructor, Some idx), subterms) -> 
+    Format.fprintf ppf "(%s%d %a)"
+    constructor idx
+    (Lib.pp_print_list pp_print_sygus_ast' " ") subterms 
+  | Node ((constructor, None), subterms) -> 
     Format.fprintf ppf "(%s %a)"
     constructor 
     (Lib.pp_print_list pp_print_sygus_ast' " ") subterms 
@@ -23,15 +67,35 @@ let pp_print_sygus_ast: Format.formatter -> sygus_ast -> unit
     let bits = List.map Bool.to_int bits in
     Format.fprintf ppf "#b%a"
     (Lib.pp_print_list Format.pp_print_int "") bits
-  | VarLeaf id -> Format.fprintf ppf "%s" id;
-  | StrLeaf id -> Format.fprintf ppf "%S" id;
-  | IntLeaf d -> Format.pp_print_int ppf d;
+  | VarLeaf id -> Format.fprintf ppf "\"%s\"" id;
+  | StrLeaf id -> Format.fprintf ppf "\"%s\"" id;
+  | IntLeaf d -> 
+    if d >= 0 then 
+      Format.pp_print_int ppf d
+    else 
+      Format.fprintf ppf "(- %d)" (d * -1)
   | BoolLeaf b -> Format.pp_print_bool ppf b;
-  (* This is kind of cheating, but I don't feel like matching cvc5 format exactly *)
-  | BLLeaf bits -> 
-    let bits = List.map Bool.to_int bits in
-    Format.fprintf ppf "#bl%a"
-    (Lib.pp_print_list Format.pp_print_int "") bits
+  | UnitLeaf -> Format.fprintf ppf "()" 
+  | SetLeaf (StringSet s) -> 
+    Format.pp_print_string Format.std_formatter (smtlib_of_stringset s)
+  | BLLeaf bits ->
+
+let print_smt_bool_seq fmt (lst : bool list) : unit =
+  match lst with
+  | [] ->
+    Format.fprintf fmt "seq.empty"
+  | [b] ->
+    if b then Format.fprintf fmt "(seq.unit true)"
+    else Format.fprintf fmt "(seq.unit false)"
+  | _ ->
+    Format.fprintf fmt "(seq.++ ";
+    let print_unit b =
+      if b then Format.fprintf fmt "(seq.unit true) "
+      else Format.fprintf fmt "(seq.unit false) "
+    in
+    List.iter print_unit lst;
+    Format.fprintf fmt ")"
+  in print_smt_bool_seq ppf bits
   in 
   Format.fprintf ppf "%a\n" 
   pp_print_sygus_ast' sygus_ast
@@ -50,7 +114,11 @@ let serialize: Format.formatter -> sygus_ast -> unit
   | VarLeaf id 
   | StrLeaf id -> Format.fprintf ppf "%s" id;
   | IntLeaf i -> Format.pp_print_int ppf i
+  | UnitLeaf -> ()
   | BoolLeaf b -> Format.pp_print_bool ppf b
+  | SetLeaf (StringSet s) -> 
+    Format.fprintf Format.std_formatter "{%a}" 
+      (Lib.pp_print_list Format.pp_print_string ", ") (Utils.StringSet.to_list s)
   in 
   Format.fprintf ppf "%a\n" 
   pp_print_sygus_ast' sygus_ast
@@ -137,7 +205,7 @@ let serialize_bytes: endianness -> sygus_ast -> bytes * bytes
 = fun endianness sygus_ast -> 
   let rec serialize_aux endianness sygus_ast offset acc_metadata =
     match sygus_ast with
-    | Node (id, subterms) ->
+    | Node ((id, _), subterms) ->
       let regex = Str.regexp "rg_id_list_con[0-9]+" in
       let is_match = Str.string_match regex id 0 in
       let endianness = if is_match then Little else Big in
@@ -152,6 +220,7 @@ let serialize_bytes: endianness -> sygus_ast -> bytes * bytes
       let bit_bytes = bools_to_bytes endianness bits in
       (bit_bytes, acc_metadata, offset + Bytes.length bit_bytes)
       
+    | StrLeaf id 
     | VarLeaf id ->
       let var_leaf_data = Bytes.of_string id in
       let var_leaf_length = Bytes.length var_leaf_data in
@@ -163,7 +232,8 @@ let serialize_bytes: endianness -> sygus_ast -> bytes * bytes
       
     | BoolLeaf _ -> Utils.crash "serializing final packet, unhandled case 1"
     | IntLeaf _ -> Utils.crash "serializing final packet, unhandled case 2"
-    | StrLeaf _ -> Utils.crash "serializing final packet, unhandled case 3"
+    | SetLeaf _ 
+    | UnitLeaf  -> Utils.crash "unsupported"
   in
   let initial_metadata = {
     var_leaf_count = 0;
@@ -178,9 +248,9 @@ let serialize_bytes: endianness -> sygus_ast -> bytes * bytes
   let ast = Parsing.parse
   "
   <S> ::= <A> <Placeholder> <B> <Placeholder2> <C> { <Placeholder> <- \"testa\"; <Placeholder2> <- \"testb\";};
-  <A> :: BitVector(16) { <A> <- int_to_bitvector(16, 256); }; 
-  <B> :: BitVector(8) { <B> <- int_to_bitvector(8, 256); }; 
-  <C> :: BitVector(8) { <C> <- int_to_bitvector(8, 256); }; 
+  <A> :: BitVec(16) { <A> <- int_to_bv(16, 256); }; 
+  <B> :: BitVec(8) { <B> <- int_to_bv(8, 256); }; 
+  <C> :: BitVec(8) { <C> <- int_to_bv(8, 256); }; 
   <Placeholder> :: String;
   <Placeholder2> :: String;
   " in 

@@ -19,34 +19,29 @@ module A = Ast
 *)
 let merge: A.ast -> A.element -> A.ast 
 = fun ast element -> match element with 
-  | A.TypeAnnotation (_, _, []) -> ast @ [element] 
-  | A.TypeAnnotation (nt, ty, scs) -> 
+  | A.TypeAnnotation (_, _, [], _) -> ast @ [element] 
+  | A.TypeAnnotation (nt, ty, scs, p) -> 
     (* If a prior AST rule constrains the NT, we need to push up the constraints *)
     if A.ast_constrains_nt ast nt then 
-      let _ = List.iter (fun sc -> match sc with 
-      | A.SyGuSExpr _ -> ()
-      | Dependency _ -> 
-        Utils.crash "Unsupported case in merge. This grammar has some nonterminal that is a computed term (of the form <nt> <- expr) and is also referenced elsewhere in some constraint. This is currently unsupported, but will be supported in the future."
-      ) scs in 
       let ast = List.fold_left (fun acc element -> match element with
       | A.TypeAnnotation _ -> acc @ [element]
-      | A.ProdRule (nt2, rhss) -> 
+      | A.ProdRule (nt2, rhss, p) -> 
         let rhss = List.map (fun rhs -> match rhs with 
         | A.StubbedRhs _ -> rhs 
-        | A.Rhs (ges, scs2) -> 
+        | A.Rhs (ges, scs2, p) -> 
           if List.exists (fun ge -> match ge with 
-          | A.Nonterminal nt3 -> nt = nt3  
+          | A.Nonterminal (nt3, _, _) -> nt = nt3  
           | A.StubbedNonterminal _ -> false
           ) ges 
-          then A.Rhs (ges, scs @ scs2) (* Push up the constraints *)
+          then A.Rhs (ges, scs @ scs2, p) (* Push up the constraints *)
           else rhs
         ) rhss in 
-        acc @ [A.ProdRule (nt2, rhss)]
+        acc @ [A.ProdRule (nt2, rhss, p)]
       ) [] ast in 
-      ast @ [A.TypeAnnotation (nt, ty, [])]
+      ast @ [A.TypeAnnotation (nt, ty, [], p)]
     (* If no overlapping constraint, no action is required *)
     else ast @ [element]
-  | A.ProdRule (nt, rhss) -> 
+  | A.ProdRule (nt, rhss, p) -> 
     (* To find overlaps, look for semantic constraint pairs where 
         * One semantic constraint is in __this__ production rule and has a nonterminal of the form 
           <nt_1>...<nt_n>
@@ -69,57 +64,112 @@ let merge: A.ast -> A.element -> A.ast
     (* If a prior AST rule constrains the NT, we need to push up the constraints *)
     let scs = List.concat_map (fun rhs -> match rhs with 
     | A.StubbedRhs _ -> []
-    | A.Rhs (_, scs) -> scs
+    | A.Rhs (_, scs, _) -> scs
     ) rhss in
     if A.ast_constrains_nt ast nt then 
       (* To push the scs up a level, we need to prepend a dot notation reference *)
       let scs = List.map (fun sc -> match sc with 
-      | A.SyGuSExpr expr -> A.SyGuSExpr (A.prepend_nt_to_dot_exprs nt expr)
-      | Dependency _ -> 
-        Utils.crash "Unsupported case in merge. This grammar has some nonterminal that is a computed term (of the form <nt> <- expr) and is also referenced elsewhere in some constraint. This is currently unsupported, but will be supported in the future."
+      | A.SmtConstraint (expr, p) -> 
+        A.SmtConstraint (A.prepend_nt_to_dot_exprs nt expr, p)
+      | A.DerivedField (nt2, expr, p) -> 
+        (* Since there is overlap, replace dependency with equality constraint.
+           We can't ignore what it overlaps with, in case it is unsat. *)
+        (* We can place None in the index because this pipeline step happens before 
+           resolveAmbiguities. *)
+        Utils.debug_print Format.pp_print_string Format.std_formatter "Replacing dependency with sygus expr";
+        A.SmtConstraint (A.prepend_nt_to_dot_exprs nt (A.CompOp (NTExpr([], [nt2, None], p), Eq, expr, p)), p)
       ) scs in 
       let ast = List.fold_left (fun acc element -> match element with
       | A.TypeAnnotation _ -> acc @ [element]
-      | A.ProdRule (nt2, rhss) -> 
+      | A.ProdRule (nt2, rhss, _) -> 
         let rhss = List.map (fun rhs -> match rhs with 
         | A.StubbedRhs _ -> rhs 
-        | A.Rhs (ges, scs2) -> 
+        | A.Rhs (ges, scs2, p) -> 
           if List.exists (fun ge -> match ge with 
-          | A.Nonterminal nt3 -> nt = nt3  
+          | A.Nonterminal (nt3, _, _) -> nt = nt3  
           | A.StubbedNonterminal _ -> false
           ) ges 
           then 
-            A.Rhs (ges, scs @ scs2) (* Push up the constraints *)
+            A.Rhs (ges, scs @ scs2, p) (* Push up the constraints *)
           else rhs
         ) rhss in 
-        acc @ [A.ProdRule (nt2, rhss)]
+        acc @ [A.ProdRule (nt2, rhss, p)]
       ) [] ast in 
       let rhss = List.map (fun rhs -> match rhs with 
       | A.StubbedRhs _ -> rhs 
-      | Rhs (ges, _) -> Rhs (ges, [])
+      | Rhs (ges, _, p) -> Rhs (ges, [], p)
       ) rhss in
-      ast @ [A.ProdRule (nt, rhss)]
+      ast @ [A.ProdRule (nt, rhss, p)]
     (* If no overlapping constraint, no action is required *)
+    else ast @ [element]
+
+let lift: A.ast -> A.element -> A.ast 
+= fun ast element -> match element with 
+  | A.TypeAnnotation (_, _, [], _) -> ast @ [element] 
+  | A.TypeAnnotation (nt, ty, scs, p) -> 
+    (* If a prior AST rule constrains the NT, we need to push up the constraints *)
+    if A.ast_constrains_nt ast nt then 
+      (* Lift dependencies to sygus exprs. 
+         TODO: This step may be overly conservative. *)
+      let scs = List.map (fun sc -> match sc with 
+      | A.SmtConstraint _ -> sc 
+      | A.DerivedField (nt, expr, p) -> 
+        Utils.debug_print Format.pp_print_string Format.std_formatter "Lifting dependency to SMT constraint\n";
+        let expr = A.CompOp (NTExpr ([], [nt, None], p), Eq, expr, p) in 
+        A.SmtConstraint (expr, p)
+      ) scs in
+      ast @ [A.TypeAnnotation (nt, ty, scs, p)]
+    else ast @ [element]
+  | A.ProdRule (nt, rhss, p) -> 
+    if A.ast_constrains_nt ast nt then 
+      let rhss = List.map (fun rhs -> match rhs with
+      | A.StubbedRhs _ -> rhs 
+      | A.Rhs (ges, scs, p) -> 
+        let scs = List.map (fun sc -> match sc with 
+        | A.SmtConstraint _ -> sc 
+        | A.DerivedField (nt, expr, _) -> 
+          Utils.debug_print Format.pp_print_string Format.std_formatter "Lifting dependency to SMT constraint\n";
+          let expr = A.CompOp (NTExpr ([], [nt, None], p), Eq, expr, p) in 
+          A.SmtConstraint (expr, p)
+        ) scs in
+        A.Rhs (ges, scs, p)
+      ) rhss in
+      ast @ [A.ProdRule (nt, rhss, p)]
     else ast @ [element]
 
 let detect: A.ast -> A.element -> bool
 = fun ast element -> match element with 
-  | A.TypeAnnotation (_, _, []) -> false 
-  | A.TypeAnnotation (nt, _, _ :: _) -> 
+  | A.TypeAnnotation (_, _, [], _) -> false 
+  | A.TypeAnnotation (nt, _, _ :: _, _) -> 
     A.ast_constrains_nt ast nt 
-  | A.ProdRule (nt, rhss) -> 
+  | A.ProdRule (nt, rhss, _) -> 
     let scs = List.concat_map (fun rhs -> match rhs with 
     | A.StubbedRhs _ -> []
-    | A.Rhs (_, scs) -> scs
+    | A.Rhs (_, scs, _) -> scs
     ) rhss in
     A.ast_constrains_nt ast nt && List.length scs > 0
 
+(* For now, this function (in an ugly way) does double duty. 
+   The detection of overlapping constraints assumes the 
+   input grammar is sorted. So we try to sort it; 
+   if it's recursive, we conservatively return false. 
+   TODO: Something better :) *)
 let detect_overlapping_constraints: A.ast -> bool 
 = fun ast -> 
-  List.fold_left (fun acc element -> 
-    acc || detect ast element
-  ) false ast
+  match TopologicalSort.canonicalize ast with
+  | Some ast -> 
+    List.fold_left (fun (acc_ast, acc_bool) element -> 
+    acc_ast @ [element], acc_bool || (detect acc_ast element)
+    ) ([], false) ast |> snd
+  | None -> true
 
+(* Lift dependencies that overlap with other constraints 
+   to SMT constraints for dpll_mono (don't need to push around) *)
+let lift_overlapping_dependencies: A.ast -> A.ast 
+= fun ast ->
+  List.fold_left lift [] ast
+
+(* Fully merge/push around constraints from sygus_dac *)
 let merge_overlapping_constraints: A.ast -> A.ast 
 = fun ast ->
   List.fold_left merge [] ast

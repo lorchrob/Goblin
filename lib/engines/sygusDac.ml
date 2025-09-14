@@ -2,9 +2,13 @@
    then SygusMono is equivalent to SygusDac. *)
 
 let sygus ppf ctx ast =
+  (*!! Right now, this check is strict enough to rule out the grammars from SAECRED.
+       Maybe the check can determine if there are any semantic constraints on list-type recursion *)
+  match SyntaxChecker.check_if_recursive ast with | true -> None | false -> 
+
   (* Step 1: Merge overlapping constraints *)
   Utils.debug_print Format.pp_print_string ppf "\nMerge overlapping constraints:\n";
-  let ast = MergeOverlappingConstraints.merge_overlapping_constraints ast in
+  let ast = Utils.recurse_until_fixpoint ast (=) MergeOverlappingConstraints.merge_overlapping_constraints in
   Utils.debug_print Ast.pp_print_ast ppf ast;
 
   (* Step 2: Resolve ambiguities in constraints *)

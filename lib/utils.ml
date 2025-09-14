@@ -61,6 +61,13 @@ let find_index predicate lst =
   in
   aux 0 lst
 
+let find_index_opt predicate lst =
+  let rec aux i = function
+    | [] -> None
+    | x :: xs -> if predicate x then Some i else aux (i + 1) xs
+  in
+  aux 0 lst
+
 let capture_output: (Format.formatter -> 'a -> unit) -> 'a -> string = 
 fun f arg ->
   let buf = Buffer.create 80 in
@@ -105,10 +112,18 @@ let warning_print pp formatter value =
     Format.ifprintf formatter "%a" pp value
 
 let crash message = 
-  failwith ("Internal error: " ^ message)
+  raise (Failure ("Internal error: " ^ message))
 
-let error message = 
-  failwith ("User error: " ^ message)
+exception User_error of string
+
+let error message (pos : Lexing.position) =
+  let line = pos.Lexing.pos_lnum in
+  let col  = pos.Lexing.pos_cnum - pos.Lexing.pos_bol in
+  let msg = Printf.sprintf "Error (line %d, column %d): %s" line col message in
+  raise (User_error msg)
+
+let error_no_pos message =
+  raise (User_error ("Error: " ^ message))
 
 let find_command_in_path cmd =
   match Sys.getenv_opt "PATH" with
@@ -172,3 +187,37 @@ let sequence_option (xs : 'a option list) : 'a list option =
        | _, _ -> None)
     xs
     (Some [])
+
+let extract_base_name str =
+  let str = String.lowercase_ascii str in
+  let open Str in
+  (* Remove optional trailing "_con" or "_con123" *)
+  let str =
+    global_replace (regexp "_con[0-9]*$") "" str
+  in
+  (* Remove prefix "_stub" *)
+  let str =
+    global_replace (Str.regexp "^_stub[0-9]*_") "" str
+  in
+  str
+
+let str_eq_ci s1 s2 =
+  String.lowercase_ascii s1 = String.lowercase_ascii s2
+
+let parse_str_nat_suffix (s : string) : string * int option =
+  let len = String.length s in
+  let rec split_at_digit_suffix i =
+    if i < 0 then 0
+    else if Char.code s.[i] >= Char.code '0' && Char.code s.[i] <= Char.code '9'
+    then split_at_digit_suffix (i - 1)
+    else i + 1
+  in
+  let split_index = split_at_digit_suffix (len - 1) in
+  let prefix = String.sub s 0 split_index in
+  if split_index = len then
+    (prefix, None)
+  else
+    let suffix = String.sub s split_index (len - split_index) in
+    match int_of_string_opt suffix with
+    | Some n -> (prefix, Some n)
+    | None -> (s, None)  (* fallback, shouldn't normally happen *)
