@@ -80,6 +80,7 @@ In fact, our workflow above was over-simplified. In fact, we should have:
 
 ```
 `.pdf` file specification --> Goblin --> abstract `.pdf` file --> concrete `.pdf` file
+             ...
 ```
 
 where the concrete `.pdf` file is produced from the abstract `.pdf` file outside of Goblin.
@@ -139,12 +140,22 @@ By default, this flag will cause Goblin to produce outputs indefinitely;
 to fix the number of solutions, use `--num-solutions n` for some natural number `n`.
 
 For more information on Goblin's command-line arguments, use `--help`.
+
 ##### Context-sensitive grammars
 
 ##### Derived fields
 
-##### Goblin Output
+### Goblin Output
+
+* S-expressions
+* constructor names/derivation
+* unambiguity
+* example serialization functions
 
 ### More Examples 
 
 See `evaluation` and `test/test_cases` for example `.gbl` files (Goblin input files). More intuitive examples with English language descriptions to come.
+
+### How does Goblin work?
+
+STUB
