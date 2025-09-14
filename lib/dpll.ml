@@ -680,6 +680,7 @@ let ty_of_concrete_leaf leaf = match leaf with
 | ConcretePlaceholderLeaf _ -> Placeholder 
 | ConcreteBitVectorLeaf (_, n, _) -> BitVector n
 | ConcreteBoolLeaf _ -> Bool 
+| ConcreteUnitLeaf _ -> Unit
 | _ -> Utils.crash "Unexpected case in ty_of_concrete_leaf"
 
 let rec instantiate_terminals: model_value Utils.StringMap.t -> derivation_tree -> derivation_tree 
@@ -828,8 +829,12 @@ let push_blocking_clause variable_stack model dt declared_variables solver block
   if update_bc_vars then 
     blocking_clause_vars := Utils.StringSet.union !blocking_clause_vars 
      (Utils.StringMap.bindings model |> List.map fst |> Utils.StringSet.of_list);
-  let blocking_clause_str = Format.asprintf "(assert (not (and %a)))" 
-    (Lib.pp_print_list pp_print_model_pair " ") (Utils.StringMap.bindings model) in
+  let blocking_clause_str = 
+    if Utils.StringMap.cardinal model > 0 then 
+      Format.asprintf "(assert (not (and %a)))" 
+      (Lib.pp_print_list pp_print_model_pair " ") (Utils.StringMap.bindings model)
+    else "(assert true)"
+  in
   issue_solver_command blocking_clause_str solver  
 
 let rec generate_n_solutions n ast model r derivation_tree declared_variables solver blocking_clause_vars variable_stack assertion_level = 
