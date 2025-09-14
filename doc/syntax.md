@@ -16,7 +16,7 @@ A Goblin input is a context-free grammar annotated with semantic constraints at 
          | <nt_expr> | <constant>
 <nt_expr> ::= <nonterminal> | <nonterminal>.<nt_expr>
 <nonterminal> ::= < identifier >
-<type> ::= Bool | String | Int | BitVec(positive integer) | Set(<type>) | List(<type>)
+<type> ::= Bool | String | Int | BitVec(positive integer) | Set(<type>) | List(<type>) | Unit
 ```
 
 All the supported function symbols `<f>` and operators `<binop>/<unop>` are defined in the next section.
