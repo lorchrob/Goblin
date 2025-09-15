@@ -8,11 +8,11 @@ To understand the high-level intuition for Goblin, consider the situation of
 fuzzing a `.pdf` file viewer. An example high-level workflow could proceed as follows:
 
 ```
-                        (1)        (2)
-.pdf file specification --> Goblin --> concrete .pdf file 
+                          (1)        (2)
+`.pdf` file specification --> Goblin --> concrete `.pdf` file 
                                  ^              | (3)
                                  |              v         (4)
-                                  ------- fuzzing driver  --> SUT (.pdf viewer)  
+                                  ------- fuzzing driver  --> SUT (`.pdf` viewer)  
                                    (7)          ^                   | (5)
                                                 |                   v
                                                 -------------  SUT output 
@@ -79,7 +79,7 @@ The Goblin input is much simpler because Goblin works at the level of
 In fact, our workflow above was over-simplified. In fact, we should have:
 
 ```
-`.pdf` file specification --> Goblin --> abstract `.pdf` file --> concrete `.pdf` file
+`.pdf` file specification --> Goblin --> abstract `.pdf` file --> serializer --> concrete `.pdf` file
              ...
 ```
 
@@ -264,4 +264,5 @@ See `evaluation` and `test/test_cases` for example `.gbl` files (Goblin input fi
 ### How does Goblin work?
 
 STUB
+
 
