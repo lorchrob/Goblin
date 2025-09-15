@@ -351,7 +351,11 @@ while `seq.len(.)` can be used directly in SMT constraints.
 
 #### Dot Notation
 
+STUB 
+
 ### Goblin Output
+
+STUB
 
 * S-expressions
 * constructor names/derivation
@@ -365,6 +369,7 @@ See `evaluation` and `test/test_cases` for example `.gbl` files (Goblin input fi
 ### How does Goblin work?
 
 STUB
+
 
 
 
