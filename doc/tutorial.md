@@ -74,8 +74,10 @@ The Goblin encoding is actually much simpler than the standard CFG representatio
 The first line defines the start symbol `<S>` with a single production rule 
 of two `<I>` nonterminals, and the second line ascribes symbol `<I>` with a 
 **type annotation** denoting that each `<I>` should produce an integer. 
-The Goblin input is much simpler because Goblin works at the level of 
-**abstract syntax** rather than **concrete syntax**. 
+The Goblin input is much simpler for two reasons: 
+(i) Goblin works at the level of 
+**abstract syntax** rather than **concrete syntax**, and 
+(ii) Goblin views grammars as producers of **algebraic data types** (with type annotations such as `Int`, `Bool`, and so on) rather than bare strings. 
 In fact, our workflow above was over-simplified. In fact, we should have:
 
 ```
@@ -83,7 +85,7 @@ In fact, our workflow above was over-simplified. In fact, we should have:
              ...
 ```
 
-where the concrete `.pdf` file is produced from the abstract `.pdf` file outside of Goblin.
+where the concrete `.pdf` file is produced from the abstract `.pdf` file outside of Goblin (using some separate serializer).
 Returning to the Goblin input: 
 
 ```
@@ -264,6 +266,7 @@ See `evaluation` and `test/test_cases` for example `.gbl` files (Goblin input fi
 ### How does Goblin work?
 
 STUB
+
 
 
 
