@@ -145,7 +145,7 @@ grammar). To ensure reproducible output, you can use the `--seed` command-line a
 to set a seed, which will make Goblin consistently produce the same outputs for the given input.
 
 To produce multiple outputs for a given input grammar, you can use the `--multiple-solutions` 
-flag, which will produce outputs delimited by a dollar sign ($).
+flag, which will produce outputs delimited by a dollar sign (`$`).
 By default, this flag will cause Goblin to produce outputs indefinitely; 
 to fix the number of solutions, use `--num-solutions n` for some natural number `n`.
 
@@ -331,6 +331,7 @@ See `evaluation` and `test/test_cases` for example `.gbl` files (Goblin input fi
 ### How does Goblin work?
 
 STUB
+
 
 
 
