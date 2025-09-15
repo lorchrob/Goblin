@@ -250,6 +250,24 @@ I ignored the `_sumN` variables since they are not morally part of the generated
 
 #### BitVectors
 
+One class of use cases for Goblin is network protocol input generation. 
+A unique aspect of network protocol fuzzing is that network packets often involve **bit-level**
+syntax and constraints --- say, one may need to model network packet fields as 16-bit machine integers 
+rather than mathematical integers. 
+To model machine integers and support bitwise operators in constraints (eg, bit complement, 
+left and right shifts, bitwise xor, and so on), 
+Goblin uses bitvector types `BitVec(n)` for concrete, positive values of `n` 
+(eg `BitVec(16)`, `BitVec(32)`).
+`BitVec` is a **dependent type** in the sense that the type is parametric with respect to 
+the length of the bitvector. 
+
+
+
+To model bitvectors with arbitrary width (ie, may grow or shrink), 
+Goblin supports the bit list type `List(Bool)`. 
+Here, `List` is a type constructor that takes one type as input 
+and returns an output type representing a list with the given element type.
+
 #### Derived fields
 
 ### Goblin Output
