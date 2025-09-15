@@ -85,8 +85,8 @@ In fact, our workflow above was over-simplified. In fact, we should have:
              ...
 ```
 
-where the concrete `.pdf` file is produced from the abstract `.pdf` file outside of Goblin (using some separate serializer).
-Returning to the Goblin input: 
+Above, the concrete `.pdf` file is produced from the abstract `.pdf` file outside of Goblin (using some separate serializer).
+Now, let's return to the Goblin input: 
 
 ```
 <S> ::= <I> <I>;
@@ -369,6 +369,7 @@ See `evaluation` and `test/test_cases` for example `.gbl` files (Goblin input fi
 ### How does Goblin work?
 
 STUB
+
 
 
 
