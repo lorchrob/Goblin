@@ -279,12 +279,12 @@ To illustrate example bitvector constraints, consider the following toy network 
 <Packet> ::= <Type> <Len> <Payload> 
 { <Len> <- int_to_bv(8, 16 + length(<Payload>));
   <Type> = int_to_bv(8, 1) => 
-        <Payload>.<Byte> < 32; };
-<Payload> :: <Byte> <Payload> 
+        ubv_to_int(<Payload>.<Byte>) < 32; };
+<Payload> ::= <Byte> <Payload> 
 | <Byte> { (<Byte> bvand 0b11110000) 
              = 0b10100000; };
 <Type> :: BitVec(8)  
-{ <Type> = int_to_bv(8, 0) lor 
+{ <Type> = int_to_bv(8, 0) or 
   <Type> = int_to_bv(8, 1); };
 <Len> :: BitVec(8);
 <Byte> :: BitVec(8);
@@ -365,6 +365,7 @@ See `evaluation` and `test/test_cases` for example `.gbl` files (Goblin input fi
 ### How does Goblin work?
 
 STUB
+
 
 
 
