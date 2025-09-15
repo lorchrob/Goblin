@@ -167,7 +167,7 @@ Consider the integer pair example from earlier:
 ```
 
 Say we want to encode a grammar of all the integer pairs that sum to 100, e.g., 
-`<49, 51>` and `<-1, 101>`. 
+`<49, 51>` and `<-1, 101>`, but NOT `<50, 49>`. 
 For this example, the syntactic requirements are identical (we are still producing pairs 
 of integers), but we want to encode a **semantic** constraint which restricts the language 
 of the grammar. In Goblin, we encode this as follows: 
@@ -331,6 +331,7 @@ See `evaluation` and `test/test_cases` for example `.gbl` files (Goblin input fi
 ### How does Goblin work?
 
 STUB
+
 
 
 
