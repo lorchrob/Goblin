@@ -70,7 +70,7 @@ let rec check_dangling_identifiers: Utils.StringSet.t -> Lexing.position -> expr
   let call = check_dangling_identifiers nt_set p in 
   let check_d_ids_nt_expr nt_expr = 
     List.iter (fun nt -> match Utils.StringSet.find_opt nt nt_set with 
-    | None -> Utils.error ("Dangling identifier " ^ nt) p
+    | None -> Utils.error ("Dangling identifier <" ^ nt ^ ">") p
     | Some _ -> ()
     ) nt_expr
   in
@@ -194,7 +194,7 @@ let check_syntax_prod_rule: prod_rule_map -> Utils.StringSet.t -> prod_rule_rhs 
   let ges' = List.map Ast.grammar_element_to_string ges in
   let scs = List.map (fun sc -> match sc with 
   | DerivedField (nt2, expr, p) -> 
-    if (not (Utils.StringSet.mem nt2 nt_set)) then Utils.error ("Dangling identifier " ^ nt2) p else
+    if (not (Utils.StringSet.mem nt2 nt_set)) then Utils.error ("Dangling identifier <" ^ nt2 ^ ">") p else
     if (not (List.mem nt2 ges')) then Utils.error ("DerivedField LHS identifier " ^ nt2 ^ " is not present on the RHS of the corresponding production rule") p else
     let expr = check_dangling_identifiers nt_set p expr in 
     let expr = check_prod_rule_nt_exprs prm (Utils.StringSet.of_list ges') expr in
@@ -204,6 +204,11 @@ let check_syntax_prod_rule: prod_rule_map -> Utils.StringSet.t -> prod_rule_rhs 
     let expr = check_prod_rule_nt_exprs prm (Utils.StringSet.of_list ges') expr in
     SmtConstraint (expr, p)
   ) scs in 
+  Format.printf "got here!\n";
+  let _ = List.map (fun ge -> 
+    if not (Utils.StringSet.mem ge nt_set) then Utils.error ("Dangling identifier <" ^ ge ^ ">") p 
+    else ge
+  ) ges' in
   Rhs (ges, scs, p)
 | StubbedRhs _ -> assert false
 
@@ -404,7 +409,6 @@ let check_syntax: prod_rule_map -> Utils.StringSet.t -> ast -> ast
   | Ast.TypeAnnotation (nt, _, _, _) :: _ -> nt
   | [] -> Utils.crash "empty grammar"
   in 
-  let _ = language_emptiness_check ast start_symbol in
   let ast = str_const_to_ph_const ast in
   let ast = Utils.recurse_until_fixpoint ast (=) remove_circular_deps in
   let ast = Utils.recurse_until_fixpoint ast (=) check_sygus_exprs_for_dep_terms in
@@ -416,7 +420,7 @@ let check_syntax: prod_rule_map -> Utils.StringSet.t -> ast -> ast
   | TypeAnnotation (nt, ty, scs, p) -> 
     let scs = List.map (fun sc -> match sc with 
     | DerivedField (nt2, expr, p) ->
-      if (not (Utils.StringSet.mem nt2 nt_set)) then Utils.error ("Dangling identifier " ^ nt2) p else
+      if (not (Utils.StringSet.mem nt2 nt_set)) then Utils.error ("Dangling identifier <" ^ nt2 ^ ">") p else
       if (not (nt2 = nt)) then Utils.error ("DerivedField LHS identifier " ^ nt2 ^ " is not present in the corresponding type annotation") p else
       let expr = check_dangling_identifiers nt_set p expr in 
       let expr = check_type_annot_nt_exprs prm (Utils.StringSet.singleton nt) expr in
@@ -428,4 +432,5 @@ let check_syntax: prod_rule_map -> Utils.StringSet.t -> ast -> ast
     ) scs in 
     TypeAnnotation (nt, ty, scs, p)
   ) ast in 
+  let _ = language_emptiness_check ast start_symbol in
   ast

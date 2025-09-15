@@ -4,7 +4,7 @@ module A = Ast
 (* TODO:
   * Get rid of polymorphic length function stuff resulting in 
     the main function returning a list of expressions
-  * Support set operations in dependency computation
+  * Support set operations in derived fields
 *)
 
 let eval_fail index = Utils.crash ("evaluation error #" ^ string_of_int index)
@@ -65,7 +65,7 @@ let rec sygus_ast_to_expr: SA.sygus_ast -> A.expr list
   | VarLeaf s -> [PhConst (s, Lexing.dummy_pos)]
   | StrLeaf s -> [StrConst (s, Lexing.dummy_pos)]
   | BoolLeaf b -> [BConst (b, Lexing.dummy_pos)]
-| SetLeaf _ -> Utils.crash "unsupported (sets)"
+| SetLeaf _ -> Utils.error_no_pos "Sets are not yet supported in derived fields"
 | UnitLeaf -> Utils.crash "Unexpected case"
 | Node (_, sygus_asts) -> List.map sygus_ast_to_expr sygus_asts |> List.flatten
 
@@ -422,14 +422,14 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -
   | _ -> eval_fail 27
 )
 | BVConst _ | BLConst _ | IntConst _ | BConst _ | PhConst _ | StrConst _ | EmptySet _ -> [expr]
-| Match _ -> Utils.crash "Match not yet supported in dependency computation"
-| BinOp (_, SetMembership, _, _) 
-| BinOp (_, SetUnion, _, _) 
-| BinOp (_, SetIntersection, _, _) 
-| Singleton (_, _) ->
-  Utils.crash "Set operations not yet supported in dependency computation"
-| ReRange (_, _, _) | ReUnion (_, _) | ReStar (_, _) | ReConcat (_, _) | StrToRe (_, _) | StrInRe (_, _, _) -> 
-  Utils.crash "Regex operations not yet supported in dependency computation"
+| Match (_, _, _, p) -> Utils.error "Match not yet supported in derived fields" p
+| BinOp (_, SetMembership, _, p) 
+| BinOp (_, SetUnion, _, p) 
+| BinOp (_, SetIntersection, _, p) 
+| Singleton (_, p) ->
+  Utils.error "Set operations not yet supported in derived fields" p
+| ReRange (_, _, p) | ReUnion (_, p) | ReStar (_, p) | ReConcat (_, p) | StrToRe (_, p) | StrInRe (_, _, p) -> 
+  Utils.error "Regex operations not yet supported in derived fields" p
 
 
 let rec compute_deps: A.semantic_constraint Utils.StringMap.t -> A.ast -> SA.sygus_ast -> SA.sygus_ast 

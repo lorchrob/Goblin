@@ -338,7 +338,7 @@ Below is a simple example using a bit list:
 
 An example output term is 
 `(S0 (Len0 3) (BL0 (seq.++ (seq.unit false) (seq.unit false) (seq.unit false))))`,
-which is the bitlist `[false; false; false]` with a correctly reported length of 3.
+which is the bit list `[false; false; false]` with a correctly reported length of 3.
 The output is present as the concatenation (`seq.++`) of three singleton lists (`seq.unit`) 
 each containing a single element `false`.
 The supported operators are those from the SMT-LIB theory of sequences --- 

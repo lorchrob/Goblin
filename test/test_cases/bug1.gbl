@@ -1,0 +1,2 @@
+<S> ::= <Len> <BL> { <Len> = seq.len(<BL>); seq.len(<BL>) > 2; };
+<BL> :: List(Bool);

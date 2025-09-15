@@ -25,6 +25,20 @@ let test_dpll_unsat_constraint () =
   let _, output, _ = main_pipeline input in
   check string "test_another_ambiguous_reference_1" output "unsat\n" *)
 
+let bug1 () =
+  let input = "../../../test/test_cases/bug1.gbl" in
+  try 
+    let _ = main_pipeline input in
+    fail "expected error"
+  with _ -> () 
+
+let bug3 () =
+  let input = "../../../test/test_cases/bug3.gbl" in
+  try 
+    let _ = main_pipeline input in
+    fail "expected error"
+  with _ -> () 
+
 let test_check_sygus_ast () =
   let filename = "../../../test/test_cases/test_check_sygus_ast" in
   let input = Utils.read_file filename in 
@@ -1568,6 +1582,8 @@ let () =
     "md_test_another_ambiguous_reference_1", [test_case "md_test_another_ambiguous_reference_1" `Quick md_test_another_ambiguous_reference_1]; *)
     (*"sd_test_another_ambiguous_reference_2", [test_case "sd_test_another_ambiguous_reference_2" `Quick sd_test_another_ambiguous_reference_2];  *)
     "dm_test_another_ambiguous_reference_2", [test_case "dm_test_another_ambiguous_reference_2" `Quick dm_test_another_ambiguous_reference_2]; 
+    "bug1", [test_case "bug1" `Quick bug1]; 
+    "bug3", [test_case "bug3" `Quick bug3]; 
     (*"dd_test_another_ambiguous_reference_2", [test_case "dd_test_another_ambiguous_reference_2" `Quick dd_test_another_ambiguous_reference_2]; 
     "md_test_another_ambiguous_reference_2", [test_case "md_test_another_ambiguous_reference_2" `Quick md_test_another_ambiguous_reference_2];  *)
 

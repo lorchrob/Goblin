@@ -100,7 +100,7 @@ let main_pipeline ?(engine: Flags.engine option = None) ?(grammar: Ast.ast optio
           (fun () -> (MixedDac.dac ppf ctx ast)), "mixed_dac" ;
         ]
       with Parallelism.AllReturnedNone -> 
-        Utils.crash "Internal error: No engine produced a result"
+        Utils.crash "No engine produced a result"
       )
     | _, DpllMono -> DpllMono.dpll ppf ctx ast
     | _, DpllDac -> 
@@ -125,7 +125,7 @@ let main_pipeline ?(engine: Flags.engine option = None) ?(grammar: Ast.ast optio
           (fun () -> (MixedDac.dac ppf ctx ast)), "mixed_dac" ;
         ]
       with Parallelism.AllReturnedNone -> 
-        Utils.crash "Internal error: No engine produced a result"
+        Utils.crash "No engine produced a result"
 
   in
 

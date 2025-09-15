@@ -264,7 +264,7 @@ and pp_print_expr: ?nt_prefix:string -> TC.context -> Format.formatter -> A.expr
   | SeqLength (expr, _) -> 
     Format.fprintf ppf "(seq.len %a)"
       r expr
-  | Length _ -> Utils.crash "length is not supported in SMT constraints"
+  | Length (_, p) -> Utils.error "length(.) function is not yet supported in SMT constraints" p
   | EmptySet (ty, _) -> 
     Format.fprintf ppf "(as set.empty (Set %a))"
       pp_print_ty ty  
