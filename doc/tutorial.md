@@ -155,7 +155,7 @@ For more information on Goblin's command-line arguments, use `--help`.
 
 To take advantage of the full power of Goblin, we must move beyond context-free grammars to 
 **context-sensitive** grammars. 
-In our setting, a **context-sensitive grammar** simply a CFG, 
+In our setting, a **context-sensitive grammar** is simply a CFG, 
 but with additional semantic constraints (serving as well-formedness requirements) annotated
 on top of the grammar rules. 
 
@@ -331,6 +331,7 @@ See `evaluation` and `test/test_cases` for example `.gbl` files (Goblin input fi
 ### How does Goblin work?
 
 STUB
+
 
 
 
