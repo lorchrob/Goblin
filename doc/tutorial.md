@@ -351,7 +351,50 @@ while `seq.len(.)` can be used directly in SMT constraints.
 
 #### Dot Notation
 
-STUB 
+As described in the previous section, the dot operator `.` can be used to reference 
+child nonterminals further down in the derivation tree. 
+However, in certain situations, the dot operator does not have obvious semantics, 
+so we will provide some intuition with a few examples.
+
+```
+<A> -> <B> <B> <C> { <B>.<D> > <C>; };
+<B> -> <D> <D>;
+<D> :: Int;
+```
+
+Above, the **nonterminal expression** `<B>.<D>` intuitively could refer to 
+either the first or second child `<D>` of either the first or second occurrence 
+of `<B>`. The system treats all ambiguous references of this form 
+as **implicitly universally quantified** over the structure of generated terms --- that is, 
+one can view the above constraint as internally desugaring to 
+`<B>[0].<D>[0] > <C>[0]; <B>[0].<D>[1] > <C>[0]; <B>[1].<D>[0] > <C>[0]; <B>[1].<D>[1] > <C>[0]`,
+where the bracket notation `[i]` of a nonterminal symbol uniquely indicates which occurrence of the nonterminal 
+symbol is being referenced. 
+
+Furthermore, also consider the following example, where `<B>` gets a separate production rule
+also referencing `<D>`.
+
+```
+<A> -> <B> <B> <C> { <B>.<D> > <C>; };
+<B> -> <D> <D> | <D>;
+<D> :: Int;
+```
+
+At term generation time, if `<B>`'s second production rule is chosen, 
+then (e.g.) constraint `<B>[0].<D>[1] > <C>[0]` is considered trivially satisfied, 
+since `<B>[0]` does not have a child `<D>[1]` (instead, it has a single child, `<D>[2]`).
+
+Moreover, the dot operator is legal as long as `<B>` has at least one production rule option containing `<D>`
+(the others may omit `<D>`).
+Below, the constraint `<B>.<D> > <C>` is considered trivially satisfied if `<B>`'s second production 
+rule option is chosen, since there is no `<D>` to constrain.
+
+```
+<A> -> <B> <B> <C> { <B>.<D> > <C>; };
+<B> -> <D> <D> | <E>;
+<E> :: Int;
+<D> :: Int;
+```
 
 ### Goblin Output
 
