@@ -341,9 +341,9 @@ An example output term is
 which is the bit list `[false; false; false]` with a correctly reported length of 3.
 The output is presented as the concatenation (`seq.++`) of three singleton lists (`seq.unit`) 
 each containing a single element `false`.
-The supported operators are those from the SMT-LIB theory of sequences --- 
-here, the length function `seq.len(.)` differs from the length function `length(.)` 
-in the previous example -- `seq.len(.)` only works with expressions with `List(.)` types, 
+The supported operators are those from the SMT-LIB theory of sequences. 
+Here, the length function `seq.len(.)` differs from the length function `length(.)` 
+in the previous example --- `seq.len(.)` only works with expressions with `List(.)` types, 
 while `length(.)` is polymorphic. 
 For now, due to the polymorphism associated with `length(.)`, it is only supported 
 on the right-hand side of an arrow operator `<-`, 
@@ -369,6 +369,7 @@ See `evaluation` and `test/test_cases` for example `.gbl` files (Goblin input fi
 ### How does Goblin work?
 
 STUB
+
 
 
 
