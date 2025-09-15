@@ -1,7 +1,7 @@
 ### High-level Intuition
 
 Goblin is a **context-sensitive** **input generation** tool intended to be used 
-within the context of a **fuzzing** workflow (where the bolded terms will be explained 
+within the context of a **fuzzing workflow** (where the bolded terms will be explained 
 in this document). 
 
 To understand the high-level intuition for Goblin, consider the situation of 
@@ -369,6 +369,7 @@ See `evaluation` and `test/test_cases` for example `.gbl` files (Goblin input fi
 ### How does Goblin work?
 
 STUB
+
 
 
 
