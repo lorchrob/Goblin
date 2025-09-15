@@ -1,0 +1,10 @@
+//!! goblin --file ./examples/bug2.gbl --debug --seed 40
+
+<Packet> ::= <Payload> 
+{ 
+   ubv_to_int(<Payload>.<Byte>) < 32; 
+   //<Payload>.<Byte> bvult 0b00000010; 
+  };
+<Payload> ::= <Byte> <Payload> | <Len>; 
+<Len> :: BitVec(8);
+<Byte> :: BitVec(8);

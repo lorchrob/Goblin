@@ -152,12 +152,12 @@ let rec get_nts_from_expr: expr -> string list
   | ReConcat (exprs, _) 
   | ReUnion (exprs, _) -> 
     List.concat_map r exprs
+  | BVCast (_, expr, _) 
+  | UbvToInt (expr, _) 
+  | SbvToInt (expr, _) -> r expr
   | BVConst _ 
   | BLConst _ 
   | BConst _ 
-  | BVCast _  
-  | UbvToInt _ 
-  | SbvToInt _
   | PhConst _
   | IntConst _ 
   | StrConst _
@@ -188,12 +188,13 @@ let rec get_nts_from_expr2: expr -> (string * int option) list list
   | ReConcat (exprs, _) 
   | ReUnion (exprs, _) -> 
     List.concat_map r exprs
+  | UbvToInt (expr, _) 
+  | BVCast (_, expr, _)  
+  | SbvToInt (expr, _) -> 
+    r expr
   | BVConst _ 
   | BLConst _ 
   | BConst _ 
-  | BVCast _  
-  | UbvToInt _ 
-  | SbvToInt _
   | PhConst _
   | IntConst _ 
   | StrConst _ 
@@ -230,12 +231,13 @@ let rec get_nts_from_expr_after_desugaring_dot_notation: expr -> (string * int o
   | ReConcat (exprs, _) 
   | ReUnion (exprs, _) -> 
     List.concat_map r exprs 
+  | BVCast (_, expr, _)  
+  | UbvToInt (expr, _) 
+  | SbvToInt (expr, _) -> 
+    r expr
   | BVConst _ 
   | BLConst _ 
   | BConst _ 
-  | BVCast _  
-  | UbvToInt _ 
-  | SbvToInt _
   | PhConst _
   | IntConst _ 
   | StrConst _ 
@@ -554,12 +556,12 @@ let rec expr_contains_dangling_nt: Utils.SILSet.t -> expr -> bool
   | ReUnion (exprs, _) -> List.map r exprs |> List.fold_left (||) false  
   | StrInRe (expr1, expr2, _) -> r expr1 || r expr2
   | StrToRe (expr, _) -> r expr
+  | BVCast (_, expr, _)  
+  | UbvToInt (expr, _) 
+  | SbvToInt (expr, _) -> r expr 
   | BVConst _ 
   | BLConst _ 
   | BConst _ 
-  | BVCast _  
-  | UbvToInt _ 
-  | SbvToInt _
   | PhConst _
   | IntConst _ 
   | StrConst _ 

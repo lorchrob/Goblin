@@ -22,7 +22,7 @@ let (let*) = Res.(>>=)
      Then, you can pass these constraints down. To support this, you'd also need to 
      reference the other way in dot notation -- e.g., you'd pass down <D> = parent.fresh_lit 
      to child node <C>.
-   * Optimization: Track constraints you can assert and forget 
+   * Optimization: Track constraints you can assert and immediately forget 
 *)
 
 (*

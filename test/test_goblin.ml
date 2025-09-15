@@ -39,6 +39,13 @@ let bug3 () =
     fail "expected error"
   with _ -> () 
 
+let bug2 () =
+  let input = "../../../test/test_cases/bug2.gbl" in
+  try 
+    let _ = main_pipeline input in
+    fail "expected error"
+  with _ -> () 
+
 let test_check_sygus_ast () =
   let filename = "../../../test/test_cases/test_check_sygus_ast" in
   let input = Utils.read_file filename in 
@@ -1584,6 +1591,7 @@ let () =
     "dm_test_another_ambiguous_reference_2", [test_case "dm_test_another_ambiguous_reference_2" `Quick dm_test_another_ambiguous_reference_2]; 
     "bug1", [test_case "bug1" `Quick bug1]; 
     "bug3", [test_case "bug3" `Quick bug3]; 
+    "bug2", [test_case "bug2" `Quick bug2]; 
     (*"dd_test_another_ambiguous_reference_2", [test_case "dd_test_another_ambiguous_reference_2" `Quick dd_test_another_ambiguous_reference_2]; 
     "md_test_another_ambiguous_reference_2", [test_case "md_test_another_ambiguous_reference_2" `Quick md_test_another_ambiguous_reference_2];  *)
 
