@@ -8,7 +8,7 @@ To understand the high-level intuition for Goblin, consider the situation of
 fuzzing a `.pdf` file viewer. An example high-level workflow could proceed as follows:
 
 ```
-                          (1)        (2)
+                        (1)        (2)
 .pdf file specification --> Goblin --> concrete .pdf file 
                                  ^              | (3)
                                  |              v         (4)
@@ -264,3 +264,4 @@ See `evaluation` and `test/test_cases` for example `.gbl` files (Goblin input fi
 ### How does Goblin work?
 
 STUB
+
