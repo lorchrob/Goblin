@@ -315,8 +315,11 @@ However, `<-` can only be used in constraints of the form `<nt> <- ...`,
 ie, with a single nonterminal symbol on the left-hand side, and any arbitrary expression on the right-hand side. 
 `<-` is a hint to Goblin that `<nt>` should be computed without invoking an underlying SMT solver, 
 which may result in a performance boost. 
+In fact, performing computation outside the SMT solver may also hinder performance, 
+so we leave it to the user to decide whether to use `=` or `<-`.
 Additionally, the usage of `<-` allows the right-hand side expression to contain 
 functions unsupported by SMT solvers (but currently, none are implemented yet).
+
 
 #### Bit Lists
 
@@ -341,6 +344,7 @@ See `evaluation` and `test/test_cases` for example `.gbl` files (Goblin input fi
 ### How does Goblin work?
 
 STUB
+
 
 
 
