@@ -30,7 +30,7 @@ but rather the fuzzing driver.
 Strictly speaking, arrow 7 is optional.)
 
 The above workflow illustrates how Goblin is an **input generation** tool to be used 
-within a **fuzzing** workflow. 
+within a **fuzzing workflow**. 
 The rest of the tutorial will focus on Goblin's input-output interface --- 
 namely, how to specify Goblin's input based on **context-sensitive** grammars (arrow 1), 
 and how to understand Goblin's outputs (arrow 2). 
@@ -369,6 +369,7 @@ See `evaluation` and `test/test_cases` for example `.gbl` files (Goblin input fi
 ### How does Goblin work?
 
 STUB
+
 
 
 
