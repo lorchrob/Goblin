@@ -134,8 +134,8 @@ it is analogous to the empty string `""` in a standard CFG.
 Notice that we did not explicitly ascribe a type to `<L>`. 
 The rule is that each nonterminal symbol either 
 (i) produces a non-empty set of production rule options 
-(of the form <NT> ::= option1 | option2 | ...), (exclusive) or 
-(ii) has exactly one type annotation (of the form <NT> :: Type).
+(of the form `<NT> ::= option1 | option2 | ...`), (exclusive) or 
+(ii) has exactly one type annotation (of the form `<NT> :: Type`).
 Note that each production rule option from (i) must be comprised solely of nonterminals --- 
 again, Goblin does not process concrete syntax, only abstract syntax.
 
@@ -331,6 +331,7 @@ See `evaluation` and `test/test_cases` for example `.gbl` files (Goblin input fi
 ### How does Goblin work?
 
 STUB
+
 
 
 
