@@ -243,12 +243,22 @@ and in line `3`, it is set to the value of `<I>` plus the sum of the remaining l
 Then, we introduced a new start symbol `<S>` for the purposes of 
 constraining the "top-level" sum of the list to be 100 (on line 1).
 
+Notice the usage of the dot operator `<L>.<_sum>` -- this does not refer to the value of 
+`<_sum>` of the current instance of the production rule, 
+but rather the instance of `<_sum>` that is reached after expanding `<L>`
+(in other words, it refers to `<L>`'s child `<_sum>` in the derivation).
+The dot operator is deceivingly complex --- 
+eg, what happens if `<L>` does not have a child `<_sum>`? 
+What if there are multiple children called `<_sum>`? 
+What if one expansion option for `<L>` has a child `<_sum>`, but another does not? 
+The semantics of the dot operator will be discussed in more detail in a later section.
+
 When running Goblin on the above grammar, a possible output is 
 `(S0 (L0 (_sum0 100) (I0 101) (L0 (_sum0 (- 1)) (I0 (- 1)) (L0 (_sum1 0) (Nil0 ())))))`. 
 This is verbose and a bit hard for humans to read, but it denotes the list [101, 1]. 
 Also, we can confirm that the `_sumN` variables indeed track the list sum "so far".
 Notice that when mapping Goblin's output to a concrete term, 
-I ignored the `_sumN` variables since they are not morally part of the generated term.
+I ignored the `_sumN` variables since they are ghost.
 
 #### BitVectors
 
@@ -315,7 +325,7 @@ Goblin supports the bit list type `List(Bool)`.
 Here, `List` is a type constructor that takes one type as input 
 and returns an output type representing a list with the given element type.
 
-#### Derived Fields
+#### Dot Notation
 
 ### Goblin Output
 
@@ -331,6 +341,7 @@ See `evaluation` and `test/test_cases` for example `.gbl` files (Goblin input fi
 ### How does Goblin work?
 
 STUB
+
 
 
 
