@@ -315,6 +315,27 @@ Goblin supports the bit list type `List(Bool)`.
 Here, `List` is a type constructor that takes one type as input 
 and returns an output type representing a list with the given element type.
 
+Below is a simple example using a bit list:
+
+```
+<S> ::= <Len> <BL> { <Len> = seq.len(<BL>); seq.len(<BL>) > 2; };
+<BL> :: List(Bool);
+<Len> :: Int;
+```
+
+An example output term is 
+`(S0 (Len0 3) (BL0 (seq.++ (seq.unit false) (seq.unit false) (seq.unit false))))`,
+which is the bitlist `[false; false; false]` with a correctly reported length of 3.
+The output is present as the concatenation (`seq.++`) of three singleton lists (`seq.unit`) 
+each containing a single element `false`.
+The supported operators are those from the SMT-LIB theory of sequences --- 
+here, the length function `seq.len(.)` differs from the length function `length(.)` 
+in the previous example -- `seq.len(.)` only works with expressions with `List(.)` types, 
+while `length(.)` is polymorphic. 
+For now, due to the polymorphism associated with `length(.)`, it is only supported 
+on the right-hand side of an arrow operator `<-`, 
+while `seq.len(.)` can be used directly in SMT constraints.
+
 #### Derived Fields
 
 ### Goblin Output

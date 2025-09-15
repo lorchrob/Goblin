@@ -68,6 +68,7 @@ let pp_print_sygus_ast: Format.formatter -> sygus_ast -> unit
     Format.fprintf ppf "#b%a"
     (Lib.pp_print_list Format.pp_print_int "") bits
   | VarLeaf id -> Format.fprintf ppf "\"%s\"" id;
+  | StrLeaf id when String.equal id "infeasible" -> Format.fprintf ppf "infeasible" 
   | StrLeaf id -> Format.fprintf ppf "\"%s\"" id;
   | IntLeaf d -> 
     if d >= 0 then 
