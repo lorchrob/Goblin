@@ -136,6 +136,8 @@ The rule is that each nonterminal symbol either
 (i) produces a non-empty set of production rule options 
 (of the form <NT> ::= option1 | option2 | ...), (exclusive) or 
 (ii) has exactly one type annotation (of the form <NT> :: Type).
+Note that each production rule option from (i) must be comprised solely of nonterminals --- 
+again, Goblin does not process concrete syntax, only abstract syntax.
 
 Goblin is **nondeterministic**, meaning that multiple invocations of Goblin on the same 
 input may produce different outputs (but all outputs will be in the language of the input 
@@ -284,6 +286,7 @@ See `evaluation` and `test/test_cases` for example `.gbl` files (Goblin input fi
 ### How does Goblin work?
 
 STUB
+
 
 
 
