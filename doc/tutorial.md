@@ -124,18 +124,18 @@ and the second production rule option producing `<Nil>` denotes terminating the 
 
 Goblin may produce output `(L0 (Nil0 ()))` denoting the empty list, 
 `(L0 (I0 0) (L0 (Nil0 ())))` denoting a list with one integer `0`, 
-a list `(L0 (I0 0) (I1 3) (L0 (Nil0 ())))` denoting the list `[0; 3]`, 
+a list `(L0 (I0 0) (L0 (I0 1) (L0 (I0 2) (L0 (Nil0 ())))))` denoting the list `[0; 1; 2]`, 
 and so on.
 
 Nil's type, `Unit`, is borrowed from functional programming 
 and represents that `Nil` does not carry any meaningful value --- 
-it is analogous to the empty string "" in a standard CFG.
+it is analogous to the empty string `""` in a standard CFG.
 
 Notice that we did not explicitly ascribe a type to `<L>`. 
 The rule is that each nonterminal symbol either 
 (i) produces a non-empty set of production rule options 
-(of the form <NT> ::= option1 | option2 | ...), (exclusive) or 
-(ii) has exactly one type annotation (of the form <NT> :: Type).
+(of the form `<NT> ::= option1 | option2 | ...`), (exclusive) or 
+(ii) has exactly one type annotation (of the form `<NT> :: Type`).
 Note that each production rule option from (i) must be comprised solely of nonterminals --- 
 again, Goblin does not process concrete syntax, only abstract syntax.
 
@@ -145,7 +145,7 @@ grammar). To ensure reproducible output, you can use the `--seed` command-line a
 to set a seed, which will make Goblin consistently produce the same outputs for the given input.
 
 To produce multiple outputs for a given input grammar, you can use the `--multiple-solutions` 
-flag, which will produce outputs delimited by a dollar sign ($).
+flag, which will produce outputs delimited by a dollar sign (`$`).
 By default, this flag will cause Goblin to produce outputs indefinitely; 
 to fix the number of solutions, use `--num-solutions n` for some natural number `n`.
 
@@ -155,7 +155,7 @@ For more information on Goblin's command-line arguments, use `--help`.
 
 To take advantage of the full power of Goblin, we must move beyond context-free grammars to 
 **context-sensitive** grammars. 
-In our setting, a **context-sensitive grammar** simply a CFG, 
+In our setting, a **context-sensitive grammar** is simply a CFG, 
 but with additional semantic constraints (serving as well-formedness requirements) annotated
 on top of the grammar rules. 
 
@@ -167,7 +167,7 @@ Consider the integer pair example from earlier:
 ```
 
 Say we want to encode a grammar of all the integer pairs that sum to 100, e.g., 
-`<49, 51>` and `<-1, 101>`. 
+`<49, 51>` and `<-1, 101>`, but NOT `<50, 49>`. 
 For this example, the syntactic requirements are identical (we are still producing pairs 
 of integers), but we want to encode a **semantic** constraint which restricts the language 
 of the grammar. In Goblin, we encode this as follows: 
@@ -243,12 +243,22 @@ and in line `3`, it is set to the value of `<I>` plus the sum of the remaining l
 Then, we introduced a new start symbol `<S>` for the purposes of 
 constraining the "top-level" sum of the list to be 100 (on line 1).
 
+Notice the usage of the dot operator `<L>.<_sum>` -- this does not refer to the value of 
+`<_sum>` of the current instance of the production rule, 
+but rather the instance of `<_sum>` that is reached after expanding `<L>`
+(in other words, it refers to `<L>`'s child `<_sum>` in the derivation).
+The dot operator is deceivingly complex --- 
+eg, what happens if `<L>` does not have a child `<_sum>`? 
+What if there are multiple children called `<_sum>`? 
+What if one expansion option for `<L>` has a child `<_sum>`, but another does not? 
+The semantics of the dot operator will be discussed in more detail in a later section.
+
 When running Goblin on the above grammar, a possible output is 
 `(S0 (L0 (_sum0 100) (I0 101) (L0 (_sum0 (- 1)) (I0 (- 1)) (L0 (_sum1 0) (Nil0 ())))))`. 
 This is verbose and a bit hard for humans to read, but it denotes the list [101, 1]. 
 Also, we can confirm that the `_sumN` variables indeed track the list sum "so far".
 Notice that when mapping Goblin's output to a concrete term, 
-I ignored the `_sumN` variables since they are not morally part of the generated term.
+I ignored the `_sumN` variables since they are ghost.
 
 #### BitVectors
 
@@ -305,8 +315,11 @@ However, `<-` can only be used in constraints of the form `<nt> <- ...`,
 ie, with a single nonterminal symbol on the left-hand side, and any arbitrary expression on the right-hand side. 
 `<-` is a hint to Goblin that `<nt>` should be computed without invoking an underlying SMT solver, 
 which may result in a performance boost. 
+In fact, performing computation outside the SMT solver may also hinder performance, 
+so we leave it to the user to decide whether to use `=` or `<-`.
 Additionally, the usage of `<-` allows the right-hand side expression to contain 
 functions unsupported by SMT solvers (but currently, none are implemented yet).
+
 
 #### Bit Lists
 
@@ -336,7 +349,7 @@ For now, due to the polymorphism associated with `length(.)`, it is only support
 on the right-hand side of an arrow operator `<-`, 
 while `seq.len(.)` can be used directly in SMT constraints.
 
-#### Derived Fields
+#### Dot Notation
 
 ### Goblin Output
 
@@ -352,6 +365,14 @@ See `evaluation` and `test/test_cases` for example `.gbl` files (Goblin input fi
 ### How does Goblin work?
 
 STUB
+
+
+
+
+
+
+
+
 
 
 
