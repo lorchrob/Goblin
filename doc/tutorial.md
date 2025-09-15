@@ -124,7 +124,7 @@ and the second production rule option producing `<Nil>` denotes terminating the 
 
 Goblin may produce output `(L0 (Nil0 ()))` denoting the empty list, 
 `(L0 (I0 0) (L0 (Nil0 ())))` denoting a list with one integer `0`, 
-a list `(L0 (I0 0) (I1 3) (L0 (Nil0 ())))` denoting the list `[0; 3]`, 
+a list `(L0 (I0 0) (L0 (I0 1) (L0 (I0 2) (L0 (Nil0 ())))))` denoting the list `[0; 1; 2]`, 
 and so on.
 
 Nil's type, `Unit`, is borrowed from functional programming 
@@ -331,6 +331,7 @@ See `evaluation` and `test/test_cases` for example `.gbl` files (Goblin input fi
 ### How does Goblin work?
 
 STUB
+
 
 
 
