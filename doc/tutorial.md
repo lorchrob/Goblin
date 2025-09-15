@@ -211,13 +211,13 @@ with constraint sets that yield an empty language
 the language of the grammar that satisfy the constraints):
 
 ```
-<L> ::= <I> <L> { <I> mod 2 = 1; } | <Nil>; 
+<L> ::= <I> <L> { <I> mod 2 = 1; } | <I> { <I> mod 2 = 1; } ; 
 <I> :: Int { <I> mod 2 = 0; }; 
 <Nil> :: Unit;
 ```
 
 On the above example, Goblin reports `infeasible` since it is not possible for an integer to be 
-simultaneously odd and even.
+simultaneously odd and even (notice that I updated the base case of the list rule to rule out empty lists).
 
 Now, back to the harder problem -- encoding an (arbitrary-length) list of integers 
 that all sum to 100: 
@@ -365,6 +365,8 @@ See `evaluation` and `test/test_cases` for example `.gbl` files (Goblin input fi
 ### How does Goblin work?
 
 STUB
+
+
 
 
 
