@@ -129,6 +129,12 @@ Nil's type, `Unit`, is borrowed from functional programming
 and represents that `Nil` does not carry any meaningful value --- 
 it is analogous to the empty string "" in a standard CFG.
 
+Notice that we did not explicitly ascribe a type to `<L>`. 
+The rule is that each nonterminal symbol either 
+(i) produces a non-empty set of production rule options 
+(of the form <NT> ::= option1 | option2 | ...), (exclusive) or 
+(ii) has exactly one type annotation (of the form <NT> :: Type).
+
 Goblin is **nondeterministic**, meaning that multiple invocations of Goblin on the same 
 input may produce different outputs (but all outputs will be in the language of the input 
 grammar). To ensure reproducible output, you can use the `--seed` command-line argument 
@@ -142,6 +148,105 @@ to fix the number of solutions, use `--num-solutions n` for some natural number 
 For more information on Goblin's command-line arguments, use `--help`.
 
 ##### Context-sensitive grammars
+
+To take advantage of the full power of Goblin, we must move beyond context-free grammars to 
+**context-sensitive** grammars. 
+In our setting, a **context-sensitive grammar** simply a CFG, 
+but with additional semantic constraints (serving as well-formedness requirements) annotated
+on top of the grammar rules. 
+
+Consider the integer pair example from earlier: 
+
+```
+<S> ::= <I> <I>;
+<I> :: Int;
+```
+
+Say we want to encode a grammar of all the integer pairs that sum to 100, e.g., 
+`<49, 51>` and `<-1, 101>`. 
+For this example, the syntactic requirements are identical (we are still producing pairs 
+of integers), but we want to encode a **semantic** constraint which restricts the language 
+of the grammar. In Goblin, we encode this as follows: 
+
+```
+<S> ::= <I> <I> { <I> + <I> = 100; } ;
+<I> :: Int;
+```
+
+The context-free portion of the grammar is exactly the same, 
+but we also added the semantic constraint `<I> + <I> = 100` 
+within curly braces on the corresponding production rule. 
+The semantics are that whenever the production rule `<S> ::= <I> <I>` 
+is taken in a derivation, 
+we must only generate terms such that `<I> + <I>` is equal to `100`. 
+
+How about our earlier list example? How would we encode a context-sensitive grammar 
+describing lists of integers that sum to 100? 
+We will start with an easier problem --- encoding lists of integers that are all odd: 
+
+```
+<L> ::= <I> <L> | <Nil>; 
+<I> :: Int { <I> mod 2 = 1; } ;
+<Nil> :: Unit;
+```
+
+Alternatively, we could say:
+
+```
+<L> ::= <I> <L> { <I> mod 2 = 1; } | <Nil>; 
+<I> :: Int; 
+<Nil> :: Unit;
+```
+
+Both examples encode a list of integers `<I>`, where 
+each `<I>` is odd. 
+
+Notice that it is possible to encode context-sensitive grammars
+with constraint sets that yield an empty language 
+(ie, it is not possible to generate **any** terms in 
+the language of the grammar that satisfy the constraints):
+
+```
+<L> ::= <I> <L> { <I> mod 2 = 1; } | <Nil>; 
+<I> :: Int { <I> mod 2 = 0; }; 
+<Nil> :: Unit;
+```
+
+On the above example, Goblin reports `infeasible` since it is not possible for an integer to be 
+simultaneously odd and even.
+
+Now, back to the harder problem -- encoding an (arbitrary-length) list of integers 
+that all sum to 100: 
+
+```
+<S> ::= <L> { <L>.<_sum> = 100; };
+<L> ::= <_sum> <I> <L>
+      { <_sum> = <I> + <L>.<_sum>; } 
+      | <_sum> <Nil> { <_sum> = 0; }; 
+<I> :: Int; 
+<Nil> :: Unit;
+<_sum> :: Int;
+```
+
+The above example is a lot to take in. 
+First, notice that we introduced a new nonterminal `<_sum>`. 
+It is prefixed by a space to (informally) denote that it is a **ghost variable**
+--- it is used for specifying constraints, 
+but should not be interpreted as part of the generated term. 
+`<_sum>` tracks the sum of the list "so far", akin to accumulator arguments in recursive functions.
+More concretely, in line 4, `<_sum>` is set to `0` because the sum of the empty list is zero, 
+and in line `3`, it is set to the value of `<I>` plus the sum of the remaining list elements. 
+Then, we introduced a new start symbol `<S>` for the purposes of 
+constraining the "top-level" sum of the list to be 100 (on line 1).
+
+When running Goblin on the above grammar, a possible output is 
+`(S0 (L0 (_sum0 100) (I0 101) (L0 (_sum0 (- 1)) (I0 (- 1)) (L0 (_sum1 0) (Nil0 ())))))`. 
+This is verbose and a bit hard for humans to read, but it denotes the list [101, 1]. 
+Also, we can confirm that the `_sumN` variables indeed track the list sum "so far".
+Notice that when mapping Goblin's output to a concrete term, 
+I ignored the `_sumN` variables since they are not morally part of the generated term.
+
+##### BitVectors
 
 ##### Derived fields
 
