@@ -1,7 +1,7 @@
 ### High-level Intuition
 
-Goblin is a **context-sensitive**, **input generation** tool intended to be used 
-within the context of a **fuzzing** workflow (where the bolded terms will be explained 
+Goblin is a **context-sensitive** **input generation** tool intended to be used 
+within the context of a **fuzzing workflow** (where the bolded terms will be explained 
 in this document). 
 
 To understand the high-level intuition for Goblin, consider the situation of 
@@ -30,7 +30,7 @@ but rather the fuzzing driver.
 Strictly speaking, arrow 7 is optional.)
 
 The above workflow illustrates how Goblin is an **input generation** tool to be used 
-within a **fuzzing** workflow. 
+within a **fuzzing workflow**. 
 The rest of the tutorial will focus on Goblin's input-output interface --- 
 namely, how to specify Goblin's input based on **context-sensitive** grammars (arrow 1), 
 and how to understand Goblin's outputs (arrow 2). 
@@ -85,8 +85,8 @@ In fact, our workflow above was over-simplified. In fact, we should have:
              ...
 ```
 
-where the concrete `.pdf` file is produced from the abstract `.pdf` file outside of Goblin (using some separate serializer).
-Returning to the Goblin input: 
+Above, the concrete `.pdf` file is produced from the abstract `.pdf` file outside of Goblin (using some separate serializer).
+Now, let's return to the Goblin input: 
 
 ```
 <S> ::= <I> <I>;
@@ -318,7 +318,7 @@ which may result in a performance boost.
 In fact, performing computation outside the SMT solver may also hinder performance, 
 so we leave it to the user to decide whether to use `=` or `<-`.
 Additionally, the usage of `<-` allows the right-hand side expression to contain 
-functions unsupported by SMT solvers (but currently, none are implemented yet).
+functions unsupported by SMT solvers.
 
 
 #### Bit Lists
@@ -339,11 +339,11 @@ Below is a simple example using a bit list:
 An example output term is 
 `(S0 (Len0 3) (BL0 (seq.++ (seq.unit false) (seq.unit false) (seq.unit false))))`,
 which is the bit list `[false; false; false]` with a correctly reported length of 3.
-The output is present as the concatenation (`seq.++`) of three singleton lists (`seq.unit`) 
+The output is presented as the concatenation (`seq.++`) of three singleton lists (`seq.unit`) 
 each containing a single element `false`.
-The supported operators are those from the SMT-LIB theory of sequences --- 
-here, the length function `seq.len(.)` differs from the length function `length(.)` 
-in the previous example -- `seq.len(.)` only works with expressions with `List(.)` types, 
+The supported operators are those from the SMT-LIB theory of sequences. 
+Here, the length function `seq.len(.)` differs from the length function `length(.)` 
+in the previous example --- `seq.len(.)` only works with expressions with `List(.)` types, 
 while `length(.)` is polymorphic. 
 For now, due to the polymorphism associated with `length(.)`, it is only supported 
 on the right-hand side of an arrow operator `<-`, 
@@ -412,6 +412,13 @@ See `evaluation` and `test/test_cases` for example `.gbl` files (Goblin input fi
 ### How does Goblin work?
 
 STUB
+
+
+
+
+
+
+
 
 
 
