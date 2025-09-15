@@ -204,7 +204,6 @@ let check_syntax_prod_rule: prod_rule_map -> Utils.StringSet.t -> prod_rule_rhs 
     let expr = check_prod_rule_nt_exprs prm (Utils.StringSet.of_list ges') expr in
     SmtConstraint (expr, p)
   ) scs in 
-  Format.printf "got here!\n";
   let _ = List.map (fun ge -> 
     if not (Utils.StringSet.mem ge nt_set) then Utils.error ("Dangling identifier <" ^ ge ^ ">") p 
     else ge
