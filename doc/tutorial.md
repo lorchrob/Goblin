@@ -263,14 +263,59 @@ Goblin uses bitvector types `BitVec(n)` for concrete, positive values of `n`
 `BitVec` is a **dependent type** in the sense that the type is parametric with respect to 
 the length of the bitvector. 
 
+To illustrate example bitvector constraints, consider the following toy network packet in Goblin: 
 
+```
+<Packet> ::= <Type> <Len> <Payload> 
+{ <Len> <- int_to_bv(8, 16 + length(<Payload>));
+  <Type> = int_to_bv(8, 1) => 
+        <Payload>.<Byte> < 32; };
+<Payload> :: <Byte> <Payload> 
+| <Byte> { (<Byte> bvand 0b11110000) 
+             = 0b10100000; };
+<Type> :: BitVec(8)  
+{ <Type> = int_to_bv(8, 0) lor 
+  <Type> = int_to_bv(8, 1); };
+<Len> :: BitVec(8);
+<Byte> :: BitVec(8);
+```
+
+There are three notable aspects of the above example.
+
+First, the example illustrates the use of a few bitvector-specific functions.
+For example, the `int_to_bv(len, n)` function casts integer `n` to a 
+bitvector of length `len`.
+Goblin is **statically** and **strongly** typed, so performing the comparison 
+`<Type> = 0` without the cast would result in a type error, 
+as `<Type>` has type `BitVec(8)`, while `0` has type `Int`. 
+Also notice the bitwise operator `bvand` in line 6, as well as the bitvector constants 
+`0b11110000` and `0b101000001`.
+
+Second, `length(.)` (see line 2) is a special function in Goblin. 
+In this example, it takes as input nonterminal `<Payload>`, 
+which does not have a type annotation --- 
+instead, it is defined by a production rule. 
+`length(.)` will return the **total** length of its input nonterminal, 
+computed by summing the lengths of all the descendant bitvectors and bit lists.
+
+Third, the line `<Len> <- int_to_bv(8, 16 + length(<Payload>))` uses a special operator `<-`. 
+The arrow operator `<-` is semantically equivalent to equality --- 
+every occurrence of `<-` can be replaced with `=` without changing the language of the input grammar. 
+However, `<-` can only be used in constraints of the form `<nt> <- ...`, 
+ie, with a single nonterminal symbol on the left-hand side, and any arbitrary expression on the right-hand side. 
+`<-` is a hint to Goblin that `<nt>` should be computed without invoking an underlying SMT solver, 
+which may result in a performance boost. 
+Additionally, the usage of `<-` allows the right-hand side expression to contain 
+functions unsupported by SMT solvers (but currently, none are implemented yet).
+
+#### Bit Lists
 
 To model bitvectors with arbitrary width (ie, may grow or shrink), 
 Goblin supports the bit list type `List(Bool)`. 
 Here, `List` is a type constructor that takes one type as input 
 and returns an output type representing a list with the given element type.
 
-#### Derived fields
+#### Derived Fields
 
 ### Goblin Output
 
