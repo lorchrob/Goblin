@@ -403,12 +403,30 @@ let rec applyMutation (m : mutation) (g : ast) (count : int) : (Config.packet_ty
         Some (Config.num_packets, (fst added_grammar))
       end
     | Delete -> print_endline "\n\nDELETING\n\n" ;
+      let delete_attempt = (mutation_delete g nt) in
+      if snd delete_attempt = false then applyMutation Delete g (count - 1)
+      else
+        let deleted_grammar = canonicalize (fst delete_attempt) in
+        (
+          match deleted_grammar with
+        | Some x ->
+          let well_formed_check = check_well_formed_rules x in
+          (
+            match well_formed_check with
+            | true -> pp_print_ast Format.std_formatter x; Some (Config.num_packets, x)
+            | false -> applyMutation Delete g (count - 1)
+          )
+        | None -> applyMutation Add g (count - 1)
+        )
+        (* | false -> Some (NOTHING, fst added_grammar) *)
+      end
+    | Delete -> print_endline "\n\nDELETING\n\n" ;
       let delete_attempt, success = (mutation_delete g nt) in
       if success = false then applyMutation Delete g (count - 1)
       else begin
         pp_print_ast Format.std_formatter delete_attempt;
         deletion_count := !deletion_count + 1; 
-        Some (NOTHING, delete_attempt)
+        Some (Config.num_packets, delete_attempt)
           (* let pre_start = Unix.gettimeofday () in
         let deleted_grammar = canonicalize (fst delete_attempt) in
         match deleted_grammar with
@@ -438,7 +456,7 @@ let rec applyMutation (m : mutation) (g : ast) (count : int) : (Config.packet_ty
         let newPR = grammarUpdateAfterCrossover nt1 g rhs1 rhs2 crossoverPRs in
         let finalGrammar = grammarUpdateAfterCrossover nt2 newPR rhs1 rhs2 crossoverPRs in
         crossover_count := !crossover_count + 1;
-        Some (NOTHING, finalGrammar)
+        Some (Config.num_packets, finalGrammar)
         (* let pre_start = Unix.gettimeofday () in *)
         (* let canonicalizedGrammar = canonicalize finalGrammar in *)
       
