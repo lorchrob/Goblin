@@ -129,7 +129,7 @@ and so on.
 
 Nil's type, `Unit`, is borrowed from functional programming 
 and represents that `Nil` does not carry any meaningful value --- 
-it is analogous to the empty string "" in a standard CFG.
+it is analogous to the empty string `""` in a standard CFG.
 
 Notice that we did not explicitly ascribe a type to `<L>`. 
 The rule is that each nonterminal symbol either 
@@ -331,6 +331,7 @@ See `evaluation` and `test/test_cases` for example `.gbl` files (Goblin input fi
 ### How does Goblin work?
 
 STUB
+
 
 
 
