@@ -37,7 +37,7 @@ and how to understand Goblin's outputs (arrow 2).
 
 ### Goblin Input
 
-##### Context-free grammars
+#### Context-free grammars
 
 Suppose we wish to produce outputs which are pairs of integers of the form 
 `<i1, i2>`. For example, `<3, 4>`, `<0, -2>`, and so on. 
@@ -147,7 +147,7 @@ to fix the number of solutions, use `--num-solutions n` for some natural number 
 
 For more information on Goblin's command-line arguments, use `--help`.
 
-##### Context-sensitive grammars
+#### Context-sensitive grammars
 
 To take advantage of the full power of Goblin, we must move beyond context-free grammars to 
 **context-sensitive** grammars. 
@@ -246,9 +246,9 @@ Also, we can confirm that the `_sumN` variables indeed track the list sum "so fa
 Notice that when mapping Goblin's output to a concrete term, 
 I ignored the `_sumN` variables since they are not morally part of the generated term.
 
-##### BitVectors
+#### BitVectors
 
-##### Derived fields
+#### Derived fields
 
 ### Goblin Output
 
@@ -264,5 +264,6 @@ See `evaluation` and `test/test_cases` for example `.gbl` files (Goblin input fi
 ### How does Goblin work?
 
 STUB
+
 
 
