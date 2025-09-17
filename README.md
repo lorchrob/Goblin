@@ -21,10 +21,10 @@ Run `make` from the top-level directory
 
 ### Running Goblin
 
-* To execute, run `goblin` 
+* To execute, run `goblin` (after building)
 * To run tests, run `make test`
 * Use `goblin --help` for command-line arg documentation 
-* Example invocation: `./goblin --file ./test/test_cases/test2`
+* Example invocation: `goblin --file ./test/test_cases/test2`
 
 ### User documentation
 
