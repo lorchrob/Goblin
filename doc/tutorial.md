@@ -409,7 +409,7 @@ As informally described earlier, Goblin outputs terms in an abstract syntax call
 an opening paren, followed by a constructor name (in our setting, denoting the 
 name of some nonterminal), followed by a list of child S-expressions, 
 followed by a closing paren.
-S-expressions, especially large S-expressions, can be hard to parse to human eyes 
+S-expressions, especially large S-expressions, can be hard to parse by human eyes 
 due to the abundance of parens. 
 However, the parens serve to completely disambiguate precedence,
 and they are easy to parse for programs interacting with Goblin's output.
@@ -459,6 +459,7 @@ See `evaluation` and `test/test_cases` for example `.gbl` files (Goblin input fi
 ### How does Goblin work?
 
 STUB
+
 
 
 
