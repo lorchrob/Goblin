@@ -71,9 +71,10 @@ The Goblin encoding is actually much simpler than the standard CFG representatio
 
 (In Goblin, each nonterminal symbol must be enclosed in angle brackets (`<`, `>`).)
 
-The first line defines the start symbol `<S>` with a single production rule 
+The first line defines the start symbol `<S>` with a single production rule (with double colon 
+equals `::=`)
 of two `<I>` nonterminals, and the second line ascribes symbol `<I>` with a 
-**type annotation** denoting that each `<I>` should produce an integer. 
+**type annotation** (with double colon `::`) denoting that each `<I>` should produce an integer. 
 The Goblin input is much simpler for two reasons: 
 (i) Goblin works at the level of 
 **abstract syntax** rather than **concrete syntax**, and 
@@ -241,7 +242,7 @@ but should not be interpreted as part of the generated term.
 More concretely, in line 4, `<_sum>` is set to `0` because the sum of the empty list is zero, 
 and in line `3`, it is set to the value of `<I>` plus the sum of the remaining list elements. 
 Then, we introduced a new start symbol `<S>` for the purposes of 
-constraining the "top-level" sum of the list to be 100 (on line 1).
+constraining the top-level sum of the list to be 100 (on line 1).
 
 Notice the usage of the dot operator `<L>.<_sum>` -- this does not refer to the value of 
 `<_sum>` of the current instance of the production rule, 
@@ -371,6 +372,9 @@ one can view the above constraint as internally desugaring to
 where the bracket notation `[i]` of a nonterminal symbol uniquely indicates which occurrence of the nonterminal 
 symbol is being referenced. 
 
+More concretely, `(A0 (B0 (D0 1) (D1 1)) (B1 (D0 1) (D1 1)) (C0 0))` is a member of the input grammar because
+in `<A>`'s expansion, child `<C>` is less than every child `<D>` of every child `<B>`.
+
 Furthermore, also consider the following example, where `<B>` gets a separate production rule
 also referencing `<D>`.
 
@@ -383,6 +387,8 @@ also referencing `<D>`.
 At term generation time, if `<B>`'s second production rule is chosen, 
 then (e.g.) constraint `<B>[0].<D>[1] > <C>[0]` is considered trivially satisfied, 
 since `<B>[0]` does not have a child `<D>[1]` (instead, it has a single child, `<D>[2]`).
+Or, perhaps more intuitively, the constraint applies regardless of which production rule option is chosen 
+for `<B>`.
 
 Moreover, the dot operator is legal as long as `<B>` has at least one production rule option containing `<D>`
 (the others may omit `<D>`).
@@ -398,12 +404,53 @@ rule option is chosen, since there is no `<D>` to constrain.
 
 ### Goblin Output
 
-STUB
+As informally described earlier, Goblin outputs terms in an abstract syntax called 
+**S-expressions**. The structure of an S-expression is very simple: 
+an opening paren, followed by a constructor name (in our setting, denoting the 
+name of some nonterminal), followed by a list of child S-expressions, 
+followed by a closing paren.
+S-expressions, especially large S-expressions, can be hard to parse to human eyes 
+due to the abundance of parens. 
+However, the parens serve to completely disambiguate precedence,
+and they are easy to parse for programs interacting with Goblin's output.
 
-* S-expressions
-* constructor names/derivation
-* unambiguity
-* example serialization functions
+Output S-expressions unambiguously reveal the derivation strategy that was used 
+to generate the term.
+For example, consider the S-expression `(NT1 (NT2 2) (NT3 3))`. 
+You can read this to learn 
+  * The start symbol is `NT1`.
+  * The derivation took a production rule option producing child nonterminals `NT2` and `NT3`.
+  * Nonterminal `NT2` has an integer type, and it was expanded to value `2`. 
+  * Nonterminal `NT3` has an integer type, and it was expanded to value `3`.
+
+### Placeholders 
+
+Some constraints are too onerous to reasonably encode in Goblin grammars. 
+For example, consider a field that is supposed to hold the SHA-256 hash of 
+another field. 
+In theory, one could encode the calculation of the SHA-256 hash as a semantic constraint 
+in Goblin. 
+However, this would be a nontrivial effort, and there may be examples that rely 
+on outer protocol context that cannot directly be encoded in the input. 
+
+Thankfully, in practice, these fields are often **derived fields** 
+(similar to those defined with the `<-` syntax) 
+in the sense that they can be computed using information from the rest of the generated term. 
+As an alternative to using the arrow `<-` to define derived fields within Goblin, 
+one can simply use a **placeholder** to denote that the term has an unfinished component 
+that needs to be computed outside the tool. 
+
+To illustrate, consider the simple grammar: 
+
+```
+<S> ::= <Payload> <Hash> 
+<Payload> :: BitVec(512);
+<Hash> :: Placeholder { <Hash> <- "HASH_PH"; } ; 
+```
+
+This will compute (eg) the output term `(S (Payload 0b...) (Hash "HASH_PH"))`.
+Then, the serializer from the above workflow can compute the value in the 
+`Hash` field during serialization.
 
 ### More Examples 
 
