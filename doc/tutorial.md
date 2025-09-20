@@ -431,7 +431,7 @@ another field.
 In theory, one could encode the calculation of the SHA-256 hash as a semantic constraint 
 in Goblin. 
 However, this would be a nontrivial effort, and there may be examples that rely 
-on outer protocol context that cannot directly be encoded in the input. 
+on outer protocol context that cannot directly be encoded in the input grammar. 
 
 Thankfully, in practice, these fields are often **derived fields** 
 (similar to those defined with the `<-` syntax) 
@@ -459,6 +459,7 @@ See `evaluation` and `test/test_cases` for example `.gbl` files (Goblin input fi
 ### How does Goblin work?
 
 STUB
+
 
 
 
