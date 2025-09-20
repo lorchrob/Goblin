@@ -1,0 +1,1009 @@
+<WPA3_4WAY_HANDSHAKE> ::= <MESSAGE_1> | <MESSAGE_2> | <MESSAGE_3> | <MESSAGE_4>;
+
+<MESSAGE_1> ::= <EAPOL_HEADER> <KEY_DESCRIPTOR_TYPE> <KEY_INFORMATION_1> <KEY_LENGTH> <REPLAY_COUNTER> <KEY_NONCE> <KEY_IV> <KEY_RSC> <KEY_ID> <KEY_MIC> <KEY_DATA_LENGTH> <KEY_DATA_1>
+{
+    <KEY_INFORMATION_1> <- int_to_bitvector(16, 0x008A);
+    <KEY_DESCRIPTOR_TYPE> <- int_to_bitvector(8, 2);
+    <KEY_LENGTH> <- int_to_bitvector(16, 0);
+    <KEY_DATA_LENGTH> <- int_to_bitvector(16, length(<KEY_DATA_1>)/8);
+};
+
+<MESSAGE_2> ::= <EAPOL_HEADER> <KEY_DESCRIPTOR_TYPE> <KEY_INFORMATION_2> <KEY_LENGTH> <REPLAY_COUNTER> <KEY_NONCE> <KEY_IV> <KEY_RSC> <KEY_ID> <KEY_MIC> <KEY_DATA_LENGTH> <KEY_DATA_2>
+{
+    <KEY_INFORMATION_2> <- int_to_bitvector(16, 0x010A);
+    <KEY_DESCRIPTOR_TYPE> <- int_to_bitvector(8, 2);
+    <KEY_LENGTH> <- int_to_bitvector(16, 32);
+    <KEY_DATA_LENGTH> <- int_to_bitvector(16, length(<KEY_DATA_2>)/8);
+};
+
+<MESSAGE_3> ::= <EAPOL_HEADER> <KEY_DESCRIPTOR_TYPE> <KEY_INFORMATION_3> <KEY_LENGTH> <REPLAY_COUNTER> <KEY_NONCE> <KEY_IV> <KEY_RSC> <KEY_ID> <KEY_MIC> <KEY_DATA_LENGTH> <KEY_DATA_3>
+{
+    <KEY_INFORMATION_3> <- int_to_bitvector(16, 0x13CA);
+    <KEY_DESCRIPTOR_TYPE> <- int_to_bitvector(8, 2);
+    <KEY_LENGTH> <- int_to_bitvector(16, 32);
+    <KEY_DATA_LENGTH> <- int_to_bitvector(16, length(<KEY_DATA_3>)/8);
+};
+
+<MESSAGE_4> ::= <EAPOL_HEADER> <KEY_DESCRIPTOR_TYPE> <KEY_INFORMATION_4> <KEY_LENGTH> <REPLAY_COUNTER> <KEY_NONCE> <KEY_IV> <KEY_RSC> <KEY_ID> <KEY_MIC> <KEY_DATA_LENGTH> <KEY_DATA_4>
+{
+    <KEY_INFORMATION_4> <- int_to_bitvector(16, 0x030A);
+    <KEY_DESCRIPTOR_TYPE> <- int_to_bitvector(8, 2);
+    <KEY_LENGTH> <- int_to_bitvector(16, 0);
+    <KEY_DATA_LENGTH> <- int_to_bitvector(16, length(<KEY_DATA_4>)/8);
+};
+
+<EAPOL_HEADER> ::= <VERSION> <PACKET_TYPE> <PACKET_BODY_LENGTH>
+{
+    <VERSION> <- int_to_bitvector(8, 2);
+    <PACKET_TYPE> <- int_to_bitvector(8, 3);
+};
+
+<VERSION> :: BitVector(8) { <VERSION> <- int_to_bitvector(8, 2); };
+<PACKET_TYPE> :: BitVector(8) { <PACKET_TYPE> <- int_to_bitvector(8, 3); };
+<PACKET_BODY_LENGTH> :: BitVector(16);
+<KEY_DESCRIPTOR_TYPE> :: BitVector(8) { <KEY_DESCRIPTOR_TYPE> <- int_to_bitvector(8, 2); };
+<KEY_LENGTH> :: BitVector(16);
+<REPLAY_COUNTER> :: BitVector(64);
+<KEY_IV> :: BitVector(128);
+<KEY_RSC> :: BitVector(64);
+<KEY_ID> :: BitVector(64);
+<KEY_DATA_LENGTH> :: BitVector(16);
+
+<KEY_INFORMATION_1> :: BitVector(16) { <KEY_INFORMATION_1> <- int_to_bitvector(16, 0x008A); };
+<KEY_INFORMATION_2> :: BitVector(16) { <KEY_INFORMATION_2> <- int_to_bitvector(16, 0x010A); };
+<KEY_INFORMATION_3> :: BitVector(16) { <KEY_INFORMATION_3> <- int_to_bitvector(16, 0x13CA); };
+<KEY_INFORMATION_4> :: BitVector(16) { <KEY_INFORMATION_4> <- int_to_bitvector(16, 0x030A); };
+
+<KEY_NONCE> :: Placeholder { <KEY_NONCE> <- "<KEY_NONCE>"; };
+<KEY_MIC> :: Placeholder { <KEY_MIC> <- "<KEY_MIC>"; };
+
+<KEY_DATA_1> ::= <KDE_LIST_1>;
+<KEY_DATA_2> ::= <KDE_LIST_2>;
+<KEY_DATA_3> ::= <KDE_LIST_3>;
+<KEY_DATA_4> ::= <KDE_LIST_4>;
+
+<KDE_LIST_1> ::= "" | <KDE_ELEMENT> <KDE_LIST_1>;
+<KDE_LIST_2> ::= <KDE_ELEMENT> | <KDE_ELEMENT> <KDE_LIST_2>;
+<KDE_LIST_3> ::= <KDE_ELEMENT> | <KDE_ELEMENT> <KDE_LIST_3>;
+<KDE_LIST_4> ::= "" | <KDE_ELEMENT> <KDE_LIST_4>;
+
+<KDE_ELEMENT> ::= <RSN_IE> | <VENDOR_SPECIFIC_KDE> | <PMKID_KDE> | <GTK_KDE> | <MAC_ADDR_KDE> | <IGTK_KDE> | <BIGTK_KDE> | <OCI_KDE> | <MULTIBAND_KDE> | <FTE_KDE> | <TIMEOUT_INTERVAL_KDE> | <HT_CAPS_KDE> | <VHT_CAPS_KDE> | <HE_CAPS_KDE> | <EHT_CAPS_KDE>;
+
+<RSN_IE> ::= <ELEMENT_ID_RSN> <LENGTH_RSN> <VERSION_RSN> <GROUP_CIPHER_SUITE> <PAIRWISE_CIPHER_COUNT> <PAIRWISE_CIPHER_LIST> <AKM_COUNT> <AKM_LIST> <RSN_CAPABILITIES> <PMKID_COUNT> <PMKID_LIST> <GROUP_MGMT_CIPHER_SUITE>
+{
+    <ELEMENT_ID_RSN> <- int_to_bitvector(8, 48);
+    <VERSION_RSN> <- int_to_bitvector(16, 1);
+    <LENGTH_RSN> <- int_to_bitvector(8, (length(<VERSION_RSN>) + length(<GROUP_CIPHER_SUITE>) + length(<PAIRWISE_CIPHER_COUNT>) + length(<PAIRWISE_CIPHER_LIST>) + length(<AKM_COUNT>) + length(<AKM_LIST>) + length(<RSN_CAPABILITIES>) + length(<PMKID_COUNT>) + length(<PMKID_LIST>) + length(<GROUP_MGMT_CIPHER_SUITE>))/8);
+};
+
+<ELEMENT_ID_RSN> :: BitVector(8) { <ELEMENT_ID_RSN> <- int_to_bitvector(8, 48); };
+<LENGTH_RSN> :: BitVector(8);
+<VERSION_RSN> :: BitVector(16) { <VERSION_RSN> <- int_to_bitvector(16, 1); };
+
+<GROUP_CIPHER_SUITE> :: BitVector(32)
+{
+    <GROUP_CIPHER_SUITE> = int_to_bitvector(32, 0x000FAC02) lor // TKIP
+    <GROUP_CIPHER_SUITE> = int_to_bitvector(32, 0x000FAC04) lor // CCMP-128
+    <GROUP_CIPHER_SUITE> = int_to_bitvector(32, 0x000FAC05) lor // WEP-104
+    <GROUP_CIPHER_SUITE> = int_to_bitvector(32, 0x000FAC06) lor // BIP-CMAC-128
+    <GROUP_CIPHER_SUITE> = int_to_bitvector(32, 0x000FAC0A) lor // GCMP-128
+    <GROUP_CIPHER_SUITE> = int_to_bitvector(32, 0x000FAC0B) lor // GCMP-256
+    <GROUP_CIPHER_SUITE> = int_to_bitvector(32, 0x000FAC0C) lor // CCMP-256
+    <GROUP_CIPHER_SUITE> = int_to_bitvector(32, 0x000FAC0D);   // BIP-GMAC-128
+};
+
+<PAIRWISE_CIPHER_COUNT> :: BitVector(16)
+{
+    int_to_bitvector(16, 1) bvlte <PAIRWISE_CIPHER_COUNT> land <PAIRWISE_CIPHER_COUNT> bvlte int_to_bitvector(16, 8);
+};
+
+<PAIRWISE_CIPHER_LIST> ::= <PAIRWISE_CIPHER> | <PAIRWISE_CIPHER> <PAIRWISE_CIPHER_LIST>;
+
+<PAIRWISE_CIPHER> :: BitVector(32)
+{
+    <PAIRWISE_CIPHER> = int_to_bitvector(32, 0x000FAC02) lor // TKIP
+    <PAIRWISE_CIPHER> = int_to_bitvector(32, 0x000FAC04) lor // CCMP-128
+    <PAIRWISE_CIPHER> = int_to_bitvector(32, 0x000FAC0A) lor // GCMP-128
+    <PAIRWISE_CIPHER> = int_to_bitvector(32, 0x000FAC0B) lor // GCMP-256
+    <PAIRWISE_CIPHER> = int_to_bitvector(32, 0x000FAC0C);   // CCMP-256
+};
+
+<AKM_COUNT> :: BitVector(16)
+{
+    int_to_bitvector(16, 1) bvlte <AKM_COUNT> land <AKM_COUNT> bvlte int_to_bitvector(16, 8);
+};
+
+<AKM_LIST> ::= <AKM_SUITE> | <AKM_SUITE> <AKM_LIST>;
+
+<AKM_SUITE> :: BitVector(32)
+{
+    <AKM_SUITE> = int_to_bitvector(32, 0x000FAC01) lor // 802.1X
+    <AKM_SUITE> = int_to_bitvector(32, 0x000FAC02) lor // PSK
+    <AKM_SUITE> = int_to_bitvector(32, 0x000FAC03) lor // FT over 802.1X
+    <AKM_SUITE> = int_to_bitvector(32, 0x000FAC04) lor // FT over PSK
+    <AKM_SUITE> = int_to_bitvector(32, 0x000FAC05) lor // 802.1X SHA-256
+    <AKM_SUITE> = int_to_bitvector(32, 0x000FAC06) lor // PSK SHA-256
+    <AKM_SUITE> = int_to_bitvector(32, 0x000FAC08) lor // SAE
+    <AKM_SUITE> = int_to_bitvector(32, 0x000FAC09) lor // FT over SAE
+    <AKM_SUITE> = int_to_bitvector(32, 0x000FAC0B) lor // 802.1X Suite-B
+    <AKM_SUITE> = int_to_bitvector(32, 0x000FAC0C) lor // 802.1X Suite-B-192
+    <AKM_SUITE> = int_to_bitvector(32, 0x000FAC0E) lor // FILS SHA-256
+    <AKM_SUITE> = int_to_bitvector(32, 0x000FAC0F) lor // FILS SHA-384
+    <AKM_SUITE> = int_to_bitvector(32, 0x000FAC12) lor // OWE
+    <AKM_SUITE> = int_to_bitvector(32, 0x000FAC13) lor // FT over FILS SHA-256
+    <AKM_SUITE> = int_to_bitvector(32, 0x000FAC14);   // FT over FILS SHA-384
+};
+
+<RSN_CAPABILITIES> :: BitVector(16);
+
+<PMKID_COUNT> :: BitVector(16)
+{
+    int_to_bitvector(16, 0) bvlte <PMKID_COUNT> land <PMKID_COUNT> bvlte int_to_bitvector(16, 16);
+};
+
+<PMKID_LIST> ::= <PMKID> | <PMKID> <PMKID_LIST>;
+<PMKID> :: BitVector(128);
+
+<GROUP_MGMT_CIPHER_SUITE> :: BitVector(32)
+{
+    <GROUP_MGMT_CIPHER_SUITE> = int_to_bitvector(32, 0x000FAC06) lor // BIP-CMAC-128
+    <GROUP_MGMT_CIPHER_SUITE> = int_to_bitvector(32, 0x000FAC0B) lor // BIP-GMAC-128
+    <GROUP_MGMT_CIPHER_SUITE> = int_to_bitvector(32, 0x000FAC0C) lor // BIP-GMAC-256
+    <GROUP_MGMT_CIPHER_SUITE> = int_to_bitvector(32, 0x000FAC0D);   // BIP-CMAC-256
+};
+
+<PMKID_KDE> ::= <KDE_TYPE_PMKID> <KDE_LENGTH_PMKID> <PMKID_DATA>
+{
+    <KDE_TYPE_PMKID> <- int_to_bitvector(8, 4);
+    <KDE_LENGTH_PMKID> <- int_to_bitvector(8, 16);
+};
+
+<KDE_TYPE_PMKID> :: BitVector(8) { <KDE_TYPE_PMKID> <- int_to_bitvector(8, 4); };
+<KDE_LENGTH_PMKID> :: BitVector(8) { <KDE_LENGTH_PMKID> <- int_to_bitvector(8, 16); };
+<PMKID_DATA> :: BitVector(128);
+
+<GTK_KDE> ::= <KDE_TYPE_GTK> <KDE_LENGTH_GTK> <GTK_KDE_DATA>
+{
+    <KDE_TYPE_GTK> <- int_to_bitvector(8, 1);
+    <KDE_LENGTH_GTK> <- int_to_bitvector(8, length(<GTK_KDE_DATA>)/8);
+};
+
+<KDE_TYPE_GTK> :: BitVector(8) { <KDE_TYPE_GTK> <- int_to_bitvector(8, 1); };
+<KDE_LENGTH_GTK> :: BitVector(8);
+
+<GTK_KDE_DATA> ::= <KEY_ID_GTK> <KEY_FLAG_GTK> <GTK_VALUE>
+{
+    length(<GTK_VALUE>) = 128 lor length(<GTK_VALUE>) = 256;
+    <KEY_ID_GTK> bvand int_to_bitvector(8, 0x03) = <KEY_ID_GTK>;
+};
+
+<KEY_ID_GTK> :: BitVector(8)
+{
+    int_to_bitvector(8, 0) bvlte <KEY_ID_GTK> land <KEY_ID_GTK> bvlte int_to_bitvector(8, 3);
+};
+
+<KEY_FLAG_GTK> :: BitVector(8);
+<GTK_VALUE> :: BitList;
+
+<MAC_ADDR_KDE> ::= <KDE_TYPE_MAC> <KDE_LENGTH_MAC> <MAC_ADDRESS>
+{
+    <KDE_TYPE_MAC> <- int_to_bitvector(8, 3);
+    <KDE_LENGTH_MAC> <- int_to_bitvector(8, 6);
+};
+
+<KDE_TYPE_MAC> :: BitVector(8) { <KDE_TYPE_MAC> <- int_to_bitvector(8, 3); };
+<KDE_LENGTH_MAC> :: BitVector(8) { <KDE_LENGTH_MAC> <- int_to_bitvector(8, 6); };
+<MAC_ADDRESS> :: BitVector(48);
+
+<IGTK_KDE> ::= <KDE_TYPE_IGTK> <KDE_LENGTH_IGTK> <IGTK_KDE_DATA>
+{
+    <KDE_TYPE_IGTK> <- int_to_bitvector(8, 9);
+    <KDE_LENGTH_IGTK> <- int_to_bitvector(8, length(<IGTK_KDE_DATA>)/8);
+};
+
+<KDE_TYPE_IGTK> :: BitVector(8) { <KDE_TYPE_IGTK> <- int_to_bitvector(8, 9); };
+<KDE_LENGTH_IGTK> :: BitVector(8);
+
+<IGTK_KDE_DATA> ::= <KEY_ID_IGTK> <IPN> <IGTK_VALUE>
+{
+    length(<IGTK_VALUE>) = 128 lor length(<IGTK_VALUE>) = 256;
+    int_to_bitvector(16, 4) bvlte <KEY_ID_IGTK> land <KEY_ID_IGTK> bvlte int_to_bitvector(16, 5);
+};
+
+<KEY_ID_IGTK> :: BitVector(16);
+<IPN> :: BitVector(48);
+<IGTK_VALUE> :: BitList;
+
+<BIGTK_KDE> ::= <KDE_TYPE_BIGTK> <KDE_LENGTH_BIGTK> <BIGTK_KDE_DATA>
+{
+    <KDE_TYPE_BIGTK> <- int_to_bitvector(8, 10);
+    <KDE_LENGTH_BIGTK> <- int_to_bitvector(8, length(<BIGTK_KDE_DATA>)/8);
+};
+
+<KDE_TYPE_BIGTK> :: BitVector(8) { <KDE_TYPE_BIGTK> <- int_to_bitvector(8, 10); };
+<KDE_LENGTH_BIGTK> :: BitVector(8);
+
+<BIGTK_KDE_DATA> ::= <KEY_ID_BIGTK> <BIPN> <BIGTK_VALUE>
+{
+    length(<BIGTK_VALUE>) = 128 lor length(<BIGTK_VALUE>) = 256;
+    int_to_bitvector(16, 6) bvlte <KEY_ID_BIGTK> land <KEY_ID_BIGTK> bvlte int_to_bitvector(16, 7);
+};
+
+<KEY_ID_BIGTK> :: BitVector(16);
+<BIPN> :: BitVector(48);
+<BIGTK_VALUE> :: BitList;
+
+<OCI_KDE> ::= <KDE_TYPE_OCI> <KDE_LENGTH_OCI> <OCI_DATA>
+{
+    <KDE_TYPE_OCI> <- int_to_bitvector(8, 11);
+    <KDE_LENGTH_OCI> <- int_to_bitvector(8, length(<OCI_DATA>)/8);
+};
+
+<KDE_TYPE_OCI> :: BitVector(8) { <KDE_TYPE_OCI> <- int_to_bitvector(8, 11); };
+<KDE_LENGTH_OCI> :: BitVector(8);
+
+<OCI_DATA> ::= <PRIMARY_CHANNEL> <SECONDARY_CHANNEL> <BANDWIDTH> <SEGMENT_INFO>
+{
+    length(<OCI_DATA>) bvgte int_to_bitvector(32, 24);
+    int_to_bitvector(8, 1) bvlte <PRIMARY_CHANNEL> land <PRIMARY_CHANNEL> bvlte int_to_bitvector(8, 233);
+};
+
+<PRIMARY_CHANNEL> :: BitVector(8);
+
+<SECONDARY_CHANNEL> :: BitVector(8)
+{
+    <SECONDARY_CHANNEL> = int_to_bitvector(8, 0) lor // No secondary channel
+    (int_to_bitvector(8, 1) bvlte <SECONDARY_CHANNEL> land <SECONDARY_CHANNEL> bvlte int_to_bitvector(8, 233));
+};
+
+<BANDWIDTH> :: BitVector(8)
+{
+    <BANDWIDTH> = int_to_bitvector(8, 0) lor  // 20 MHz
+    <BANDWIDTH> = int_to_bitvector(8, 1) lor  // 40 MHz
+    <BANDWIDTH> = int_to_bitvector(8, 2) lor  // 80 MHz
+    <BANDWIDTH> = int_to_bitvector(8, 3) lor  // 160 MHz
+    <BANDWIDTH> = int_to_bitvector(8, 4);     // 80+80 MHz
+};
+
+<SEGMENT_INFO> :: BitVector(8);
+
+<MULTIBAND_KDE> ::= <KDE_TYPE_MULTIBAND> <KDE_LENGTH_MULTIBAND> <MULTIBAND_DATA>
+{
+    <KDE_TYPE_MULTIBAND> <- int_to_bitvector(8, 12);
+    <KDE_LENGTH_MULTIBAND> <- int_to_bitvector(8, length(<MULTIBAND_DATA>)/8);
+    length(<MULTIBAND_DATA>) bvgte int_to_bitvector(32, 8);
+};
+
+<KDE_TYPE_MULTIBAND> :: BitVector(8) { <KDE_TYPE_MULTIBAND> <- int_to_bitvector(8, 12); };
+<KDE_LENGTH_MULTIBAND> :: BitVector(8);
+<MULTIBAND_DATA> :: BitList;
+
+<FTE_KDE> ::= <KDE_TYPE_FTE> <KDE_LENGTH_FTE> <FTE_DATA>
+{
+    <KDE_TYPE_FTE> <- int_to_bitvector(8, 55);
+    <KDE_LENGTH_FTE> <- int_to_bitvector(8, length(<FTE_DATA>)/8);
+};
+
+<KDE_TYPE_FTE> :: BitVector(8) { <KDE_TYPE_FTE> <- int_to_bitvector(8, 55); };
+<KDE_LENGTH_FTE> :: BitVector(8);
+
+<FTE_DATA> ::= <MIC_CONTROL> <MIC_FTE> <ANONCE_FTE> <SNONCE_FTE> <SUBELEMENTS>
+{
+    length(<MIC_FTE>) = 128;
+    length(<ANONCE_FTE>) = 256;
+    length(<SNONCE_FTE>) = 256;
+    length(<SUBELEMENTS>) bvlte int_to_bitvector(32, 512);
+};
+
+<MIC_CONTROL> :: BitVector(16);
+<MIC_FTE> :: BitVector(128);
+<ANONCE_FTE> :: BitVector(256);
+<SNONCE_FTE> :: BitVector(256);
+<SUBELEMENTS> :: BitList;
+
+<TIMEOUT_INTERVAL_KDE> ::= <KDE_TYPE_TIMEOUT> <KDE_LENGTH_TIMEOUT> <TIMEOUT_TYPE> <TIMEOUT_VALUE>
+{
+    <KDE_TYPE_TIMEOUT> <- int_to_bitvector(8, 56);
+    <KDE_LENGTH_TIMEOUT> <- int_to_bitvector(8, 5);
+};
+
+<KDE_TYPE_TIMEOUT> :: BitVector(8) { <KDE_TYPE_TIMEOUT> <- int_to_bitvector(8, 56); };
+<KDE_LENGTH_TIMEOUT> :: BitVector(8) { <KDE_LENGTH_TIMEOUT> <- int_to_bitvector(8, 5); };
+
+<TIMEOUT_TYPE> :: BitVector(8)
+{
+    <TIMEOUT_TYPE> = int_to_bitvector(8, 1) lor // Reassociation deadline
+    <TIMEOUT_TYPE> = int_to_bitvector(8, 2) lor // Key lifetime
+    <TIMEOUT_TYPE> = int_to_bitvector(8, 3);   // Association comeback
+};
+
+<TIMEOUT_VALUE> :: BitVector(32)
+{
+    int_to_bitvector(32, 1) bvlte <TIMEOUT_VALUE> land <TIMEOUT_VALUE> bvlte int_to_bitvector(32, 4294967295);
+};
+
+<HT_CAPS_KDE> ::= <KDE_TYPE_HT> <KDE_LENGTH_HT> <HT_CAPABILITIES>
+{
+    <KDE_TYPE_HT> <- int_to_bitvector(8, 45);
+    <KDE_LENGTH_HT> <- int_to_bitvector(8, 26);
+};
+
+<KDE_TYPE_HT> :: BitVector(8) { <KDE_TYPE_HT> <- int_to_bitvector(8, 45); };
+<KDE_LENGTH_HT> :: BitVector(8) { <KDE_LENGTH_HT> <- int_to_bitvector(8, 26); };
+<HT_CAPABILITIES> :: BitVector(208); // 26 bytes
+
+<VHT_CAPS_KDE> ::= <KDE_TYPE_VHT> <KDE_LENGTH_VHT> <VHT_CAPABILITIES>
+{
+    <KDE_TYPE_VHT> <- int_to_bitvector(8, 191);
+    <KDE_LENGTH_VHT> <- int_to_bitvector(8, 12);
+};
+
+<KDE_TYPE_VHT> :: BitVector(8) { <KDE_TYPE_VHT> <- int_to_bitvector(8, 191); };
+<KDE_LENGTH_VHT> :: BitVector(8) { <KDE_LENGTH_VHT> <- int_to_bitvector(8, 12); };
+<VHT_CAPABILITIES> :: BitVector(96); // 12 bytes
+
+<HE_CAPS_KDE> ::= <KDE_TYPE_HE> <KDE_LENGTH_HE> <HE_CAPABILITIES>
+{
+    <KDE_TYPE_HE> <- int_to_bitvector(8, 255);
+    <KDE_LENGTH_HE> <- int_to_bitvector(8, length(<HE_CAPABILITIES>)/8);
+    length(<HE_CAPABILITIES>) bvgte int_to_bitvector(32, 216); // Minimum 27 bytes
+    length(<HE_CAPABILITIES>) bvlte int_to_bitvector(32, 600); // Maximum ~75 bytes
+};
+
+<KDE_TYPE_HE> :: BitVector(8) { <KDE_TYPE_HE> <- int_to_bitvector(8, 255); };
+<KDE_LENGTH_HE> :: BitVector(8);
+<HE_CAPABILITIES> :: BitList;
+
+<EHT_CAPS_KDE> ::= <KDE_TYPE_EHT> <KDE_LENGTH_EHT> <EHT_CAPABILITIES>
+{
+    <KDE_TYPE_EHT> <- int_to_bitvector(8, 255);
+    <KDE_LENGTH_EHT> <- int_to_bitvector(8, length(<EHT_CAPABILITIES>)/8);
+    length(<EHT_CAPABILITIES>) bvgte int_to_bitvector(32, 72); // Minimum 9 bytes
+    length(<EHT_CAPABILITIES>) bvlte int_to_bitvector(32, 800); // Maximum ~100 bytes
+};
+
+<KDE_TYPE_EHT> :: BitVector(8) { <KDE_TYPE_EHT> <- int_to_bitvector(8, 255); };
+<KDE_LENGTH_EHT> :: BitVector(8);
+<EHT_CAPABILITIES> :: BitList;
+
+<VENDOR_SPECIFIC_KDE> ::= <MICROSOFT_KDE> | <BROADCOM_KDE> | <ATHEROS_KDE> | <INTEL_KDE> | <CISCO_KDE> | <QUALCOMM_KDE> | <MEDIATEK_KDE> | <REALTEK_KDE> | <MARVELL_KDE> | <RALINK_KDE> | <UBIQUITI_KDE> | <ARUBA_KDE>;
+
+<MICROSOFT_KDE> ::= <KDE_TYPE_VENDOR> <KDE_LENGTH_MS> <OUI_MICROSOFT> <MS_VENDOR_TYPE> <MS_VENDOR_DATA>
+{
+    <KDE_TYPE_VENDOR> <- int_to_bitvector(8, 221);
+    <OUI_MICROSOFT> <- int_to_bitvector(24, 0x0050F2);
+    <KDE_LENGTH_MS> <- int_to_bitvector(8, (length(<OUI_MICROSOFT>) + length(<MS_VENDOR_TYPE>) + length(<MS_VENDOR_DATA>))/8);
+};
+
+<BROADCOM_KDE> ::= <KDE_TYPE_VENDOR> <KDE_LENGTH_BCM> <OUI_BROADCOM> <BCM_VENDOR_TYPE> <BCM_VENDOR_DATA>
+{
+    <KDE_TYPE_VENDOR> <- int_to_bitvector(8, 221);
+    <OUI_BROADCOM> <- int_to_bitvector(24, 0x001018);
+    <KDE_LENGTH_BCM> <- int_to_bitvector(8, (length(<OUI_BROADCOM>) + length(<BCM_VENDOR_TYPE>) + length(<BCM_VENDOR_DATA>))/8);
+};
+
+<ATHEROS_KDE> ::= <KDE_TYPE_VENDOR> <KDE_LENGTH_ATH> <OUI_ATHEROS> <ATH_VENDOR_TYPE> <ATH_VENDOR_DATA>
+{
+    <KDE_TYPE_VENDOR> <- int_to_bitvector(8, 221);
+    <OUI_ATHEROS> <- int_to_bitvector(24, 0x00037F);
+    <KDE_LENGTH_ATH> <- int_to_bitvector(8, (length(<OUI_ATHEROS>) + length(<ATH_VENDOR_TYPE>) + length(<ATH_VENDOR_DATA>))/8);
+};
+
+<INTEL_KDE> ::= <KDE_TYPE_VENDOR> <KDE_LENGTH_INTEL> <OUI_INTEL> <INTEL_VENDOR_TYPE> <INTEL_VENDOR_DATA>
+{
+    <KDE_TYPE_VENDOR> <- int_to_bitvector(8, 221);
+    <OUI_INTEL> <- int_to_bitvector(24, 0x000CE7);
+    <KDE_LENGTH_INTEL> <- int_to_bitvector(8, (length(<OUI_INTEL>) + length(<INTEL_VENDOR_TYPE>) + length(<INTEL_VENDOR_DATA>))/8);
+};
+
+<CISCO_KDE> ::= <KDE_TYPE_VENDOR> <KDE_LENGTH_CISCO> <OUI_CISCO> <CISCO_VENDOR_TYPE> <CISCO_VENDOR_DATA>
+{
+    <KDE_TYPE_VENDOR> <- int_to_bitvector(8, 221);
+    <OUI_CISCO> <- int_to_bitvector(24, 0x001374);
+    <KDE_LENGTH_CISCO> <- int_to_bitvector(8, (length(<OUI_CISCO>) + length(<CISCO_VENDOR_TYPE>) + length(<CISCO_VENDOR_DATA>))/8);
+};
+
+<QUALCOMM_KDE> ::= <KDE_TYPE_VENDOR> <KDE_LENGTH_QCOM> <OUI_QUALCOMM> <QCOM_VENDOR_TYPE> <QCOM_VENDOR_DATA>
+{
+    <KDE_TYPE_VENDOR> <- int_to_bitvector(8, 221);
+    <OUI_QUALCOMM> <- int_to_bitvector(24, 0x8CFDF0);
+    <KDE_LENGTH_QCOM> <- int_to_bitvector(8, (length(<OUI_QUALCOMM>) + length(<QCOM_VENDOR_TYPE>) + length(<QCOM_VENDOR_DATA>))/8);
+};
+
+<MEDIATEK_KDE> ::= <KDE_TYPE_VENDOR> <KDE_LENGTH_MTK> <OUI_MEDIATEK> <MTK_VENDOR_TYPE> <MTK_VENDOR_DATA>
+{
+    <KDE_TYPE_VENDOR> <- int_to_bitvector(8, 221);
+    <OUI_MEDIATEK> <- int_to_bitvector(24, 0x000CE7);
+    <KDE_LENGTH_MTK> <- int_to_bitvector(8, (length(<OUI_MEDIATEK>) + length(<MTK_VENDOR_TYPE>) + length(<MTK_VENDOR_DATA>))/8);
+};
+
+<REALTEK_KDE> ::= <KDE_TYPE_VENDOR> <KDE_LENGTH_RTK> <OUI_REALTEK> <RTK_VENDOR_TYPE> <RTK_VENDOR_DATA>
+{
+    <KDE_TYPE_VENDOR> <- int_to_bitvector(8, 221);
+    <OUI_REALTEK> <- int_to_bitvector(24, 0x00E04C);
+    <KDE_LENGTH_RTK> <- int_to_bitvector(8, (length(<OUI_REALTEK>) + length(<RTK_VENDOR_TYPE>) + length(<RTK_VENDOR_DATA>))/8);
+};
+
+<MARVELL_KDE> ::= <KDE_TYPE_VENDOR> <KDE_LENGTH_MRVL> <OUI_MARVELL> <MRVL_VENDOR_TYPE> <MRVL_VENDOR_DATA>
+{
+    <KDE_TYPE_VENDOR> <- int_to_bitvector(8, 221);
+    <OUI_MARVELL> <- int_to_bitvector(24, 0x005043);
+    <KDE_LENGTH_MRVL> <- int_to_bitvector(8, (length(<OUI_MARVELL>) + length(<MRVL_VENDOR_TYPE>) + length(<MRVL_VENDOR_DATA>))/8);
+};
+
+<RALINK_KDE> ::= <KDE_TYPE_VENDOR> <KDE_LENGTH_RALINK> <OUI_RALINK> <RALINK_VENDOR_TYPE> <RALINK_VENDOR_DATA>
+{
+    <KDE_TYPE_VENDOR> <- int_to_bitvector(8, 221);
+    <OUI_RALINK> <- int_to_bitvector(24, 0x000C43);
+    <KDE_LENGTH_RALINK> <- int_to_bitvector(8, (length(<OUI_RALINK>) + length(<RALINK_VENDOR_TYPE>) + length(<RALINK_VENDOR_DATA>))/8);
+};
+
+<UBIQUITI_KDE> ::= <KDE_TYPE_VENDOR> <KDE_LENGTH_UBNT> <OUI_UBIQUITI> <UBNT_VENDOR_TYPE> <UBNT_VENDOR_DATA>
+{
+    <KDE_TYPE_VENDOR> <- int_to_bitvector(8, 221);
+    <OUI_UBIQUITI> <- int_to_bitvector(24, 0x0027CF);
+    <KDE_LENGTH_UBNT> <- int_to_bitvector(8, (length(<OUI_UBIQUITI>) + length(<UBNT_VENDOR_TYPE>) + length(<UBNT_VENDOR_DATA>))/8);
+};
+
+<ARUBA_KDE> ::= <KDE_TYPE_VENDOR> <KDE_LENGTH_ARUBA> <OUI_ARUBA> <ARUBA_VENDOR_TYPE> <ARUBA_VENDOR_DATA>
+{
+    <KDE_TYPE_VENDOR> <- int_to_bitvector(8, 221);
+    <OUI_ARUBA> <- int_to_bitvector(24, 0x000B86);
+    <KDE_LENGTH_ARUBA> <- int_to_bitvector(8, (length(<OUI_ARUBA>) + length(<ARUBA_VENDOR_TYPE>) + length(<ARUBA_VENDOR_DATA>))/8);
+};
+
+<KDE_TYPE_VENDOR> :: BitVector(8) { <KDE_TYPE_VENDOR> <- int_to_bitvector(8, 221); };
+
+// OUI definitions
+<OUI_MICROSOFT> :: BitVector(24) { <OUI_MICROSOFT> <- int_to_bitvector(24, 0x0050F2); };
+<OUI_BROADCOM> :: BitVector(24) { <OUI_BROADCOM> <- int_to_bitvector(24, 0x001018); };
+<OUI_ATHEROS> :: BitVector(24) { <OUI_ATHEROS> <- int_to_bitvector(24, 0x00037F); };
+<OUI_INTEL> :: BitVector(24) { <OUI_INTEL> <- int_to_bitvector(24, 0x000CE7); };
+<OUI_CISCO> :: BitVector(24) { <OUI_CISCO> <- int_to_bitvector(24, 0x001374); };
+<OUI_QUALCOMM> :: BitVector(24) { <OUI_QUALCOMM> <- int_to_bitvector(24, 0x8CFDF0); };
+<OUI_MEDIATEK> :: BitVector(24) { <OUI_MEDIATEK> <- int_to_bitvector(24, 0x000CE7); };
+<OUI_REALTEK> :: BitVector(24) { <OUI_REALTEK> <- int_to_bitvector(24, 0x00E04C); };
+<OUI_MARVELL> :: BitVector(24) { <OUI_MARVELL> <- int_to_bitvector(24, 0x005043); };
+<OUI_RALINK> :: BitVector(24) { <OUI_RALINK> <- int_to_bitvector(24, 0x000C43); };
+<OUI_UBIQUITI> :: BitVector(24) { <OUI_UBIQUITI> <- int_to_bitvector(24, 0x0027CF); };
+<OUI_ARUBA> :: BitVector(24) { <OUI_ARUBA> <- int_to_bitvector(24, 0x000B86); };
+
+// Length field declarations
+<KDE_LENGTH_MS> :: BitVector(8);
+<KDE_LENGTH_BCM> :: BitVector(8);
+<KDE_LENGTH_ATH> :: BitVector(8);
+<KDE_LENGTH_INTEL> :: BitVector(8);
+<KDE_LENGTH_CISCO> :: BitVector(8);
+<KDE_LENGTH_QCOM> :: BitVector(8);
+<KDE_LENGTH_MTK> :: BitVector(8);
+<KDE_LENGTH_RTK> :: BitVector(8);
+<KDE_LENGTH_MRVL> :: BitVector(8);
+<KDE_LENGTH_RALINK> :: BitVector(8);
+<KDE_LENGTH_UBNT> :: BitVector(8);
+<KDE_LENGTH_ARUBA> :: BitVector(8);
+
+<MS_VENDOR_TYPE> :: BitVector(8)
+{
+    <MS_VENDOR_TYPE> = int_to_bitvector(8, 1) lor  // WPA IE
+    <MS_VENDOR_TYPE> = int_to_bitvector(8, 2) lor  // WMM/WME
+    <MS_VENDOR_TYPE> = int_to_bitvector(8, 4) lor  // WPS
+    <MS_VENDOR_TYPE> = int_to_bitvector(8, 7) lor  // P2P
+    <MS_VENDOR_TYPE> = int_to_bitvector(8, 9) lor  // WFD (Wi-Fi Display)
+    <MS_VENDOR_TYPE> = int_to_bitvector(8, 16) lor // HS2.0 (Hotspot 2.0)
+    <MS_VENDOR_TYPE> = int_to_bitvector(8, 18);   // MBO (Multi-Band Operation)
+};
+
+<MS_VENDOR_DATA> ::= <MS_WPA_DATA> | <MS_WMM_DATA> | <MS_WPS_DATA> | <MS_P2P_DATA> | <MS_WFD_DATA> | <MS_HS20_DATA> | <MS_MBO_DATA>;
+
+<MS_WPA_DATA> ::= <WPA_VERSION> <WPA_MULTICAST_CIPHER> <WPA_UNICAST_CIPHER_COUNT> <WPA_UNICAST_CIPHER_LIST> <WPA_AUTH_COUNT> <WPA_AUTH_LIST>
+{
+    <WPA_VERSION> <- int_to_bitvector(16, 1);
+    int_to_bitvector(16, 1) bvlte <WPA_UNICAST_CIPHER_COUNT> land <WPA_UNICAST_CIPHER_COUNT> bvlte int_to_bitvector(16, 8);
+    int_to_bitvector(16, 1) bvlte <WPA_AUTH_COUNT> land <WPA_AUTH_COUNT> bvlte int_to_bitvector(16, 4);
+};
+
+<WPA_VERSION> :: BitVector(16) { <WPA_VERSION> <- int_to_bitvector(16, 1); };
+
+<WPA_MULTICAST_CIPHER> :: BitVector(32)
+{
+    <WPA_MULTICAST_CIPHER> = int_to_bitvector(32, 0x0050F200) lor // None
+    <WPA_MULTICAST_CIPHER> = int_to_bitvector(32, 0x0050F201) lor // WEP40
+    <WPA_MULTICAST_CIPHER> = int_to_bitvector(32, 0x0050F202) lor // TKIP
+    <WPA_MULTICAST_CIPHER> = int_to_bitvector(32, 0x0050F204) lor // CCMP
+    <WPA_MULTICAST_CIPHER> = int_to_bitvector(32, 0x0050F205);    // WEP104
+};
+
+<WPA_UNICAST_CIPHER_COUNT> :: BitVector(16);
+<WPA_UNICAST_CIPHER_LIST> ::= <WPA_CIPHER_SUITE> | <WPA_CIPHER_SUITE> <WPA_UNICAST_CIPHER_LIST>;
+<WPA_AUTH_COUNT> :: BitVector(16);
+<WPA_AUTH_LIST> ::= <WPA_AUTH_SUITE> | <WPA_AUTH_SUITE> <WPA_AUTH_LIST>;
+
+<WPA_CIPHER_SUITE> :: BitVector(32)
+{
+    <WPA_CIPHER_SUITE> = int_to_bitvector(32, 0x0050F200) lor // None
+    <WPA_CIPHER_SUITE> = int_to_bitvector(32, 0x0050F201) lor // WEP40
+    <WPA_CIPHER_SUITE> = int_to_bitvector(32, 0x0050F202) lor // TKIP
+    <WPA_CIPHER_SUITE> = int_to_bitvector(32, 0x0050F204) lor // CCMP
+    <WPA_CIPHER_SUITE> = int_to_bitvector(32, 0x0050F205);    // WEP104
+};
+
+<WPA_AUTH_SUITE> :: BitVector(32)
+{
+    <WPA_AUTH_SUITE> = int_to_bitvector(32, 0x0050F201) lor // 802.1X
+    <WPA_AUTH_SUITE> = int_to_bitvector(32, 0x0050F202);   // PSK
+};
+
+<MS_WMM_DATA> ::= <WMM_SUBTYPE> <WMM_VERSION> <WMM_QOS_INFO> <WMM_AC_PARAMS>
+{
+    <WMM_VERSION> <- int_to_bitvector(8, 1);
+    length(<WMM_AC_PARAMS>) = 128; // 4 ACs * 4 bytes each
+};
+
+<WMM_SUBTYPE> :: BitVector(8)
+{
+    <WMM_SUBTYPE> = int_to_bitvector(8, 0) lor // Info Element
+    <WMM_SUBTYPE> = int_to_bitvector(8, 1);   // Parameter Element
+};
+
+<WMM_VERSION> :: BitVector(8) { <WMM_VERSION> <- int_to_bitvector(8, 1); };
+<WMM_QOS_INFO> :: BitVector(8);
+<WMM_AC_PARAMS> :: BitVector(128);
+
+<MS_WPS_DATA> ::= <WPS_ATTR_LIST>;
+<WPS_ATTR_LIST> ::= <WPS_ATTRIBUTE> | <WPS_ATTRIBUTE> <WPS_ATTR_LIST>;
+
+<WPS_ATTRIBUTE> ::= <WPS_ATTR_TYPE> <WPS_ATTR_LENGTH> <WPS_ATTR_DATA>
+{
+    <WPS_ATTR_LENGTH> <- int_to_bitvector(16, length(<WPS_ATTR_DATA>)/8);
+    int_to_bitvector(16, 1) bvlte <WPS_ATTR_LENGTH> land <WPS_ATTR_LENGTH> bvlte int_to_bitvector(16, 256);
+};
+
+<WPS_ATTR_TYPE> :: BitVector(16)
+{
+    <WPS_ATTR_TYPE> = int_to_bitvector(16, 0x1044) lor // State
+    <WPS_ATTR_TYPE> = int_to_bitvector(16, 0x1047) lor // UUID-E
+    <WPS_ATTR_TYPE> = int_to_bitvector(16, 0x1054) lor // Primary Device Type
+    <WPS_ATTR_TYPE> = int_to_bitvector(16, 0x1041) lor // Response Type
+    <WPS_ATTR_TYPE> = int_to_bitvector(16, 0x1042) lor // Serial Number
+    <WPS_ATTR_TYPE> = int_to_bitvector(16, 0x1021) lor // Manufacturer
+    <WPS_ATTR_TYPE> = int_to_bitvector(16, 0x1023) lor // Model Name
+    <WPS_ATTR_TYPE> = int_to_bitvector(16, 0x1024) lor // Model Number
+    <WPS_ATTR_TYPE> = int_to_bitvector(16, 0x1011) lor // Device Name
+    <WPS_ATTR_TYPE> = int_to_bitvector(16, 0x1008) lor // Config Methods
+    <WPS_ATTR_TYPE> = int_to_bitvector(16, 0x103B) lor // RF Bands
+    <WPS_ATTR_TYPE> = int_to_bitvector(16, 0x1049) lor // Vendor Extension
+    <WPS_ATTR_TYPE> = int_to_bitvector(16, 0x100E) lor // Credential
+    <WPS_ATTR_TYPE> = int_to_bitvector(16, 0x1026) lor // Network Index
+    <WPS_ATTR_TYPE> = int_to_bitvector(16, 0x1045) lor // SSID
+    <WPS_ATTR_TYPE> = int_to_bitvector(16, 0x100F) lor // Network Key
+    <WPS_ATTR_TYPE> = int_to_bitvector(16, 0x1020) lor // MAC Address
+    <WPS_ATTR_TYPE> = int_to_bitvector(16, 0x1001);   // AP Channel
+};
+
+<WPS_ATTR_LENGTH> :: BitVector(16);
+<WPS_ATTR_DATA> :: BitList;
+
+<MS_P2P_DATA> ::= <P2P_ATTR_LIST>;
+<P2P_ATTR_LIST> ::= <P2P_ATTRIBUTE> | <P2P_ATTRIBUTE> <P2P_ATTR_LIST>;
+
+<P2P_ATTRIBUTE> ::= <P2P_ATTR_ID> <P2P_ATTR_LEN> <P2P_ATTR_BODY>
+{
+    <P2P_ATTR_LEN> <- int_to_bitvector(16, length(<P2P_ATTR_BODY>)/8);
+};
+
+<P2P_ATTR_ID> :: BitVector(8)
+{
+    <P2P_ATTR_ID> = int_to_bitvector(8, 0) lor  // Status
+    <P2P_ATTR_ID> = int_to_bitvector(8, 1) lor  // Minor reason code
+    <P2P_ATTR_ID> = int_to_bitvector(8, 2) lor  // P2P capability
+    <P2P_ATTR_ID> = int_to_bitvector(8, 3) lor  // P2P device ID
+    <P2P_ATTR_ID> = int_to_bitvector(8, 4) lor  // Group owner intent
+    <P2P_ATTR_ID> = int_to_bitvector(8, 5) lor  // Configuration timeout
+    <P2P_ATTR_ID> = int_to_bitvector(8, 6) lor  // Listen channel
+    <P2P_ATTR_ID> = int_to_bitvector(8, 7) lor  // P2P group BSSID
+    <P2P_ATTR_ID> = int_to_bitvector(8, 8) lor  // Extended listen timing
+    <P2P_ATTR_ID> = int_to_bitvector(8, 9) lor  // Intended P2P interface address
+    <P2P_ATTR_ID> = int_to_bitvector(8, 10) lor // P2P manageability
+    <P2P_ATTR_ID> = int_to_bitvector(8, 11) lor // Channel list
+    <P2P_ATTR_ID> = int_to_bitvector(8, 12) lor // Notice of absence
+    <P2P_ATTR_ID> = int_to_bitvector(8, 13) lor // P2P device info
+    <P2P_ATTR_ID> = int_to_bitvector(8, 14) lor // P2P group info
+    <P2P_ATTR_ID> = int_to_bitvector(8, 15) lor // P2P group ID
+    <P2P_ATTR_ID> = int_to_bitvector(8, 16) lor // P2P interface
+    <P2P_ATTR_ID> = int_to_bitvector(8, 17);   // Operating channel
+};
+
+<P2P_ATTR_LEN> :: BitVector(16);
+<P2P_ATTR_BODY> :: BitList;
+
+<MS_WFD_DATA> ::= <WFD_ATTR_LIST>;
+<WFD_ATTR_LIST> ::= <WFD_ATTRIBUTE> | <WFD_ATTRIBUTE> <WFD_ATTR_LIST>;
+
+<WFD_ATTRIBUTE> ::= <WFD_ATTR_ID> <WFD_ATTR_LEN> <WFD_ATTR_BODY>
+{
+    <WFD_ATTR_LEN> <- int_to_bitvector(16, length(<WFD_ATTR_BODY>)/8);
+};
+
+<WFD_ATTR_ID> :: BitVector(8)
+{
+    <WFD_ATTR_ID> = int_to_bitvector(8, 0) lor  // Device information
+    <WFD_ATTR_ID> = int_to_bitvector(8, 1) lor  // Associated BSSID
+    <WFD_ATTR_ID> = int_to_bitvector(8, 2) lor  // Coupled sink information
+    <WFD_ATTR_ID> = int_to_bitvector(8, 3) lor  // Extended capability
+    <WFD_ATTR_ID> = int_to_bitvector(8, 4) lor  // Local IP address
+    <WFD_ATTR_ID> = int_to_bitvector(8, 5) lor  // Session information
+    <WFD_ATTR_ID> = int_to_bitvector(8, 6) lor  // Alternative MAC address
+    <WFD_ATTR_ID> = int_to_bitvector(8, 7);    // R2 device information
+};
+
+<WFD_ATTR_LEN> :: BitVector(16);
+<WFD_ATTR_BODY> :: BitList;
+
+<MS_HS20_DATA> ::= <HS20_ATTR_LIST>;
+<HS20_ATTR_LIST> ::= <HS20_ATTRIBUTE> | <HS20_ATTRIBUTE> <HS20_ATTR_LIST>;
+
+<HS20_ATTRIBUTE> ::= <HS20_ATTR_ID> <HS20_ATTR_LEN> <HS20_ATTR_BODY>
+{
+    <HS20_ATTR_LEN> <- int_to_bitvector(16, length(<HS20_ATTR_BODY>)/8);
+};
+
+<HS20_ATTR_ID> :: BitVector(8)
+{
+    <HS20_ATTR_ID> = int_to_bitvector(8, 0) lor  // HS2.0 indication
+    <HS20_ATTR_ID> = int_to_bitvector(8, 1) lor  // ANQP domain ID
+    <HS20_ATTR_ID> = int_to_bitvector(8, 2) lor  // Network authentication type
+    <HS20_ATTR_ID> = int_to_bitvector(8, 3) lor  // Roaming consortium OI
+    <HS20_ATTR_ID> = int_to_bitvector(8, 4) lor  // IP address type availability
+    <HS20_ATTR_ID> = int_to_bitvector(8, 5) lor  // NAI realm
+    <HS20_ATTR_ID> = int_to_bitvector(8, 6) lor  // 3GPP cellular network
+    <HS20_ATTR_ID> = int_to_bitvector(8, 7);    // AP geolocation
+};
+
+<HS20_ATTR_LEN> :: BitVector(16);
+<HS20_ATTR_BODY> :: BitList;
+
+<MS_MBO_DATA> ::= <MBO_ATTR_LIST>;
+<MBO_ATTR_LIST> ::= <MBO_ATTRIBUTE> | <MBO_ATTRIBUTE> <MBO_ATTR_LIST>;
+
+<MBO_ATTRIBUTE> ::= <MBO_ATTR_ID> <MBO_ATTR_LEN> <MBO_ATTR_BODY>
+{
+    <MBO_ATTR_LEN> <- int_to_bitvector(16, length(<MBO_ATTR_BODY>)/8);
+};
+
+<MBO_ATTR_ID> :: BitVector(8)
+{
+    <MBO_ATTR_ID> = int_to_bitvector(8, 1) lor  // MBO AP capability indication
+    <MBO_ATTR_ID> = int_to_bitvector(8, 2) lor  // Non-preferred channel report
+    <MBO_ATTR_ID> = int_to_bitvector(8, 3) lor  // Cellular data capability
+    <MBO_ATTR_ID> = int_to_bitvector(8, 4) lor  // Association disallowed
+    <MBO_ATTR_ID> = int_to_bitvector(8, 5) lor  // Cellular data preference
+    <MBO_ATTR_ID> = int_to_bitvector(8, 6) lor  // Transition reason
+    <MBO_ATTR_ID> = int_to_bitvector(8, 7) lor  // Transition rejection reason
+    <MBO_ATTR_ID> = int_to_bitvector(8, 8);    // Association retry delay
+};
+
+<MBO_ATTR_LEN> :: BitVector(16);
+<MBO_ATTR_BODY> :: BitList;
+
+<BCM_VENDOR_TYPE> :: BitVector(8)
+{
+    <BCM_VENDOR_TYPE> = int_to_bitvector(8, 1) lor  // Proprietary rates
+    <BCM_VENDOR_TYPE> = int_to_bitvector(8, 2) lor  // FBT over DS
+    <BCM_VENDOR_TYPE> = int_to_bitvector(8, 3) lor  // Fast roaming
+    <BCM_VENDOR_TYPE> = int_to_bitvector(8, 4) lor  // CCX
+    <BCM_VENDOR_TYPE> = int_to_bitvector(8, 5) lor  // BRCM legacy
+    <BCM_VENDOR_TYPE> = int_to_bitvector(8, 6) lor  // WET tunnel
+    <BCM_VENDOR_TYPE> = int_to_bitvector(8, 7) lor  // TDLS
+    <BCM_VENDOR_TYPE> = int_to_bitvector(8, 8) lor  // PKTFWD
+    <BCM_VENDOR_TYPE> = int_to_bitvector(8, 9) lor  // SPECT_MNG
+    <BCM_VENDOR_TYPE> = int_to_bitvector(8, 10) lor // FBT
+    <BCM_VENDOR_TYPE> = int_to_bitvector(8, 11) lor // HS2.0 extension
+    <BCM_VENDOR_TYPE> = int_to_bitvector(8, 12) lor // WAPI
+    <BCM_VENDOR_TYPE> = int_to_bitvector(8, 13) lor // NAN
+    <BCM_VENDOR_TYPE> = int_to_bitvector(8, 14);   // OCE
+};
+
+<BCM_VENDOR_DATA> ::= <BCM_PROPRIETARY_RATES> | <BCM_FBT_DATA> | <BCM_FAST_ROAM_DATA> | <BCM_CCX_DATA> | <BCM_LEGACY_DATA> | <BCM_WET_DATA> | <BCM_TDLS_DATA> | <BCM_PKTFWD_DATA> | <BCM_SPECT_DATA> | <BCM_FBT_ODS_DATA> | <BCM_HS20_EXT_DATA> | <BCM_WAPI_DATA> | <BCM_NAN_DATA> | <BCM_OCE_DATA>;
+
+<BCM_PROPRIETARY_RATES> ::= <BCM_RATE_COUNT> <BCM_RATE_LIST>
+{
+    int_to_bitvector(8, 1) bvlte <BCM_RATE_COUNT> land <BCM_RATE_COUNT> bvlte int_to_bitvector(8, 16);
+};
+
+<BCM_RATE_COUNT> :: BitVector(8);
+<BCM_RATE_LIST> ::= <BCM_RATE> | <BCM_RATE> <BCM_RATE_LIST>;
+
+<BCM_RATE> :: BitVector(8)
+{
+    <BCM_RATE> = int_to_bitvector(8, 0x02) lor // 1 Mbps
+    <BCM_RATE> = int_to_bitvector(8, 0x04) lor // 2 Mbps
+    <BCM_RATE> = int_to_bitvector(8, 0x0B) lor // 5.5 Mbps
+    <BCM_RATE> = int_to_bitvector(8, 0x16) lor // 11 Mbps
+    <BCM_RATE> = int_to_bitvector(8, 0x0C) lor // 6 Mbps
+    <BCM_RATE> = int_to_bitvector(8, 0x12) lor // 9 Mbps
+    <BCM_RATE> = int_to_bitvector(8, 0x18) lor // 12 Mbps
+    <BCM_RATE> = int_to_bitvector(8, 0x24) lor // 18 Mbps
+    <BCM_RATE> = int_to_bitvector(8, 0x30) lor // 24 Mbps
+    <BCM_RATE> = int_to_bitvector(8, 0x48) lor // 36 Mbps
+    <BCM_RATE> = int_to_bitvector(8, 0x60) lor // 48 Mbps
+    <BCM_RATE> = int_to_bitvector(8, 0x6C);   // 54 Mbps
+};
+
+<BCM_FBT_DATA> ::= <BCM_FBT_CAPABILITY> <BCM_FBT_KEY_HOLDER> <BCM_FBT_R1KH_ID> <BCM_FBT_GTK_LEN> <BCM_FBT_GTK>
+{
+    int_to_bitvector(8, 16) bvlte <BCM_FBT_GTK_LEN> land <BCM_FBT_GTK_LEN> bvlte int_to_bitvector(8, 32);
+    <BCM_FBT_GTK_LEN> = int_to_bitvector(8, length(<BCM_FBT_GTK>)/8);
+};
+
+<BCM_FBT_CAPABILITY> :: BitVector(8);
+<BCM_FBT_KEY_HOLDER> :: BitVector(48);
+<BCM_FBT_R1KH_ID> :: BitVector(48);
+<BCM_FBT_GTK_LEN> :: BitVector(8);
+<BCM_FBT_GTK> :: BitList;
+
+<BCM_FAST_ROAM_DATA> ::= <BCM_ROAM_TRIGGER> <BCM_ROAM_DELTA> <BCM_ROAM_SCAN_PERIOD>
+{
+    int_to_bitvector(8, 60) bvlte <BCM_ROAM_TRIGGER> land <BCM_ROAM_TRIGGER> bvlte int_to_bitvector(8, 90);
+    int_to_bitvector(8, 5) bvlte <BCM_ROAM_DELTA> land <BCM_ROAM_DELTA> bvlte int_to_bitvector(8, 20);
+    int_to_bitvector(16, 1000) bvlte <BCM_ROAM_SCAN_PERIOD> land <BCM_ROAM_SCAN_PERIOD> bvlte int_to_bitvector(16, 30000);
+};
+
+<BCM_ROAM_TRIGGER> :: BitVector(8);
+<BCM_ROAM_DELTA> :: BitVector(8);
+<BCM_ROAM_SCAN_PERIOD> :: BitVector(16);
+
+<BCM_CCX_DATA> ::= <BCM_CCX_VERSION> <BCM_CCX_CAPABILITY> <BCM_CCX_ROAM_INFO>
+{
+    int_to_bitvector(8, 1) bvlte <BCM_CCX_VERSION> land <BCM_CCX_VERSION> bvlte int_to_bitvector(8, 5);
+};
+
+<BCM_CCX_VERSION> :: BitVector(8);
+<BCM_CCX_CAPABILITY> :: BitVector(16);
+<BCM_CCX_ROAM_INFO> :: BitVector(32);
+
+<BCM_LEGACY_DATA> ::= <BCM_LEGACY_VERSION> <BCM_LEGACY_FLAGS> <BCM_LEGACY_DATA_BODY>
+{
+    int_to_bitvector(8, 1) bvlte <BCM_LEGACY_VERSION> land <BCM_LEGACY_VERSION> bvlte int_to_bitvector(8, 3);
+    length(<BCM_LEGACY_DATA_BODY>) bvlte int_to_bitvector(32, 64);
+};
+
+<BCM_LEGACY_VERSION> :: BitVector(8);
+<BCM_LEGACY_FLAGS> :: BitVector(16);
+<BCM_LEGACY_DATA_BODY> :: BitList;
+
+<BCM_WET_DATA> ::= <BCM_WET_FLAGS> <BCM_WET_MAC_COUNT> <BCM_WET_MAC_LIST>
+{
+    int_to_bitvector(8, 1) bvlte <BCM_WET_MAC_COUNT> land <BCM_WET_MAC_COUNT> bvlte int_to_bitvector(8, 8);
+};
+
+<BCM_WET_FLAGS> :: BitVector(8);
+<BCM_WET_MAC_COUNT> :: BitVector(8);
+<BCM_WET_MAC_LIST> ::= <BCM_WET_MAC> | <BCM_WET_MAC> <BCM_WET_MAC_LIST>;
+<BCM_WET_MAC> :: BitVector(48);
+
+<BCM_TDLS_DATA> ::= <BCM_TDLS_CAPABILITY> <BCM_TDLS_STATUS>
+{
+    <BCM_TDLS_STATUS> = int_to_bitvector(8, 0) lor // Success
+    <BCM_TDLS_STATUS> = int_to_bitvector(8, 1) lor // Wakeup schedule rejected
+    <BCM_TDLS_STATUS> = int_to_bitvector(8, 2) lor // Alternative schedule provided
+    <BCM_TDLS_STATUS> = int_to_bitvector(8, 3);   // Rejected
+};
+
+<BCM_TDLS_CAPABILITY> :: BitVector(16);
+<BCM_TDLS_STATUS> :: BitVector(8);
+
+<BCM_PKTFWD_DATA> ::= <BCM_PKTFWD_FLAGS> <BCM_PKTFWD_CONFIG>
+{
+    length(<BCM_PKTFWD_CONFIG>) = 32;
+};
+
+<BCM_PKTFWD_FLAGS> :: BitVector(8);
+<BCM_PKTFWD_CONFIG> :: BitVector(32);
+
+<BCM_SPECT_DATA> ::= <BCM_SPECT_FLAGS> <BCM_SPECT_CHANNELS>
+{
+    length(<BCM_SPECT_CHANNELS>) bvlte int_to_bitvector(32, 256);
+};
+
+<BCM_SPECT_FLAGS> :: BitVector(8);
+<BCM_SPECT_CHANNELS> :: BitList;
+
+<BCM_FBT_ODS_DATA> ::= <BCM_FBT_ODS_FLAGS> <BCM_FBT_ODS_INFO>;
+<BCM_FBT_ODS_FLAGS> :: BitVector(8);
+<BCM_FBT_ODS_INFO> :: BitVector(64);
+
+<BCM_HS20_EXT_DATA> ::= <BCM_HS20_VERSION> <BCM_HS20_CAPABILITY> <BCM_HS20_CONFIG>
+{
+    int_to_bitvector(8, 1) bvlte <BCM_HS20_VERSION> land <BCM_HS20_VERSION> bvlte int_to_bitvector(8, 3);
+};
+
+<BCM_HS20_VERSION> :: BitVector(8);
+<BCM_HS20_CAPABILITY> :: BitVector(16);
+<BCM_HS20_CONFIG> :: BitVector(32);
+
+<BCM_WAPI_DATA> ::= <BCM_WAPI_VERSION> <BCM_WAPI_AKM_COUNT> <BCM_WAPI_AKM_LIST> <BCM_WAPI_UNICAST_COUNT> <BCM_WAPI_UNICAST_LIST>
+{
+    int_to_bitvector(8, 1) = <BCM_WAPI_VERSION>;
+    int_to_bitvector(16, 1) bvlte <BCM_WAPI_AKM_COUNT> land <BCM_WAPI_AKM_COUNT> bvlte int_to_bitvector(16, 2);
+    int_to_bitvector(16, 1) bvlte <BCM_WAPI_UNICAST_COUNT> land <BCM_WAPI_UNICAST_COUNT> bvlte int_to_bitvector(16, 2);
+};
+
+<BCM_WAPI_VERSION> :: BitVector(8);
+<BCM_WAPI_AKM_COUNT> :: BitVector(16);
+<BCM_WAPI_AKM_LIST> ::= <BCM_WAPI_AKM> | <BCM_WAPI_AKM> <BCM_WAPI_AKM_LIST>;
+<BCM_WAPI_AKM> :: BitVector(32);
+<BCM_WAPI_UNICAST_COUNT> :: BitVector(16);
+<BCM_WAPI_UNICAST_LIST> ::= <BCM_WAPI_UNICAST> | <BCM_WAPI_UNICAST> <BCM_WAPI_UNICAST_LIST>;
+<BCM_WAPI_UNICAST> :: BitVector(32);
+
+<BCM_NAN_DATA> ::= <BCM_NAN_VERSION> <BCM_NAN_MASTER_PREFERENCE> <BCM_NAN_CONFIG> <BCM_NAN_SERVICE_ID>
+{
+    int_to_bitvector(8, 1) bvlte <BCM_NAN_VERSION> land <BCM_NAN_VERSION> bvlte int_to_bitvector(8, 3);
+    int_to_bitvector(8, 1) bvlte <BCM_NAN_MASTER_PREFERENCE> land <BCM_NAN_MASTER_PREFERENCE> bvlte int_to_bitvector(8, 255);
+};
+
+<BCM_NAN_VERSION> :: BitVector(8);
+<BCM_NAN_MASTER_PREFERENCE> :: BitVector(8);
+<BCM_NAN_CONFIG> :: BitVector(32);
+<BCM_NAN_SERVICE_ID> :: BitVector(48);
+
+<BCM_OCE_DATA> ::= <BCM_OCE_VERSION> <BCM_OCE_CAPABILITY> <BCM_OCE_CONFIG>
+{
+    int_to_bitvector(8, 1) bvlte <BCM_OCE_VERSION> land <BCM_OCE_VERSION> bvlte int_to_bitvector(8, 2);
+};
+
+<BCM_OCE_VERSION> :: BitVector(8);
+<BCM_OCE_CAPABILITY> :: BitVector(16);
+<BCM_OCE_CONFIG> :: BitVector(32);
+
+<INTEL_VENDOR_TYPE> :: BitVector(8)
+{
+    <INTEL_VENDOR_TYPE> = int_to_bitvector(8, 1) lor  // Connection parameters
+    <INTEL_VENDOR_TYPE> = int_to_bitvector(8, 2) lor  // Power management
+    <INTEL_VENDOR_TYPE> = int_to_bitvector(8, 3) lor  // QoS enhancement
+    <INTEL_VENDOR_TYPE> = int_to_bitvector(8, 4) lor  // Security enhancement
+    <INTEL_VENDOR_TYPE> = int_to_bitvector(8, 5) lor  // Radio management
+    <INTEL_VENDOR_TYPE> = int_to_bitvector(8, 6) lor  // Band steering
+    <INTEL_VENDOR_TYPE> = int_to_bitvector(8, 7) lor  // Load balancing
+    <INTEL_VENDOR_TYPE> = int_to_bitvector(8, 8) lor  // Fast roaming
+    <INTEL_VENDOR_TYPE> = int_to_bitvector(8, 9) lor  // Mesh networking
+    <INTEL_VENDOR_TYPE> = int_to_bitvector(8, 10) lor // Advanced features
+    <INTEL_VENDOR_TYPE> = int_to_bitvector(8, 11) lor // Wi-Fi 6 enhancements
+    <INTEL_VENDOR_TYPE> = int_to_bitvector(8, 12) lor // AI networking
+    <INTEL_VENDOR_TYPE> = int_to_bitvector(8, 13) lor // Sensing
+    <INTEL_VENDOR_TYPE> = int_to_bitvector(8, 14);   // MLO (Multi-Link Operation)
+};
+
+<INTEL_VENDOR_DATA> ::= <INTEL_CONN_PARAMS> | <INTEL_PM_DATA> | <INTEL_QOS_DATA> | <INTEL_SEC_DATA> | <INTEL_RADIO_DATA> | <INTEL_BAND_STEER_DATA> | <INTEL_LB_DATA> | <INTEL_FAST_ROAM_DATA> | <INTEL_MESH_DATA> | <INTEL_ADV_FEATURES> | <INTEL_WIFI6_DATA> | <INTEL_AI_NET_DATA> | <INTEL_SENSING_DATA> | <INTEL_MLO_DATA>;
+
+<INTEL_CONN_PARAMS> ::= <INTEL_CONN_FLAGS> <INTEL_CONN_INTERVAL> <INTEL_CONN_LATENCY> <INTEL_CONN_TIMEOUT>
+{
+    int_to_bitvector(16, 100) bvlte <INTEL_CONN_INTERVAL> land <INTEL_CONN_INTERVAL> bvlte int_to_bitvector(16, 1000);
+    int_to_bitvector(16, 0) bvlte <INTEL_CONN_LATENCY> land <INTEL_CONN_LATENCY> bvlte int_to_bitvector(16, 500);
+    int_to_bitvector(16, 1000) bvlte <INTEL_CONN_TIMEOUT> land <INTEL_CONN_TIMEOUT> bvlte int_to_bitvector(16, 30000);
+};
+
+<INTEL_CONN_FLAGS> :: BitVector(8);
+<INTEL_CONN_INTERVAL> :: BitVector(16);
+<INTEL_CONN_LATENCY> :: BitVector(16);
+<INTEL_CONN_TIMEOUT> :: BitVector(16);
+
+<INTEL_PM_DATA> ::= <INTEL_PM_MODE> <INTEL_PM_INTERVAL> <INTEL_PM_FLAGS>
+{
+    <INTEL_PM_MODE> = int_to_bitvector(8, 0) lor // Active
+    <INTEL_PM_MODE> = int_to_bitvector(8, 1) lor // Power save
+    <INTEL_PM_MODE> = int_to_bitvector(8, 2) lor // Fast power save
+    <INTEL_PM_MODE> = int_to_bitvector(8, 3);   // Dynamic power save
+    int_to_bitvector(16, 100) bvlte <INTEL_PM_INTERVAL> land <INTEL_PM_INTERVAL> bvlte int_to_bitvector(16, 5000);
+};
+
+<INTEL_PM_MODE> :: BitVector(8);
+<INTEL_PM_INTERVAL> :: BitVector(16);
+<INTEL_PM_FLAGS> :: BitVector(8);
+
+<INTEL_QOS_DATA> ::= <INTEL_QOS_FLAGS> <INTEL_QOS_PARAMS>
+{
+    length(<INTEL_QOS_PARAMS>) = 32;
+};
+
+<INTEL_QOS_FLAGS> :: BitVector(8);
+<INTEL_QOS_PARAMS> :: BitVector(32);
+
+<INTEL_SEC_DATA> ::= <INTEL_SEC_FLAGS> <INTEL_SEC_FEATURES>
+{
+    length(<INTEL_SEC_FEATURES>) = 32;
+};
+
+<INTEL_SEC_FLAGS> :: BitVector(16);
+<INTEL_SEC_FEATURES> :: BitVector(32);
+
+<INTEL_RADIO_DATA> ::= <INTEL_RADIO_FLAGS> <INTEL_RADIO_CONFIG>
+{
+    length(<INTEL_RADIO_CONFIG>) = 32;
+};
+
+<INTEL_RADIO_FLAGS> :: BitVector(8);
+<INTEL_RADIO_CONFIG> :: BitVector(32);
+
+<INTEL_BAND_STEER_DATA> ::= <INTEL_BS_FLAGS> <INTEL_BS_THRESHOLD> <INTEL_BS_CONFIG>
+{
+    int_to_bitvector(8, 50) bvlte <INTEL_BS_THRESHOLD> land <INTEL_BS_THRESHOLD> bvlte int_to_bitvector(8, 90);
+};
+
+<INTEL_BS_FLAGS> :: BitVector(8);
+<INTEL_BS_THRESHOLD> :: BitVector(8);
+<INTEL_BS_CONFIG> :: BitVector(16);
+
+<INTEL_LB_DATA> ::= <INTEL_LB_FLAGS> <INTEL_LB_ALGORITHM> <INTEL_LB_PARAMS>
+{
+    <INTEL_LB_ALGORITHM> = int_to_bitvector(8, 0) lor // Round robin
+    <INTEL_LB_ALGORITHM> = int_to_bitvector(8, 1) lor // Least connections
+    <INTEL_LB_ALGORITHM> = int_to_bitvector(8, 2) lor // RSSI-based
+    <INTEL_LB_ALGORITHM> = int_to_bitvector(8, 3);   // AI-based
+};
+
+<INTEL_LB_FLAGS> :: BitVector(8);
+<INTEL_LB_ALGORITHM> :: BitVector(8);
+<INTEL_LB_PARAMS> :: BitVector(32);
+
+<INTEL_FAST_ROAM_DATA> ::= <INTEL_FR_FLAGS> <INTEL_FR_THRESHOLD> <INTEL_FR_CONFIG>
+{
+    int_to_bitvector(8, 60) bvlte <INTEL_FR_THRESHOLD> land <INTEL_FR_THRESHOLD> bvlte int_to_bitvector(8, 85);
+};
+
+<INTEL_FR_FLAGS> :: BitVector(8);
+<INTEL_FR_THRESHOLD> :: BitVector(8);
+<INTEL_FR_CONFIG> :: BitVector(32);
+
+<INTEL_MESH_DATA> ::= <INTEL_MESH_FLAGS> <INTEL_MESH_ID> <INTEL_MESH_CONFIG>
+{
+    length(<INTEL_MESH_CONFIG>) = 64;
+};
+
+<INTEL_MESH_FLAGS> :: BitVector(8);
+<INTEL_MESH_ID> :: BitVector(32);
+<INTEL_MESH_CONFIG> :: BitVector(64);
+
+<INTEL_ADV_FEATURES> ::= <INTEL_ADV_FLAGS> <INTEL_ADV_CONFIG>
+{
+    length(<INTEL_ADV_CONFIG>) = 64;
+};
+
+<INTEL_ADV_FLAGS> :: BitVector(16);
+<INTEL_ADV_CONFIG> :: BitVector(64);
+
+<INTEL_WIFI6_DATA> ::= <INTEL_W6_VERSION> <INTEL_W6_FEATURES> <INTEL_W6_CONFIG>
+{
+    int_to_bitvector(8, 1) bvlte <INTEL_W6_VERSION> land <INTEL_W6_VERSION> bvlte int_to_bitvector(8, 3);
+};
+
+<INTEL_W6_VERSION> :: BitVector(8);
+<INTEL_W6_FEATURES> :: BitVector(32);
+<INTEL_W6_CONFIG> :: BitVector(64);
+
+<INTEL_AI_NET_DATA> ::= <INTEL_AI_VERSION> <INTEL_AI_CAPABILITY> <INTEL_AI_CONFIG>
+{
+    int_to_bitvector(8, 1) bvlte <INTEL_AI_VERSION> land <INTEL_AI_VERSION> bvlte int_to_bitvector(8, 2);
+};
+
+<INTEL_AI_VERSION> :: BitVector(8);
+<INTEL_AI_CAPABILITY> :: BitVector(16);
+<INTEL_AI_CONFIG> :: BitVector(64);
+
+<INTEL_SENSING_DATA> ::= <INTEL_SENS_FLAGS> <INTEL_SENS_CAPABILITY> <INTEL_SENS_CONFIG>
+{
+    length(<INTEL_SENS_CONFIG>) bvlte int_to_bitvector(32, 128);
+};
+
+<INTEL_SENS_FLAGS> :: BitVector(8);
+<INTEL_SENS_CAPABILITY> :: BitVector(16);
+<INTEL_SENS_CONFIG> :: BitList;
+
+<INTEL_MLO_DATA> ::= <INTEL_MLO_VERSION> <INTEL_MLO_CAPABILITY> <INTEL_MLO_CONFIG>
+{
+    int_to_bitvector(8, 1) bvlte <INTEL_MLO_VERSION> land <INTEL_MLO_VERSION> bvlte int_to_bitvector(8, 2);
+};
+
+<INTEL_MLO_VERSION> :: BitVector(8);
+<INTEL_MLO_CAPABILITY> :: BitVector(32);
+<INTEL_MLO_CONFIG> :: BitVector(64);

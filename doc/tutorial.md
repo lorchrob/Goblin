@@ -358,8 +358,8 @@ However, in certain situations, the dot operator does not have obvious semantics
 so we will provide some intuition with a few examples.
 
 ```
-<A> -> <B> <B> <C> { <B>.<D> > <C>; };
-<B> -> <D> <D>;
+<A> ::= <B> <B> <C> { <B>.<D> > <C>; };
+<B> ::= <D> <D>;
 <D> :: Int;
 ```
 
@@ -379,8 +379,8 @@ Furthermore, also consider the following example, where `<B>` gets a separate pr
 also referencing `<D>`.
 
 ```
-<A> -> <B> <B> <C> { <B>.<D> > <C>; };
-<B> -> <D> <D> | <D>;
+<A> ::= <B> <B> <C> { <B>.<D> > <C>; };
+<B> ::= <D> <D> | <D>;
 <D> :: Int;
 ```
 
@@ -396,8 +396,8 @@ Below, the constraint `<B>.<D> > <C>` is considered trivially satisfied if `<B>`
 rule option is chosen, since there is no `<D>` to constrain.
 
 ```
-<A> -> <B> <B> <C> { <B>.<D> > <C>; };
-<B> -> <D> <D> | <E>;
+<A> ::= <B> <B> <C> { <B>.<D> > <C>; };
+<B> ::= <D> <D> | <E>;
 <E> :: Int;
 <D> :: Int;
 ```
@@ -459,6 +459,7 @@ See `evaluation` and `test/test_cases` for example `.gbl` files (Goblin input fi
 ### How does Goblin work?
 
 STUB
+
 
 
 
