@@ -53,13 +53,13 @@ Above, each semantic constraint is tied to the particular production rule option
 `List(Bool)`, `Set(String)`
 
 **Goblin supports the following SMT-LIB operators (but infix style):**
-`and`, `or`, `xor`, `=>`, `+`, `-`, `*`, `div`, `>=`, `>`, `<=`, `<`, `bvult`, `bvor`, `bvxor`, `bvnot`
+`and`, `or`, `xor`, `=>`, `+`, `-`, `*`, `div`, `mod`, `>=`, `>`, `<=`, `<`, `bvult`, `bvor`, `bvxor`, `bvnot`
 
 **Goblin supports the following non-standard operators (infix style, compatible with SMT expressions):**
 `bvulte`, `bvugt`, `bvugte`
 
 **Goblin supports the following SMT-LIB function symbols:**
-`true`, `false`, `not`, `str.++`, `str.prefixof`, `str.contains`, `str.in_re`, `str.to_re`, `str.len`, `re.range`, `re.union`, `re.*`, `re.++`,  `int_to_bv`
+`true`, `false`, `not`, `str.++`, `str.prefixof`, `str.contains`, `str.in_re`, `str.to_re`, `str.len`, `re.range`, `re.union`, `re.*`, `re.++`,  `int_to_bv`, `ubv_to_int`, `sbv_to_int`
 
 **Goblin supports the following nonstandard function symbols supported by cvc5:**
 `set.empty`, `set.union`, `set.member`, `set.inter`, `set.singleton`, `seq.len`
