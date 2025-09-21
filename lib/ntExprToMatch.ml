@@ -32,7 +32,7 @@ let gen_match_info ast (nt1, idx1) (nt2, _idx2) nt_ctx =
   | A.ProdRule (nt3, rhss, _) -> 
     if nt1 = nt3 then 
       Some (List.map (fun rhs -> match rhs with
-      | A.Rhs (ges, _, _) -> List.map (fun ge -> match ge with 
+      | A.Rhs (ges, _, _, _) -> List.map (fun ge -> match ge with 
         | A.Nonterminal (nt, idx, _) -> nt, idx
         | A.StubbedNonterminal (nt, _) -> nt, None
       ) ges
@@ -506,7 +506,7 @@ let convert_nt_exprs_to_matches: TC.context -> A.ast -> A.ast =
     List.map (fun element -> match element with
     | A.ProdRule (nt, rhss, p) -> 
       let rhss = List.map (fun rhs -> match rhs with 
-      | A.Rhs (ges, scs, p) -> A.Rhs (ges, List.map (process_sc ctx ast) scs, p) 
+      | A.Rhs (ges, scs, prob, p) -> A.Rhs (ges, List.map (process_sc ctx ast) scs, prob, p) 
       | A.StubbedRhs _ -> rhs 
       ) rhss in 
       A.ProdRule (nt, rhss, p)

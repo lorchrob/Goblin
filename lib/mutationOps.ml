@@ -11,7 +11,7 @@ let random_element (lst: 'a list) : 'a =
 let rec isNonTerminalPresent nt_name prod_options = 
     match prod_options with 
     | [] -> false 
-    | Rhs(ge_list, _, p) :: xs -> (List.mem (Nonterminal (nt_name, None, p)) ge_list) || (isNonTerminalPresent nt_name xs) 
+    | Rhs(ge_list, _, _, p) :: xs -> (List.mem (Nonterminal (nt_name, None, p)) ge_list) || (isNonTerminalPresent nt_name xs) 
     | _ :: ys -> isNonTerminalPresent nt_name ys 
 
 let rec removeFromList nt lst =
@@ -21,10 +21,10 @@ let rec removeFromList nt lst =
 
 let apply_add_s1_to_rule production_options nt = 
     List.map (fun rhs_prod_rul -> match rhs_prod_rul with 
-    | Rhs(geList, scList, pos) -> 
+    | Rhs(geList, scList, prob, pos) -> 
         if List.mem (Nonterminal (nt, None, pos)) geList
-            then Rhs(geList @ [Nonterminal(nt, None, pos)], scList, pos) 
-        else Rhs(geList, scList, pos)
+            then Rhs(geList @ [Nonterminal(nt, None, pos)], scList, prob, pos) 
+        else Rhs(geList, scList, prob, pos)
     | StubbedRhs(s) -> StubbedRhs(s) 
     ) production_options 
 
@@ -49,10 +49,10 @@ let rec mutation_add_s1 (g : ast) (nt : string) (pr : element option) : ast * bo
             if nonterminal = nt_name then ( 
                 match pr_rhs with 
                 | [] -> ([], false)
-                | Rhs (geList, scList, pos2) :: ys -> 
+                | Rhs (geList, scList, prob, pos2) :: ys -> 
                     let list_length = List.length geList in
                     let insertion_index = Random.int list_length in
-                    (ProdRule (nonterminal, Rhs ((grammar_element_addition geList nt insertion_index), scList, pos2) :: ys, pos) :: xs), true
+                    (ProdRule (nonterminal, Rhs ((grammar_element_addition geList nt insertion_index), scList, prob, pos2) :: ys, pos) :: xs), true
                 (* | StubbedRhs x :: ys -> StubbedRhs x :: ys, false *)
                 | StubbedRhs(x) :: ys -> (ProdRule (nonterminal, StubbedRhs(x) :: ys, pos) :: xs), false
             )
@@ -120,12 +120,12 @@ let rec remove_constraints (nt : string) (clist : semantic_constraint list) : se
 let rec apply_delete_to_rule nt production_options = 
     match production_options with
     | [] -> [] 
-    | Rhs(geList, scList, pos) :: xs -> 
+    | Rhs(geList, scList, prob, pos) :: xs -> 
         if (List.length geList) > 1 then
             let deleteFromGrammarElementList = removeFromList (Nonterminal (nt, None, pos)) geList in
             let deleteFromConstraintList = remove_constraints nt scList in
-            Rhs(deleteFromGrammarElementList, deleteFromConstraintList, pos) :: xs 
-        else Rhs(geList, scList, pos) :: xs
+            Rhs(deleteFromGrammarElementList, deleteFromConstraintList, prob, pos) :: xs 
+        else Rhs(geList, scList, prob, pos) :: xs
     | StubbedRhs(s)::xs -> StubbedRhs(s) :: (apply_delete_to_rule nt xs) 
 
 let rec mutation_delete g nt =
@@ -174,9 +174,9 @@ let update_constraint (nt : string) (cList : semantic_constraint list) (operatio
 let rec apply_update_to_rule nt production_options operation =
     match production_options with
     | [] -> []
-    | Rhs(geList, scList, p) :: xs -> 
+    | Rhs(geList, scList, prob, p) :: xs -> 
         let updated_constraints = update_constraint nt scList operation in
-        Rhs(geList, updated_constraints, p) :: xs
+        Rhs(geList, updated_constraints, prob, p) :: xs
     | StubbedRhs(s) :: xs -> StubbedRhs(s) :: (apply_update_to_rule nt xs operation)
 
 let rec mutation_update g nt operation =
@@ -255,17 +255,17 @@ close_out oc;
 let mutation_crossover (rhs1 : prod_rule_rhs) (rhs2 : prod_rule_rhs) : (prod_rule_rhs * prod_rule_rhs) =
     Random.self_init () ;
     match rhs1, rhs2 with
-    | Rhs([],[], p1), Rhs([],[], p2) -> Rhs([],[], p1), Rhs([],[], p2)
-    | Rhs(geList1, scList1, p1), Rhs (geList2, scList2, p2) -> 
+    | Rhs([],[], prob, p1), Rhs([],[], prob2, p2) -> Rhs([],[], prob, p1), Rhs([],[], prob2, p2)
+    | Rhs(geList1, scList1, prob, p1), Rhs (geList2, scList2, prob2, p2) -> 
         let randomGe1 = random_element geList1 in
         let randomGe2 = random_element geList2 in
         let crossoverList1 = replace_element geList1 randomGe1 randomGe2 in
         let crossoverList2 = replace_element geList2 randomGe2 randomGe1 in (
             match randomGe1, randomGe2 with
             | (Nonterminal (a, _, _)), (Nonterminal (b, _, _)) -> 
-                (Rhs(crossoverList1, (remove_constraints a scList1), p1), Rhs(crossoverList2, (remove_constraints b scList2), p2))
+                (Rhs(crossoverList1, (remove_constraints a scList1), prob, p1), Rhs(crossoverList2, (remove_constraints b scList2), prob2, p2))
             | (Nonterminal _, (StubbedNonterminal (_, _))) -> Utils.crash "unexpected crossover"
             | ((StubbedNonterminal (_, _)), _) -> Utils.crash "unexpected crossover"
         )
-    | (Rhs (_, _, _), StubbedRhs _) -> Utils.crash "unexpected crossover"
+    | (Rhs (_, _, _, _), StubbedRhs _) -> Utils.crash "unexpected crossover"
     | (StubbedRhs _, _) -> Utils.crash "unexpected crossover"

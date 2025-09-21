@@ -100,7 +100,8 @@ type grammar_element =
 | StubbedNonterminal of string * string
 
 type prod_rule_rhs = 
-| Rhs of grammar_element list * semantic_constraint list * Lexing.position
+(* float denotes production rule option probability *)
+| Rhs of grammar_element list * semantic_constraint list * float option * Lexing.position
 | StubbedRhs of string
 
 type element =

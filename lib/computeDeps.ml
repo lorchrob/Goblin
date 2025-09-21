@@ -124,7 +124,7 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -
     (* Find child_index within the rule, not across all rules *) 
       List.find_map (fun rhs -> match rhs with 
       | A.StubbedRhs _ -> None 
-      | Rhs (ges, _, _) ->
+      | Rhs (ges, _, _, _) ->
         Utils.find_index_opt (fun ge -> match ge with 
         | A.Nonterminal (nt, idx, _) -> 
           Utils.str_eq_ci id nt && 

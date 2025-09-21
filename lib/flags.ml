@@ -52,37 +52,37 @@ let parse_args () =
 
   let debug_flag =
     let doc = "Enable debug mode" in
-    Arg.(value & flag & info ["d"; "debug"] ~doc)
+    Arg.(value & flag & info ["debug"] ~doc)
   in
 
   let no_warnings_flag =
     let doc = "Disable warnings" in
-    Arg.(value & flag & info ["n"; "no-warnings"] ~doc)
+    Arg.(value & flag & info ["no-warnings"] ~doc)
   in
 
   let only_parse_flag =
     let doc = "Only parse the input without executing it" in
-    Arg.(value & flag & info ["p"; "only-parse"] ~doc)
+    Arg.(value & flag & info ["only-parse"] ~doc)
   in
 
   let show_winner_flag =
     let doc = "Show which engine won the race" in
-    Arg.(value & flag & info ["w"; "show-winner"] ~doc)
+    Arg.(value & flag & info ["show-winner"] ~doc)
   in
 
   let dump_clp_flag =
     let doc = "Translate the input to a CLP(T) problem" in
-    Arg.(value & flag & info ["c"; "dump-clp"] ~doc)
+    Arg.(value & flag & info ["dump-clp"] ~doc)
   in
 
   let multiple_solutions_flag = 
     let doc = "Loop and produce multiple solutions (only with --engine dpll_mono)" in 
-    Arg.(value & flag & info ["m"; "multiple-solutions"] ~doc) 
+    Arg.(value & flag & info ["multiple-solutions"] ~doc) 
   in
 
   let saecred_flag =
     let doc = "Activate saecred mode" in
-    Arg.(value & flag & info ["a"; "saecred"] ~doc)
+    Arg.(value & flag & info ["saecred"] ~doc)
   in
 
   let analysis_flag = 
@@ -92,32 +92,32 @@ let parse_args () =
 
   let filename_flag =
     let doc = "Specify the input file" in
-    Arg.(value & opt (some string) None & info ["f"; "file"] ~doc)
+    Arg.(value & opt (some string) None & info ["file"] ~doc)
   in
 
   let engine_flag =
-    let doc = "Select a single engine to use (dpll_mono, dpll_dac, sygus_dac, mixed_dac, or race (DEFAULT: dpll_mono)" in
-    Arg.(value & opt engine_conv DpllMono & info ["e"; "engine"] ~docv:"ENGINE" ~doc)
+    let doc = "Select a single engine to use (dpll_mono, dpll_dac, sygus_dac, mixed_dac, or race (DEFAULT: dpll_mono))" in
+    Arg.(value & opt engine_conv DpllMono & info ["engine"] ~docv:"ENGINE" ~doc)
   in
 
   let num_solutions_flag =
-    let doc = "Specify the number of solutions to produce when --multiple-solutions is enabled. DEFAULT: infinitely many if --multiple_solutions is enabled, and otherwise 1" in
-    Arg.(value & opt int (-1) & info ["s"; "num-solutions"] ~doc)
+    let doc = "Specify the approximate number of solutions to produce when --multiple-solutions is enabled (DEFAULT: infinitely many if --multiple_solutions is enabled, and otherwise 1)" in
+    Arg.(value & opt int (-1) & info ["num-solutions"] ~doc)
   in
 
   let starting_depth_limit_flag =
     let doc = "Starting depth limit for iterative deepening search" in 
-    Arg.(value & opt int 5 & info ["l"; "starting-depth-limit"] ~doc)
+    Arg.(value & opt int 5 & info ["starting-depth-limit"] ~doc)
   in
 
   let restart_rate_flag =
     let doc = "Specify the restart rate (number of iterations without finding a solution before restarting)" in 
-    Arg.(value & opt int 10000 & info ["r"; "restart-rate"] ~doc)
+    Arg.(value & opt int 10000 & info ["restart-rate"] ~doc)
   in
 
   let sols_per_iter_flag =
-    let doc = "Specify the number of solutions to collect from each initial solution" in
-    Arg.(value & opt int 100 & info ["i"; "sols-per-iter"] ~doc)
+    let doc = "Specify the number of solutions to collect from each initial solution when --multiple_solutions is enabled (DEFAULT: 100)" in
+    Arg.(value & opt int 100 & info ["sols-per-iter"] ~doc)
   in
 
   let seed_flag = 

@@ -112,8 +112,9 @@ type grammar_element =
 | Nonterminal of string * int option * Lexing.position
 | StubbedNonterminal of string * string (* Ignore *)
 
-type prod_rule_rhs = 
-| Rhs of grammar_element list * semantic_constraint list * Lexing.position
+type prod_rule_rhs =
+(* float denotes production rule option probability *)
+| Rhs of grammar_element list * semantic_constraint list * float option * Lexing.position
 | StubbedRhs of string (* Ignore *)
 
 type element = 
@@ -460,16 +461,23 @@ let pp_print_grammar_element: Format.formatter -> grammar_element ->  unit
 | Nonterminal (nt, idx, _) -> pp_print_nt_with_dots ppf [nt, idx]
 | StubbedNonterminal (_, stub_id) -> Format.pp_print_string ppf stub_id
 
+let pp_print_prob ppf prob = 
+  match prob with
+  | None -> () 
+  | Some prob -> Format.fprintf ppf " %f" prob 
+
 let pp_print_prod_rule_rhs: Format.formatter -> prod_rule_rhs -> unit 
 = fun ppf rhss -> 
   match rhss with 
-| Rhs (ges, [], _) -> 
-  Format.fprintf ppf "%a"
+| Rhs (ges, [], prob, _) -> 
+  Format.fprintf ppf "%a%a"
   (Lib.pp_print_list pp_print_grammar_element " ") ges
-| Rhs (ges, scs, _) ->
-  Format.fprintf ppf "%a \n{ %a }"
+  pp_print_prob prob
+| Rhs (ges, scs, prob, _) ->
+  Format.fprintf ppf "%a \n{ %a }%a"
   (Lib.pp_print_list pp_print_grammar_element " ") ges
   (Lib.pp_print_list pp_print_semantic_constraint " ") scs
+  pp_print_prob prob
 | StubbedRhs stub_id -> 
   Format.pp_print_string ppf stub_id
 
@@ -519,7 +527,7 @@ let grammar_element_to_string: grammar_element -> string
 (* Used before divide and conquer *)
 let nts_of_rhs: prod_rule_rhs -> string list 
 = fun rhs -> match rhs with 
-| Rhs (ges, _, _) -> 
+| Rhs (ges, _, _, _) -> 
   List.map (fun ge -> match ge with 
   | Nonterminal (nt, _, _) -> nt 
   | StubbedNonterminal (nt, _) -> nt (* TODO: Not sure which tuple element we want, first or second *)
@@ -594,7 +602,7 @@ let ast_constrains_nt: ast -> string -> bool
     | TypeAnnotation (nt2, _, _ :: _, _) when nt = nt2 -> true 
     | TypeAnnotation _ -> false
     | ProdRule (_, rhss, _) -> List.exists (fun rhs -> match rhs with 
-      | Rhs (_, scs, _) -> List.exists (sc_constrains_nt nt) scs
+      | Rhs (_, scs, _, _) -> List.exists (sc_constrains_nt nt) scs
       | StubbedRhs _ -> false
     ) rhss
   ) ast
@@ -635,7 +643,7 @@ let scs_of_element = function
 | ProdRule (_, rhss, _) -> 
   List.concat_map (function 
   | StubbedRhs _ -> [] 
-  | Rhs (_, scs, _) -> scs
+  | Rhs (_, scs, _, _) -> scs
   ) rhss
 | TypeAnnotation (_, _, scs, _) -> scs
 

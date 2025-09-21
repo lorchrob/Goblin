@@ -7,7 +7,7 @@
 (source
  (github username/reponame))
 
-(authors "Rob Lorch")
+(authors "Anonymous")
 
 (maintainers "Maintainer Name")
 

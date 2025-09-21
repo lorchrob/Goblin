@@ -90,7 +90,7 @@ let rec create_field_extractors: A.ast -> string list -> clp_rule list
   ) ast |> Option.get in
   List.mapi (fun i rhs -> match rhs with 
     | A.StubbedRhs _ -> assert false 
-    | A.Rhs (ges, _, _) ->
+    | A.Rhs (ges, _, _, _) ->
       let leaves = List.map (function 
       | A.StubbedNonterminal _ -> assert false
       | Nonterminal (nt, _, _) -> 
@@ -116,7 +116,7 @@ let rec create_field_extractors: A.ast -> string list -> clp_rule list
   ) ast |> Option.get in
   let field_extractors = List.mapi (fun i rhs -> match rhs with
     | A.StubbedRhs _ -> assert false 
-    | A.Rhs (ges, _, _) -> 
+    | A.Rhs (ges, _, _, _) -> 
       let instances_of_nt2 = List.filter_map (function 
       | A.StubbedNonterminal _ -> None
       | Nonterminal (nt, _, _) -> 
@@ -173,7 +173,7 @@ let clp_program_of_ast: Ast.ast -> clp_program
   (* Create a CLP rule for each prod rule RHS *)
   let rules = List.mapi (fun i rhs -> match rhs with 
   | A.StubbedRhs _ -> Utils.crash "unexpected case in clp_program_of_ast"
-  | A.Rhs (_, scs, _) -> 
+  | A.Rhs (_, scs, _, _) -> 
     let nts = A.nts_of_rhs rhs |> annotate_occurrences in
     let leaves = List.map (fun nt -> Leaf nt) nts in 
     let t = FunctionApp (nt, [FunctionApp (nt ^ (string_of_int i), leaves)]) in
