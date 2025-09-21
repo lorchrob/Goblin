@@ -413,6 +413,7 @@ let rec nt_will_be_reached derivation_tree ast nt =
   | new_head :: nts -> 
     let rule = List.find (fun element -> match element with
     | A.TypeAnnotation (nt2, _, _, _) 
+    (*!!! Index needs to be taken into account, see bug4.gbl *)
     | A.ProdRule (nt2, _, _) -> nt2 = (fst head)
     ) ast in 
     match rule with 
@@ -460,9 +461,9 @@ let assert_applicable_constraints constraint_set derivation_tree ast solver =
     ConstraintSet.fold (fun expr acc -> 
       if constraint_is_applicable expr derivation_tree ast then (
         (* declare_smt_variables declared_variables (Utils.StringMap.singleton path' A.Int) solver; *)
-        (*if !Flags.debug then Format.fprintf Format.std_formatter "Constraint %a is applicable in derivation tree %a\n"
+        if !Flags.debug then Format.fprintf Format.std_formatter "Constraint %a is applicable in derivation tree %a\n"
           A.pp_print_expr expr 
-          pp_print_derivation_tree derivation_tree;*)
+          pp_print_derivation_tree derivation_tree;
         assert_smt_constraint solver expr;
         ConstraintSet.add expr acc
       ) else (
