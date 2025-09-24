@@ -17,8 +17,10 @@ To get started with Goblin, build using the build instructions below and read th
 
 * cvc5 **version ≥ 1.3.0** (https://github.com/cvc5/cvc5/releases/tag/cvc5-1.3.0). You must make the cvc5 binary discoverable from `$PATH` (update `$PATH` environment variable so that `which cvc5` returns a valid path to cvc5)
 
-* Required opam packages:
-  `opam install menhirLib cmdliner ocamlgraph bitstring yojson lwt batteries ppx_bitstring alcotest lwt_ppx menhir`
+* To download the required OPAM packages, run
+  ```
+  opam install menhirLib cmdliner ocamlgraph bitstring yojson lwt batteries ppx_bitstring alcotest lwt_ppx menhir
+  ```
 
 ### Building Goblin
 
@@ -33,4 +35,4 @@ Run `make` from the top-level directory
 
 ### User documentation
 
-See the files within the `doc` directory. In particular, we have a Goblin tutorial and an additional file describing Goblin syntax.
+See the files within [the `doc` directory](https://github.com/lorchrob/Goblin/blob/master/doc). In particular, we have a [Goblin tutorial](https://github.com/lorchrob/Goblin/blob/master/doc/tutorial.md) and [an additional file describing Goblin syntax](https://github.com/lorchrob/Goblin/blob/master/doc/syntax.md).
