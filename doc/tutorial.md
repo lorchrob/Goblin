@@ -95,8 +95,8 @@ Now, let's return to the Goblin input:
 ```
 
 Now is a good time to try to run Goblin --- copy the above text into a new file, 
-and invoke `goblin --file <path_to_file>` (make sure you have built Goblin by 
-running `make` from the top-level project directory).
+and invoke `goblin --file <path_to_file>` (make sure you have built Goblin following the build instructions 
+[in the README](https://github.com/lorchrob/Goblin/blob/master/README.md)).
 
 The above command produces output `(S0 (I0 0) (I1 0))`, representing the pair `<0, 0>`.
 Here, Goblin's output `(S0 (I0 0) (I1 0))` is a term representing the **abstract syntax**, 
@@ -459,6 +459,7 @@ See `evaluation` and `test/test_cases` for example `.gbl` files (Goblin input fi
 ### How does Goblin work?
 
 STUB
+
 
 
 
