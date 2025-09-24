@@ -508,16 +508,17 @@ let initialize_globals ctx ast derivation_tree start_symbol constraints_to_asser
       (2) pick a production rule option based on user distribution (uniform if absent)
 *)
 let sample_excluding (expansion_probs : float list list) (visited : int list) : int =
-  Format.printf "visited list: %a" 
-    (Lib.pp_print_list Format.pp_print_int ", ") visited;
-
   (* Annotate probabilities with indices *) 
   let expansion_probs, _ = List.fold_left (fun (acc_list, acc_i) probs -> 
     let probs, acc_i = List.fold_left (fun (acc_probs, acc_i) prob -> 
-      acc_probs @ [prob, acc_i + 1], acc_i + 1 
+      acc_probs @ [prob, acc_i], acc_i + 1 
     ) ([], acc_i) probs in 
     acc_list @ [probs], acc_i 
   ) ([], 0) expansion_probs in
+
+  (*Format.printf "Expansion probabilities with indices: %a\n" 
+    (Lib.pp_print_list (fun _ l -> 
+      Format.printf "[%a]" (Lib.pp_print_list (fun _ (f, i) -> Format.printf "(%f, %d)" f i) ", ") l) "; ") expansion_probs;*)
   
   (* Eliminate visited indices *) 
   let expansion_probs = List.map (fun probs -> 
@@ -529,6 +530,8 @@ let sample_excluding (expansion_probs : float list list) (visited : int list) : 
 
   (* Pick a nonterminal to expand uniformly at random *)
   let node_choice_idx = Random.int (List.length expansion_probs) in
+      (*Format.printf "2. List length %d, selection: %d\n" 
+        (List.length expansion_probs) (node_choice_idx);*)
   let node_probs = List.nth expansion_probs node_choice_idx in
 
   (* Step 2: normalize probabilities within the node *)
@@ -562,7 +565,8 @@ let find_new_expansion ast derivation_tree curr_st_node =
     | Some (TypeAnnotation _) -> [1.0]
     | None -> Utils.crash "No matching grammar rule"
     in
-    [probs]  (* wrap in a list to return float list list *)
+    [probs]
+    (*!! We want a list of expansion probabilities for each nonterminal... *)
   | Node (_, _, children) ->
     List.flatten (List.map expansion_probabilities children)
   | _ -> []
@@ -573,8 +577,11 @@ let find_new_expansion ast derivation_tree curr_st_node =
     pp_print_derivation_tree derivation_tree;*)
   match derivation_tree with 
   | Node (nt, path, child :: children) -> 
-    let m = List.length (expansion_probabilities child) in 
-    if m >= n then 
+    let m = List.length (List.flatten (expansion_probabilities child)) in 
+    (*Format.printf "Expansion options of %s's first child: %d\n" 
+      (fst nt)
+      m;*)
+    if m > n then 
       let expanded_node, expanded_child = perform_nth_expansion child n in 
       expanded_node, Node (nt, path, expanded_child :: children) 
     else ( 
@@ -595,8 +602,11 @@ let find_new_expansion ast derivation_tree curr_st_node =
         let expanded_node = Node ((nt, idx), path, [SymbolicLeaf (ty, path @ [(nt, idx)])]) in 
         expanded_node, expanded_node 
       else assert false 
-    | ProdRule (_, rhss, _) -> 
-      let rhs = List.nth rhss (n-1) in 
+    | ProdRule (_nt', rhss, _) -> 
+      (*Format.printf "1. List length %d, selection: %d at nt %s\n" 
+        (List.length rhss) n
+        nt';*)
+      let rhs = List.nth rhss n in 
       match rhs with 
       | A.Rhs (ges, _, _, _) -> 
         let children = List.map (fun ge -> match ge with 
@@ -614,8 +624,13 @@ let find_new_expansion ast derivation_tree curr_st_node =
   in
   let expansion_probabilities_list = expansion_probabilities derivation_tree in 
   let total_num_choices = expansion_probabilities_list |> List.concat |> List.length in
+  (*Format.printf "total_num_choices: %d\n" 
+    total_num_choices;*)
   (*!! Choosing an expansion here *)
   let index_to_pick = sample_excluding expansion_probabilities_list visited_indices in  
+  (*Format.printf "visited indices: %a, picked index %a\n"
+    (Lib.pp_print_list Format.pp_print_int ", ") visited_indices 
+    Format.pp_print_int index_to_pick;*)
   let expanded_node, new_dt = perform_nth_expansion derivation_tree index_to_pick in 
   let real_choice = total_num_choices - (List.length visited_indices) > 1 in 
   expanded_node, index_to_pick, new_dt, real_choice 
