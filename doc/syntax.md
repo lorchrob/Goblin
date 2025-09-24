@@ -17,9 +17,13 @@ A Goblin input is a context-free grammar annotated with semantic constraints at 
 <nt_expr>         ::= <nonterminal> | <nonterminal>.<nt_expr>
 <nonterminal>     ::= < identifier >
 <type>            ::= Bool | String | Int | BitVec(positive integer) | Set(<type>) | List(<type>) | Unit
+<f>               ::= defined below
+<unop>            ::= defined below
+<binop>           ::= defined below
 ```
 
 All the supported function symbols `<f>` and operators `<binop>/<unop>` are defined in the next section.
+Note that we do not treat predicate symbols separately; they are simply function symbols for interpreted functions with return type `Bool`. 
 
 Intuitively, a Goblin input is a list of grammar elements, where each grammar element is either a **type annotation** or a **production rule.**
 
@@ -30,7 +34,7 @@ A production rule is comprised of a mapping from a left-hand side nonterminal to
 Additionally, type annotations and production rule options may carry **semantic constraints**, denoted by semicolons. For example, `<my_nat> :: Int { <my_nat> >= 0; };` denotes an integer that is greater than or equal to zero (in other words, a natural number). A type annotation or production rule option may carry multiple semantic constraints, e.g.,
 `<my_subrange> :: Int { <my_subrange> >= 0; <my_subrange> <= 100; };`. Each constraint is terminated with a semicolon, and the constraints are interpreted conjunctively.
 
-The prior examples are instances of **SMT constraints**; however, one may also define a different kind of semantic constraint called a **derived field**. Derived fields are of the form `<nonterminal> <- <expr>;`, denoting that `<nonterminal>` can be computed by expression `<expr>`. Derived fields are equivalent to equality SMT constraints of the form `<nonterminal> = <expr>`, but they are different in the sense that Goblin will compute them after constraint solving rather than passing them to the SMT solver. Because of this, the set of supported function and predicate symbols for the `<expr>` in a derived field
+The prior examples are instances of **SMT constraints**; however, one may also define a different kind of semantic constraint called a **derived field**. Derived fields are of the form `<nonterminal> <- <expr>;`, denoting that `<nonterminal>` can be computed by expression `<expr>`. Derived fields are equivalent to equality SMT constraints of the form `<nonterminal> = <expr>`, but they are different in the sense that Goblin will compute them after constraint solving rather than passing them to the SMT solver. Because of this, the set of supported function symbols for the `<expr>` in a derived field
 is greater than the set supported symbols for SMT constraints, since the latter must have a straightforward translation
 to SMT-LIB.
 
@@ -70,6 +74,6 @@ only usable within derived fields):**
 
 ### Supporting new features
 
-Adding support in Goblin for additional SMT-LIB (or cvc5-specific) types, operators, function symbols, and predicate symbols is straightforward. Additionally, adding support for function symbols only compatible within derived fields (but not SMT expressions) is straightforward.
+Adding support in Goblin for additional SMT-LIB (or cvc5-specific) types, operators, and function symbols is straightforward. Additionally, adding support for function symbols only compatible within derived fields (but not SMT expressions) is straightforward.
 
 *To request a new feature, either open a GitHub issue or email robert-lorch@uiowa.edu.*
