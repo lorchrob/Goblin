@@ -1,7 +1,7 @@
 # Goblin input generator
 Hello! 👋
 
-To get started with Goblin, build using the build instructions below and read through [the Goblin tutorial](https://github.com/lorchrob/Goblin/blob/master/doc/tutorial.md).
+To get started with Goblin, build using the instructions below and read through [the Goblin tutorial](https://github.com/lorchrob/Goblin/blob/master/doc/tutorial.md).
 
 ### Goblin dependencies
 
