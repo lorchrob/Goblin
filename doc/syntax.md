@@ -7,9 +7,9 @@ A Goblin input is a context-free grammar annotated with semantic constraints at 
 ```
 <S>               ::= <element>+
 <element>         ::= <type_annotation> | <prod_rule> 
-<type_annotation> ::= <nonterminal> :: <type> [ { <constraint>+ } ]
+<type_annotation> ::= <nonterminal> :: <type> [ { <constraint>+ } ];
 <prod_rule>       ::= <nonterminal> ::= <nonterminal>+ [ { <constraint>+ } ]
-                   [| <nonterminal>+ [ { <constraint>+ } ]]+
+                   [| <nonterminal>+ [ { <constraint>+ } ]]+;
 <constraint>      ::= <derived_field>; | <expr>;
 <derived_field>   ::= <nonterminal> <- <expr>
 <expr>            ::= <expr> <binop> <expr> | <unop><expr> | <f>(<expr>, ..., <expr>)
