@@ -36,3 +36,7 @@ Run `make` from the top-level directory
 ### User documentation
 
 See the files within [the `doc` directory](https://github.com/lorchrob/Goblin/blob/master/doc). In particular, we have a [Goblin tutorial](https://github.com/lorchrob/Goblin/blob/master/doc/tutorial.md) and [an additional file describing Goblin syntax](https://github.com/lorchrob/Goblin/blob/master/doc/syntax.md).
+
+### Citing Goblin
+
+Details to come :)
