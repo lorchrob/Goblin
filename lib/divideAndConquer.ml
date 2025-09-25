@@ -8,14 +8,14 @@ open Ast
 let rec stub_subproblems_prod_rule_rhss
 = fun nt elements rhss -> match rhss with 
 | [] -> [], []
-| (Rhs (_, [], _) as hd) :: tl 
+| (Rhs (_, [], _, _) as hd) :: tl 
 | (StubbedRhs _ as hd) :: tl -> 
   let tl', subproblems = stub_subproblems_prod_rule_rhss nt elements tl in
   hd :: tl', subproblems 
-| Rhs (ges, scs, p) :: tl -> 
+| Rhs (ges, scs, prob, p) :: tl -> 
   let tl', subproblems = stub_subproblems_prod_rule_rhss nt elements tl in
   let stub_id = Utils.mk_fresh_stub_id nt in
-  StubbedRhs (stub_id) :: tl', (ProdRule (stub_id, [Rhs (ges, scs, p)], p) :: elements) :: subproblems
+  StubbedRhs (stub_id) :: tl', (ProdRule (stub_id, [Rhs (ges, scs, prob, p)], p) :: elements) :: subproblems
 
 let stub_subproblems: ast -> ast * ast list
 = fun ast -> 

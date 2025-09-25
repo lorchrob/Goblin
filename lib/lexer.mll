@@ -59,6 +59,9 @@ let newline = '\r' * '\n'
 let digit = ['0'-'9']
 let bit = ['0' '1']
 let int = digit+
+let decimal = digit+ '.' digit+   (* e.g. 123.45 *)
+             | '.' digit+         (* e.g. .45 *)
+             | digit+ '.'         (* e.g. 123. *)
 let letter = ['a'-'z' 'A'-'Z']
 let id = ['a'-'z' 'A'-'Z' '_'] ['a'-'z' 'A'-'Z' '_' '-' '.' '+' '*' '0'-'9']*
 
@@ -94,6 +97,7 @@ rule read =
   | "0x" { read_hex lexbuf }
   | '"'[^ '"']*'"' as s   { STRING (String.sub s 1 (String.length s - 2)) }
   | int as p { INTEGER (int_of_string p) }
+  | decimal as p { DECIMAL (float_of_string p) }
   | id as p {
     try (
       Utils.debug_print Format.pp_print_string Format.std_formatter p; (* switch to true for more debug output *)

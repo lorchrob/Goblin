@@ -10,7 +10,7 @@ let rec from_ge_list_to_string_list (ge_list : grammar_element list) : string li
 let rec get_all_nt_from_rhs (rvalue : prod_rule_rhs list) : string list = 
   match rvalue with 
   | [] -> []
-  | Rhs(ge_list, _, _)::xs -> (from_ge_list_to_string_list ge_list) @ (get_all_nt_from_rhs xs)  
+  | Rhs(ge_list, _, _, _)::xs -> (from_ge_list_to_string_list ge_list) @ (get_all_nt_from_rhs xs)  
   | StubbedRhs(_)::xs -> get_all_nt_from_rhs xs 
 
 let get_all_dependencies_from_one_element (ge : element) : (string * string) list = 
@@ -32,7 +32,7 @@ let rec get_nt_from_geList geList =
 let rec get_nt_from_rhs rhs =
   match rhs with
   | [] -> []
-  | Rhs (geList, _, _) :: xs -> (get_nt_from_geList geList) @ (get_nt_from_rhs xs)
+  | Rhs (geList, _, _, _) :: xs -> (get_nt_from_geList geList) @ (get_nt_from_rhs xs)
   | StubbedRhs _ :: xs -> (get_nt_from_rhs xs)
 
 let rec get_all_nt (g : ast) : string list =
@@ -53,7 +53,7 @@ let rec get_dependencies (nt : string) (geList : grammar_element list) : string 
 let rec get_all_rhs_elements (nt : string) (prList : prod_rule_rhs list) : string list =
   match prList with
   | [] -> []
-  | Rhs (geList, _, _) :: xs -> (get_dependencies nt geList) @ (get_all_rhs_elements nt xs)
+  | Rhs (geList, _, _, _) :: xs -> (get_dependencies nt geList) @ (get_all_rhs_elements nt xs)
   | StubbedRhs (_) :: xs -> get_all_rhs_elements nt xs
 
 let rec get_edge_pairs (nts : (string * (string list)) list): (string * string) list =
@@ -137,7 +137,7 @@ let has_problematic_immediate_left_recursion (grammar : ast) : bool =
         let all_alternatives_left_recursive = 
           List.for_all (fun rhs ->
             match rhs with
-            | Rhs(Nonterminal(nt, _, _) :: _, _, _) -> nt = lhs
+            | Rhs(Nonterminal(nt, _, _) :: _, _, _, _) -> nt = lhs
             | _ -> false
           ) rhs_list
         in

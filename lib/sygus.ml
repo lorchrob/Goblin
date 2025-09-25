@@ -62,7 +62,7 @@ let pp_print_constructor: TC.context -> Ast.semantic_constraint Utils.StringMap.
 
 let pp_print_datatype_rhs 
 = fun ctx dep_map nt ast ppf (rhs, idx) -> match rhs with 
-| A.Rhs (ges, _, _) -> 
+| A.Rhs (ges, _, _, _) -> 
   Format.fprintf ppf "\n\t(%s %a)"
     ((String.lowercase_ascii nt) ^ "_con" ^ (string_of_int idx))
     (Lib.pp_print_list (pp_print_constructor ctx dep_map ast) " ") ges
@@ -358,7 +358,7 @@ let pp_print_ges_pattern: Format.formatter -> string list -> unit
 let pp_print_constraints_rhs: TC.context -> string -> Format.formatter -> A.prod_rule_rhs * int -> unit
 = fun ctx nt ppf (rhs, idx) -> match rhs with 
 | StubbedRhs _ -> Format.fprintf ppf "2STUB\n"
-| Rhs (ges, scs, _) ->
+| Rhs (ges, scs, _, _) ->
   let 
     ges = List.map Ast.grammar_element_to_string ges |> List.map String.lowercase_ascii 
   in  
@@ -398,7 +398,7 @@ let pp_print_constraints: TC.context -> Format.formatter -> A.ast -> unit
 = fun ctx ppf ast -> match ast with 
 | [] -> Utils.crash "Input grammar must have at least one production rule or type annotation"
 | A.ProdRule (nt, rhss, _) :: _ -> 
-      if List.exists (fun rhs -> match rhs with | A.Rhs (_, _ :: _, _) -> true | _ -> false) rhss then
+      if List.exists (fun rhs -> match rhs with | A.Rhs (_, _ :: _, _, _) -> true | _ -> false) rhss then
   let rhss = List.mapi (fun i rhs -> (rhs, i)) rhss in
   pp_print_semantic_constraints_prod_rule ctx ppf nt rhss
 | TypeAnnotation (nt, ty, scs, _) :: _ -> 
@@ -406,7 +406,7 @@ let pp_print_constraints: TC.context -> Format.formatter -> A.ast -> unit
 
 let pp_print_rhs: string -> Format.formatter -> A.prod_rule_rhs * int -> unit
 = fun nt ppf (rhs, idx) -> match rhs with 
-| A.Rhs (ges, _, _) ->
+| A.Rhs (ges, _, _, _) ->
   let ges = List.map Ast.grammar_element_to_string ges in 
   let ges = List.map String.lowercase_ascii ges in
   Format.fprintf ppf "(%s %a)"

@@ -114,7 +114,7 @@ let rec check_syntax_semantics: Ast.ast -> SygusAst.sygus_ast -> (unit, string) 
       (* Find the matching production rule from ast, if one exists *)
       let rhs = List.find_opt (fun rhs -> match rhs with 
       | A.StubbedRhs _ -> false 
-      | A.Rhs (ges, _, _) -> 
+      | A.Rhs (ges, _, _, _) -> 
         if List.length ges != List.length children then false 
         else 
           List.for_all2 (fun child ge ->  
@@ -129,7 +129,7 @@ let rec check_syntax_semantics: Ast.ast -> SygusAst.sygus_ast -> (unit, string) 
       else 
         let scs = match Option.get rhs with 
         | (StubbedRhs _) -> assert false 
-        | (Rhs (_, scs, _)) -> scs 
+        | (Rhs (_, scs, _, _)) -> scs 
         in 
         handle_scs ast sygus_ast constructor element scs)
   | _ -> Ok ()

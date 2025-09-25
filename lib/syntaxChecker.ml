@@ -34,7 +34,7 @@ let build_prm: ast -> prod_rule_map
   let prm = List.fold_left (fun acc element -> match element with 
   | ProdRule (nt, rhss, p) -> 
     List.fold_left (fun acc rhss -> match rhss with 
-    | Rhs (ges, _, _) -> 
+    | Rhs (ges, _, _, _) -> 
       let grammar_elements = List.map Ast.grammar_element_to_string ges in
       let grammar_elements = Utils.StringSet.of_list grammar_elements in (
       match Utils.StringMap.find_opt nt acc with 
@@ -189,8 +189,8 @@ let rec check_type_annot_nt_exprs: prod_rule_map -> Utils.StringSet.t -> expr ->
   | StrConst _ -> expr
 
 let check_syntax_prod_rule: prod_rule_map -> Utils.StringSet.t -> prod_rule_rhs -> prod_rule_rhs
-= fun prm nt_set rhss -> match rhss with 
-| Rhs (ges, scs, p) ->
+= fun prm nt_set rhs -> match rhs with 
+| Rhs (ges, scs, prob, p) ->
   let ges' = List.map Ast.grammar_element_to_string ges in
   let scs = List.map (fun sc -> match sc with 
   | DerivedField (nt2, expr, p) -> 
@@ -208,12 +208,12 @@ let check_syntax_prod_rule: prod_rule_map -> Utils.StringSet.t -> prod_rule_rhs 
     if not (Utils.StringSet.mem ge nt_set) then Utils.error ("Dangling identifier <" ^ ge ^ ">") p 
     else ge
   ) ges' in
-  Rhs (ges, scs, p)
+  Rhs (ges, scs, prob, p)
 | StubbedRhs _ -> assert false
 
 let rhss_contains_nt nt rhss = 
   List.exists (fun rhs -> match rhs with 
-  | Rhs (ges, _, _) -> List.exists (fun ge -> match ge with 
+  | Rhs (ges, _, _, _) -> List.exists (fun ge -> match ge with 
     | Nonterminal (nt2, _, _)
     | StubbedNonterminal (nt2, _) -> 
       nt = nt2
@@ -251,7 +251,7 @@ let remove_circular_deps: ast -> ast
     | TypeAnnotation _ -> element 
     | ProdRule (nt, rhss, p) -> let rhss = List.map (fun rhs -> match rhs with
         | StubbedRhs _ -> rhs 
-        | Rhs (nt, scs, p) -> 
+        | Rhs (nt, scs, prob, p) -> 
           let sygus_exprs = List.filter (fun sc -> match sc with
           | SmtConstraint _ -> true 
           | DerivedField _ -> false
@@ -268,7 +268,7 @@ let remove_circular_deps: ast -> ast
             in
             Utils.error msg p
           in 
-          Rhs (nt, sygus_exprs @ dependencies, p)
+          Rhs (nt, sygus_exprs @ dependencies, prob, p)
       ) rhss in 
       ProdRule (nt, rhss, p)
   ) ast
@@ -308,7 +308,7 @@ let check_sygus_exprs_for_dep_terms: ast -> ast
     TypeAnnotation (nt, ty, scs, p)
   | ProdRule (nt, rhss, p) -> 
     let rhss = List.map (fun rhs -> match rhs with
-    | Rhs (ges, scs, p) -> Rhs (ges, check_scs_for_dep_terms scs, p)
+    | Rhs (ges, scs, prob, p) -> Rhs (ges, check_scs_for_dep_terms scs, prob, p)
     | StubbedRhs _ -> rhs
     ) rhss in 
     ProdRule (nt, rhss, p)
@@ -400,6 +400,29 @@ let language_emptiness_check ast start_symbol =
   else 
     Utils.error_no_pos "CFG has empty language"
 
+let check_probabilities nt rhss p = 
+  (* Omitting probabilities is legal (assumed uniform distribution) *)
+  if List.for_all (fun rhs -> match rhs with 
+  | StubbedRhs _ -> true 
+  | Rhs (_, _, None, _) -> true 
+  | Rhs (_, _, Some _, _) -> false 
+  ) rhss then rhss 
+  else 
+    let rhss, total_probability = List.fold_left (fun (acc_rhss, acc_prob) rhs -> 
+      match rhs with 
+      | Rhs (_, _, Some prob, _) -> 
+        acc_rhss @ [rhs], acc_prob +. prob
+      | Rhs (_, _, None, p) -> 
+        let msg = Format.asprintf "Production rule options for nonterminal <%s> must either all contain probability annotations, or none of them" nt in 
+        Utils.error msg p
+      | StubbedRhs _ -> assert false
+    ) ([], 0.0) rhss in 
+    let epsilon = 1e-12 in
+    if abs_float (total_probability -. 1.0) > epsilon then
+      let msg = Format.asprintf "Production rule probabilities for nonterminal <%s> must add to 1.0" nt in 
+      Utils.error msg p
+    else rhss
+
 let check_syntax: prod_rule_map -> Utils.StringSet.t -> ast -> ast 
 = fun prm nt_set ast -> 
   (*let ast = sort_ast ast in*) (*!! Maybe need this in non-dpll engines? *)
@@ -415,6 +438,7 @@ let check_syntax: prod_rule_map -> Utils.StringSet.t -> ast -> ast
   let ast = List.map (fun element -> match element with 
   | ProdRule (nt, rhss, p) -> 
     let rhss = List.map (check_syntax_prod_rule prm nt_set) rhss in
+    let rhss = check_probabilities nt rhss p in 
     ProdRule (nt, rhss, p)
   | TypeAnnotation (nt, ty, scs, p) -> 
     let scs = List.map (fun sc -> match sc with 

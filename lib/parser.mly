@@ -72,6 +72,7 @@ open Ast
 %token RE_CONCAT ;
 
 %token<int> INTEGER
+%token<float> DECIMAL
 %token<bool list> BITS
 %token<string> ID
 %token<string> STRING
@@ -114,11 +115,11 @@ element:
   }
 
 rhs:
-| ges = nonempty_list(grammar_element); scs = option(semantic_constraints);
+| ges = nonempty_list(grammar_element); scs = option(semantic_constraints); prob = option(DECIMAL);
   { 
     match scs with 
-    | None -> Rhs (ges, [], $startpos)
-    | Some scs -> Rhs (ges, scs, $startpos) 
+    | None -> Rhs (ges, [], prob, $startpos)
+    | Some scs -> Rhs (ges, scs, prob, $startpos) 
   }
 
 il_type: 

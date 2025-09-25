@@ -16,7 +16,7 @@ let build_context: ast -> ast * context
   let ctx = List.fold_left (fun acc element -> match element with 
   | ProdRule (nt, rhss, _) -> 
     let options = List.map (fun rhs -> match rhs with
-      | Rhs (ges, _, _) -> List.fold_left (fun acc ge -> match ge with 
+      | Rhs (ges, _, _, _) -> List.fold_left (fun acc ge -> match ge with 
         | Nonterminal (nt, _, _) 
         | StubbedNonterminal (nt, _) -> nt :: acc
       ) [] ges |> List.rev
@@ -369,7 +369,7 @@ and check_type_expr: context -> mode -> il_type -> expr -> Lexing.position -> ex
     else expr
   
 let check_prod_rhs ctx rhss = match rhss with 
-| Rhs (ges, scs, p) -> 
+| Rhs (ges, scs, prob, p) -> 
   let scs = List.map (fun sc -> match sc with 
   | DerivedField (nt2, expr, p) -> 
     let exp_ty = 
@@ -385,7 +385,7 @@ let check_prod_rhs ctx rhss = match rhss with
     let expr = check_type_expr ctx SyGuS exp_ty expr p in 
     SmtConstraint (expr, p)
   ) scs in 
-  Rhs (ges, scs, p)
+  Rhs (ges, scs, prob, p)
 | StubbedRhs _ -> assert false
 
 let check_types: context -> ast -> ast 

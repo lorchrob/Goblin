@@ -28,12 +28,12 @@ let merge: A.ast -> A.element -> A.ast
       | A.ProdRule (nt2, rhss, p) -> 
         let rhss = List.map (fun rhs -> match rhs with 
         | A.StubbedRhs _ -> rhs 
-        | A.Rhs (ges, scs2, p) -> 
+        | A.Rhs (ges, scs2, prob, p) -> 
           if List.exists (fun ge -> match ge with 
           | A.Nonterminal (nt3, _, _) -> nt = nt3  
           | A.StubbedNonterminal _ -> false
           ) ges 
-          then A.Rhs (ges, scs @ scs2, p) (* Push up the constraints *)
+          then A.Rhs (ges, scs @ scs2, prob, p) (* Push up the constraints *)
           else rhs
         ) rhss in 
         acc @ [A.ProdRule (nt2, rhss, p)]
@@ -64,7 +64,7 @@ let merge: A.ast -> A.element -> A.ast
     (* If a prior AST rule constrains the NT, we need to push up the constraints *)
     let scs = List.concat_map (fun rhs -> match rhs with 
     | A.StubbedRhs _ -> []
-    | A.Rhs (_, scs, _) -> scs
+    | A.Rhs (_, scs, _, _) -> scs
     ) rhss in
     if A.ast_constrains_nt ast nt then 
       (* To push the scs up a level, we need to prepend a dot notation reference *)
@@ -84,20 +84,20 @@ let merge: A.ast -> A.element -> A.ast
       | A.ProdRule (nt2, rhss, _) -> 
         let rhss = List.map (fun rhs -> match rhs with 
         | A.StubbedRhs _ -> rhs 
-        | A.Rhs (ges, scs2, p) -> 
+        | A.Rhs (ges, scs2, prob, p) -> 
           if List.exists (fun ge -> match ge with 
           | A.Nonterminal (nt3, _, _) -> nt = nt3  
           | A.StubbedNonterminal _ -> false
           ) ges 
           then 
-            A.Rhs (ges, scs @ scs2, p) (* Push up the constraints *)
+            A.Rhs (ges, scs @ scs2, prob, p) (* Push up the constraints *)
           else rhs
         ) rhss in 
         acc @ [A.ProdRule (nt2, rhss, p)]
       ) [] ast in 
       let rhss = List.map (fun rhs -> match rhs with 
       | A.StubbedRhs _ -> rhs 
-      | Rhs (ges, _, p) -> Rhs (ges, [], p)
+      | Rhs (ges, _, prob, p) -> Rhs (ges, [], prob, p)
       ) rhss in
       ast @ [A.ProdRule (nt, rhss, p)]
     (* If no overlapping constraint, no action is required *)
@@ -124,7 +124,7 @@ let lift: A.ast -> A.element -> A.ast
     if A.ast_constrains_nt ast nt then 
       let rhss = List.map (fun rhs -> match rhs with
       | A.StubbedRhs _ -> rhs 
-      | A.Rhs (ges, scs, p) -> 
+      | A.Rhs (ges, scs, prob, p) -> 
         let scs = List.map (fun sc -> match sc with 
         | A.SmtConstraint _ -> sc 
         | A.DerivedField (nt, expr, _) -> 
@@ -132,7 +132,7 @@ let lift: A.ast -> A.element -> A.ast
           let expr = A.CompOp (NTExpr ([], [nt, None], p), Eq, expr, p) in 
           A.SmtConstraint (expr, p)
         ) scs in
-        A.Rhs (ges, scs, p)
+        A.Rhs (ges, scs, prob, p)
       ) rhss in
       ast @ [A.ProdRule (nt, rhss, p)]
     else ast @ [element]
@@ -145,7 +145,7 @@ let detect: A.ast -> A.element -> bool
   | A.ProdRule (nt, rhss, _) -> 
     let scs = List.concat_map (fun rhs -> match rhs with 
     | A.StubbedRhs _ -> []
-    | A.Rhs (_, scs, _) -> scs
+    | A.Rhs (_, scs, _, _) -> scs
     ) rhss in
     A.ast_constrains_nt ast nt && List.length scs > 0
 

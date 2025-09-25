@@ -172,7 +172,7 @@ let resolve_ambiguities_dpll: TC.context -> A.ast -> A.ast
   (*!! Need to assume universally unique IDs *)
   let nts = List.concat_map A.nts_of_rhs rhss in 
   let rhss = List.map (fun rhs -> match rhs with 
-  | A.Rhs (ges, scs, _) -> 
+  | A.Rhs (ges, scs, prob, _) -> 
     let scs = List.concat_map (process_sc_to_list ctx nts) scs in
     (* Filter out scs with dot notation expressions of the form <nt1>[n], where 
        [n] does not apply to this production rule *)
@@ -187,7 +187,7 @@ let resolve_ambiguities_dpll: TC.context -> A.ast -> A.ast
         ) ges
       ) nts  
     ) scs in 
-    A.Rhs (ges, scs, p) 
+    A.Rhs (ges, scs, prob, p) 
   | StubbedRhs _ -> rhs 
   ) rhss in 
   A.ProdRule (nt, rhss, p)
@@ -200,7 +200,7 @@ let resolve_ambiguities: TC.context -> A.ast -> A.ast
 = fun ctx ast -> List.map (fun element -> match element with
 | A.ProdRule (nt, rhss, p) ->
   let rhss = List.map (fun rhs -> match rhs with 
-  | A.Rhs (ges, scs, _) -> A.Rhs (ges, List.map (process_sc ctx (A.nts_of_rhs rhs)) scs, p) 
+  | A.Rhs (ges, scs, prob, _) -> A.Rhs (ges, List.map (process_sc ctx (A.nts_of_rhs rhs)) scs, prob, p) 
   | StubbedRhs _ -> rhs 
   ) rhss in 
   A.ProdRule (nt, rhss, p)

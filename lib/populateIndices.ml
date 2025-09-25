@@ -12,7 +12,7 @@ let disambiguate_nonterminals (rhss : A.prod_rule_rhs list) : A.prod_rule_rhs li
   in
 
   List.iter (function
-    | A.Rhs (elems, _, _) -> List.iter count_elem elems
+    | A.Rhs (elems, _, _, _) -> List.iter count_elem elems
     | StubbedRhs _ -> ()
   ) rhss;
 
@@ -29,9 +29,9 @@ let disambiguate_nonterminals (rhss : A.prod_rule_rhs list) : A.prod_rule_rhs li
 
   let disambiguate_rhs = function
     | A.StubbedRhs _ as stub -> stub
-    | Rhs (elems, constraints, pos) ->
+    | Rhs (elems, constraints, prob, pos) ->
         let new_elems = List.map disambiguate_elem elems in
-        Rhs (new_elems, constraints, pos)
+        Rhs (new_elems, constraints, prob, pos)
   in
 
   List.map disambiguate_rhs rhss

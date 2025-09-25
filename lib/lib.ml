@@ -41,3 +41,8 @@ let find_index element lst =
     | x :: xs -> if element = x then i else aux (i + 1) xs
   in
   aux 0 lst
+
+let findi f lst =
+  lst
+  |> List.mapi (fun i x -> (i, x))
+  |> List.find (fun (_, x) -> f x)

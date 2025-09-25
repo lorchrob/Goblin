@@ -61,13 +61,13 @@ let stub_ty_annot
   | Some dep -> 
     let stub_id = Utils.mk_fresh_stub_id nt in
     let ctx = Utils.StringMap.remove nt ctx in
-    Utils.StringMap.singleton stub_id dep, ProdRule (nt, [Rhs ([StubbedNonterminal(nt, stub_id)], [], p)], p), ctx
+    Utils.StringMap.singleton stub_id dep, ProdRule (nt, [Rhs ([StubbedNonterminal(nt, stub_id)], [], None, p)], p), ctx
   | None -> Utils.StringMap.empty, TypeAnnotation (nt, ty, scs, p), ctx
 
 
 let simp_rhss: TypeChecker.context -> prod_rule_rhs -> semantic_constraint Utils.StringMap.t * prod_rule_rhs * TypeChecker.context 
 = fun ctx rhss -> match rhss with 
-| Rhs (ges, scs, p) ->
+| Rhs (ges, scs, prob, p) ->
   let scs = List.map (fun sc -> match sc with 
   | DerivedField (nt, expr, p) -> DerivedField (nt, calculate_casts expr, p)
   | SmtConstraint (expr, p) -> SmtConstraint (calculate_casts expr, p)
@@ -83,7 +83,7 @@ let simp_rhss: TypeChecker.context -> prod_rule_rhs -> semantic_constraint Utils
     | None, ge, ctx -> acc_dep_map, acc_ges @ [ge], ctx
     | Some _, _, _ -> assert false 
   ) (Utils.StringMap.empty, [], ctx) ges in 
-  dep_map, Rhs (ges, scs, p), ctx
+  dep_map, Rhs (ges, scs, prob, p), ctx
 | StubbedRhs _ as rhs -> Utils.StringMap.empty, rhs, ctx 
 
 

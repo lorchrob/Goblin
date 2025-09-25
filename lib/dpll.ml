@@ -325,7 +325,7 @@ let r = normalize_derivation_tree ctx ast declared_variables solver constraints_
 match dt with 
 | Node ((nt, idx), path, []) -> 
   let forced_expansion = List.find_map (fun element -> match element with 
-  | A.ProdRule (nt2, [Rhs (ges, scs, _)], _) -> 
+  | A.ProdRule (nt2, [Rhs (ges, scs, _, _)], _) -> 
     let path' = (string_of_path (Utils.init path) |> String.lowercase_ascii) in
     if Utils.str_eq_ci nt nt2 then 
       let constraints_to_add = List.concat_map (fun sc -> match sc with 
@@ -450,6 +450,8 @@ let rec nt_will_be_reached derivation_tree ast nt =
 (* Determine if a constraint necessarily applies to a given derivation tree. 
    It may not apply if the nonterminals referenced by the constraint are avoidable 
    by selecting other production rule options in the AST. *)
+(*!! TODO: Don't support constraints with no nonterminals -- they are trivial 
+           and mess with this check *)
 let constraint_is_applicable expr derivation_tree ast = 
   let nts = A.get_nts_from_expr2 expr in
   List.fold_left (fun acc nt -> 
@@ -505,44 +507,74 @@ let initialize_globals ctx ast derivation_tree start_symbol constraints_to_asser
   declared_variables := !blocking_clause_vars ;
   ()
 
-let sample_excluding n exclude_list =
-  let excluded = List.sort_uniq compare exclude_list in
-  let allowed =
-    List.init n (fun i -> i + 1)
-    |> List.filter (fun x -> not (List.mem x excluded))
+(* We (1) pick an NT to expand uniformly at random, then 
+      (2) pick a production rule option based on user distribution (uniform if absent)
+*)
+let sample_excluding (expansion_probs : float list list) (visited : int list) : int =
+  (* Annotate probabilities with indices *) 
+  let expansion_probs, _ = List.fold_left (fun (acc_list, acc_i) probs -> 
+    let probs, acc_i = List.fold_left (fun (acc_probs, acc_i) prob -> 
+      acc_probs @ [prob, acc_i], acc_i + 1 
+    ) ([], acc_i) probs in 
+    acc_list @ [probs], acc_i 
+  ) ([], 0) expansion_probs in
+
+  (* Eliminate visited indices *) 
+  let expansion_probs = List.map (fun probs -> 
+    List.filter (fun (_, idx) -> not (List.mem idx visited)) probs 
+  ) expansion_probs in
+
+  (* Remove nonterminals with no expansion options *) 
+  let expansion_probs = List.filter (fun l -> not (List.is_empty l)) expansion_probs in
+
+  (* Pick a nonterminal to expand uniformly at random *)
+  let node_choice_idx = Random.int (List.length expansion_probs) in
+  let node_probs = List.nth expansion_probs node_choice_idx in
+
+  (* Step 2: normalize probabilities within the node *)
+  let total = List.fold_left (fun acc (p, _) -> acc +. p) 0.0 node_probs in
+  let normalized = List.map (fun (p, i) -> (p /. total, i)) node_probs in
+
+  (* Step 3: sample an RHS index according to normalized probabilities *)
+  let r = Random.float 1.0 in
+  let rec pick acc = function
+    | [] -> Utils.crash "sample_excluding: rounding error"
+    | (p, i) :: rest ->
+        let acc = acc +. p in
+        if r <= acc then i else pick acc rest
   in
-  match allowed with
-  | [] -> Utils.crash "No available values to sample"
-  | _ ->
-      let idx = Random.int (List.length allowed) in
-      List.nth allowed idx 
+  pick 0.0 normalized
 
 (* Return expanded node, updated DT, whether or not it was a real choice *)
 let find_new_expansion ast derivation_tree curr_st_node = 
   let visited_indices = match !curr_st_node with 
   | STNode (_, _, _, children) -> List.map snd !children 
   in 
-  let rec num_expansions derivation_tree = match derivation_tree with 
-  | Node ((nt, _), _, []) ->  
-    List.find_map (function 
-    | A.ProdRule (nt2, rhss, _) -> 
-      if Utils.str_eq_ci nt nt2 then Some (List.length rhss) else None 
-    | A.TypeAnnotation (nt2, _, _, _) ->
-      if Utils.str_eq_ci nt nt2 then Some 1 else None 
-    ) ast |> Option.get  
-  | Node (_, _, children) -> 
-    List.map num_expansions children |> 
-    List.fold_left (+) 0 
-  | _ -> 0 
-  in 
+  let rec expansion_probabilities dt =
+  match dt with
+  | Node ((nt, _), _, []) ->
+    let probs =
+    match List.find_opt (fun e -> match e with
+    | A.ProdRule (nt2, _, _) | TypeAnnotation (nt2, _, _, _) -> nt = nt2
+    ) ast with
+    | Some (ProdRule (_, rhss, _)) ->
+      List.map (function A.Rhs (_, _, Some p, _) -> p | _ -> 1.0 /. (float_of_int (List.length rhss))) rhss
+    | Some (TypeAnnotation _) -> [1.0]
+    | None -> Utils.crash "No matching grammar rule"
+    in
+    [probs]
+  | Node (_, _, children) ->
+    List.flatten (List.map expansion_probabilities children)
+  | _ -> []
+  in
   let rec perform_nth_expansion derivation_tree n = 
   (*if !Flags.debug then Format.fprintf Format.std_formatter "Performing %dth expansion of dt %a\n" 
     n 
     pp_print_derivation_tree derivation_tree;*)
   match derivation_tree with 
   | Node (nt, path, child :: children) -> 
-    let m = num_expansions child in 
-    if m >= n then 
+    let m = List.length (List.flatten (expansion_probabilities child)) in 
+    if m > n then 
       let expanded_node, expanded_child = perform_nth_expansion child n in 
       expanded_node, Node (nt, path, expanded_child :: children) 
     else ( 
@@ -563,10 +595,10 @@ let find_new_expansion ast derivation_tree curr_st_node =
         let expanded_node = Node ((nt, idx), path, [SymbolicLeaf (ty, path @ [(nt, idx)])]) in 
         expanded_node, expanded_node 
       else assert false 
-    | ProdRule (_, rhss, _) -> 
-      let rhs = List.nth rhss (n-1) in 
+    | ProdRule (_nt', rhss, _) -> 
+      let rhs = List.nth rhss n in 
       match rhs with 
-      | A.Rhs (ges, _, _) -> 
+      | A.Rhs (ges, _, _, _) -> 
         let children = List.map (fun ge -> match ge with 
         | A.Nonterminal (nt, idx_opt, _) ->
           Node ((nt, idx_opt), path @ [nt, idx_opt], [])  
@@ -580,8 +612,9 @@ let find_new_expansion ast derivation_tree curr_st_node =
     )
   | _ -> assert false 
   in
-  let total_num_choices = num_expansions derivation_tree in 
-  let index_to_pick = sample_excluding total_num_choices visited_indices in  
+  let expansion_probabilities_list = expansion_probabilities derivation_tree in 
+  let total_num_choices = expansion_probabilities_list |> List.concat |> List.length in
+  let index_to_pick = sample_excluding expansion_probabilities_list visited_indices in  
   let expanded_node, new_dt = perform_nth_expansion derivation_tree index_to_pick in 
   let real_choice = total_num_choices - (List.length visited_indices) > 1 in 
   expanded_node, index_to_pick, new_dt, real_choice 
@@ -1044,7 +1077,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
           | [DependentTermLeaf str2] -> Utils.str_eq_ci str1 str2 
           | _ -> false 
           )
-        | A.Rhs (ges, _, _) -> 
+        | A.Rhs (ges, _, _, _) -> 
           if List.length ges = List.length children then 
             List.for_all2 (fun child ge -> match child, ge with 
             | Node ((nt, idx), _, _), A.Nonterminal (nt2, idx2, _) -> 
@@ -1059,7 +1092,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
           A.pp_print_prod_rule_rhs chosen_rule;
         match chosen_rule with 
         | A.StubbedRhs _ -> () 
-        | A.Rhs (_, scs, _) -> 
+        | A.Rhs (_, scs, _, _) -> 
           List.iter (fun sc -> match sc with 
           | A.SmtConstraint (expr, _) ->
             (* Assert semantic constraints for production rules *)
