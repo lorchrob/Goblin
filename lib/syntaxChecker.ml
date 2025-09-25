@@ -188,6 +188,17 @@ let rec check_type_annot_nt_exprs: prod_rule_map -> Utils.StringSet.t -> expr ->
   | PhConst _ 
   | StrConst _ -> expr
 
+(* Every SMT constraint must contain some nonterminal. Everything else is trivial, ie, reduces to either 
+   a constant True or False. This alone is not a problem, but these constraints mess up the check 
+   of whether or not a constraint is applicable to a given derivation tree in dpll.ml *)
+let check_for_nonterminals expr p = 
+  let nts = Ast.get_nts_from_expr expr in 
+  match nts with 
+  | [] -> 
+    let msg = "SMT constraint must include some nonterminal" in 
+    Utils.error msg p 
+  | _ -> expr
+
 let check_syntax_prod_rule: prod_rule_map -> Utils.StringSet.t -> prod_rule_rhs -> prod_rule_rhs
 = fun prm nt_set rhs -> match rhs with 
 | Rhs (ges, scs, prob, p) ->
@@ -200,6 +211,7 @@ let check_syntax_prod_rule: prod_rule_map -> Utils.StringSet.t -> prod_rule_rhs 
     let expr = check_prod_rule_nt_exprs prm (Utils.StringSet.of_list ges') expr in
     DerivedField (nt2, expr, p)
   | SmtConstraint (expr, p) -> 
+    let expr = check_for_nonterminals expr p in
     let expr = check_dangling_identifiers nt_set p expr in 
     let expr = check_prod_rule_nt_exprs prm (Utils.StringSet.of_list ges') expr in
     SmtConstraint (expr, p)
@@ -449,6 +461,7 @@ let check_syntax: prod_rule_map -> Utils.StringSet.t -> ast -> ast
       let expr = check_type_annot_nt_exprs prm (Utils.StringSet.singleton nt) expr in
       DerivedField (nt2, expr, p) 
     | SmtConstraint (expr, p) -> 
+      let expr = check_for_nonterminals expr p in
       let expr = check_dangling_identifiers nt_set p expr in  
       let expr = check_type_annot_nt_exprs prm (Utils.StringSet.singleton nt) expr in
       SmtConstraint (expr, p)

@@ -32,6 +32,13 @@ let bug1 () =
     fail "expected error"
   with _ -> () 
 
+let bug4 () =
+  let input = "../../../test/test_cases/bug4.gbl" in
+  try 
+    let _ = main_pipeline input in
+    fail "expected error"
+  with _ -> () 
+
 let bug3 () =
   let input = "../../../test/test_cases/bug3.gbl" in
   try 
@@ -1607,6 +1614,7 @@ let () =
     "dm_test_another_ambiguous_reference_2", [test_case "dm_test_another_ambiguous_reference_2" `Quick dm_test_another_ambiguous_reference_2]; 
     "bug1", [test_case "bug1" `Quick bug1]; 
     "bug3", [test_case "bug3" `Quick bug3]; 
+    "bug4", [test_case "bug4" `Quick bug4]; 
     "bug2", [test_case "bug2" `Quick bug2]; 
     "probabilities", [test_case "probabilities" `Quick probabilities]; 
     "probabilities_2", [test_case "probabilities_2" `Quick probabilities_2]; 
