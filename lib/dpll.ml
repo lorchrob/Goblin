@@ -449,6 +449,8 @@ let rec nt_will_be_reached derivation_tree ast nt =
 (* Determine if a constraint necessarily applies to a given derivation tree. 
    It may not apply if the nonterminals referenced by the constraint are avoidable 
    by selecting other production rule options in the AST. *)
+(*!! TODO: Don't support constraints with no nonterminals -- they are trivial 
+           and mess with this check *)
 let constraint_is_applicable expr derivation_tree ast = 
   let nts = A.get_nts_from_expr2 expr in
   List.fold_left (fun acc nt -> 
@@ -460,9 +462,9 @@ let assert_applicable_constraints constraint_set derivation_tree ast solver =
     ConstraintSet.fold (fun expr acc -> 
       if constraint_is_applicable expr derivation_tree ast then (
         (* declare_smt_variables declared_variables (Utils.StringMap.singleton path' A.Int) solver; *)
-        (*if !Flags.debug then Format.fprintf Format.std_formatter "Constraint %a is applicable in derivation tree %a\n"
+        if !Flags.debug then Format.fprintf Format.std_formatter "Constraint %a is applicable in derivation tree %a\n"
           A.pp_print_expr expr 
-          pp_print_derivation_tree derivation_tree;*)
+          pp_print_derivation_tree derivation_tree;
         assert_smt_constraint solver expr;
         ConstraintSet.add expr acc
       ) else (

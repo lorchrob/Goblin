@@ -422,6 +422,14 @@ let probabilities () =
   | Ok _ -> ()  
   | Error msg -> fail msg
 
+let probabilities_2 () =
+  let input = "../../../test/test_cases/probabilities_2.gbl" in
+  let sygus_ast, _, ast = main_pipeline input in
+  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  match output with
+  | Ok _ -> ()  
+  | Error msg -> fail msg
+
 (* Dependent term calculation example *)
 let dm_test_dt () =
   let input = "../../../test/test_cases/test_dt" in
@@ -1601,6 +1609,7 @@ let () =
     "bug3", [test_case "bug3" `Quick bug3]; 
     "bug2", [test_case "bug2" `Quick bug2]; 
     "probabilities", [test_case "probabilities" `Quick probabilities]; 
+    "probabilities_2", [test_case "probabilities_2" `Quick probabilities_2]; 
     (*"dd_test_another_ambiguous_reference_2", [test_case "dd_test_another_ambiguous_reference_2" `Quick dd_test_another_ambiguous_reference_2]; 
     "md_test_another_ambiguous_reference_2", [test_case "md_test_another_ambiguous_reference_2" `Quick md_test_another_ambiguous_reference_2];  *)
 
