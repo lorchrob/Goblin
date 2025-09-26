@@ -222,7 +222,7 @@ simultaneously odd and even (notice that I updated the base case of the list rul
 
 Now, back to the harder problem -- encoding an (arbitrary-length) list of integers 
 that all sum to 100:  
-(NOTE -- if the following is too dense, it may be advisable to skip to the next section, **Bitvectors**, on the first read.)
+(NOTE -- if the following is too dense, it may be advisable to skip to the next section, **BitVectors**, on the first read.)
 
 ```
 <S> ::= <L> { <L>.<_sum> = 100; };
@@ -460,6 +460,7 @@ See `evaluation` and `test/test_cases` for example `.gbl` files (Goblin input fi
 ### How does Goblin work?
 
 STUB
+
 
 
 
