@@ -3,8 +3,8 @@
 <COMMIT> ::= <AUTH_ALGO> <AUTH_SEQ_COMMIT> <STATUS_CODE> <GROUP_ID> <AC_TOKEN> <SCALAR> <ELEMENT> <PASSWORD_IDENTIFIER> <REJECTED_GROUPS> <AC_TOKEN_CONTAINER> 
 {
 <AUTH_ALGO> <- int_to_bv(16, 3);
-int_to_bv(16, 19) bvlte <GROUP_ID> and 
-            <GROUP_ID> bvlte int_to_bv(16, 20); 
+int_to_bv(16, 19) bvulte <GROUP_ID> and 
+            <GROUP_ID> bvulte int_to_bv(16, 20); 
 <AUTH_SEQ_COMMIT> <- int_to_bv(16, 1); 
 <STATUS_CODE> = int_to_bv(16, 0) or 
 <STATUS_CODE> = int_to_bv(16, 1) or 
@@ -36,11 +36,11 @@ int_to_bv(16, 19) bvlte <GROUP_ID> and
 <STATUS_CODE> :: BitVec(16);
 
 
-<AC_TOKEN> :: Placeholder 
+<AC_TOKEN> :: String 
 { <AC_TOKEN> <- "<AC_TOKEN>"; };
 
 <PASSWORD_IDENTIFIER> ::= <PASSWD_ELEMENT_ID> <PASSWD_ID_LENGTH> <PASSWD_ELEMENT_ID_EXTENSION> <PASSWD_ID> 
-{ <PASSWD_ID_LENGTH> <- int_to_bv(8, (length(<PASSWD_ID>)/8)+1); };
+{ <PASSWD_ID_LENGTH> <- int_to_bv(8, (length(<PASSWD_ID>) div 8)+1); };
 
 <PASSWD_ELEMENT_ID> :: BitVec(8) 
 { <PASSWD_ELEMENT_ID> <- int_to_bv(8, 255); };
@@ -58,7 +58,7 @@ int_to_bv(16, 19) bvlte <GROUP_ID> and
 
 
 <REJECTED_GROUPS> ::= <RG_ELEMENT_ID> <RG_ID_LENGTH> <RG_ELEMENT_ID_EXTENSION> <RG_ID_LIST>
-{ <RG_ID_LENGTH> <- int_to_bv(8, (length(<RG_ID_LIST>)/8)+1) ;
+{ <RG_ID_LENGTH> <- int_to_bv(8, (length(<RG_ID_LIST>) div 8)+1) ;
 };
 
 <RG_ELEMENT_ID> :: BitVec(8) 
@@ -78,7 +78,7 @@ int_to_bv(16, 19) bvlte <GROUP_ID> and
 
 <AC_TOKEN_CONTAINER> ::= <AC_ELEMENT_ID> <AC_ID_LENGTH> <AC_ELEMENT_ID_EXTENSION> 
 <AC_TOKEN_ELEMENT>
-{ <AC_ID_LENGTH> <- int_to_bv(8, (length(<AC_TOKEN_ELEMENT>)/8)+1);
+{ <AC_ID_LENGTH> <- int_to_bv(8, (length(<AC_TOKEN_ELEMENT>) div 8)+1);
     not (length(<AC_TOKEN_ELEMENT>) = 0) ;
  };
 
@@ -92,14 +92,14 @@ int_to_bv(16, 19) bvlte <GROUP_ID> and
 
 <AC_TOKEN_ELEMENT> :: List(Bool);
 
-<SCALAR>     :: Placeholder  
+<SCALAR>     :: String  
 { <SCALAR> <- "<SCALAR>"; };
 
-<ELEMENT> :: Placeholder 
+<ELEMENT> :: String 
 {<ELEMENT> <- "<ELEMENT>"; };
 
-<CONFIRM_HASH> :: Placeholder 
+<CONFIRM_HASH> :: String 
 { <CONFIRM_HASH> <- "<CONFIRM_HASH>"; };
 
-<SEND_CONFIRM_COUNTER> :: Placeholder
+<SEND_CONFIRM_COUNTER> :: String
 { <SEND_CONFIRM_COUNTER> <- "<SEND_CONFIRM_COUNTER>"; };

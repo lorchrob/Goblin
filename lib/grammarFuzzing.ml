@@ -1221,7 +1221,7 @@ let runFuzzer grammar_list =
   
   (* let _ = fuzzingAlgorithm 10000 [nothing_queue;] [] 100 0 1150 100 100 [CorrectPacket;] [nothing_queue;] in
   () *)
-  let _ = fuzzingAlgorithm 10000 [nothing_queue; confirmed_queue; accepted_queue] [] 100 0 1150 100 100 [CorrectPacket;] [nothing_queue; confirmed_queue; accepted_queue] true in
+  let _ = fuzzingAlgorithm 10000 [nothing_queue; confirmed_queue; accepted_queue] [] 100 0 1150 100 100 [Add;Delete;Modify;CrossOver;] [nothing_queue; confirmed_queue; accepted_queue] true in
   ()
   (* let _ = fuzzingAlgorithm 10000 [nothing_queue; confirmed_queue; accepted_queue] [] 100 0 1150 100 100 [CorrectPacket;] [nothing_queue; confirmed_queue; accepted_queue] in
   () *)
