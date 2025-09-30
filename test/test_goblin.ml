@@ -357,6 +357,14 @@ let dm_test_another_ambiguous_reference_2 () =
   let _, output, _ = main_pipeline ~engine:(Some DpllMono) input in
   check string "test_another_ambiguous_reference_2" output "infeasible\n"
 
+let bug5 () =
+  let input = "../../../test/test_cases/bug5.gbl" in
+  let sygus_ast, _, ast = main_pipeline input in
+  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  match output with
+  | Ok _ -> ()  
+  | Error msg -> fail msg
+
 let dm_test_another_ambiguous_reference () =
   let input = "../../../test/test_cases/test_another_ambiguous_reference" in
   let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
@@ -1615,6 +1623,7 @@ let () =
     "bug1", [test_case "bug1" `Quick bug1]; 
     "bug3", [test_case "bug3" `Quick bug3]; 
     "bug4", [test_case "bug4" `Quick bug4]; 
+    "bug5", [test_case "bug5" `Quick bug5]; 
     "bug2", [test_case "bug2" `Quick bug2]; 
     "probabilities", [test_case "probabilities" `Quick probabilities]; 
     "probabilities_2", [test_case "probabilities_2" `Quick probabilities_2]; 

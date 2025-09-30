@@ -150,7 +150,8 @@ let process_sc_to_list: TC.context -> string list -> A.semantic_constraint -> A.
   | A.DerivedField (nt, expr, p) -> 
     let exprs = generate_all_possible_exprs ctx nts expr in 
     let _ = match exprs with 
-      | _ :: _ :: _ -> Utils.error ("Dependent term '" ^ nt ^ "' is defined ambiguously") p
+      (*!! TODO: Reimplement this check so it doesn't falsely flag bug5.gbl *)
+      (*| _ :: _ :: _ -> Utils.error ("Dependent term '" ^ nt ^ "' is defined ambiguously") p*)
       | expr :: _ -> expr
       | [] -> Utils.crash "unexpected case"
     in

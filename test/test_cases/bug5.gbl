@@ -1,0 +1,8 @@
+<S> ::= <supported-ta-list-length> <SupportedTAList> { <supported-ta-list-length> <- int_to_bv(8, <SupportedTAList>.<_length>); } ;
+
+<SupportedTAList>                   ::= <_length> <SupportedTAItem> { <_length> = 1 ; }
+                                    | <_length> <SupportedTAItem> <SupportedTAList> { <_length> = <SupportedTAList>.<_length> + 1 ; };
+
+<_length> :: Int; 
+<SupportedTAItem> :: Int;
+<supported-ta-list-length> :: BitVec(8);
