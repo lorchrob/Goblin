@@ -239,6 +239,9 @@ let rec infer_type_expr: context -> mode -> expr -> il_type option
       Utils.error error_message
     else List.hd inf_tys *)
 | Length (expr, p) -> (
+  if mode = SyGuS then 
+    Utils.error "The length(.) function cannot be used in a (non-derived) SMT constraint" p 
+  else
   let inf_ty = infer_type_expr ctx mode expr in
   match inf_ty with 
   | Some BitList 
