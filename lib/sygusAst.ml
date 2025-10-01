@@ -207,6 +207,7 @@ let serialize_bytes: endianness -> sygus_ast -> bytes * bytes
   let rec serialize_aux endianness sygus_ast offset acc_metadata =
     match sygus_ast with
     | Node ((id, _), subterms) ->
+      if id.[0] = '_' then Bytes.empty, acc_metadata, offset else
       let regex = Str.regexp "rg_id_list_con[0-9]+" in
       let is_match = Str.string_match regex id 0 in
       let endianness = if is_match then Little else Big in
@@ -231,10 +232,14 @@ let serialize_bytes: endianness -> sygus_ast -> bytes * bytes
       } in
       (var_leaf_data, new_metadata, offset + var_leaf_length)
       
-    | BoolLeaf _ -> Utils.crash "serializing final packet, unhandled case 1"
+    | BoolLeaf b ->  
+      let bits = [b] in 
+      let bit_bytes = bools_to_bytes endianness bits in
+      (bit_bytes, acc_metadata, offset + Bytes.length bit_bytes)
+
     | IntLeaf _ -> Utils.crash "serializing final packet, unhandled case 2"
-    | SetLeaf _ 
-    | UnitLeaf  -> Utils.crash "unsupported"
+    | SetLeaf _ -> Utils.crash "serializing final packet, unhandled case 3" 
+    | UnitLeaf  -> Utils.crash "serializing final packet, unhandled case 4"
   in
   let initial_metadata = {
     var_leaf_count = 0;

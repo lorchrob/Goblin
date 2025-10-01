@@ -11,6 +11,10 @@ type engine =
   | MixedDac
   | Race
 
+type output_format = 
+  | SExpression
+  | Bytes
+
 let debug = ref false
 let no_warnings = ref true
 let only_parse = ref false
@@ -21,6 +25,7 @@ let saecred = ref false
 let analysis = ref "" 
 let filename = ref None
 let selected_engine = ref DpllMono
+let output_format = ref SExpression 
 let num_solutions = ref (-1) 
 let starting_depth_limit = ref 5 
 let restart_rate = ref 10000 
@@ -46,6 +51,20 @@ let parse_args () =
     | DpllMono -> Format.fprintf ppf "dpll_mono"
     | MixedDac -> Format.fprintf ppf "mixed_dac"
     | Race -> Format.fprintf ppf "race"
+    in
+    Arg.conv (parse, print)
+  in
+
+  (* Convert string to output format variant *)
+  let output_conv =
+    let parse = function
+    | "s-expression" -> Ok SExpression
+    | "bytes" -> Ok Bytes 
+    | s -> Error (`Msg ("Invalid output format: " ^ s))
+    in
+    let print ppf = function
+    | SExpression -> Format.fprintf ppf "s-expression"
+    | Bytes -> Format.fprintf ppf "bytes"
     in
     Arg.conv (parse, print)
   in
@@ -100,6 +119,11 @@ let parse_args () =
     Arg.(value & opt engine_conv DpllMono & info ["engine"] ~docv:"ENGINE" ~doc)
   in
 
+  let output_format_flag =
+    let doc = "Select an output format (s-expression or bytes (DEFAULT: s-expression))" in
+    Arg.(value & opt output_conv SExpression & info ["output-format"] ~docv:"ENGINE" ~doc)
+  in
+
   let num_solutions_flag =
     let doc = "Specify the approximate number of solutions to produce when --multiple-solutions is enabled (DEFAULT: infinitely many if --multiple_solutions is enabled, and otherwise 1)" in
     Arg.(value & opt int (-1) & info ["num-solutions"] ~doc)
@@ -126,8 +150,8 @@ let parse_args () =
   in
 
   let set_flags new_debug new_no_warnings new_only_parse new_show_winner 
-                new_dump_clp new_multiple_solutions new_saecred new_analysis new_filename new_engine new_num_solutions 
-                new_starting_depth_limit new_restart_rate new_sols_per_iter new_seed =
+                new_dump_clp new_multiple_solutions new_saecred new_analysis new_filename new_engine new_output_format 
+                new_num_solutions new_starting_depth_limit new_restart_rate new_sols_per_iter new_seed =
     Format.pp_print_flush Format.std_formatter ();
     debug := new_debug;
     no_warnings := new_no_warnings;
@@ -139,6 +163,7 @@ let parse_args () =
     analysis := new_analysis;
     filename := new_filename;
     selected_engine := new_engine;
+    output_format := new_output_format;
     num_solutions := new_num_solutions;
     starting_depth_limit := new_starting_depth_limit; 
     restart_rate := new_restart_rate; 
@@ -158,6 +183,7 @@ let parse_args () =
           $ analysis_flag
           $ filename_flag
           $ engine_flag
+          $ output_format_flag
           $ num_solutions_flag
           $ starting_depth_limit_flag 
           $ restart_rate_flag 
