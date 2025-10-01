@@ -135,7 +135,7 @@ let main_pipeline ?(engine: Flags.engine option = None) ?(grammar: Ast.ast optio
   if not !Flags.multiple_solutions then (
     if !Flags.output_format = Flags.SExpression then 
       SygusAst.pp_print_sygus_ast Format.std_formatter sygus_ast
-    else if !Flags.output_format = Flags.Bytes then 
+    else if !Flags.output_format = Flags.Hex then 
       let ast_bytes, _ = SygusAst.serialize_bytes Big sygus_ast in
       Utils.print_bytes_as_hex ast_bytes
   );

@@ -13,7 +13,7 @@ type engine =
 
 type output_format = 
   | SExpression
-  | Bytes
+  | Hex 
 
 let debug = ref false
 let no_warnings = ref true
@@ -59,12 +59,12 @@ let parse_args () =
   let output_conv =
     let parse = function
     | "s-expression" -> Ok SExpression
-    | "bytes" -> Ok Bytes 
+    | "hex" -> Ok Hex 
     | s -> Error (`Msg ("Invalid output format: " ^ s))
     in
     let print ppf = function
     | SExpression -> Format.fprintf ppf "s-expression"
-    | Bytes -> Format.fprintf ppf "bytes"
+    | Hex -> Format.fprintf ppf "hex"
     in
     Arg.conv (parse, print)
   in
@@ -120,7 +120,7 @@ let parse_args () =
   in
 
   let output_format_flag =
-    let doc = "Select an output format (s-expression or bytes (DEFAULT: s-expression))" in
+    let doc = "Select an output format (s-expression or hex (DEFAULT: s-expression))" in
     Arg.(value & opt output_conv SExpression & info ["output-format"] ~docv:"ENGINE" ~doc)
   in
 
