@@ -123,9 +123,7 @@ let rec check_prod_rule_nt_exprs: prod_rule_map -> Utils.StringSet.t -> expr -> 
   | NTExpr (nt_context, nt_expr, p) -> 
     if (not (Utils.StringSet.mem (List.hd nt_expr |> fst) nts)) 
     then 
-      (Format.printf "nts: %a\n" 
-        (Lib.pp_print_list Format.pp_print_string ", ") (Utils.StringSet.to_list nts);
-      Utils.error ("Nonterminal " ^  (List.hd nt_expr |> fst) ^ " not found in current production rule RHS or type annotation") p)
+      Utils.error ("Nonterminal " ^  (List.hd nt_expr |> fst) ^ " not found in current production rule RHS or type annotation") p
     else
       let nt_expr = check_nt_expr_refs prm nt_expr p in 
       NTExpr (nt_context, nt_expr, p) 
