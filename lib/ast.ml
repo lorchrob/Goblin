@@ -285,7 +285,7 @@ let pp_print_bin_op: Format.formatter -> bin_operator -> unit
 | Times -> Format.fprintf ppf "*"
 | Div -> Format.fprintf ppf "div"
 | Mod -> Format.fprintf ppf "mod"
-| StrConcat -> Format.fprintf ppf ("str.++")
+| StrConcat -> Format.fprintf ppf "str.++"
 | SetMembership | SetUnion | SetIntersection -> 
   Utils.crash "Unexpected case in pp_print_bin_op"
 
@@ -303,10 +303,10 @@ let pp_print_comp_op: Format.formatter -> comp_operator -> unit
 | Gt  -> Format.fprintf ppf ">"
 | Gte -> Format.fprintf ppf ">="
 | Eq -> Format.fprintf ppf "="
-| BVLt -> Format.fprintf ppf  "bvlt"
-| BVLte -> Format.fprintf ppf  "bvlte"
-| BVGt -> Format.fprintf ppf  "bvgt"
-| BVGte -> Format.fprintf ppf  "bvgte"
+| BVLt -> Format.fprintf ppf  "bvult"
+| BVLte -> Format.fprintf ppf  "bvulte"
+| BVGt -> Format.fprintf ppf  "bvugt"
+| BVGte -> Format.fprintf ppf  "bvugte"
 | StrPrefix -> Format.fprintf ppf "str.prefixof"
 | StrContains -> Format.fprintf ppf "str.contains"
 
