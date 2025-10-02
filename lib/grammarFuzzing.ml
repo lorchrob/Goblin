@@ -1215,13 +1215,14 @@ let runFuzzer grammar_list =
   let commit_grammar = List.nth grammar_list 0 in
   let confirm_grammar = List.nth grammar_list 1 in
   let commit_confirm_grammar = List.nth grammar_list 2 in
-  let nothing_queue = [([], commit_grammar), 0.0; ([], confirm_grammar), 0.0; ([], commit_confirm_grammar), 0.0;] in
-  let confirmed_queue = [([ValidPacket 0], commit_grammar), 0.0; ([ValidPacket 0], confirm_grammar), 0.0; ([ValidPacket 0], commit_confirm_grammar), 0.0;] in
-  let accepted_queue = [([ValidPacket 0; ValidPacket 1], commit_grammar), 0.0; ([ValidPacket 0; ValidPacket 1], confirm_grammar), 0.0; ([ValidPacket 0; ValidPacket 1], commit_confirm_grammar), 0.0;] in
-  
+  let nothing_queue = [([], commit_grammar), 0.0; ([], confirm_grammar), 0.0; ([], commit_confirm_grammar), 0.0;([], eapol_1_grammar), 0.0; ([], eapol_2_grammar), 0.0; ([], eapol_3_grammar), 0.0;([], eapol_4_grammar), 0.0] in
+  let confirmed_queue = [([ValidPacket 0], commit_grammar), 0.0; ([ValidPacket 0], confirm_grammar), 0.0; ([ValidPacket 0], commit_confirm_grammar), 0.0;([ValidPacket 0], eapol_1_grammar), 0.0; ([ValidPacket 0], eapol_2_grammar), 0.0; ([ValidPacket 0], eapol_3_grammar), 0.0;([ValidPacket 0], eapol_4_grammar), 0.0] in
+  let accepted_queue = [([ValidPacket 0; ValidPacket 1], commit_grammar), 0.0; ([ValidPacket 0; ValidPacket 1], confirm_grammar), 0.0; ([ValidPacket 0; ValidPacket 1], commit_confirm_grammar), 0.0;([ValidPacket 0; ValidPacket 1], eapol_1_grammar), 0.0; ([ValidPacket 0; ValidPacket 1], eapol_2_grammar), 0.0; ([ValidPacket 0; ValidPacket 1], eapol_3_grammar), 0.0;([ValidPacket 0; ValidPacket 1], eapol_4_grammar), 0.0] in
+  let eapol_1_queue = [([ValidPacket 0; ValidPacket 1;ValidPacket 2], commit_grammar), 0.0; ([ValidPacket 0; ValidPacket 1;ValidPacket 2], confirm_grammar), 0.0; ([ValidPacket 0; ValidPacket 1;ValidPacket 2], commit_confirm_grammar), 0.0;([ValidPacket 0; ValidPacket 1;ValidPacket 2], eapol_1_grammar), 0.0; ([ValidPacket 0; ValidPacket 1;ValidPacket 2], eapol_2_grammar), 0.0; ([ValidPacket 0; ValidPacket 1;ValidPacket 2], eapol_3_grammar), 0.0;([ValidPacket 0; ValidPacket 1;ValidPacket 2], eapol_4_grammar), 0.0] in
+  let eapol_2_queue = [([ValidPacket 0; ValidPacket 1;ValidPacket 2;ValidPacket 3;], commit_grammar), 0.0; ([ValidPacket 0; ValidPacket 1;ValidPacket 2;ValidPacket 3;], confirm_grammar), 0.0; ([ValidPacket 0; ValidPacket 1;ValidPacket 2;ValidPacket 3;], commit_confirm_grammar), 0.0;([ValidPacket 0; ValidPacket 1;ValidPacket 2;ValidPacket 3;], eapol_1_grammar), 0.0; ([ValidPacket 0; ValidPacket 1;ValidPacket 2;ValidPacket 3;], eapol_2_grammar), 0.0; ([ValidPacket 0; ValidPacket 1;ValidPacket 2;ValidPacket 3;], eapol_3_grammar), 0.0;([ValidPacket 0; ValidPacket 1;ValidPacket 2;ValidPacket 3;], eapol_4_grammar), 0.0] in
   (* let _ = fuzzingAlgorithm 10000 [nothing_queue;] [] 100 0 1150 100 100 [CorrectPacket;] [nothing_queue;] in
   () *)
-  let _ = fuzzingAlgorithm 10000 [nothing_queue; confirmed_queue; accepted_queue] [] 100 0 1150 100 100 [Add;Delete;Modify;CrossOver;] [nothing_queue; confirmed_queue; accepted_queue] true in
+  let _ = fuzzingAlgorithm 10000 [nothing_queue; confirmed_queue; accepted_queue] [] 100 0 1150 100 100 [Add;Delete;Modify;CrossOver;] [nothing_queue; confirmed_queue; accepted_queue; eapol_1_queue; eapol_2_queue] true in
   ()
   (* let _ = fuzzingAlgorithm 10000 [nothing_queue; confirmed_queue; accepted_queue] [] 100 0 1150 100 100 [CorrectPacket;] [nothing_queue; confirmed_queue; accepted_queue] in
   () *)

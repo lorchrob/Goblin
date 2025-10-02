@@ -13,6 +13,10 @@ let () =
       let commit_grammar = Parsing.parse (GrammarFuzzing.read_grammar "bin/commit.txt") in
       let confirm_grammar = Parsing.parse (GrammarFuzzing.read_grammar "bin/confirm.txt") in
       let commit_confirm_grammar = Parsing.parse (GrammarFuzzing.read_grammar "bin/commit-confirm.txt") in
+      let eapol_1_grammar = Parsing.parse (GrammarFuzzing.read_grammar "bin/eapol_1.txt") in
+      let eapol_2_grammar = Parsing.parse (GrammarFuzzing.read_grammar "bin/eapol_2.txt") in
+      let eapol_3_grammar = Parsing.parse (GrammarFuzzing.read_grammar "bin/eapol_3.txt") in
+      let eapol_4_grammar = Parsing.parse (GrammarFuzzing.read_grammar "bin/eapol_4.txt") in
       GrammarFuzzing.runFuzzer [commit_grammar; confirm_grammar; commit_confirm_grammar;]
     else if !Flags.analysis <> "" then 
       AnalyzeGoblinOutput.evaluate () 
