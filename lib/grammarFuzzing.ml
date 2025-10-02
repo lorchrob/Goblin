@@ -320,17 +320,17 @@ let rec scoreFunction (pktStatus : (provenance * output) list) (mutatedPopulatio
     let future_provenance_and_population = scoreFunction xs ys in
     match output_symbol with
     | TIMEOUT | EXPECTED_OUTPUT ->
-      (* if output_symbol = TIMEOUT then
+      if output_symbol = TIMEOUT then
         ((fst future_provenance_and_population)), (((old_provenance @ [packet], current_grammar), score +. 0.1) :: (snd future_provenance_and_population))
-      else  *)
-        (* ((fst future_provenance_and_population)), (((old_provenance @ [packet], current_grammar), score +. 0.3) :: (snd future_provenance_and_population)) *)
-        ((fst future_provenance_and_population)), (((old_provenance @ [packet], current_grammar), score) :: (snd future_provenance_and_population))
+      else 
+        ((fst future_provenance_and_population)), (((old_provenance @ [packet], current_grammar), score +. 0.3) :: (snd future_provenance_and_population))
+        (* ((fst future_provenance_and_population)), (((old_provenance @ [packet], current_grammar), score) :: (snd future_provenance_and_population)) *)
     | CRASH | UNEXPECTED_OUTPUT ->
-      (* if output_symbol = CRASH then 
+      if output_symbol = CRASH then 
         ((old_provenance @ [packet])  :: (fst future_provenance_and_population)), (((old_provenance @ [packet], current_grammar), score +. 0.5) :: (snd future_provenance_and_population))
-      else  *)
-      (* ((old_provenance @ [packet]) :: (fst future_provenance_and_population)), (((old_provenance @ [packet], current_grammar), score +. 0.7) :: (snd future_provenance_and_population))         *)
-      ((old_provenance @ [packet]) :: (fst future_provenance_and_population)), (((old_provenance @ [packet], current_grammar), score) :: (snd future_provenance_and_population))        
+      else 
+      ((old_provenance @ [packet]) :: (fst future_provenance_and_population)), (((old_provenance @ [packet], current_grammar), score +. 0.7) :: (snd future_provenance_and_population))        
+      (* ((old_provenance @ [packet]) :: (fst future_provenance_and_population)), (((old_provenance @ [packet], current_grammar), score) :: (snd future_provenance_and_population))         *)
     | Message _ -> Utils.crash "Message type should not be matched in score func.."
 
     
@@ -624,7 +624,8 @@ let callDriver_new packets packet =
     (* print_endline "oracle result success" ; *)
     let driver_start_time = Unix.gettimeofday () in
     let driver_result = wait_for_python_response response_file in
-    let driver_score = wait_for_score "sync/score.txt" in
+    (* let driver_score = wait_for_score "sync/score.txt" in *)
+    let driver_score = 0.0 in
     driver_call_time := ((Unix.gettimeofday ()) -. driver_start_time) ;
     driver_calls := !driver_calls + 1 ;
     (driver_result, oracle_result, driver_score)
@@ -1215,13 +1216,18 @@ let runFuzzer grammar_list =
   let commit_grammar = List.nth grammar_list 0 in
   let confirm_grammar = List.nth grammar_list 1 in
   let commit_confirm_grammar = List.nth grammar_list 2 in
-  let nothing_queue = [([], commit_grammar), 0.0; ([], confirm_grammar), 0.0; ([], commit_confirm_grammar), 0.0;] in
-  let confirmed_queue = [([ValidPacket 0], commit_grammar), 0.0; ([ValidPacket 0], confirm_grammar), 0.0; ([ValidPacket 0], commit_confirm_grammar), 0.0;] in
-  let accepted_queue = [([ValidPacket 0; ValidPacket 1], commit_grammar), 0.0; ([ValidPacket 0; ValidPacket 1], confirm_grammar), 0.0; ([ValidPacket 0; ValidPacket 1], commit_confirm_grammar), 0.0;] in
-  
+  let eapol_1_grammar = List.nth grammar_list 3 in
+  let eapol_2_grammar = List.nth grammar_list 4 in
+  let eapol_3_grammar = List.nth grammar_list 5 in
+  let eapol_4_grammar = List.nth grammar_list 6 in
+  let nothing_queue = [([], commit_grammar), 0.0; ([], confirm_grammar), 0.0; ([], commit_confirm_grammar), 0.0;([], eapol_1_grammar), 0.0; ([], eapol_2_grammar), 0.0; ([], eapol_3_grammar), 0.0;([], eapol_4_grammar), 0.0] in
+  let confirmed_queue = [([ValidPacket 0], commit_grammar), 0.0; ([ValidPacket 0], confirm_grammar), 0.0; ([ValidPacket 0], commit_confirm_grammar), 0.0;([ValidPacket 0], eapol_1_grammar), 0.0; ([ValidPacket 0], eapol_2_grammar), 0.0; ([ValidPacket 0], eapol_3_grammar), 0.0;([ValidPacket 0], eapol_4_grammar), 0.0] in
+  let accepted_queue = [([ValidPacket 0; ValidPacket 1], commit_grammar), 0.0; ([ValidPacket 0; ValidPacket 1], confirm_grammar), 0.0; ([ValidPacket 0; ValidPacket 1], commit_confirm_grammar), 0.0;([ValidPacket 0; ValidPacket 1], eapol_1_grammar), 0.0; ([ValidPacket 0; ValidPacket 1], eapol_2_grammar), 0.0; ([ValidPacket 0; ValidPacket 1], eapol_3_grammar), 0.0;([ValidPacket 0; ValidPacket 1], eapol_4_grammar), 0.0] in
+  let eapol_1_queue = [([ValidPacket 0; ValidPacket 1;ValidPacket 2], commit_grammar), 0.0; ([ValidPacket 0; ValidPacket 1;ValidPacket 2], confirm_grammar), 0.0; ([ValidPacket 0; ValidPacket 1;ValidPacket 2], commit_confirm_grammar), 0.0;([ValidPacket 0; ValidPacket 1;ValidPacket 2], eapol_1_grammar), 0.0; ([ValidPacket 0; ValidPacket 1;ValidPacket 2], eapol_2_grammar), 0.0; ([ValidPacket 0; ValidPacket 1;ValidPacket 2], eapol_3_grammar), 0.0;([ValidPacket 0; ValidPacket 1;ValidPacket 2], eapol_4_grammar), 0.0] in
+  let eapol_2_queue = [([ValidPacket 0; ValidPacket 1;ValidPacket 2;ValidPacket 3;], commit_grammar), 0.0; ([ValidPacket 0; ValidPacket 1;ValidPacket 2;ValidPacket 3;], confirm_grammar), 0.0; ([ValidPacket 0; ValidPacket 1;ValidPacket 2;ValidPacket 3;], commit_confirm_grammar), 0.0;([ValidPacket 0; ValidPacket 1;ValidPacket 2;ValidPacket 3;], eapol_1_grammar), 0.0; ([ValidPacket 0; ValidPacket 1;ValidPacket 2;ValidPacket 3;], eapol_2_grammar), 0.0; ([ValidPacket 0; ValidPacket 1;ValidPacket 2;ValidPacket 3;], eapol_3_grammar), 0.0;([ValidPacket 0; ValidPacket 1;ValidPacket 2;ValidPacket 3;], eapol_4_grammar), 0.0] in
   (* let _ = fuzzingAlgorithm 10000 [nothing_queue;] [] 100 0 1150 100 100 [CorrectPacket;] [nothing_queue;] in
   () *)
-  let _ = fuzzingAlgorithm 10000 [nothing_queue; confirmed_queue; accepted_queue] [] 100 0 1150 100 100 [Add;Delete;Modify;CrossOver;] [nothing_queue; confirmed_queue; accepted_queue] true in
+  let _ = fuzzingAlgorithm 10000 [nothing_queue; confirmed_queue; accepted_queue] [] 100 0 1150 100 100 [Add;Delete;Modify;CrossOver;] [nothing_queue; confirmed_queue; accepted_queue; eapol_1_queue; eapol_2_queue] true in
   ()
   (* let _ = fuzzingAlgorithm 10000 [nothing_queue; confirmed_queue; accepted_queue] [] 100 0 1150 100 100 [CorrectPacket;] [nothing_queue; confirmed_queue; accepted_queue] in
   () *)
