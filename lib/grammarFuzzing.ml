@@ -625,7 +625,7 @@ let callDriver_new packets packet =
     let driver_start_time = Unix.gettimeofday () in
     let driver_result = wait_for_python_response response_file in
     (* let driver_score = wait_for_score "sync/score.txt" in *)
-    let driver_score = 0.0 in
+    let driver_score = (false, 0.0) in
     driver_call_time := ((Unix.gettimeofday ()) -. driver_start_time) ;
     driver_calls := !driver_calls + 1 ;
     (driver_result, oracle_result, driver_score)

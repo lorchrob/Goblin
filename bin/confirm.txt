@@ -661,7 +661,7 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
 
 <WPS_ATTRIBUTE> ::= <WPS_ATTR_TYPE> <WPS_ATTR_LENGTH> <WPS_ATTR_DATA>
 {
-    <WPS_ATTR_LENGTH> <- int_to_bv(16, length(<WPS_ATTR_DATA>) div 8);
+    <WPS_ATTR_LENGTH> = int_to_bv(16, length(<WPS_ATTR_DATA>) div 8);
     int_to_bv(16, 1) bvulte <WPS_ATTR_LENGTH> and <WPS_ATTR_LENGTH> bvulte int_to_bv(16, 256);
 };
 
