@@ -323,7 +323,7 @@ let rec pp_print_ty: Format.formatter -> il_type -> unit
 | Int -> Format.fprintf ppf "Int"
 | Placeholder -> Format.fprintf ppf "Placeholder"
 | String -> Format.fprintf ppf "String"
-| BitList -> Format.fprintf ppf "BitList" 
+| BitList -> Format.fprintf ppf "List(Bit)" 
 | BitVector width -> Format.fprintf ppf "BitVec(%d)" width
 | Set ty -> Format.fprintf ppf "Set(%a)" pp_print_ty ty
 | ADT rules -> 
