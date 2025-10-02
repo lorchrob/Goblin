@@ -141,26 +141,26 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
     <PACKET_TYPE> <- int_to_bv(8, 3);
 };
 
-<VERSION> :: BitVector(8) { <VERSION> <- int_to_bv(8, 2); };
-<PACKET_TYPE> :: BitVector(8) { <PACKET_TYPE> <- int_to_bv(8, 3); };
-<PACKET_BODY_LENGTH> :: BitVector(16);
-<KEY_DESCRIPTOR_TYPE> :: BitVector(8) { <KEY_DESCRIPTOR_TYPE> <- int_to_bv(8, 2); };
-<KEY_LENGTH> :: BitVector(16);
+<VERSION> :: BitVec(8) { <VERSION> <- int_to_bv(8, 2); };
+<PACKET_TYPE> :: BitVec(8) { <PACKET_TYPE> <- int_to_bv(8, 3); };
+<PACKET_BODY_LENGTH> :: BitVec(16);
+<KEY_DESCRIPTOR_TYPE> :: BitVec(8) { <KEY_DESCRIPTOR_TYPE> <- int_to_bv(8, 2); };
+<KEY_LENGTH> :: BitVec(16);
 <REPLAY_COUNTER> :: String {
     <REPLAY_COUNTER> <- "<COUNTER>";
 };
-<KEY_IV> :: BitVector(128);
-<KEY_RSC> :: BitVector(64);
-<KEY_ID> :: BitVector(64);
-<KEY_DATA_LENGTH> :: BitVector(16);
+<KEY_IV> :: BitVec(128);
+<KEY_RSC> :: BitVec(64);
+<KEY_ID> :: BitVec(64);
+<KEY_DATA_LENGTH> :: BitVec(16);
 
-<KEY_INFORMATION_1> :: BitVector(16) { <KEY_INFORMATION_1> <- int_to_bv(16, 0x008A); };
-<KEY_INFORMATION_2> :: BitVector(16) { <KEY_INFORMATION_2> <- int_to_bv(16, 0x010A); };
-<KEY_INFORMATION_3> :: BitVector(16) { <KEY_INFORMATION_3> <- int_to_bv(16, 0x13CA); };
-<KEY_INFORMATION_4> :: BitVector(16) { <KEY_INFORMATION_4> <- int_to_bv(16, 0x030A); };
+<KEY_INFORMATION_1> :: BitVec(16) { <KEY_INFORMATION_1> <- int_to_bv(16, 0x008A); };
+<KEY_INFORMATION_2> :: BitVec(16) { <KEY_INFORMATION_2> <- int_to_bv(16, 0x010A); };
+<KEY_INFORMATION_3> :: BitVec(16) { <KEY_INFORMATION_3> <- int_to_bv(16, 0x13CA); };
+<KEY_INFORMATION_4> :: BitVec(16) { <KEY_INFORMATION_4> <- int_to_bv(16, 0x030A); };
 
-<KEY_NONCE> :: Placeholder { <KEY_NONCE> <- "<NONCE>"; };
-<KEY_MIC> :: Placeholder { <KEY_MIC> <- "<MIC>"; };
+<KEY_NONCE> :: String { <KEY_NONCE> <- "<NONCE>"; };
+<KEY_MIC> :: String { <KEY_MIC> <- "<MIC>"; };
 
 <KEY_DATA_1> ::= <KDE_LIST_1>;
 <KEY_DATA_2> ::= <KDE_LIST_2>;
@@ -172,7 +172,7 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
 <KDE_LIST_1> ::= <NULL> | <KDE_ELEMENT> <KDE_LIST_1>;
 <KDE_LIST_2> ::= <KDE_ELEMENT> | <KDE_ELEMENT> <KDE_LIST_2>;
 <KDE_LIST_3> ::= <KDE_ELEMENT> | <KDE_ELEMENT> <KDE_LIST_3>;
-<KDE_LIST_4> ::= <NULL>> | <KDE_ELEMENT> <KDE_LIST_4>;
+<KDE_LIST_4> ::= <NULL> | <KDE_ELEMENT> <KDE_LIST_4>;
 
 <KDE_ELEMENT> ::= <RSN_IE> | <VENDOR_SPECIFIC_KDE> | <PMKID_KDE> | <GTK_KDE> | <MAC_ADDR_KDE> | <IGTK_KDE> | <BIGTK_KDE> | <OCI_KDE> | <MULTIBAND_KDE> | <FTE_KDE> | <TIMEOUT_INTERVAL_KDE> | <HT_CAPS_KDE> | <VHT_CAPS_KDE> | <HE_CAPS_KDE> | <EHT_CAPS_KDE>;
 
@@ -183,11 +183,11 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
     <LENGTH_RSN> <- int_to_bv(8, (length(<VERSION_RSN>) + length(<GROUP_CIPHER_SUITE>) + length(<PAIRWISE_CIPHER_COUNT>) + length(<PAIRWISE_CIPHER_LIST>) + length(<AKM_COUNT>) + length(<AKM_LIST>) + length(<RSN_CAPABILITIES>) + length(<PMKID_COUNT>) + length(<PMKID_LIST>) + length(<GROUP_MGMT_CIPHER_SUITE>)) div 8);
 };
 
-<ELEMENT_ID_RSN> :: BitVector(8) { <ELEMENT_ID_RSN> <- int_to_bv(8, 48); };
-<LENGTH_RSN> :: BitVector(8);
-<VERSION_RSN> :: BitVector(16) { <VERSION_RSN> <- int_to_bv(16, 1); };
+<ELEMENT_ID_RSN> :: BitVec(8) { <ELEMENT_ID_RSN> <- int_to_bv(8, 48); };
+<LENGTH_RSN> :: BitVec(8);
+<VERSION_RSN> :: BitVec(16) { <VERSION_RSN> <- int_to_bv(16, 1); };
 
-<GROUP_CIPHER_SUITE> :: BitVector(32)
+<GROUP_CIPHER_SUITE> :: BitVec(32)
 {
     <GROUP_CIPHER_SUITE> = int_to_bv(32, 0x000FAC02) or // TKIP
     <GROUP_CIPHER_SUITE> = int_to_bv(32, 0x000FAC04) or // CCMP-128
@@ -199,14 +199,14 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
     <GROUP_CIPHER_SUITE> = int_to_bv(32, 0x000FAC0D);   // BIP-GMAC-128
 };
 
-<PAIRWISE_CIPHER_COUNT> :: BitVector(16)
+<PAIRWISE_CIPHER_COUNT> :: BitVec(16)
 {
     int_to_bv(16, 1) bvulte <PAIRWISE_CIPHER_COUNT> and <PAIRWISE_CIPHER_COUNT> bvulte int_to_bv(16, 8);
 };
 
 <PAIRWISE_CIPHER_LIST> ::= <PAIRWISE_CIPHER> | <PAIRWISE_CIPHER> <PAIRWISE_CIPHER_LIST>;
 
-<PAIRWISE_CIPHER> :: BitVector(32)
+<PAIRWISE_CIPHER> :: BitVec(32)
 {
     <PAIRWISE_CIPHER> = int_to_bv(32, 0x000FAC02) or // TKIP
     <PAIRWISE_CIPHER> = int_to_bv(32, 0x000FAC04) or // CCMP-128
@@ -215,14 +215,14 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
     <PAIRWISE_CIPHER> = int_to_bv(32, 0x000FAC0C);   // CCMP-256
 };
 
-<AKM_COUNT> :: BitVector(16)
+<AKM_COUNT> :: BitVec(16)
 {
     int_to_bv(16, 1) bvulte <AKM_COUNT> and <AKM_COUNT> bvulte int_to_bv(16, 8);
 };
 
 <AKM_LIST> ::= <AKM_SUITE> | <AKM_SUITE> <AKM_LIST>;
 
-<AKM_SUITE> :: BitVector(32)
+<AKM_SUITE> :: BitVec(32)
 {
     <AKM_SUITE> = int_to_bv(32, 0x000FAC01) or // 802.1X
     <AKM_SUITE> = int_to_bv(32, 0x000FAC02) or // PSK
@@ -241,17 +241,17 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
     <AKM_SUITE> = int_to_bv(32, 0x000FAC14);   // FT over FILS SHA-384
 };
 
-<RSN_CAPABILITIES> :: BitVector(16);
+<RSN_CAPABILITIES> :: BitVec(16);
 
-<PMKID_COUNT> :: BitVector(16)
+<PMKID_COUNT> :: BitVec(16)
 {
     int_to_bv(16, 0) bvulte <PMKID_COUNT> and <PMKID_COUNT> bvulte int_to_bv(16, 16);
 };
 
 <PMKID_LIST> ::= <PMKID> | <PMKID> <PMKID_LIST>;
-<PMKID> :: BitVector(128);
+<PMKID> :: BitVec(128);
 
-<GROUP_MGMT_CIPHER_SUITE> :: BitVector(32)
+<GROUP_MGMT_CIPHER_SUITE> :: BitVec(32)
 {
     <GROUP_MGMT_CIPHER_SUITE> = int_to_bv(32, 0x000FAC06) or // BIP-CMAC-128
     <GROUP_MGMT_CIPHER_SUITE> = int_to_bv(32, 0x000FAC0B) or // BIP-GMAC-128
@@ -265,9 +265,9 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
     <KDE_LENGTH_PMKID> <- int_to_bv(8, 16);
 };
 
-<KDE_TYPE_PMKID> :: BitVector(8) { <KDE_TYPE_PMKID> <- int_to_bv(8, 4); };
-<KDE_LENGTH_PMKID> :: BitVector(8) { <KDE_LENGTH_PMKID> <- int_to_bv(8, 16); };
-//<PMKID_DATA> :: BitVector(128);
+<KDE_TYPE_PMKID> :: BitVec(8) { <KDE_TYPE_PMKID> <- int_to_bv(8, 4); };
+<KDE_LENGTH_PMKID> :: BitVec(8) { <KDE_LENGTH_PMKID> <- int_to_bv(8, 16); };
+//<PMKID_DATA> :: BitVec(128);
 
 <GTK_KDE> ::= <KDE_TYPE_GTK> <KDE_LENGTH_GTK> <GTK_KDE_DATA>
 {
@@ -275,8 +275,8 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
     <KDE_LENGTH_GTK> <- int_to_bv(8, length(<GTK_KDE_DATA>) div 8);
 };
 
-<KDE_TYPE_GTK> :: BitVector(8) { <KDE_TYPE_GTK> <- int_to_bv(8, 1); };
-<KDE_LENGTH_GTK> :: BitVector(8);
+<KDE_TYPE_GTK> :: BitVec(8) { <KDE_TYPE_GTK> <- int_to_bv(8, 1); };
+<KDE_LENGTH_GTK> :: BitVec(8);
 
 <GTK_KDE_DATA> ::= <KEY_ID_GTK> <KEY_FLAG_GTK> <GTK_VALUE>
 {
@@ -284,13 +284,13 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
     <KEY_ID_GTK> bvand int_to_bv(8, 0x03) = <KEY_ID_GTK>;
 };
 
-<KEY_ID_GTK> :: BitVector(8)
+<KEY_ID_GTK> :: BitVec(8)
 {
     int_to_bv(8, 0) bvulte <KEY_ID_GTK> and <KEY_ID_GTK> bvulte int_to_bv(8, 3);
 };
 
-<KEY_FLAG_GTK> :: BitVector(8);
-<GTK_VALUE> :: BitList;
+<KEY_FLAG_GTK> :: BitVec(8);
+<GTK_VALUE> :: List(Bool);
 
 <MAC_ADDR_KDE> ::= <KDE_TYPE_MAC> <KDE_LENGTH_MAC> <MAC_ADDRESS>
 {
@@ -298,9 +298,9 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
     <KDE_LENGTH_MAC> <- int_to_bv(8, 6);
 };
 
-<KDE_TYPE_MAC> :: BitVector(8) { <KDE_TYPE_MAC> <- int_to_bv(8, 3); };
-<KDE_LENGTH_MAC> :: BitVector(8) { <KDE_LENGTH_MAC> <- int_to_bv(8, 6); };
-<MAC_ADDRESS> :: BitVector(48);
+<KDE_TYPE_MAC> :: BitVec(8) { <KDE_TYPE_MAC> <- int_to_bv(8, 3); };
+<KDE_LENGTH_MAC> :: BitVec(8) { <KDE_LENGTH_MAC> <- int_to_bv(8, 6); };
+<MAC_ADDRESS> :: BitVec(48);
 
 <IGTK_KDE> ::= <KDE_TYPE_IGTK> <KDE_LENGTH_IGTK> <IGTK_KDE_DATA>
 {
@@ -308,8 +308,8 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
     <KDE_LENGTH_IGTK> <- int_to_bv(8, length(<IGTK_KDE_DATA>) div 8);
 };
 
-<KDE_TYPE_IGTK> :: BitVector(8) { <KDE_TYPE_IGTK> <- int_to_bv(8, 9); };
-<KDE_LENGTH_IGTK> :: BitVector(8);
+<KDE_TYPE_IGTK> :: BitVec(8) { <KDE_TYPE_IGTK> <- int_to_bv(8, 9); };
+<KDE_LENGTH_IGTK> :: BitVec(8);
 
 <IGTK_KDE_DATA> ::= <KEY_ID_IGTK> <IPN> <IGTK_VALUE>
 {
@@ -317,9 +317,9 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
     int_to_bv(16, 4) bvulte <KEY_ID_IGTK> and <KEY_ID_IGTK> bvulte int_to_bv(16, 5);
 };
 
-<KEY_ID_IGTK> :: BitVector(16);
-<IPN> :: BitVector(48);
-<IGTK_VALUE> :: BitList;
+<KEY_ID_IGTK> :: BitVec(16);
+<IPN> :: BitVec(48);
+<IGTK_VALUE> :: List(Bool);
 
 <BIGTK_KDE> ::= <KDE_TYPE_BIGTK> <KDE_LENGTH_BIGTK> <BIGTK_KDE_DATA>
 {
@@ -327,8 +327,8 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
     <KDE_LENGTH_BIGTK> <- int_to_bv(8, length(<BIGTK_KDE_DATA>) div 8);
 };
 
-<KDE_TYPE_BIGTK> :: BitVector(8) { <KDE_TYPE_BIGTK> <- int_to_bv(8, 10); };
-<KDE_LENGTH_BIGTK> :: BitVector(8);
+<KDE_TYPE_BIGTK> :: BitVec(8) { <KDE_TYPE_BIGTK> <- int_to_bv(8, 10); };
+<KDE_LENGTH_BIGTK> :: BitVec(8);
 
 <BIGTK_KDE_DATA> ::= <KEY_ID_BIGTK> <BIPN> <BIGTK_VALUE>
 {
@@ -336,9 +336,9 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
     int_to_bv(16, 6) bvulte <KEY_ID_BIGTK> and <KEY_ID_BIGTK> bvulte int_to_bv(16, 7);
 };
 
-<KEY_ID_BIGTK> :: BitVector(16);
-<BIPN> :: BitVector(48);
-<BIGTK_VALUE> :: BitList;
+<KEY_ID_BIGTK> :: BitVec(16);
+<BIPN> :: BitVec(48);
+<BIGTK_VALUE> :: List(Bool);
 
 <OCI_KDE> ::= <KDE_TYPE_OCI> <KDE_LENGTH_OCI> <OCI_DATA>
 {
@@ -346,24 +346,24 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
     <KDE_LENGTH_OCI> <- int_to_bv(8, length(<OCI_DATA>) div 8);
 };
 
-<KDE_TYPE_OCI> :: BitVector(8) { <KDE_TYPE_OCI> <- int_to_bv(8, 11); };
-<KDE_LENGTH_OCI> :: BitVector(8);
+<KDE_TYPE_OCI> :: BitVec(8) { <KDE_TYPE_OCI> <- int_to_bv(8, 11); };
+<KDE_LENGTH_OCI> :: BitVec(8);
 
 <OCI_DATA> ::= <PRIMARY_CHANNEL> <SECONDARY_CHANNEL> <BANDWIDTH> <SEGMENT_INFO>
 {
-    length(<OCI_DATA>) bvgte int_to_bv(32, 24);
+    length(<OCI_DATA>) bvugte int_to_bv(32, 24);
     int_to_bv(8, 1) bvulte <PRIMARY_CHANNEL> and <PRIMARY_CHANNEL> bvulte int_to_bv(8, 233);
 };
 
-<PRIMARY_CHANNEL> :: BitVector(8);
+<PRIMARY_CHANNEL> :: BitVec(8);
 
-<SECONDARY_CHANNEL> :: BitVector(8)
+<SECONDARY_CHANNEL> :: BitVec(8)
 {
     <SECONDARY_CHANNEL> = int_to_bv(8, 0) or // No secondary channel
     (int_to_bv(8, 1) bvulte <SECONDARY_CHANNEL> and <SECONDARY_CHANNEL> bvulte int_to_bv(8, 233));
 };
 
-<BANDWIDTH> :: BitVector(8)
+<BANDWIDTH> :: BitVec(8)
 {
     <BANDWIDTH> = int_to_bv(8, 0) or  // 20 MHz
     <BANDWIDTH> = int_to_bv(8, 1) or  // 40 MHz
@@ -372,18 +372,18 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
     <BANDWIDTH> = int_to_bv(8, 4);     // 80+80 MHz
 };
 
-<SEGMENT_INFO> :: BitVector(8);
+<SEGMENT_INFO> :: BitVec(8);
 
 <MULTIBAND_KDE> ::= <KDE_TYPE_MULTIBAND> <KDE_LENGTH_MULTIBAND> <MULTIBAND_DATA>
 {
     <KDE_TYPE_MULTIBAND> <- int_to_bv(8, 12);
     <KDE_LENGTH_MULTIBAND> <- int_to_bv(8, length(<MULTIBAND_DATA>) div 8);
-    length(<MULTIBAND_DATA>) bvgte int_to_bv(32, 8);
+    length(<MULTIBAND_DATA>) bvugte int_to_bv(32, 8);
 };
 
-<KDE_TYPE_MULTIBAND> :: BitVector(8) { <KDE_TYPE_MULTIBAND> <- int_to_bv(8, 12); };
-<KDE_LENGTH_MULTIBAND> :: BitVector(8);
-<MULTIBAND_DATA> :: BitList;
+<KDE_TYPE_MULTIBAND> :: BitVec(8) { <KDE_TYPE_MULTIBAND> <- int_to_bv(8, 12); };
+<KDE_LENGTH_MULTIBAND> :: BitVec(8);
+<MULTIBAND_DATA> :: List(Bool);
 
 <FTE_KDE> ::= <KDE_TYPE_FTE> <KDE_LENGTH_FTE> <FTE_DATA>
 {
@@ -391,8 +391,8 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
     <KDE_LENGTH_FTE> <- int_to_bv(8, length(<FTE_DATA>) div 8);
 };
 
-<KDE_TYPE_FTE> :: BitVector(8) { <KDE_TYPE_FTE> <- int_to_bv(8, 55); };
-<KDE_LENGTH_FTE> :: BitVector(8);
+<KDE_TYPE_FTE> :: BitVec(8) { <KDE_TYPE_FTE> <- int_to_bv(8, 55); };
+<KDE_LENGTH_FTE> :: BitVec(8);
 
 <FTE_DATA> ::= <MIC_CONTROL> <MIC_FTE> <ANONCE_FTE> <SNONCE_FTE> <SUBELEMENTS>
 {
@@ -402,11 +402,11 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
     length(<SUBELEMENTS>) bvulte int_to_bv(32, 512);
 };
 
-<MIC_CONTROL> :: BitVector(16);
-<MIC_FTE> :: BitVector(128);
-<ANONCE_FTE> :: BitVector(256);
-<SNONCE_FTE> :: BitVector(256);
-<SUBELEMENTS> :: BitList;
+<MIC_CONTROL> :: BitVec(16);
+<MIC_FTE> :: BitVec(128);
+<ANONCE_FTE> :: BitVec(256);
+<SNONCE_FTE> :: BitVec(256);
+<SUBELEMENTS> :: List(Bool);
 
 <TIMEOUT_INTERVAL_KDE> ::= <KDE_TYPE_TIMEOUT> <KDE_LENGTH_TIMEOUT> <TIMEOUT_TYPE> <TIMEOUT_VALUE>
 {
@@ -414,17 +414,17 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
     <KDE_LENGTH_TIMEOUT> <- int_to_bv(8, 5);
 };
 
-<KDE_TYPE_TIMEOUT> :: BitVector(8) { <KDE_TYPE_TIMEOUT> <- int_to_bv(8, 56); };
-<KDE_LENGTH_TIMEOUT> :: BitVector(8) { <KDE_LENGTH_TIMEOUT> <- int_to_bv(8, 5); };
+<KDE_TYPE_TIMEOUT> :: BitVec(8) { <KDE_TYPE_TIMEOUT> <- int_to_bv(8, 56); };
+<KDE_LENGTH_TIMEOUT> :: BitVec(8) { <KDE_LENGTH_TIMEOUT> <- int_to_bv(8, 5); };
 
-<TIMEOUT_TYPE> :: BitVector(8)
+<TIMEOUT_TYPE> :: BitVec(8)
 {
     <TIMEOUT_TYPE> = int_to_bv(8, 1) or // Reassociation deadline
     <TIMEOUT_TYPE> = int_to_bv(8, 2) or // Key lifetime
     <TIMEOUT_TYPE> = int_to_bv(8, 3);   // Association comeback
 };
 
-<TIMEOUT_VALUE> :: BitVector(32)
+<TIMEOUT_VALUE> :: BitVec(32)
 {
     int_to_bv(32, 1) bvulte <TIMEOUT_VALUE> and <TIMEOUT_VALUE> bvulte int_to_bv(32, 4294967295);
 };
@@ -435,9 +435,9 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
     <KDE_LENGTH_HT> <- int_to_bv(8, 26);
 };
 
-<KDE_TYPE_HT> :: BitVector(8) { <KDE_TYPE_HT> <- int_to_bv(8, 45); };
-<KDE_LENGTH_HT> :: BitVector(8) { <KDE_LENGTH_HT> <- int_to_bv(8, 26); };
-<HT_CAPABILITIES> :: BitVector(208); // 26 bytes
+<KDE_TYPE_HT> :: BitVec(8) { <KDE_TYPE_HT> <- int_to_bv(8, 45); };
+<KDE_LENGTH_HT> :: BitVec(8) { <KDE_LENGTH_HT> <- int_to_bv(8, 26); };
+<HT_CAPABILITIES> :: BitVec(208); // 26 bytes
 
 <VHT_CAPS_KDE> ::= <KDE_TYPE_VHT> <KDE_LENGTH_VHT> <VHT_CAPABILITIES>
 {
@@ -445,33 +445,33 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
     <KDE_LENGTH_VHT> <- int_to_bv(8, 12);
 };
 
-<KDE_TYPE_VHT> :: BitVector(8) { <KDE_TYPE_VHT> <- int_to_bv(8, 191); };
-<KDE_LENGTH_VHT> :: BitVector(8) { <KDE_LENGTH_VHT> <- int_to_bv(8, 12); };
-<VHT_CAPABILITIES> :: BitVector(96); // 12 bytes
+<KDE_TYPE_VHT> :: BitVec(8) { <KDE_TYPE_VHT> <- int_to_bv(8, 191); };
+<KDE_LENGTH_VHT> :: BitVec(8) { <KDE_LENGTH_VHT> <- int_to_bv(8, 12); };
+<VHT_CAPABILITIES> :: BitVec(96); // 12 bytes
 
 <HE_CAPS_KDE> ::= <KDE_TYPE_HE> <KDE_LENGTH_HE> <HE_CAPABILITIES>
 {
     <KDE_TYPE_HE> <- int_to_bv(8, 255);
     <KDE_LENGTH_HE> <- int_to_bv(8, length(<HE_CAPABILITIES>) div 8);
-    length(<HE_CAPABILITIES>) bvgte int_to_bv(32, 216); // Minimum 27 bytes
+    length(<HE_CAPABILITIES>) bvugte int_to_bv(32, 216); // Minimum 27 bytes
     length(<HE_CAPABILITIES>) bvulte int_to_bv(32, 600); // Maximum ~75 bytes
 };
 
-<KDE_TYPE_HE> :: BitVector(8) { <KDE_TYPE_HE> <- int_to_bv(8, 255); };
-<KDE_LENGTH_HE> :: BitVector(8);
-<HE_CAPABILITIES> :: BitList;
+<KDE_TYPE_HE> :: BitVec(8) { <KDE_TYPE_HE> <- int_to_bv(8, 255); };
+<KDE_LENGTH_HE> :: BitVec(8);
+<HE_CAPABILITIES> :: List(Bool);
 
 <EHT_CAPS_KDE> ::= <KDE_TYPE_EHT> <KDE_LENGTH_EHT> <EHT_CAPABILITIES>
 {
     <KDE_TYPE_EHT> <- int_to_bv(8, 255);
     <KDE_LENGTH_EHT> <- int_to_bv(8, length(<EHT_CAPABILITIES>) div 8);
-    length(<EHT_CAPABILITIES>) bvgte int_to_bv(32, 72); // Minimum 9 bytes
+    length(<EHT_CAPABILITIES>) bvugte int_to_bv(32, 72); // Minimum 9 bytes
     length(<EHT_CAPABILITIES>) bvulte int_to_bv(32, 800); // Maximum ~100 bytes
 };
 
-<KDE_TYPE_EHT> :: BitVector(8) { <KDE_TYPE_EHT> <- int_to_bv(8, 255); };
-<KDE_LENGTH_EHT> :: BitVector(8);
-<EHT_CAPABILITIES> :: BitList;
+<KDE_TYPE_EHT> :: BitVec(8) { <KDE_TYPE_EHT> <- int_to_bv(8, 255); };
+<KDE_LENGTH_EHT> :: BitVec(8);
+<EHT_CAPABILITIES> :: List(Bool);
 
 <VENDOR_SPECIFIC_KDE> ::= <MICROSOFT_KDE> | <BROADCOM_KDE> | <ATHEROS_KDE> | <INTEL_KDE> | <CISCO_KDE> | <QUALCOMM_KDE> | <MEDIATEK_KDE> | <REALTEK_KDE> | <MARVELL_KDE> | <RALINK_KDE> | <UBIQUITI_KDE> | <ARUBA_KDE>;
 
@@ -559,37 +559,37 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
     <KDE_LENGTH_ARUBA> <- int_to_bv(8, (length(<OUI_ARUBA>) + length(<ARUBA_VENDOR_TYPE>) + length(<ARUBA_VENDOR_DATA>)) div 8);
 };
 
-<KDE_TYPE_VENDOR> :: BitVector(8) { <KDE_TYPE_VENDOR> <- int_to_bv(8, 221); };
+<KDE_TYPE_VENDOR> :: BitVec(8) { <KDE_TYPE_VENDOR> <- int_to_bv(8, 221); };
 
 // OUI definitions
-<OUI_MICROSOFT> :: BitVector(24) { <OUI_MICROSOFT> <- int_to_bv(24, 0x0050F2); };
-<OUI_BROADCOM> :: BitVector(24) { <OUI_BROADCOM> <- int_to_bv(24, 0x001018); };
-<OUI_ATHEROS> :: BitVector(24) { <OUI_ATHEROS> <- int_to_bv(24, 0x00037F); };
-<OUI_INTEL> :: BitVector(24) { <OUI_INTEL> <- int_to_bv(24, 0x000CE7); };
-<OUI_CISCO> :: BitVector(24) { <OUI_CISCO> <- int_to_bv(24, 0x001374); };
-<OUI_QUALCOMM> :: BitVector(24) { <OUI_QUALCOMM> <- int_to_bv(24, 0x8CFDF0); };
-<OUI_MEDIATEK> :: BitVector(24) { <OUI_MEDIATEK> <- int_to_bv(24, 0x000CE7); };
-<OUI_REALTEK> :: BitVector(24) { <OUI_REALTEK> <- int_to_bv(24, 0x00E04C); };
-<OUI_MARVELL> :: BitVector(24) { <OUI_MARVELL> <- int_to_bv(24, 0x005043); };
-<OUI_RALINK> :: BitVector(24) { <OUI_RALINK> <- int_to_bv(24, 0x000C43); };
-<OUI_UBIQUITI> :: BitVector(24) { <OUI_UBIQUITI> <- int_to_bv(24, 0x0027CF); };
-<OUI_ARUBA> :: BitVector(24) { <OUI_ARUBA> <- int_to_bv(24, 0x000B86); };
+<OUI_MICROSOFT> :: BitVec(24) { <OUI_MICROSOFT> <- int_to_bv(24, 0x0050F2); };
+<OUI_BROADCOM> :: BitVec(24) { <OUI_BROADCOM> <- int_to_bv(24, 0x001018); };
+<OUI_ATHEROS> :: BitVec(24) { <OUI_ATHEROS> <- int_to_bv(24, 0x00037F); };
+<OUI_INTEL> :: BitVec(24) { <OUI_INTEL> <- int_to_bv(24, 0x000CE7); };
+<OUI_CISCO> :: BitVec(24) { <OUI_CISCO> <- int_to_bv(24, 0x001374); };
+<OUI_QUALCOMM> :: BitVec(24) { <OUI_QUALCOMM> <- int_to_bv(24, 0x8CFDF0); };
+<OUI_MEDIATEK> :: BitVec(24) { <OUI_MEDIATEK> <- int_to_bv(24, 0x000CE7); };
+<OUI_REALTEK> :: BitVec(24) { <OUI_REALTEK> <- int_to_bv(24, 0x00E04C); };
+<OUI_MARVELL> :: BitVec(24) { <OUI_MARVELL> <- int_to_bv(24, 0x005043); };
+<OUI_RALINK> :: BitVec(24) { <OUI_RALINK> <- int_to_bv(24, 0x000C43); };
+<OUI_UBIQUITI> :: BitVec(24) { <OUI_UBIQUITI> <- int_to_bv(24, 0x0027CF); };
+<OUI_ARUBA> :: BitVec(24) { <OUI_ARUBA> <- int_to_bv(24, 0x000B86); };
 
 // Length field declarations
-<KDE_LENGTH_MS> :: BitVector(8);
-<KDE_LENGTH_BCM> :: BitVector(8);
-<KDE_LENGTH_ATH> :: BitVector(8);
-<KDE_LENGTH_INTEL> :: BitVector(8);
-<KDE_LENGTH_CISCO> :: BitVector(8);
-<KDE_LENGTH_QCOM> :: BitVector(8);
-<KDE_LENGTH_MTK> :: BitVector(8);
-<KDE_LENGTH_RTK> :: BitVector(8);
-<KDE_LENGTH_MRVL> :: BitVector(8);
-<KDE_LENGTH_RALINK> :: BitVector(8);
-<KDE_LENGTH_UBNT> :: BitVector(8);
-<KDE_LENGTH_ARUBA> :: BitVector(8);
+<KDE_LENGTH_MS> :: BitVec(8);
+<KDE_LENGTH_BCM> :: BitVec(8);
+<KDE_LENGTH_ATH> :: BitVec(8);
+<KDE_LENGTH_INTEL> :: BitVec(8);
+<KDE_LENGTH_CISCO> :: BitVec(8);
+<KDE_LENGTH_QCOM> :: BitVec(8);
+<KDE_LENGTH_MTK> :: BitVec(8);
+<KDE_LENGTH_RTK> :: BitVec(8);
+<KDE_LENGTH_MRVL> :: BitVec(8);
+<KDE_LENGTH_RALINK> :: BitVec(8);
+<KDE_LENGTH_UBNT> :: BitVec(8);
+<KDE_LENGTH_ARUBA> :: BitVec(8);
 
-<MS_VENDOR_TYPE> :: BitVector(8)
+<MS_VENDOR_TYPE> :: BitVec(8)
 {
     <MS_VENDOR_TYPE> = int_to_bv(8, 1) or  // WPA IE
     <MS_VENDOR_TYPE> = int_to_bv(8, 2) or  // WMM/WME
@@ -609,9 +609,9 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
     int_to_bv(16, 1) bvulte <WPA_AUTH_COUNT> and <WPA_AUTH_COUNT> bvulte int_to_bv(16, 4);
 };
 
-<WPA_VERSION> :: BitVector(16) { <WPA_VERSION> <- int_to_bv(16, 1); };
+<WPA_VERSION> :: BitVec(16) { <WPA_VERSION> <- int_to_bv(16, 1); };
 
-<WPA_MULTICAST_CIPHER> :: BitVector(32)
+<WPA_MULTICAST_CIPHER> :: BitVec(32)
 {
     <WPA_MULTICAST_CIPHER> = int_to_bv(32, 0x0050F200) or // None
     <WPA_MULTICAST_CIPHER> = int_to_bv(32, 0x0050F201) or // WEP40
@@ -620,12 +620,12 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
     <WPA_MULTICAST_CIPHER> = int_to_bv(32, 0x0050F205);    // WEP104
 };
 
-<WPA_UNICAST_CIPHER_COUNT> :: BitVector(16);
+<WPA_UNICAST_CIPHER_COUNT> :: BitVec(16);
 <WPA_UNICAST_CIPHER_LIST> ::= <WPA_CIPHER_SUITE> | <WPA_CIPHER_SUITE> <WPA_UNICAST_CIPHER_LIST>;
-<WPA_AUTH_COUNT> :: BitVector(16);
+<WPA_AUTH_COUNT> :: BitVec(16);
 <WPA_AUTH_LIST> ::= <WPA_AUTH_SUITE> | <WPA_AUTH_SUITE> <WPA_AUTH_LIST>;
 
-<WPA_CIPHER_SUITE> :: BitVector(32)
+<WPA_CIPHER_SUITE> :: BitVec(32)
 {
     <WPA_CIPHER_SUITE> = int_to_bv(32, 0x0050F200) or // None
     <WPA_CIPHER_SUITE> = int_to_bv(32, 0x0050F201) or // WEP40
@@ -634,7 +634,7 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
     <WPA_CIPHER_SUITE> = int_to_bv(32, 0x0050F205);    // WEP104
 };
 
-<WPA_AUTH_SUITE> :: BitVector(32)
+<WPA_AUTH_SUITE> :: BitVec(32)
 {
     <WPA_AUTH_SUITE> = int_to_bv(32, 0x0050F201) or // 802.1X
     <WPA_AUTH_SUITE> = int_to_bv(32, 0x0050F202);   // PSK
@@ -646,15 +646,15 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
     length(<WMM_AC_PARAMS>) = 128; // 4 ACs * 4 bytes each
 };
 
-<WMM_SUBTYPE> :: BitVector(8)
+<WMM_SUBTYPE> :: BitVec(8)
 {
     <WMM_SUBTYPE> = int_to_bv(8, 0) or // Info Element
     <WMM_SUBTYPE> = int_to_bv(8, 1);   // Parameter Element
 };
 
-<WMM_VERSION> :: BitVector(8) { <WMM_VERSION> <- int_to_bv(8, 1); };
-<WMM_QOS_INFO> :: BitVector(8);
-<WMM_AC_PARAMS> :: BitVector(128);
+<WMM_VERSION> :: BitVec(8) { <WMM_VERSION> <- int_to_bv(8, 1); };
+<WMM_QOS_INFO> :: BitVec(8);
+<WMM_AC_PARAMS> :: BitVec(128);
 
 <MS_WPS_DATA> ::= <WPS_ATTR_LIST>;
 <WPS_ATTR_LIST> ::= <WPS_ATTRIBUTE> | <WPS_ATTRIBUTE> <WPS_ATTR_LIST>;
@@ -665,7 +665,7 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
     int_to_bv(16, 1) bvulte <WPS_ATTR_LENGTH> and <WPS_ATTR_LENGTH> bvulte int_to_bv(16, 256);
 };
 
-<WPS_ATTR_TYPE> :: BitVector(16)
+<WPS_ATTR_TYPE> :: BitVec(16)
 {
     <WPS_ATTR_TYPE> = int_to_bv(16, 0x1044) or // State
     <WPS_ATTR_TYPE> = int_to_bv(16, 0x1047) or // UUID-E
@@ -687,8 +687,8 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
     <WPS_ATTR_TYPE> = int_to_bv(16, 0x1001);   // AP Channel
 };
 
-<WPS_ATTR_LENGTH> :: BitVector(16);
-<WPS_ATTR_DATA> :: BitList;
+<WPS_ATTR_LENGTH> :: BitVec(16);
+<WPS_ATTR_DATA> :: List(Bool);
 
 <MS_P2P_DATA> ::= <P2P_ATTR_LIST>;
 <P2P_ATTR_LIST> ::= <P2P_ATTRIBUTE> | <P2P_ATTRIBUTE> <P2P_ATTR_LIST>;
@@ -698,7 +698,7 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
     <P2P_ATTR_LEN> <- int_to_bv(16, length(<P2P_ATTR_BODY>) div 8);
 };
 
-<P2P_ATTR_ID> :: BitVector(8)
+<P2P_ATTR_ID> :: BitVec(8)
 {
     <P2P_ATTR_ID> = int_to_bv(8, 0) or  // Status
     <P2P_ATTR_ID> = int_to_bv(8, 1) or  // Minor reason code
@@ -720,8 +720,8 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
     <P2P_ATTR_ID> = int_to_bv(8, 17);   // Operating channel
 };
 
-<P2P_ATTR_LEN> :: BitVector(16);
-<P2P_ATTR_BODY> :: BitList;
+<P2P_ATTR_LEN> :: BitVec(16);
+<P2P_ATTR_BODY> :: List(Bool);
 
 <MS_WFD_DATA> ::= <WFD_ATTR_LIST>;
 <WFD_ATTR_LIST> ::= <WFD_ATTRIBUTE> | <WFD_ATTRIBUTE> <WFD_ATTR_LIST>;
@@ -731,7 +731,7 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
     <WFD_ATTR_LEN> <- int_to_bv(16, length(<WFD_ATTR_BODY>) div 8);
 };
 
-<WFD_ATTR_ID> :: BitVector(8)
+<WFD_ATTR_ID> :: BitVec(8)
 {
     <WFD_ATTR_ID> = int_to_bv(8, 0) or  // Device information
     <WFD_ATTR_ID> = int_to_bv(8, 1) or  // Associated BSSID
@@ -743,8 +743,8 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
     <WFD_ATTR_ID> = int_to_bv(8, 7);    // R2 device information
 };
 
-<WFD_ATTR_LEN> :: BitVector(16);
-<WFD_ATTR_BODY> :: BitList;
+<WFD_ATTR_LEN> :: BitVec(16);
+<WFD_ATTR_BODY> :: List(Bool);
 
 <MS_HS20_DATA> ::= <HS20_ATTR_LIST>;
 <HS20_ATTR_LIST> ::= <HS20_ATTRIBUTE> | <HS20_ATTRIBUTE> <HS20_ATTR_LIST>;
@@ -754,7 +754,7 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
     <HS20_ATTR_LEN> <- int_to_bv(16, length(<HS20_ATTR_BODY>) div 8);
 };
 
-<HS20_ATTR_ID> :: BitVector(8)
+<HS20_ATTR_ID> :: BitVec(8)
 {
     <HS20_ATTR_ID> = int_to_bv(8, 0) or  // HS2.0 indication
     <HS20_ATTR_ID> = int_to_bv(8, 1) or  // ANQP domain ID
@@ -766,8 +766,8 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
     <HS20_ATTR_ID> = int_to_bv(8, 7);    // AP geolocation
 };
 
-<HS20_ATTR_LEN> :: BitVector(16);
-<HS20_ATTR_BODY> :: BitList;
+<HS20_ATTR_LEN> :: BitVec(16);
+<HS20_ATTR_BODY> :: List(Bool);
 
 <MS_MBO_DATA> ::= <MBO_ATTR_LIST>;
 <MBO_ATTR_LIST> ::= <MBO_ATTRIBUTE> | <MBO_ATTRIBUTE> <MBO_ATTR_LIST>;
@@ -777,7 +777,7 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
     <MBO_ATTR_LEN> <- int_to_bv(16, length(<MBO_ATTR_BODY>) div 8);
 };
 
-<MBO_ATTR_ID> :: BitVector(8)
+<MBO_ATTR_ID> :: BitVec(8)
 {
     <MBO_ATTR_ID> = int_to_bv(8, 1) or  // MBO AP capability indication
     <MBO_ATTR_ID> = int_to_bv(8, 2) or  // Non-preferred channel report
@@ -789,10 +789,10 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
     <MBO_ATTR_ID> = int_to_bv(8, 8);    // Association retry delay
 };
 
-<MBO_ATTR_LEN> :: BitVector(16);
-<MBO_ATTR_BODY> :: BitList;
+<MBO_ATTR_LEN> :: BitVec(16);
+<MBO_ATTR_BODY> :: List(Bool);
 
-<BCM_VENDOR_TYPE> :: BitVector(8)
+<BCM_VENDOR_TYPE> :: BitVec(8)
 {
     <BCM_VENDOR_TYPE> = int_to_bv(8, 1) or  // Proprietary rates
     <BCM_VENDOR_TYPE> = int_to_bv(8, 2) or  // FBT over DS
@@ -817,10 +817,10 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
     int_to_bv(8, 1) bvulte <BCM_RATE_COUNT> and <BCM_RATE_COUNT> bvulte int_to_bv(8, 16);
 };
 
-<BCM_RATE_COUNT> :: BitVector(8);
+<BCM_RATE_COUNT> :: BitVec(8);
 <BCM_RATE_LIST> ::= <BCM_RATE> | <BCM_RATE> <BCM_RATE_LIST>;
 
-<BCM_RATE> :: BitVector(8)
+<BCM_RATE> :: BitVec(8)
 {
     <BCM_RATE> = int_to_bv(8, 0x02) or // 1 Mbps
     <BCM_RATE> = int_to_bv(8, 0x04) or // 2 Mbps
@@ -842,11 +842,11 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
     <BCM_FBT_GTK_LEN> = int_to_bv(8, length(<BCM_FBT_GTK>) div 8);
 };
 
-<BCM_FBT_CAPABILITY> :: BitVector(8);
-<BCM_FBT_KEY_HOLDER> :: BitVector(48);
-<BCM_FBT_R1KH_ID> :: BitVector(48);
-<BCM_FBT_GTK_LEN> :: BitVector(8);
-<BCM_FBT_GTK> :: BitList;
+<BCM_FBT_CAPABILITY> :: BitVec(8);
+<BCM_FBT_KEY_HOLDER> :: BitVec(48);
+<BCM_FBT_R1KH_ID> :: BitVec(48);
+<BCM_FBT_GTK_LEN> :: BitVec(8);
+<BCM_FBT_GTK> :: List(Bool);
 
 <BCM_FAST_ROAM_DATA> ::= <BCM_ROAM_TRIGGER> <BCM_ROAM_DELTA> <BCM_ROAM_SCAN_PERIOD>
 {
@@ -855,18 +855,18 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
     int_to_bv(16, 1000) bvulte <BCM_ROAM_SCAN_PERIOD> and <BCM_ROAM_SCAN_PERIOD> bvulte int_to_bv(16, 30000);
 };
 
-<BCM_ROAM_TRIGGER> :: BitVector(8);
-<BCM_ROAM_DELTA> :: BitVector(8);
-<BCM_ROAM_SCAN_PERIOD> :: BitVector(16);
+<BCM_ROAM_TRIGGER> :: BitVec(8);
+<BCM_ROAM_DELTA> :: BitVec(8);
+<BCM_ROAM_SCAN_PERIOD> :: BitVec(16);
 
 <BCM_CCX_DATA> ::= <BCM_CCX_VERSION> <BCM_CCX_CAPABILITY> <BCM_CCX_ROAM_INFO>
 {
     int_to_bv(8, 1) bvulte <BCM_CCX_VERSION> and <BCM_CCX_VERSION> bvulte int_to_bv(8, 5);
 };
 
-<BCM_CCX_VERSION> :: BitVector(8);
-<BCM_CCX_CAPABILITY> :: BitVector(16);
-<BCM_CCX_ROAM_INFO> :: BitVector(32);
+<BCM_CCX_VERSION> :: BitVec(8);
+<BCM_CCX_CAPABILITY> :: BitVec(16);
+<BCM_CCX_ROAM_INFO> :: BitVec(32);
 
 <BCM_LEGACY_DATA> ::= <BCM_LEGACY_VERSION> <BCM_LEGACY_FLAGS> <BCM_LEGACY_DATA_BODY>
 {
@@ -874,19 +874,19 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
     length(<BCM_LEGACY_DATA_BODY>) bvulte int_to_bv(32, 64);
 };
 
-<BCM_LEGACY_VERSION> :: BitVector(8);
-<BCM_LEGACY_FLAGS> :: BitVector(16);
-<BCM_LEGACY_DATA_BODY> :: BitList;
+<BCM_LEGACY_VERSION> :: BitVec(8);
+<BCM_LEGACY_FLAGS> :: BitVec(16);
+<BCM_LEGACY_DATA_BODY> :: List(Bool);
 
 <BCM_WET_DATA> ::= <BCM_WET_FLAGS> <BCM_WET_MAC_COUNT> <BCM_WET_MAC_LIST>
 {
     int_to_bv(8, 1) bvulte <BCM_WET_MAC_COUNT> and <BCM_WET_MAC_COUNT> bvulte int_to_bv(8, 8);
 };
 
-<BCM_WET_FLAGS> :: BitVector(8);
-<BCM_WET_MAC_COUNT> :: BitVector(8);
+<BCM_WET_FLAGS> :: BitVec(8);
+<BCM_WET_MAC_COUNT> :: BitVec(8);
 <BCM_WET_MAC_LIST> ::= <BCM_WET_MAC> | <BCM_WET_MAC> <BCM_WET_MAC_LIST>;
-<BCM_WET_MAC> :: BitVector(48);
+<BCM_WET_MAC> :: BitVec(48);
 
 <BCM_TDLS_DATA> ::= <BCM_TDLS_CAPABILITY> <BCM_TDLS_STATUS>
 {
@@ -896,37 +896,37 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
     <BCM_TDLS_STATUS> = int_to_bv(8, 3);   // Rejected
 };
 
-<BCM_TDLS_CAPABILITY> :: BitVector(16);
-<BCM_TDLS_STATUS> :: BitVector(8);
+<BCM_TDLS_CAPABILITY> :: BitVec(16);
+<BCM_TDLS_STATUS> :: BitVec(8);
 
 <BCM_PKTFWD_DATA> ::= <BCM_PKTFWD_FLAGS> <BCM_PKTFWD_CONFIG>
 {
     length(<BCM_PKTFWD_CONFIG>) = 32;
 };
 
-<BCM_PKTFWD_FLAGS> :: BitVector(8);
-<BCM_PKTFWD_CONFIG> :: BitVector(32);
+<BCM_PKTFWD_FLAGS> :: BitVec(8);
+<BCM_PKTFWD_CONFIG> :: BitVec(32);
 
 <BCM_SPECT_DATA> ::= <BCM_SPECT_FLAGS> <BCM_SPECT_CHANNELS>
 {
     length(<BCM_SPECT_CHANNELS>) bvulte int_to_bv(32, 256);
 };
 
-<BCM_SPECT_FLAGS> :: BitVector(8);
-<BCM_SPECT_CHANNELS> :: BitList;
+<BCM_SPECT_FLAGS> :: BitVec(8);
+<BCM_SPECT_CHANNELS> :: List(Bool);
 
 <BCM_FBT_ODS_DATA> ::= <BCM_FBT_ODS_FLAGS> <BCM_FBT_ODS_INFO>;
-<BCM_FBT_ODS_FLAGS> :: BitVector(8);
-<BCM_FBT_ODS_INFO> :: BitVector(64);
+<BCM_FBT_ODS_FLAGS> :: BitVec(8);
+<BCM_FBT_ODS_INFO> :: BitVec(64);
 
 <BCM_HS20_EXT_DATA> ::= <BCM_HS20_VERSION> <BCM_HS20_CAPABILITY> <BCM_HS20_CONFIG>
 {
     int_to_bv(8, 1) bvulte <BCM_HS20_VERSION> and <BCM_HS20_VERSION> bvulte int_to_bv(8, 3);
 };
 
-<BCM_HS20_VERSION> :: BitVector(8);
-<BCM_HS20_CAPABILITY> :: BitVector(16);
-<BCM_HS20_CONFIG> :: BitVector(32);
+<BCM_HS20_VERSION> :: BitVec(8);
+<BCM_HS20_CAPABILITY> :: BitVec(16);
+<BCM_HS20_CONFIG> :: BitVec(32);
 
 <BCM_WAPI_DATA> ::= <BCM_WAPI_VERSION> <BCM_WAPI_AKM_COUNT> <BCM_WAPI_AKM_LIST> <BCM_WAPI_UNICAST_COUNT> <BCM_WAPI_UNICAST_LIST>
 {
@@ -935,13 +935,13 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
     int_to_bv(16, 1) bvulte <BCM_WAPI_UNICAST_COUNT> and <BCM_WAPI_UNICAST_COUNT> bvulte int_to_bv(16, 2);
 };
 
-<BCM_WAPI_VERSION> :: BitVector(8);
-<BCM_WAPI_AKM_COUNT> :: BitVector(16);
+<BCM_WAPI_VERSION> :: BitVec(8);
+<BCM_WAPI_AKM_COUNT> :: BitVec(16);
 <BCM_WAPI_AKM_LIST> ::= <BCM_WAPI_AKM> | <BCM_WAPI_AKM> <BCM_WAPI_AKM_LIST>;
-<BCM_WAPI_AKM> :: BitVector(32);
-<BCM_WAPI_UNICAST_COUNT> :: BitVector(16);
+<BCM_WAPI_AKM> :: BitVec(32);
+<BCM_WAPI_UNICAST_COUNT> :: BitVec(16);
 <BCM_WAPI_UNICAST_LIST> ::= <BCM_WAPI_UNICAST> | <BCM_WAPI_UNICAST> <BCM_WAPI_UNICAST_LIST>;
-<BCM_WAPI_UNICAST> :: BitVector(32);
+<BCM_WAPI_UNICAST> :: BitVec(32);
 
 <BCM_NAN_DATA> ::= <BCM_NAN_VERSION> <BCM_NAN_MASTER_PREFERENCE> <BCM_NAN_CONFIG> <BCM_NAN_SERVICE_ID>
 {
@@ -949,21 +949,21 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
     int_to_bv(8, 1) bvulte <BCM_NAN_MASTER_PREFERENCE> and <BCM_NAN_MASTER_PREFERENCE> bvulte int_to_bv(8, 255);
 };
 
-<BCM_NAN_VERSION> :: BitVector(8);
-<BCM_NAN_MASTER_PREFERENCE> :: BitVector(8);
-<BCM_NAN_CONFIG> :: BitVector(32);
-<BCM_NAN_SERVICE_ID> :: BitVector(48);
+<BCM_NAN_VERSION> :: BitVec(8);
+<BCM_NAN_MASTER_PREFERENCE> :: BitVec(8);
+<BCM_NAN_CONFIG> :: BitVec(32);
+<BCM_NAN_SERVICE_ID> :: BitVec(48);
 
 <BCM_OCE_DATA> ::= <BCM_OCE_VERSION> <BCM_OCE_CAPABILITY> <BCM_OCE_CONFIG>
 {
     int_to_bv(8, 1) bvulte <BCM_OCE_VERSION> and <BCM_OCE_VERSION> bvulte int_to_bv(8, 2);
 };
 
-<BCM_OCE_VERSION> :: BitVector(8);
-<BCM_OCE_CAPABILITY> :: BitVector(16);
-<BCM_OCE_CONFIG> :: BitVector(32);
+<BCM_OCE_VERSION> :: BitVec(8);
+<BCM_OCE_CAPABILITY> :: BitVec(16);
+<BCM_OCE_CONFIG> :: BitVec(32);
 
-<INTEL_VENDOR_TYPE> :: BitVector(8)
+<INTEL_VENDOR_TYPE> :: BitVec(8)
 {
     <INTEL_VENDOR_TYPE> = int_to_bv(8, 1) or  // Connection parameters
     <INTEL_VENDOR_TYPE> = int_to_bv(8, 2) or  // Power management
@@ -990,10 +990,10 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
     int_to_bv(16, 1000) bvulte <INTEL_CONN_TIMEOUT> and <INTEL_CONN_TIMEOUT> bvulte int_to_bv(16, 30000);
 };
 
-<INTEL_CONN_FLAGS> :: BitVector(8);
-<INTEL_CONN_INTERVAL> :: BitVector(16);
-<INTEL_CONN_LATENCY> :: BitVector(16);
-<INTEL_CONN_TIMEOUT> :: BitVector(16);
+<INTEL_CONN_FLAGS> :: BitVec(8);
+<INTEL_CONN_INTERVAL> :: BitVec(16);
+<INTEL_CONN_LATENCY> :: BitVec(16);
+<INTEL_CONN_TIMEOUT> :: BitVec(16);
 
 <INTEL_PM_DATA> ::= <INTEL_PM_MODE> <INTEL_PM_INTERVAL> <INTEL_PM_FLAGS>
 {
@@ -1004,42 +1004,42 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
     int_to_bv(16, 100) bvulte <INTEL_PM_INTERVAL> and <INTEL_PM_INTERVAL> bvulte int_to_bv(16, 5000);
 };
 
-<INTEL_PM_MODE> :: BitVector(8);
-<INTEL_PM_INTERVAL> :: BitVector(16);
-<INTEL_PM_FLAGS> :: BitVector(8);
+<INTEL_PM_MODE> :: BitVec(8);
+<INTEL_PM_INTERVAL> :: BitVec(16);
+<INTEL_PM_FLAGS> :: BitVec(8);
 
 <INTEL_QOS_DATA> ::= <INTEL_QOS_FLAGS> <INTEL_QOS_PARAMS>
 {
     length(<INTEL_QOS_PARAMS>) = 32;
 };
 
-<INTEL_QOS_FLAGS> :: BitVector(8);
-<INTEL_QOS_PARAMS> :: BitVector(32);
+<INTEL_QOS_FLAGS> :: BitVec(8);
+<INTEL_QOS_PARAMS> :: BitVec(32);
 
 <INTEL_SEC_DATA> ::= <INTEL_SEC_FLAGS> <INTEL_SEC_FEATURES>
 {
     length(<INTEL_SEC_FEATURES>) = 32;
 };
 
-<INTEL_SEC_FLAGS> :: BitVector(16);
-<INTEL_SEC_FEATURES> :: BitVector(32);
+<INTEL_SEC_FLAGS> :: BitVec(16);
+<INTEL_SEC_FEATURES> :: BitVec(32);
 
 <INTEL_RADIO_DATA> ::= <INTEL_RADIO_FLAGS> <INTEL_RADIO_CONFIG>
 {
     length(<INTEL_RADIO_CONFIG>) = 32;
 };
 
-<INTEL_RADIO_FLAGS> :: BitVector(8);
-<INTEL_RADIO_CONFIG> :: BitVector(32);
+<INTEL_RADIO_FLAGS> :: BitVec(8);
+<INTEL_RADIO_CONFIG> :: BitVec(32);
 
 <INTEL_BAND_STEER_DATA> ::= <INTEL_BS_FLAGS> <INTEL_BS_THRESHOLD> <INTEL_BS_CONFIG>
 {
     int_to_bv(8, 50) bvulte <INTEL_BS_THRESHOLD> and <INTEL_BS_THRESHOLD> bvulte int_to_bv(8, 90);
 };
 
-<INTEL_BS_FLAGS> :: BitVector(8);
-<INTEL_BS_THRESHOLD> :: BitVector(8);
-<INTEL_BS_CONFIG> :: BitVector(16);
+<INTEL_BS_FLAGS> :: BitVec(8);
+<INTEL_BS_THRESHOLD> :: BitVec(8);
+<INTEL_BS_CONFIG> :: BitVec(16);
 
 <INTEL_LB_DATA> ::= <INTEL_LB_FLAGS> <INTEL_LB_ALGORITHM> <INTEL_LB_PARAMS>
 {
@@ -1049,68 +1049,68 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
     <INTEL_LB_ALGORITHM> = int_to_bv(8, 3);   // AI-based
 };
 
-<INTEL_LB_FLAGS> :: BitVector(8);
-<INTEL_LB_ALGORITHM> :: BitVector(8);
-<INTEL_LB_PARAMS> :: BitVector(32);
+<INTEL_LB_FLAGS> :: BitVec(8);
+<INTEL_LB_ALGORITHM> :: BitVec(8);
+<INTEL_LB_PARAMS> :: BitVec(32);
 
 <INTEL_FAST_ROAM_DATA> ::= <INTEL_FR_FLAGS> <INTEL_FR_THRESHOLD> <INTEL_FR_CONFIG>
 {
     int_to_bv(8, 60) bvulte <INTEL_FR_THRESHOLD> and <INTEL_FR_THRESHOLD> bvulte int_to_bv(8, 85);
 };
 
-<INTEL_FR_FLAGS> :: BitVector(8);
-<INTEL_FR_THRESHOLD> :: BitVector(8);
-<INTEL_FR_CONFIG> :: BitVector(32);
+<INTEL_FR_FLAGS> :: BitVec(8);
+<INTEL_FR_THRESHOLD> :: BitVec(8);
+<INTEL_FR_CONFIG> :: BitVec(32);
 
 <INTEL_MESH_DATA> ::= <INTEL_MESH_FLAGS> <INTEL_MESH_ID> <INTEL_MESH_CONFIG>
 {
     length(<INTEL_MESH_CONFIG>) = 64;
 };
 
-<INTEL_MESH_FLAGS> :: BitVector(8);
-<INTEL_MESH_ID> :: BitVector(32);
-<INTEL_MESH_CONFIG> :: BitVector(64);
+<INTEL_MESH_FLAGS> :: BitVec(8);
+<INTEL_MESH_ID> :: BitVec(32);
+<INTEL_MESH_CONFIG> :: BitVec(64);
 
 <INTEL_ADV_FEATURES> ::= <INTEL_ADV_FLAGS> <INTEL_ADV_CONFIG>
 {
     length(<INTEL_ADV_CONFIG>) = 64;
 };
 
-<INTEL_ADV_FLAGS> :: BitVector(16);
-<INTEL_ADV_CONFIG> :: BitVector(64);
+<INTEL_ADV_FLAGS> :: BitVec(16);
+<INTEL_ADV_CONFIG> :: BitVec(64);
 
 <INTEL_WIFI6_DATA> ::= <INTEL_W6_VERSION> <INTEL_W6_FEATURES> <INTEL_W6_CONFIG>
 {
     int_to_bv(8, 1) bvulte <INTEL_W6_VERSION> and <INTEL_W6_VERSION> bvulte int_to_bv(8, 3);
 };
 
-<INTEL_W6_VERSION> :: BitVector(8);
-<INTEL_W6_FEATURES> :: BitVector(32);
-<INTEL_W6_CONFIG> :: BitVector(64);
+<INTEL_W6_VERSION> :: BitVec(8);
+<INTEL_W6_FEATURES> :: BitVec(32);
+<INTEL_W6_CONFIG> :: BitVec(64);
 
 <INTEL_AI_NET_DATA> ::= <INTEL_AI_VERSION> <INTEL_AI_CAPABILITY> <INTEL_AI_CONFIG>
 {
     int_to_bv(8, 1) bvulte <INTEL_AI_VERSION> and <INTEL_AI_VERSION> bvulte int_to_bv(8, 2);
 };
 
-<INTEL_AI_VERSION> :: BitVector(8);
-<INTEL_AI_CAPABILITY> :: BitVector(16);
-<INTEL_AI_CONFIG> :: BitVector(64);
+<INTEL_AI_VERSION> :: BitVec(8);
+<INTEL_AI_CAPABILITY> :: BitVec(16);
+<INTEL_AI_CONFIG> :: BitVec(64);
 
 <INTEL_SENSING_DATA> ::= <INTEL_SENS_FLAGS> <INTEL_SENS_CAPABILITY> <INTEL_SENS_CONFIG>
 {
     length(<INTEL_SENS_CONFIG>) bvulte int_to_bv(32, 128);
 };
 
-<INTEL_SENS_FLAGS> :: BitVector(8);
-<INTEL_SENS_CAPABILITY> :: BitVector(16);
-<INTEL_SENS_CONFIG> :: BitList;
+<INTEL_SENS_FLAGS> :: BitVec(8);
+<INTEL_SENS_CAPABILITY> :: BitVec(16);
+<INTEL_SENS_CONFIG> :: List(Bool);
 
 <INTEL_MLO_DATA> ::= <INTEL_MLO_VERSION> <INTEL_MLO_CAPABILITY> <INTEL_MLO_CONFIG>
 {
     int_to_bv(8, 1) bvulte <INTEL_MLO_VERSION> and <INTEL_MLO_VERSION> bvulte int_to_bv(8, 2);
 };
 
-<INTEL_MLO_VERSION> :: BitVector(8);
-<INTEL_MLO_CAPABILITY> :: BitVector(32);
-<INTEL_MLO_CONFIG> :: BitVector(64);
+<INTEL_MLO_VERSION> :: BitVec(8);
+<INTEL_MLO_CAPABILITY> :: BitVec(32);
+<INTEL_MLO_CONFIG> :: BitVec(64);

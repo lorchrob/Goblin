@@ -320,17 +320,17 @@ let rec scoreFunction (pktStatus : (provenance * output) list) (mutatedPopulatio
     let future_provenance_and_population = scoreFunction xs ys in
     match output_symbol with
     | TIMEOUT | EXPECTED_OUTPUT ->
-      (* if output_symbol = TIMEOUT then
+      if output_symbol = TIMEOUT then
         ((fst future_provenance_and_population)), (((old_provenance @ [packet], current_grammar), score +. 0.1) :: (snd future_provenance_and_population))
-      else  *)
-        (* ((fst future_provenance_and_population)), (((old_provenance @ [packet], current_grammar), score +. 0.3) :: (snd future_provenance_and_population)) *)
-        ((fst future_provenance_and_population)), (((old_provenance @ [packet], current_grammar), score) :: (snd future_provenance_and_population))
+      else 
+        ((fst future_provenance_and_population)), (((old_provenance @ [packet], current_grammar), score +. 0.3) :: (snd future_provenance_and_population))
+        (* ((fst future_provenance_and_population)), (((old_provenance @ [packet], current_grammar), score) :: (snd future_provenance_and_population)) *)
     | CRASH | UNEXPECTED_OUTPUT ->
-      (* if output_symbol = CRASH then 
+      if output_symbol = CRASH then 
         ((old_provenance @ [packet])  :: (fst future_provenance_and_population)), (((old_provenance @ [packet], current_grammar), score +. 0.5) :: (snd future_provenance_and_population))
-      else  *)
-      (* ((old_provenance @ [packet]) :: (fst future_provenance_and_population)), (((old_provenance @ [packet], current_grammar), score +. 0.7) :: (snd future_provenance_and_population))         *)
-      ((old_provenance @ [packet]) :: (fst future_provenance_and_population)), (((old_provenance @ [packet], current_grammar), score) :: (snd future_provenance_and_population))        
+      else 
+      ((old_provenance @ [packet]) :: (fst future_provenance_and_population)), (((old_provenance @ [packet], current_grammar), score +. 0.7) :: (snd future_provenance_and_population))        
+      (* ((old_provenance @ [packet]) :: (fst future_provenance_and_population)), (((old_provenance @ [packet], current_grammar), score) :: (snd future_provenance_and_population))         *)
     | Message _ -> Utils.crash "Message type should not be matched in score func.."
 
     
@@ -624,7 +624,8 @@ let callDriver_new packets packet =
     (* print_endline "oracle result success" ; *)
     let driver_start_time = Unix.gettimeofday () in
     let driver_result = wait_for_python_response response_file in
-    let driver_score = wait_for_score "sync/score.txt" in
+    (* let driver_score = wait_for_score "sync/score.txt" in *)
+    let driver_score = 0.0 in
     driver_call_time := ((Unix.gettimeofday ()) -. driver_start_time) ;
     driver_calls := !driver_calls + 1 ;
     (driver_result, oracle_result, driver_score)
