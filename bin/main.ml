@@ -17,7 +17,7 @@ let () =
       let eapol_2_grammar = Parsing.parse (GrammarFuzzing.read_grammar "bin/eapol_2.txt") in
       let eapol_3_grammar = Parsing.parse (GrammarFuzzing.read_grammar "bin/eapol_3.txt") in
       let eapol_4_grammar = Parsing.parse (GrammarFuzzing.read_grammar "bin/eapol_4.txt") in
-      GrammarFuzzing.runFuzzer [commit_grammar; confirm_grammar; commit_confirm_grammar;]
+      GrammarFuzzing.runFuzzer [commit_grammar; confirm_grammar; commit_confirm_grammar;eapol_1_grammar;eapol_2_grammar;eapol_3_grammar;eapol_4_grammar;]
     else if !Flags.analysis <> "" then 
       AnalyzeGoblinOutput.evaluate () 
     else 
