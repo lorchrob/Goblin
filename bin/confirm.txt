@@ -15,7 +15,7 @@ int_to_bv(16, 19) bvulte <GROUP_ID> and
 (not (<STATUS_CODE> = int_to_bv(16, 0)));
     };
 
-<AUTH_ALGO> :: BitVec(16) ;
+<AUTH_ALGO> :: BitVec(16) ; 
 
 <CONFIRM> ::= <AUTH_ALGO> <AUTH_SEQ_CONFIRM> <STATUS_CODE> <SEND_CONFIRM_COUNTER> <CONFIRM_HASH>
 {
@@ -56,6 +56,7 @@ int_to_bv(16, 19) bvulte <GROUP_ID> and
     not (<PASSWD_ID> = int_to_bv(8, 0));
 };
 
+
 <REJECTED_GROUPS> ::= <RG_ELEMENT_ID> <RG_ID_LENGTH> <RG_ELEMENT_ID_EXTENSION> <RG_ID_LIST>
 { <RG_ID_LENGTH> <- int_to_bv(8, (length(<RG_ID_LIST>) div 8)+1) ;
 };
@@ -71,15 +72,15 @@ int_to_bv(16, 19) bvulte <GROUP_ID> and
 <RG_ID_LIST> ::= <RG_ID> | <RG_ID> <RG_ID_LIST>;
 
 <RG_ID> :: BitVec(16) { 
-    <RG_ID> = int_to_bv(16, 20) or 
-    <RG_ID> = int_to_bv(16, 21); 
+<RG_ID> = int_to_bv(16, 20) or 
+<RG_ID> = int_to_bv(16, 21); 
 } ;
 
 <AC_TOKEN_CONTAINER> ::= <AC_ELEMENT_ID> <AC_ID_LENGTH> <AC_ELEMENT_ID_EXTENSION> 
 <AC_TOKEN_ELEMENT>
-{ <AC_ID_LENGTH> <- int_to_bv(8, (length(<AC_TOKEN_ELEMENT>) div 8)+1); 
-not (length(<AC_TOKEN_ELEMENT>) = 0);
-};
+{ <AC_ID_LENGTH> <- int_to_bv(8, (length(<AC_TOKEN_ELEMENT>) div 8)+1);
+    not (seq.len(<AC_TOKEN_ELEMENT>) = 0) ;
+ };
 
 <AC_ELEMENT_ID> :: BitVec(8) 
 { <AC_ELEMENT_ID> <- int_to_bv(8, 255); };
@@ -105,7 +106,7 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
 
 <MESSAGE_1> ::= <EAPOL_HEADER> <KEY_DESCRIPTOR_TYPE> <KEY_INFORMATION_1> <KEY_LENGTH> <REPLAY_COUNTER> <KEY_NONCE> <KEY_IV> <KEY_RSC> <KEY_ID> <KEY_MIC> <KEY_DATA_LENGTH> <KEY_DATA_1>
 {
-    <KEY_INFORMATION_1> <- int_to_bv(16, 0x008A);
+//    <KEY_INFORMATION_1> <- int_to_bv(16, 0x008A);
     <KEY_DESCRIPTOR_TYPE> <- int_to_bv(8, 2);
     <KEY_LENGTH> <- int_to_bv(16, 0);
     <KEY_DATA_LENGTH> <- int_to_bv(16, length(<KEY_DATA_1>) div 8);
@@ -113,7 +114,7 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
 
 <MESSAGE_2> ::= <EAPOL_HEADER> <KEY_DESCRIPTOR_TYPE> <KEY_INFORMATION_2> <KEY_LENGTH> <REPLAY_COUNTER> <KEY_NONCE> <KEY_IV> <KEY_RSC> <KEY_ID> <KEY_MIC> <KEY_DATA_LENGTH> <KEY_DATA_2>
 {
-    <KEY_INFORMATION_2> <- int_to_bv(16, 0x010A);
+//    <KEY_INFORMATION_2> <- int_to_bv(16, 0x010A);
     <KEY_DESCRIPTOR_TYPE> <- int_to_bv(8, 2);
     <KEY_LENGTH> <- int_to_bv(16, 32);
     <KEY_DATA_LENGTH> <- int_to_bv(16, length(<KEY_DATA_2>) div 8);
@@ -121,7 +122,7 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
 
 <MESSAGE_3> ::= <EAPOL_HEADER> <KEY_DESCRIPTOR_TYPE> <KEY_INFORMATION_3> <KEY_LENGTH> <REPLAY_COUNTER> <KEY_NONCE> <KEY_IV> <KEY_RSC> <KEY_ID> <KEY_MIC> <KEY_DATA_LENGTH> <KEY_DATA_3>
 {
-    <KEY_INFORMATION_3> <- int_to_bv(16, 0x13CA);
+//    <KEY_INFORMATION_3> <- int_to_bv(16, 0x13CA);
     <KEY_DESCRIPTOR_TYPE> <- int_to_bv(8, 2);
     <KEY_LENGTH> <- int_to_bv(16, 32);
     <KEY_DATA_LENGTH> <- int_to_bv(16, length(<KEY_DATA_3>) div 8);
@@ -129,7 +130,7 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
 
 <MESSAGE_4> ::= <EAPOL_HEADER> <KEY_DESCRIPTOR_TYPE> <KEY_INFORMATION_4> <KEY_LENGTH> <REPLAY_COUNTER> <KEY_NONCE> <KEY_IV> <KEY_RSC> <KEY_ID> <KEY_MIC> <KEY_DATA_LENGTH> <KEY_DATA_4>
 {
-    <KEY_INFORMATION_4> <- int_to_bv(16, 0x030A);
+//    <KEY_INFORMATION_4> <- int_to_bv(16, 0x030A);
     <KEY_DESCRIPTOR_TYPE> <- int_to_bv(8, 2);
     <KEY_LENGTH> <- int_to_bv(16, 0);
     <KEY_DATA_LENGTH> <- int_to_bv(16, length(<KEY_DATA_4>) div 8);
@@ -154,10 +155,10 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
 <KEY_ID> :: BitVec(64);
 <KEY_DATA_LENGTH> :: BitVec(16);
 
-<KEY_INFORMATION_1> :: BitVec(16) { <KEY_INFORMATION_1> <- int_to_bv(16, 0x008A); };
-<KEY_INFORMATION_2> :: BitVec(16) { <KEY_INFORMATION_2> <- int_to_bv(16, 0x010A); };
-<KEY_INFORMATION_3> :: BitVec(16) { <KEY_INFORMATION_3> <- int_to_bv(16, 0x13CA); };
-<KEY_INFORMATION_4> :: BitVec(16) { <KEY_INFORMATION_4> <- int_to_bv(16, 0x030A); };
+<KEY_INFORMATION_1> :: BitVec(16) { <KEY_INFORMATION_1> <- 0x008A; };
+<KEY_INFORMATION_2> :: BitVec(16) { <KEY_INFORMATION_2> <- 0x010A; };
+<KEY_INFORMATION_3> :: BitVec(16) { <KEY_INFORMATION_3> <- 0x13CA; };
+<KEY_INFORMATION_4> :: BitVec(16) { <KEY_INFORMATION_4> <- 0x030A; };
 
 <KEY_NONCE> :: String { <KEY_NONCE> <- "<NONCE>"; };
 <KEY_MIC> :: String { <KEY_MIC> <- "<MIC>"; };
@@ -189,14 +190,14 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
 
 <GROUP_CIPHER_SUITE> :: BitVec(32)
 {
-    <GROUP_CIPHER_SUITE> = int_to_bv(32, 0x000FAC02) or // TKIP
-    <GROUP_CIPHER_SUITE> = int_to_bv(32, 0x000FAC04) or // CCMP-128
-    <GROUP_CIPHER_SUITE> = int_to_bv(32, 0x000FAC05) or // WEP-104
-    <GROUP_CIPHER_SUITE> = int_to_bv(32, 0x000FAC06) or // BIP-CMAC-128
-    <GROUP_CIPHER_SUITE> = int_to_bv(32, 0x000FAC0A) or // GCMP-128
-    <GROUP_CIPHER_SUITE> = int_to_bv(32, 0x000FAC0B) or // GCMP-256
-    <GROUP_CIPHER_SUITE> = int_to_bv(32, 0x000FAC0C) or // CCMP-256
-    <GROUP_CIPHER_SUITE> = int_to_bv(32, 0x000FAC0D);   // BIP-GMAC-128
+    <GROUP_CIPHER_SUITE> = 0x000FAC02 or // TKIP
+    <GROUP_CIPHER_SUITE> = 0x000FAC04 or // CCMP-128
+    <GROUP_CIPHER_SUITE> = 0x000FAC05 or // WEP-104
+    <GROUP_CIPHER_SUITE> = 0x000FAC06 or // BIP-CMAC-128
+    <GROUP_CIPHER_SUITE> = 0x000FAC0A or // GCMP-128
+    <GROUP_CIPHER_SUITE> = 0x000FAC0B or // GCMP-256
+    <GROUP_CIPHER_SUITE> = 0x000FAC0C or // CCMP-256
+    <GROUP_CIPHER_SUITE> = 0x000FAC0D;   // BIP-GMAC-128
 };
 
 <PAIRWISE_CIPHER_COUNT> :: BitVec(16)
@@ -208,11 +209,11 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
 
 <PAIRWISE_CIPHER> :: BitVec(32)
 {
-    <PAIRWISE_CIPHER> = int_to_bv(32, 0x000FAC02) or // TKIP
-    <PAIRWISE_CIPHER> = int_to_bv(32, 0x000FAC04) or // CCMP-128
-    <PAIRWISE_CIPHER> = int_to_bv(32, 0x000FAC0A) or // GCMP-128
-    <PAIRWISE_CIPHER> = int_to_bv(32, 0x000FAC0B) or // GCMP-256
-    <PAIRWISE_CIPHER> = int_to_bv(32, 0x000FAC0C);   // CCMP-256
+    <PAIRWISE_CIPHER> = 0x000FAC02 or // TKIP
+    <PAIRWISE_CIPHER> = 0x000FAC04 or // CCMP-128
+    <PAIRWISE_CIPHER> = 0x000FAC0A or // GCMP-128
+    <PAIRWISE_CIPHER> = 0x000FAC0B or // GCMP-256
+    <PAIRWISE_CIPHER> = 0x000FAC0C;   // CCMP-256
 };
 
 <AKM_COUNT> :: BitVec(16)
@@ -224,21 +225,21 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
 
 <AKM_SUITE> :: BitVec(32)
 {
-    <AKM_SUITE> = int_to_bv(32, 0x000FAC01) or // 802.1X
-    <AKM_SUITE> = int_to_bv(32, 0x000FAC02) or // PSK
-    <AKM_SUITE> = int_to_bv(32, 0x000FAC03) or // FT over 802.1X
-    <AKM_SUITE> = int_to_bv(32, 0x000FAC04) or // FT over PSK
-    <AKM_SUITE> = int_to_bv(32, 0x000FAC05) or // 802.1X SHA-256
-    <AKM_SUITE> = int_to_bv(32, 0x000FAC06) or // PSK SHA-256
-    <AKM_SUITE> = int_to_bv(32, 0x000FAC08) or // SAE
-    <AKM_SUITE> = int_to_bv(32, 0x000FAC09) or // FT over SAE
-    <AKM_SUITE> = int_to_bv(32, 0x000FAC0B) or // 802.1X Suite-B
-    <AKM_SUITE> = int_to_bv(32, 0x000FAC0C) or // 802.1X Suite-B-192
-    <AKM_SUITE> = int_to_bv(32, 0x000FAC0E) or // FILS SHA-256
-    <AKM_SUITE> = int_to_bv(32, 0x000FAC0F) or // FILS SHA-384
-    <AKM_SUITE> = int_to_bv(32, 0x000FAC12) or // OWE
-    <AKM_SUITE> = int_to_bv(32, 0x000FAC13) or // FT over FILS SHA-256
-    <AKM_SUITE> = int_to_bv(32, 0x000FAC14);   // FT over FILS SHA-384
+    <AKM_SUITE> = 0x000FAC01 or // 802.1X
+    <AKM_SUITE> = 0x000FAC02 or // PSK
+    <AKM_SUITE> = 0x000FAC03 or // FT over 802.1X
+    <AKM_SUITE> = 0x000FAC04 or // FT over PSK
+    <AKM_SUITE> = 0x000FAC05 or // 802.1X SHA-256
+    <AKM_SUITE> = 0x000FAC06 or // PSK SHA-256
+    <AKM_SUITE> = 0x000FAC08 or // SAE
+    <AKM_SUITE> = 0x000FAC09 or // FT over SAE
+    <AKM_SUITE> = 0x000FAC0B or // 802.1X Suite-B
+    <AKM_SUITE> = 0x000FAC0C or // 802.1X Suite-B-192
+    <AKM_SUITE> = 0x000FAC0E or // FILS SHA-256
+    <AKM_SUITE> = 0x000FAC0F or // FILS SHA-384
+    <AKM_SUITE> = 0x000FAC12 or // OWE
+    <AKM_SUITE> = 0x000FAC13 or // FT over FILS SHA-256
+    <AKM_SUITE> = 0x000FAC14;   // FT over FILS SHA-384
 };
 
 <RSN_CAPABILITIES> :: BitVec(16);
@@ -253,10 +254,10 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
 
 <GROUP_MGMT_CIPHER_SUITE> :: BitVec(32)
 {
-    <GROUP_MGMT_CIPHER_SUITE> = int_to_bv(32, 0x000FAC06) or // BIP-CMAC-128
-    <GROUP_MGMT_CIPHER_SUITE> = int_to_bv(32, 0x000FAC0B) or // BIP-GMAC-128
-    <GROUP_MGMT_CIPHER_SUITE> = int_to_bv(32, 0x000FAC0C) or // BIP-GMAC-256
-    <GROUP_MGMT_CIPHER_SUITE> = int_to_bv(32, 0x000FAC0D);   // BIP-CMAC-256
+    <GROUP_MGMT_CIPHER_SUITE> = 0x000FAC06 or // BIP-CMAC-128
+    <GROUP_MGMT_CIPHER_SUITE> = 0x000FAC0B or // BIP-GMAC-128
+    <GROUP_MGMT_CIPHER_SUITE> = 0x000FAC0C or // BIP-GMAC-256
+    <GROUP_MGMT_CIPHER_SUITE> = 0x000FAC0D;   // BIP-CMAC-256
 };
 
 <PMKID_KDE> ::= <KDE_TYPE_PMKID> <KDE_LENGTH_PMKID> //<PMKID_DATA>
@@ -351,7 +352,7 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
 
 <OCI_DATA> ::= <PRIMARY_CHANNEL> <SECONDARY_CHANNEL> <BANDWIDTH> <SEGMENT_INFO>
 {
-    length(<OCI_DATA>) bvugte int_to_bv(32, 24);
+    (length(<PRIMARY_CHANNEL>) + length(<SECONDARY_CHANNEL>) + length(<BANDWIDTH>) + length(<SEGMENT_INFO>)) bvugte int_to_bv(32, 24);
     int_to_bv(8, 1) bvulte <PRIMARY_CHANNEL> and <PRIMARY_CHANNEL> bvulte int_to_bv(8, 233);
 };
 
@@ -478,102 +479,104 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
 <MICROSOFT_KDE> ::= <KDE_TYPE_VENDOR> <KDE_LENGTH_MS> <OUI_MICROSOFT> <MS_VENDOR_TYPE> <MS_VENDOR_DATA>
 {
     <KDE_TYPE_VENDOR> <- int_to_bv(8, 221);
-    <OUI_MICROSOFT> <- int_to_bv(24, 0x0050F2);
+    <OUI_MICROSOFT> <- 0x0050F2;
     <KDE_LENGTH_MS> <- int_to_bv(8, (length(<OUI_MICROSOFT>) + length(<MS_VENDOR_TYPE>) + length(<MS_VENDOR_DATA>)) div 8);
 };
 
 <BROADCOM_KDE> ::= <KDE_TYPE_VENDOR> <KDE_LENGTH_BCM> <OUI_BROADCOM> <BCM_VENDOR_TYPE> <BCM_VENDOR_DATA>
 {
     <KDE_TYPE_VENDOR> <- int_to_bv(8, 221);
-    <OUI_BROADCOM> <- int_to_bv(24, 0x001018);
+    <OUI_BROADCOM> <- 0x001018;
     <KDE_LENGTH_BCM> <- int_to_bv(8, (length(<OUI_BROADCOM>) + length(<BCM_VENDOR_TYPE>) + length(<BCM_VENDOR_DATA>)) div 8);
 };
 
 <ATHEROS_KDE> ::= <KDE_TYPE_VENDOR> <KDE_LENGTH_ATH> <OUI_ATHEROS> <ATH_VENDOR_TYPE> <ATH_VENDOR_DATA>
 {
     <KDE_TYPE_VENDOR> <- int_to_bv(8, 221);
-    <OUI_ATHEROS> <- int_to_bv(24, 0x00037F);
+    <OUI_ATHEROS> <- 0x00037F;
     <KDE_LENGTH_ATH> <- int_to_bv(8, (length(<OUI_ATHEROS>) + length(<ATH_VENDOR_TYPE>) + length(<ATH_VENDOR_DATA>)) div 8);
 };
 
 <INTEL_KDE> ::= <KDE_TYPE_VENDOR> <KDE_LENGTH_INTEL> <OUI_INTEL> <INTEL_VENDOR_TYPE> <INTEL_VENDOR_DATA>
 {
     <KDE_TYPE_VENDOR> <- int_to_bv(8, 221);
-    <OUI_INTEL> <- int_to_bv(24, 0x000CE7);
+    <OUI_INTEL> <- 0x000CE7;
     <KDE_LENGTH_INTEL> <- int_to_bv(8, (length(<OUI_INTEL>) + length(<INTEL_VENDOR_TYPE>) + length(<INTEL_VENDOR_DATA>)) div 8);
 };
 
 <CISCO_KDE> ::= <KDE_TYPE_VENDOR> <KDE_LENGTH_CISCO> <OUI_CISCO> <CISCO_VENDOR_TYPE> <CISCO_VENDOR_DATA>
 {
     <KDE_TYPE_VENDOR> <- int_to_bv(8, 221);
-    <OUI_CISCO> <- int_to_bv(24, 0x001374);
+    <OUI_CISCO> <- 0x001374;
+    int_to_bv(8, 1) bvulte <CISCO_VENDOR_TYPE> and <CISCO_VENDOR_TYPE> bvulte int_to_bv(8, 4);
     <KDE_LENGTH_CISCO> <- int_to_bv(8, (length(<OUI_CISCO>) + length(<CISCO_VENDOR_TYPE>) + length(<CISCO_VENDOR_DATA>)) div 8);
 };
 
 <QUALCOMM_KDE> ::= <KDE_TYPE_VENDOR> <KDE_LENGTH_QCOM> <OUI_QUALCOMM> <QCOM_VENDOR_TYPE> <QCOM_VENDOR_DATA>
 {
     <KDE_TYPE_VENDOR> <- int_to_bv(8, 221);
-    <OUI_QUALCOMM> <- int_to_bv(24, 0x8CFDF0);
+    <OUI_QUALCOMM> <-0x8CFDF0;
+    int_to_bv(8, 1) bvulte <QCOM_VENDOR_TYPE> and <QCOM_VENDOR_TYPE> bvulte int_to_bv(8, 4);
     <KDE_LENGTH_QCOM> <- int_to_bv(8, (length(<OUI_QUALCOMM>) + length(<QCOM_VENDOR_TYPE>) + length(<QCOM_VENDOR_DATA>)) div 8);
 };
 
 <MEDIATEK_KDE> ::= <KDE_TYPE_VENDOR> <KDE_LENGTH_MTK> <OUI_MEDIATEK> <MTK_VENDOR_TYPE> <MTK_VENDOR_DATA>
 {
     <KDE_TYPE_VENDOR> <- int_to_bv(8, 221);
-    <OUI_MEDIATEK> <- int_to_bv(24, 0x000CE7);
+    <OUI_MEDIATEK> <- 0x000CE7;
     <KDE_LENGTH_MTK> <- int_to_bv(8, (length(<OUI_MEDIATEK>) + length(<MTK_VENDOR_TYPE>) + length(<MTK_VENDOR_DATA>)) div 8);
 };
 
 <REALTEK_KDE> ::= <KDE_TYPE_VENDOR> <KDE_LENGTH_RTK> <OUI_REALTEK> <RTK_VENDOR_TYPE> <RTK_VENDOR_DATA>
 {
     <KDE_TYPE_VENDOR> <- int_to_bv(8, 221);
-    <OUI_REALTEK> <- int_to_bv(24, 0x00E04C);
+    <OUI_REALTEK> <- 0x00E04C;
     <KDE_LENGTH_RTK> <- int_to_bv(8, (length(<OUI_REALTEK>) + length(<RTK_VENDOR_TYPE>) + length(<RTK_VENDOR_DATA>)) div 8);
 };
 
 <MARVELL_KDE> ::= <KDE_TYPE_VENDOR> <KDE_LENGTH_MRVL> <OUI_MARVELL> <MRVL_VENDOR_TYPE> <MRVL_VENDOR_DATA>
 {
     <KDE_TYPE_VENDOR> <- int_to_bv(8, 221);
-    <OUI_MARVELL> <- int_to_bv(24, 0x005043);
+    <OUI_MARVELL> <- 0x005043;
     <KDE_LENGTH_MRVL> <- int_to_bv(8, (length(<OUI_MARVELL>) + length(<MRVL_VENDOR_TYPE>) + length(<MRVL_VENDOR_DATA>)) div 8);
 };
 
 <RALINK_KDE> ::= <KDE_TYPE_VENDOR> <KDE_LENGTH_RALINK> <OUI_RALINK> <RALINK_VENDOR_TYPE> <RALINK_VENDOR_DATA>
 {
     <KDE_TYPE_VENDOR> <- int_to_bv(8, 221);
-    <OUI_RALINK> <- int_to_bv(24, 0x000C43);
+    <OUI_RALINK> <- 0x000C43;
     <KDE_LENGTH_RALINK> <- int_to_bv(8, (length(<OUI_RALINK>) + length(<RALINK_VENDOR_TYPE>) + length(<RALINK_VENDOR_DATA>)) div 8);
 };
 
 <UBIQUITI_KDE> ::= <KDE_TYPE_VENDOR> <KDE_LENGTH_UBNT> <OUI_UBIQUITI> <UBNT_VENDOR_TYPE> <UBNT_VENDOR_DATA>
 {
     <KDE_TYPE_VENDOR> <- int_to_bv(8, 221);
-    <OUI_UBIQUITI> <- int_to_bv(24, 0x0027CF);
+    <OUI_UBIQUITI> <- 0x0027CF;
     <KDE_LENGTH_UBNT> <- int_to_bv(8, (length(<OUI_UBIQUITI>) + length(<UBNT_VENDOR_TYPE>) + length(<UBNT_VENDOR_DATA>)) div 8);
 };
 
 <ARUBA_KDE> ::= <KDE_TYPE_VENDOR> <KDE_LENGTH_ARUBA> <OUI_ARUBA> <ARUBA_VENDOR_TYPE> <ARUBA_VENDOR_DATA>
 {
     <KDE_TYPE_VENDOR> <- int_to_bv(8, 221);
-    <OUI_ARUBA> <- int_to_bv(24, 0x000B86);
+    <OUI_ARUBA> <- 0x000B86;
     <KDE_LENGTH_ARUBA> <- int_to_bv(8, (length(<OUI_ARUBA>) + length(<ARUBA_VENDOR_TYPE>) + length(<ARUBA_VENDOR_DATA>)) div 8);
 };
 
 <KDE_TYPE_VENDOR> :: BitVec(8) { <KDE_TYPE_VENDOR> <- int_to_bv(8, 221); };
 
 // OUI definitions
-<OUI_MICROSOFT> :: BitVec(24) { <OUI_MICROSOFT> <- int_to_bv(24, 0x0050F2); };
-<OUI_BROADCOM> :: BitVec(24) { <OUI_BROADCOM> <- int_to_bv(24, 0x001018); };
-<OUI_ATHEROS> :: BitVec(24) { <OUI_ATHEROS> <- int_to_bv(24, 0x00037F); };
-<OUI_INTEL> :: BitVec(24) { <OUI_INTEL> <- int_to_bv(24, 0x000CE7); };
-<OUI_CISCO> :: BitVec(24) { <OUI_CISCO> <- int_to_bv(24, 0x001374); };
-<OUI_QUALCOMM> :: BitVec(24) { <OUI_QUALCOMM> <- int_to_bv(24, 0x8CFDF0); };
-<OUI_MEDIATEK> :: BitVec(24) { <OUI_MEDIATEK> <- int_to_bv(24, 0x000CE7); };
-<OUI_REALTEK> :: BitVec(24) { <OUI_REALTEK> <- int_to_bv(24, 0x00E04C); };
-<OUI_MARVELL> :: BitVec(24) { <OUI_MARVELL> <- int_to_bv(24, 0x005043); };
-<OUI_RALINK> :: BitVec(24) { <OUI_RALINK> <- int_to_bv(24, 0x000C43); };
-<OUI_UBIQUITI> :: BitVec(24) { <OUI_UBIQUITI> <- int_to_bv(24, 0x0027CF); };
-<OUI_ARUBA> :: BitVec(24) { <OUI_ARUBA> <- int_to_bv(24, 0x000B86); };
+<OUI_MICROSOFT> :: BitVec(24) { <OUI_MICROSOFT> <- 0x0050F2; };
+<OUI_BROADCOM> :: BitVec(24) { <OUI_BROADCOM> <- 0x001018; };
+<OUI_ATHEROS> :: BitVec(24) { <OUI_ATHEROS> <- 0x00037F; };
+<OUI_INTEL> :: BitVec(24) { <OUI_INTEL> <- 0x000CE7; };
+<OUI_CISCO> :: BitVec(24) { <OUI_CISCO> <- 0x001374; };
+<OUI_QUALCOMM> :: BitVec(24) { <OUI_QUALCOMM> <- 0x8CFDF0; };
+<OUI_MEDIATEK> :: BitVec(24) { <OUI_MEDIATEK> <- 0x000CE7; };
+<OUI_REALTEK> :: BitVec(24) { <OUI_REALTEK> <- 0x00E04C; };
+<OUI_MARVELL> :: BitVec(24) { <OUI_MARVELL> <- 0x005043; };
+<OUI_RALINK> :: BitVec(24) { <OUI_RALINK> <- 0x000C43; };
+<OUI_UBIQUITI> :: BitVec(24) { <OUI_UBIQUITI> <- 0x0027CF; };
+<OUI_ARUBA> :: BitVec(24) { <OUI_ARUBA> <- 0x000B86; };
 
 // Length field declarations
 <KDE_LENGTH_MS> :: BitVec(8);
@@ -609,15 +612,166 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
     int_to_bv(16, 1) bvulte <WPA_AUTH_COUNT> and <WPA_AUTH_COUNT> bvulte int_to_bv(16, 4);
 };
 
+
+<ATH_VENDOR_TYPE> :: BitVec(8)
+{
+    <ATH_VENDOR_TYPE> = int_to_bv(8, 1) or  // Advanced capabilities
+    <ATH_VENDOR_TYPE> = int_to_bv(8, 2) or  // XR (eXtended Range)
+    <ATH_VENDOR_TYPE> = int_to_bv(8, 3) or  // Fast Frame
+    <ATH_VENDOR_TYPE> = int_to_bv(8, 4) or  // Turbo Prime
+    <ATH_VENDOR_TYPE> = int_to_bv(8, 5) or  // Compression
+    <ATH_VENDOR_TYPE> = int_to_bv(8, 6) or  // Fast Frame Enabled
+    <ATH_VENDOR_TYPE> = int_to_bv(8, 7) or  // Extended Channel Switch
+    <ATH_VENDOR_TYPE> = int_to_bv(8, 8) or  // Device Type
+    <ATH_VENDOR_TYPE> = int_to_bv(8, 9) or  // One-stream enabled
+    <ATH_VENDOR_TYPE> = int_to_bv(8, 10) or // WOW (Wake on WLAN)
+    <ATH_VENDOR_TYPE> = int_to_bv(8, 11) or // Beamforming
+    <ATH_VENDOR_TYPE> = int_to_bv(8, 12) or // MU-MIMO
+    <ATH_VENDOR_TYPE> = int_to_bv(8, 13) or // QCA mesh
+    <ATH_VENDOR_TYPE> = int_to_bv(8, 14);   // Dynamic frequency selection
+};
+
+<ATH_VENDOR_DATA> ::= <ATH_ADV_CAP_DATA> | <ATH_XR_DATA> | <ATH_FF_DATA> | <ATH_TURBO_DATA> | <ATH_COMP_DATA> | <ATH_FFE_DATA> | <ATH_ECSA_DATA> | <ATH_DEVICE_DATA> | <ATH_ONESTREAM_DATA> | <ATH_WOW_DATA> | <ATH_BEAMFORM_DATA> | <ATH_MUMIMO_DATA> | <ATH_MESH_DATA> | <ATH_DFS_DATA>;
+
+<ATH_ADV_CAP_DATA> ::= <ATH_CAP_FLAGS> <ATH_CAP_FEATURES>
+{
+    length(<ATH_CAP_FEATURES>) bvulte int_to_bv(32, 128);
+};
+
+<ATH_CAP_FLAGS> :: BitVec(16);
+<ATH_CAP_FEATURES> :: List(Bool);
+
+<ATH_XR_DATA> ::= <ATH_XR_FLAGS> <ATH_XR_PARAMS>
+{
+    <ATH_XR_FLAGS> bvand int_to_bv(8, 0xF0) = int_to_bv(8, 0);
+};
+
+<ATH_XR_FLAGS> :: BitVec(8);
+<ATH_XR_PARAMS> :: BitVec(16);
+
+<ATH_FF_DATA> ::= <ATH_FF_FLAGS> <ATH_FF_THRESHOLD>
+{
+    int_to_bv(16, 128) bvulte <ATH_FF_THRESHOLD> and <ATH_FF_THRESHOLD> bvulte int_to_bv(16, 2304);
+};
+
+<ATH_FF_FLAGS> :: BitVec(8);
+<ATH_FF_THRESHOLD> :: BitVec(16);
+
+<ATH_TURBO_DATA> ::= <ATH_TURBO_FLAGS> <ATH_TURBO_MODE>
+{
+    <ATH_TURBO_MODE> = int_to_bv(8, 0) or // Static turbo
+    <ATH_TURBO_MODE> = int_to_bv(8, 1) or // Dynamic turbo
+    <ATH_TURBO_MODE> = int_to_bv(8, 2);   // Turbo prime
+};
+
+<ATH_TURBO_FLAGS> :: BitVec(8);
+<ATH_TURBO_MODE> :: BitVec(8);
+
+<ATH_COMP_DATA> ::= <ATH_COMP_FLAGS> <ATH_COMP_ALGORITHM>
+{
+    <ATH_COMP_ALGORITHM> = int_to_bv(8, 0) or // No compression
+    <ATH_COMP_ALGORITHM> = int_to_bv(8, 1) or // LZO
+    <ATH_COMP_ALGORITHM> = int_to_bv(8, 2);   // Fast LZ
+};
+
+<ATH_COMP_FLAGS> :: BitVec(8);
+<ATH_COMP_ALGORITHM> :: BitVec(8);
+
+<ATH_FFE_DATA> ::= <ATH_FFE_FLAGS> <ATH_FFE_CONFIG>;
+
+<ATH_FFE_FLAGS> :: BitVec(8);
+<ATH_FFE_CONFIG> :: BitVec(16);
+
+<ATH_ECSA_DATA> ::= <ATH_ECSA_MODE> <ATH_ECSA_NEW_CHANNEL> <ATH_ECSA_COUNT>
+{
+    <ATH_ECSA_MODE> = int_to_bv(8, 0) or // STA may tx until switch
+    <ATH_ECSA_MODE> = int_to_bv(8, 1);   // STA should not tx until switch
+    int_to_bv(8, 1) bvulte <ATH_ECSA_NEW_CHANNEL> and <ATH_ECSA_NEW_CHANNEL> bvulte int_to_bv(8, 233);
+    int_to_bv(8, 0) bvulte <ATH_ECSA_COUNT> and <ATH_ECSA_COUNT> bvulte int_to_bv(8, 255);
+};
+
+<ATH_ECSA_MODE> :: BitVec(8);
+<ATH_ECSA_NEW_CHANNEL> :: BitVec(8);
+<ATH_ECSA_COUNT> :: BitVec(8);
+
+<ATH_DEVICE_DATA> ::= <ATH_DEVICE_TYPE> <ATH_DEVICE_SUBTYPE> <ATH_DEVICE_VERSION>
+{
+    <ATH_DEVICE_TYPE> = int_to_bv(8, 1) or // AP
+    <ATH_DEVICE_TYPE> = int_to_bv(8, 2) or // STA  
+    <ATH_DEVICE_TYPE> = int_to_bv(8, 3) or // ADHOC
+    <ATH_DEVICE_TYPE> = int_to_bv(8, 4);   // Monitor
+    int_to_bv(16, 1) bvulte <ATH_DEVICE_VERSION> and <ATH_DEVICE_VERSION> bvulte int_to_bv(16, 65535);
+};
+
+<ATH_DEVICE_TYPE> :: BitVec(8);
+<ATH_DEVICE_SUBTYPE> :: BitVec(8);
+<ATH_DEVICE_VERSION> :: BitVec(16);
+
+<ATH_ONESTREAM_DATA> ::= <ATH_ONESTREAM_FLAGS>;
+
+<ATH_ONESTREAM_FLAGS> :: BitVec(8);
+
+<ATH_WOW_DATA> ::= <ATH_WOW_FLAGS> <ATH_WOW_PATTERN_COUNT> <ATH_WOW_PATTERNS>
+{
+    int_to_bv(8, 0) bvulte <ATH_WOW_PATTERN_COUNT> and <ATH_WOW_PATTERN_COUNT> bvulte int_to_bv(8, 16);
+};
+
+<ATH_WOW_FLAGS> :: BitVec(8);
+<ATH_WOW_PATTERN_COUNT> :: BitVec(8);
+<ATH_WOW_PATTERNS> :: List(Bool);
+
+<ATH_BEAMFORM_DATA> ::= <ATH_BF_VERSION> <ATH_BF_CAPABILITY> <ATH_BF_CONFIG>
+{
+    int_to_bv(8, 1) bvulte <ATH_BF_VERSION> and <ATH_BF_VERSION> bvulte int_to_bv(8, 3);
+};
+
+<ATH_BF_VERSION> :: BitVec(8);
+<ATH_BF_CAPABILITY> :: BitVec(16);
+<ATH_BF_CONFIG> :: BitVec(32);
+
+<ATH_MUMIMO_DATA> ::= <ATH_MU_VERSION> <ATH_MU_CAPABILITY> <ATH_MU_CONFIG>
+{
+    int_to_bv(8, 1) bvulte <ATH_MU_VERSION> and <ATH_MU_VERSION> bvulte int_to_bv(8, 2);
+};
+
+<ATH_MU_VERSION> :: BitVec(8);
+<ATH_MU_CAPABILITY> :: BitVec(16);
+<ATH_MU_CONFIG> :: BitVec(32);
+
+<ATH_MESH_DATA> ::= <ATH_MESH_VERSION> <ATH_MESH_TYPE> <ATH_MESH_CONFIG>
+{
+    int_to_bv(8, 1) bvulte <ATH_MESH_VERSION> and <ATH_MESH_VERSION> bvulte int_to_bv(8, 2);
+    <ATH_MESH_TYPE> = int_to_bv(8, 0) or // Mesh point
+    <ATH_MESH_TYPE> = int_to_bv(8, 1) or // Mesh gate
+    <ATH_MESH_TYPE> = int_to_bv(8, 2);   // Mesh portal
+};
+
+<ATH_MESH_VERSION> :: BitVec(8);
+<ATH_MESH_TYPE> :: BitVec(8);
+<ATH_MESH_CONFIG> :: BitVec(64);
+
+<ATH_DFS_DATA> ::= <ATH_DFS_VERSION> <ATH_DFS_CAPABILITY> <ATH_DFS_REGION>
+{
+    int_to_bv(8, 1) bvulte <ATH_DFS_VERSION> and <ATH_DFS_VERSION> bvulte int_to_bv(8, 2);
+    <ATH_DFS_REGION> = int_to_bv(8, 0) or // Unset
+    <ATH_DFS_REGION> = int_to_bv(8, 1) or // FCC
+    <ATH_DFS_REGION> = int_to_bv(8, 2) or // ETSI
+    <ATH_DFS_REGION> = int_to_bv(8, 3);   // Japan
+};
+
+<ATH_DFS_VERSION> :: BitVec(8);
+<ATH_DFS_CAPABILITY> :: BitVec(16);
+<ATH_DFS_REGION> :: BitVec(8);
+
 <WPA_VERSION> :: BitVec(16) { <WPA_VERSION> <- int_to_bv(16, 1); };
 
 <WPA_MULTICAST_CIPHER> :: BitVec(32)
 {
-    <WPA_MULTICAST_CIPHER> = int_to_bv(32, 0x0050F200) or // None
-    <WPA_MULTICAST_CIPHER> = int_to_bv(32, 0x0050F201) or // WEP40
-    <WPA_MULTICAST_CIPHER> = int_to_bv(32, 0x0050F202) or // TKIP
-    <WPA_MULTICAST_CIPHER> = int_to_bv(32, 0x0050F204) or // CCMP
-    <WPA_MULTICAST_CIPHER> = int_to_bv(32, 0x0050F205);    // WEP104
+    <WPA_MULTICAST_CIPHER> = 0x0050F200 or // None
+    <WPA_MULTICAST_CIPHER> = 0x0050F201 or // WEP40
+    <WPA_MULTICAST_CIPHER> = 0x0050F202 or // TKIP
+    <WPA_MULTICAST_CIPHER> = 0x0050F204 or // CCMP
+    <WPA_MULTICAST_CIPHER> = 0x0050F205;    // WEP104
 };
 
 <WPA_UNICAST_CIPHER_COUNT> :: BitVec(16);
@@ -627,17 +781,17 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
 
 <WPA_CIPHER_SUITE> :: BitVec(32)
 {
-    <WPA_CIPHER_SUITE> = int_to_bv(32, 0x0050F200) or // None
-    <WPA_CIPHER_SUITE> = int_to_bv(32, 0x0050F201) or // WEP40
-    <WPA_CIPHER_SUITE> = int_to_bv(32, 0x0050F202) or // TKIP
-    <WPA_CIPHER_SUITE> = int_to_bv(32, 0x0050F204) or // CCMP
-    <WPA_CIPHER_SUITE> = int_to_bv(32, 0x0050F205);    // WEP104
+    <WPA_CIPHER_SUITE> = 0x0050F200 or // None
+    <WPA_CIPHER_SUITE> = 0x0050F201 or // WEP40
+    <WPA_CIPHER_SUITE> = 0x0050F202 or // TKIP
+    <WPA_CIPHER_SUITE> = 0x0050F204 or // CCMP
+    <WPA_CIPHER_SUITE> = 0x0050F205;    // WEP104
 };
 
 <WPA_AUTH_SUITE> :: BitVec(32)
 {
-    <WPA_AUTH_SUITE> = int_to_bv(32, 0x0050F201) or // 802.1X
-    <WPA_AUTH_SUITE> = int_to_bv(32, 0x0050F202);   // PSK
+    <WPA_AUTH_SUITE> = 0x0050F201 or // 802.1X
+    <WPA_AUTH_SUITE> = 0x0050F202;   // PSK
 };
 
 <MS_WMM_DATA> ::= <WMM_SUBTYPE> <WMM_VERSION> <WMM_QOS_INFO> <WMM_AC_PARAMS>
@@ -667,24 +821,24 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
 
 <WPS_ATTR_TYPE> :: BitVec(16)
 {
-    <WPS_ATTR_TYPE> = int_to_bv(16, 0x1044) or // State
-    <WPS_ATTR_TYPE> = int_to_bv(16, 0x1047) or // UUID-E
-    <WPS_ATTR_TYPE> = int_to_bv(16, 0x1054) or // Primary Device Type
-    <WPS_ATTR_TYPE> = int_to_bv(16, 0x1041) or // Response Type
-    <WPS_ATTR_TYPE> = int_to_bv(16, 0x1042) or // Serial Number
-    <WPS_ATTR_TYPE> = int_to_bv(16, 0x1021) or // Manufacturer
-    <WPS_ATTR_TYPE> = int_to_bv(16, 0x1023) or // Model Name
-    <WPS_ATTR_TYPE> = int_to_bv(16, 0x1024) or // Model Number
-    <WPS_ATTR_TYPE> = int_to_bv(16, 0x1011) or // Device Name
-    <WPS_ATTR_TYPE> = int_to_bv(16, 0x1008) or // Config Methods
-    <WPS_ATTR_TYPE> = int_to_bv(16, 0x103B) or // RF Bands
-    <WPS_ATTR_TYPE> = int_to_bv(16, 0x1049) or // Vendor Extension
-    <WPS_ATTR_TYPE> = int_to_bv(16, 0x100E) or // Credential
-    <WPS_ATTR_TYPE> = int_to_bv(16, 0x1026) or // Network Index
-    <WPS_ATTR_TYPE> = int_to_bv(16, 0x1045) or // SSID
-    <WPS_ATTR_TYPE> = int_to_bv(16, 0x100F) or // Network Key
-    <WPS_ATTR_TYPE> = int_to_bv(16, 0x1020) or // MAC Address
-    <WPS_ATTR_TYPE> = int_to_bv(16, 0x1001);   // AP Channel
+    <WPS_ATTR_TYPE> = 0x1044 or // State
+    <WPS_ATTR_TYPE> = 0x1047 or // UUID-E
+    <WPS_ATTR_TYPE> = 0x1054 or // Primary Device Type
+    <WPS_ATTR_TYPE> = 0x1041 or // Response Type
+    <WPS_ATTR_TYPE> = 0x1042 or // Serial Number
+    <WPS_ATTR_TYPE> = 0x1021 or // Manufacturer
+    <WPS_ATTR_TYPE> = 0x1023 or // Model Name
+    <WPS_ATTR_TYPE> = 0x1024 or // Model Number
+    <WPS_ATTR_TYPE> = 0x1011 or // Device Name
+    <WPS_ATTR_TYPE> = 0x1008 or // Config Methods
+    <WPS_ATTR_TYPE> = 0x103B or // RF Bands
+    <WPS_ATTR_TYPE> = 0x1049 or // Vendor Extension
+    <WPS_ATTR_TYPE> = 0x100E or // Credential
+    <WPS_ATTR_TYPE> = 0x1026 or // Network Index
+    <WPS_ATTR_TYPE> = 0x1045 or // SSID
+    <WPS_ATTR_TYPE> = 0x100F or // Network Key
+    <WPS_ATTR_TYPE> = 0x1020 or // MAC Address
+    <WPS_ATTR_TYPE> = 0x1001;   // AP Channel
 };
 
 <WPS_ATTR_LENGTH> :: BitVec(16);
@@ -822,18 +976,18 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
 
 <BCM_RATE> :: BitVec(8)
 {
-    <BCM_RATE> = int_to_bv(8, 0x02) or // 1 Mbps
-    <BCM_RATE> = int_to_bv(8, 0x04) or // 2 Mbps
-    <BCM_RATE> = int_to_bv(8, 0x0B) or // 5.5 Mbps
-    <BCM_RATE> = int_to_bv(8, 0x16) or // 11 Mbps
-    <BCM_RATE> = int_to_bv(8, 0x0C) or // 6 Mbps
-    <BCM_RATE> = int_to_bv(8, 0x12) or // 9 Mbps
-    <BCM_RATE> = int_to_bv(8, 0x18) or // 12 Mbps
-    <BCM_RATE> = int_to_bv(8, 0x24) or // 18 Mbps
-    <BCM_RATE> = int_to_bv(8, 0x30) or // 24 Mbps
-    <BCM_RATE> = int_to_bv(8, 0x48) or // 36 Mbps
-    <BCM_RATE> = int_to_bv(8, 0x60) or // 48 Mbps
-    <BCM_RATE> = int_to_bv(8, 0x6C);   // 54 Mbps
+    <BCM_RATE> = 0x02 or // 1 Mbps
+    <BCM_RATE> = 0x04 or // 2 Mbps
+    <BCM_RATE> = 0x0B or // 5.5 Mbps
+    <BCM_RATE> = 0x16 or // 11 Mbps
+    <BCM_RATE> = 0x0C or // 6 Mbps
+    <BCM_RATE> = 0x12 or // 9 Mbps
+    <BCM_RATE> = 0x18 or // 12 Mbps
+    <BCM_RATE> = 0x24 or // 18 Mbps
+    <BCM_RATE> = 0x30 or // 24 Mbps
+    <BCM_RATE> = 0x48 or // 36 Mbps
+    <BCM_RATE> = 0x60 or // 48 Mbps
+    <BCM_RATE> = 0x6C;   // 54 Mbps
 };
 
 <BCM_FBT_DATA> ::= <BCM_FBT_CAPABILITY> <BCM_FBT_KEY_HOLDER> <BCM_FBT_R1KH_ID> <BCM_FBT_GTK_LEN> <BCM_FBT_GTK>
@@ -1114,3 +1268,501 @@ not (length(<AC_TOKEN_ELEMENT>) = 0);
 <INTEL_MLO_VERSION> :: BitVec(8);
 <INTEL_MLO_CAPABILITY> :: BitVec(32);
 <INTEL_MLO_CONFIG> :: BitVec(64);
+
+<CISCO_VENDOR_TYPE> :: BitVec(8);
+
+<CISCO_VENDOR_DATA> ::= <CISCO_AP_DATA> | <CISCO_CLIENT_DATA> | <CISCO_QOS_DATA> | <CISCO_MOBILITY_DATA> ;
+// {
+    // Cisco-specific constraints across all data types
+    // Ensure vendor type is valid Cisco type (1-4 for AP, Client, QoS, Mobility)
+    
+// };
+
+<CISCO_AP_DATA> ::= <CISCO_AP_FLAGS> <CISCO_AP_NAME> <CISCO_AP_CONFIG>
+{
+    length(<CISCO_AP_NAME>) bvugte int_to_bv(32, 1) and length(<CISCO_AP_NAME>) bvulte int_to_bv(32, 32);
+    // AP name must be non-empty and max 32 bytes
+    length(<CISCO_AP_CONFIG>) = 64;
+};
+
+<CISCO_AP_FLAGS> :: BitVec(8);
+<CISCO_AP_NAME> :: List(Bool);
+<CISCO_AP_CONFIG> :: BitVec(64);
+
+<CISCO_CLIENT_DATA> ::= <CISCO_CLIENT_FLAGS> <CISCO_CLIENT_PARAMS>
+{
+    length(<CISCO_CLIENT_PARAMS>) = 32;
+};
+
+<CISCO_CLIENT_FLAGS> :: BitVec(8);
+<CISCO_CLIENT_PARAMS> :: BitVec(32);
+
+<CISCO_QOS_DATA> ::= <CISCO_QOS_FLAGS> <CISCO_QOS_PRIORITY> <CISCO_QOS_CONFIG>
+{
+    // Priority must be valid 802.1p priority (0-7)
+    int_to_bv(8, 0) bvulte <CISCO_QOS_PRIORITY> and <CISCO_QOS_PRIORITY> bvulte int_to_bv(8, 7);
+    // QoS flags bit 0: DSCP preservation enabled
+    // QoS flags bit 1: WMM enabled
+    length(<CISCO_QOS_CONFIG>) = 32;
+};
+
+<CISCO_QOS_FLAGS> :: BitVec(8);
+<CISCO_QOS_PRIORITY> :: BitVec(8);
+<CISCO_QOS_CONFIG> :: BitVec(32);
+
+<CISCO_MOBILITY_DATA> ::= <CISCO_MOB_FLAGS> <CISCO_MOB_DOMAIN_ID> <CISCO_MOB_CONFIG>
+{
+    length(<CISCO_MOB_CONFIG>) = 48;
+    // Mobility domain ID should be non-zero for valid mobility
+    not (<CISCO_MOB_DOMAIN_ID> = int_to_bv(16, 0));
+};
+
+<CISCO_MOB_FLAGS> :: BitVec(8);
+<CISCO_MOB_DOMAIN_ID> :: BitVec(16);
+<CISCO_MOB_CONFIG> :: BitVec(48);
+
+// QUALCOMM Vendor Data
+<QCOM_VENDOR_TYPE> :: BitVec(8);
+
+<QCOM_VENDOR_DATA> ::= <QCOM_FASTCONNECT_DATA> | <QCOM_MU_MIMO_DATA> | <QCOM_BEAMFORM_DATA> | <QCOM_POWER_DATA>;
+//{
+    // Qualcomm-specific constraints across all data types
+    // Vendor type must be valid (1-4 for FastConnect, MU-MIMO, Beamforming, Power)
+//};
+
+<QCOM_FASTCONNECT_DATA> ::= <QCOM_FC_VERSION> <QCOM_FC_FLAGS> <QCOM_FC_FEATURES> <QCOM_FC_CONFIG>
+{
+    // FastConnect version must be 1-7 (representing FastConnect 6xxx to 7xxx series)
+    int_to_bv(8, 1) bvulte <QCOM_FC_VERSION> and <QCOM_FC_VERSION> bvulte int_to_bv(8, 7);
+    // Bit 0: Wi-Fi 6E support
+    // Bit 1: Wi-Fi 7 support (only valid if version >= 5)
+    // Bit 2: Dual-band simultaneous
+    // Bit 3: 160MHz channel support
+    length(<QCOM_FC_FLAGS>) = 16;
+    length(<QCOM_FC_FEATURES>) = 32;
+    length(<QCOM_FC_CONFIG>) = 32;
+};
+
+<QCOM_FC_VERSION> :: BitVec(8);
+<QCOM_FC_FLAGS> :: BitVec(16);
+<QCOM_FC_FEATURES> :: BitVec(32);
+<QCOM_FC_CONFIG> :: BitVec(32);
+
+<QCOM_MU_MIMO_DATA> ::= <QCOM_MU_FLAGS> <QCOM_MU_STREAMS> <QCOM_MU_USERS> <QCOM_MU_CONFIG>
+{
+    // Number of spatial streams: 1-8 for modern Qualcomm chips
+    int_to_bv(8, 1) bvulte <QCOM_MU_STREAMS> and <QCOM_MU_STREAMS> bvulte int_to_bv(8, 8);
+    // Number of MU-MIMO users: 1-16 (typically 4 or 8)
+    int_to_bv(8, 1) bvulte <QCOM_MU_USERS> and <QCOM_MU_USERS> bvulte int_to_bv(8, 16);
+    // Users cannot exceed streams
+    <QCOM_MU_USERS> bvulte <QCOM_MU_STREAMS>;
+    length(<QCOM_MU_CONFIG>) = 24;
+};
+
+<QCOM_MU_FLAGS> :: BitVec(8);
+<QCOM_MU_STREAMS> :: BitVec(8);
+<QCOM_MU_USERS> :: BitVec(8);
+<QCOM_MU_CONFIG> :: BitVec(24);
+
+<QCOM_BEAMFORM_DATA> ::= <QCOM_BF_FLAGS> <QCOM_BF_CAPABILITY> <QCOM_BF_ANTENNAS> <QCOM_BF_CONFIG>
+{
+    length(<QCOM_BF_CONFIG>) = 24;
+    // Number of antennas for beamforming: 2-8
+    int_to_bv(8, 2) bvulte <QCOM_BF_ANTENNAS> and <QCOM_BF_ANTENNAS> bvulte int_to_bv(8, 8);
+    // Bit 0 of capability: Explicit beamforming
+    // Bit 1: Implicit beamforming
+    // Bit 2: NDP feedback support
+    length(<QCOM_BF_CAPABILITY>) = 16;
+};
+
+<QCOM_BF_FLAGS> :: BitVec(8);
+<QCOM_BF_CAPABILITY> :: BitVec(16);
+<QCOM_BF_ANTENNAS> :: BitVec(8);
+<QCOM_BF_CONFIG> :: BitVec(24);
+
+<QCOM_POWER_DATA> ::= <QCOM_PWR_MODE> <QCOM_PWR_LEVEL> <QCOM_PWR_PARAMS>
+{
+    // Power mode: 0=Ultra low power, 1=Low power, 2=Balanced, 3=Performance, 4=Max performance
+    <QCOM_PWR_MODE> = int_to_bv(8, 0) or
+    <QCOM_PWR_MODE> = int_to_bv(8, 1) or
+    <QCOM_PWR_MODE> = int_to_bv(8, 2) or
+    <QCOM_PWR_MODE> = int_to_bv(8, 3) or
+    <QCOM_PWR_MODE> = int_to_bv(8, 4);
+    // Power level: 0-100 percentage
+    int_to_bv(8, 0) bvulte <QCOM_PWR_LEVEL> and <QCOM_PWR_LEVEL> bvulte int_to_bv(8, 100);
+    length(<QCOM_PWR_PARAMS>) = 24;
+};
+
+<QCOM_PWR_MODE> :: BitVec(8);
+<QCOM_PWR_LEVEL> :: BitVec(8);
+<QCOM_PWR_PARAMS> :: BitVec(24);
+
+// MEDIATEK Vendor Data
+<MTK_VENDOR_TYPE> :: BitVec(8) {
+    int_to_bv(8, 1) bvulte <MTK_VENDOR_TYPE> and <MTK_VENDOR_TYPE> bvulte int_to_bv(8, 3);
+};
+
+<MTK_VENDOR_DATA> ::= <MTK_CHIPSET_DATA> | <MTK_PERFORMANCE_DATA> | <MTK_SMART_DATA>;
+//{
+    // MediaTek-specific constraints across all data types
+    // Vendor type must be valid (1-3 for Chipset, Performance, Smart)
+//};
+
+<MTK_CHIPSET_DATA> ::= <MTK_CHIP_ID> <MTK_CHIP_VERSION> <MTK_CHIP_REVISION> <MTK_CHIP_CONFIG>
+{
+    length(<MTK_CHIP_CONFIG>) = 24;
+    // Chip ID: Common MediaTek WiFi chip families
+    // 0x7915 = MT7915, 0x7916 = MT7916, 0x7921 = MT7921, 0x7922 = MT7922, etc.
+    <MTK_CHIP_ID> = 0x7915 or
+    <MTK_CHIP_ID> = 0x7916 or
+    <MTK_CHIP_ID> = 0x7921 or
+    <MTK_CHIP_ID> = 0x7922 or
+    <MTK_CHIP_ID> = 0x7925 or
+    <MTK_CHIP_ID> = 0x7996;
+    // Version: 1-15
+    int_to_bv(8, 1) bvulte <MTK_CHIP_VERSION> and <MTK_CHIP_VERSION> bvulte int_to_bv(8, 15);
+    // Revision: 0-255 (no constraint needed, full range valid)
+};
+
+<MTK_CHIP_ID> :: BitVec(16);
+<MTK_CHIP_VERSION> :: BitVec(8);
+<MTK_CHIP_REVISION> :: BitVec(8);
+<MTK_CHIP_CONFIG> :: BitVec(24);
+
+<MTK_PERFORMANCE_DATA> ::= <MTK_PERF_FLAGS> <MTK_PERF_MODE> <MTK_PERF_BOOST> <MTK_PERF_CONFIG>
+{
+    // Performance mode: 0=Power save, 1=Balanced, 2=Performance, 3=Turbo
+    int_to_bv(8, 0) bvulte <MTK_PERF_MODE> and <MTK_PERF_MODE> bvulte int_to_bv(8, 3);
+    // Performance boost level: 0-10
+    int_to_bv(8, 0) bvulte <MTK_PERF_BOOST> and <MTK_PERF_BOOST> bvulte int_to_bv(8, 10);
+    length(<MTK_PERF_CONFIG>) = 48;
+};
+
+<MTK_PERF_FLAGS> :: BitVec(8);
+<MTK_PERF_MODE> :: BitVec(8);
+<MTK_PERF_BOOST> :: BitVec(8);
+<MTK_PERF_CONFIG> :: BitVec(48);
+
+<MTK_SMART_DATA> ::= <MTK_SMART_FLAGS> <MTK_SMART_VERSION> <MTK_SMART_CONFIG>
+{
+    length(<MTK_SMART_CONFIG>) = 56;
+    // Smart connection version: 1-3
+    int_to_bv(8, 1) bvulte <MTK_SMART_VERSION> and <MTK_SMART_VERSION> bvulte int_to_bv(8, 3);
+    // Bit 0 of flags: Smart connection enabled
+    // Bit 1: Band steering enabled
+    // Bit 2: Load balancing enabled
+};
+
+<MTK_SMART_FLAGS> :: BitVec(16);
+<MTK_SMART_VERSION> :: BitVec(8);
+<MTK_SMART_CONFIG> :: BitVec(56);
+
+// REALTEK Vendor Data
+<RTK_VENDOR_TYPE> :: BitVec(8) {
+    int_to_bv(8, 1) bvulte <RTK_VENDOR_TYPE> and <RTK_VENDOR_TYPE> bvulte int_to_bv(8, 3);
+};
+
+<RTK_VENDOR_DATA> ::= <RTK_DEVICE_DATA> | <RTK_TXPOWER_DATA> | <RTK_ANTENNA_DATA>;
+//{
+    // Realtek-specific constraints across all data types
+    // Vendor type must be valid (1-3 for Device, TxPower, Antenna)
+    
+    // Realtek chips must support basic 802.11 requirements
+    // All Realtek data must have proper device identification
+//};
+
+<RTK_DEVICE_DATA> ::= <RTK_DEV_ID> <RTK_DEV_FLAGS> <RTK_DEV_SERIES> <RTK_DEV_CONFIG>
+{
+    length(<RTK_DEV_CONFIG>) = 24;
+    // Device ID: Common Realtek WiFi chip series
+    // 0x8822 = RTL8822, 0x8832 = RTL8832, 0x8852 = RTL8852, 0x8922 = RTL8922
+    <RTK_DEV_ID> = 0x8822 or
+    <RTK_DEV_ID> = 0x8832 or
+    <RTK_DEV_ID> = 0x8852 or
+    <RTK_DEV_ID> = 0x8853 or
+    <RTK_DEV_ID> = 0x8922;
+    // Series: 0=A, 1=B, 2=C, 3=E (chip revisions)
+    int_to_bv(8, 0) bvulte <RTK_DEV_SERIES> and <RTK_DEV_SERIES> bvulte int_to_bv(8, 3);
+    // Realtek-specific: Device flags bit 0 must indicate valid initialization
+    // Bit 1: BT coexistence support for combo chips
+    // Bit 2: Green ethernet support
+};
+
+<RTK_DEV_ID> :: BitVec(16);
+<RTK_DEV_FLAGS> :: BitVec(8);
+<RTK_DEV_SERIES> :: BitVec(8);
+<RTK_DEV_CONFIG> :: BitVec(24);
+
+<RTK_TXPOWER_DATA> ::= <RTK_TX_FLAGS> <RTK_TX_LEVEL> <RTK_TX_LIMIT> <RTK_TX_CONFIG>
+{
+    // TX power level: 0-100 (percentage of max power)
+    int_to_bv(8, 0) bvulte <RTK_TX_LEVEL> and <RTK_TX_LEVEL> bvulte int_to_bv(8, 100);
+    // TX power limit: 10-30 dBm (typical regulatory limits)
+    int_to_bv(8, 10) bvulte <RTK_TX_LIMIT> and <RTK_TX_LIMIT> bvulte int_to_bv(8, 30);
+    // TX level cannot exceed limit (when normalized)
+    length(<RTK_TX_CONFIG>) = 24;
+    // Realtek-specific: TX flags bit 0: Power by rate enabled
+    // Bit 1: Power limit enabled
+    // Bit 2: Thermal protection enabled
+};
+
+<RTK_TX_FLAGS> :: BitVec(8);
+<RTK_TX_LEVEL> :: BitVec(8);
+<RTK_TX_LIMIT> :: BitVec(8);
+<RTK_TX_CONFIG> :: BitVec(24);
+
+<RTK_ANTENNA_DATA> ::= <RTK_ANT_FLAGS> <RTK_ANT_CONFIG> <RTK_ANT_DIVERSITY> <RTK_ANT_COUNT>
+{
+    length(<RTK_ANT_CONFIG>) = 8;
+    // Antenna diversity mode: 0=Main, 1=Aux, 2=Auto
+    <RTK_ANT_DIVERSITY> = int_to_bv(8, 0) or
+    <RTK_ANT_DIVERSITY> = int_to_bv(8, 1) or
+    <RTK_ANT_DIVERSITY> = int_to_bv(8, 2);
+    // Number of antennas: 1-4
+    int_to_bv(8, 1) bvulte <RTK_ANT_COUNT> and <RTK_ANT_COUNT> bvulte int_to_bv(8, 4);
+    // Realtek-specific: Antenna flags bit 0: Diversity enabled
+    // Bit 1: Main antenna active
+    // Bit 2: Aux antenna active
+    // If diversity is auto (2), then ant_count must be >= 2
+};
+
+<RTK_ANT_FLAGS> :: BitVec(8);
+<RTK_ANT_CONFIG> :: BitVec(8);
+<RTK_ANT_DIVERSITY> :: BitVec(8);
+<RTK_ANT_COUNT> :: BitVec(8);
+
+// MARVELL Vendor Data
+<MRVL_VENDOR_TYPE> :: BitVec(8) {
+    int_to_bv(8, 1) bvulte <MRVL_VENDOR_TYPE> and <MRVL_VENDOR_TYPE> bvulte int_to_bv(8, 3);
+
+};
+
+<MRVL_VENDOR_DATA> ::= <MRVL_WIRELESS_DATA> | <MRVL_MESH_DATA> | <MRVL_SECURITY_DATA>;
+//{
+    // Marvell-specific constraints across all data types
+    // Vendor type must be valid (1-3 for Wireless, Mesh, Security)
+//};
+
+<MRVL_WIRELESS_DATA> ::= <MRVL_WL_FLAGS> <MRVL_WL_BAND> <MRVL_WL_BANDWIDTH> <MRVL_WL_CONFIG>
+{
+    length(<MRVL_WL_CONFIG>) = 48;
+    // Band: 0=2.4GHz, 1=5GHz, 2=6GHz, 3=Dual band
+    int_to_bv(8, 0) bvulte <MRVL_WL_BAND> and <MRVL_WL_BAND> bvulte int_to_bv(8, 3);
+    // Bandwidth: 20, 40, 80, 160 MHz (encoded as 0, 1, 2, 3)
+    int_to_bv(8, 0) bvulte <MRVL_WL_BANDWIDTH> and <MRVL_WL_BANDWIDTH> bvulte int_to_bv(8, 3);
+};
+
+<MRVL_WL_FLAGS> :: BitVec(16);
+<MRVL_WL_BAND> :: BitVec(8);
+<MRVL_WL_BANDWIDTH> :: BitVec(8);
+<MRVL_WL_CONFIG> :: BitVec(48);
+
+<MRVL_MESH_DATA> ::= <MRVL_MESH_FLAGS> <MRVL_MESH_ID> <MRVL_MESH_TTL> <MRVL_MESH_CONFIG>
+{
+    length(<MRVL_MESH_CONFIG>) = 24;
+    // Mesh ID should be non-zero for active mesh
+    not (<MRVL_MESH_ID> = int_to_bv(16, 0));
+    // TTL (Time To Live): 1-32 hops
+    int_to_bv(8, 1) bvulte <MRVL_MESH_TTL> and <MRVL_MESH_TTL> bvulte int_to_bv(8, 32);
+};
+
+<MRVL_MESH_FLAGS> :: BitVec(8);
+<MRVL_MESH_ID> :: BitVec(16);
+<MRVL_MESH_TTL> :: BitVec(8);
+<MRVL_MESH_CONFIG> :: BitVec(24);
+
+<MRVL_SECURITY_DATA> ::= <MRVL_SEC_FLAGS> <MRVL_SEC_LEVEL> <MRVL_SEC_FEATURES>
+{
+    length(<MRVL_SEC_FEATURES>) = 24;
+    // Security level: 0=Open, 1=WEP, 2=WPA, 3=WPA2, 4=WPA3
+    int_to_bv(8, 0) bvulte <MRVL_SEC_LEVEL> and <MRVL_SEC_LEVEL> bvulte int_to_bv(8, 4);
+    // Bit 0 of flags: Hardware encryption enabled
+    // Bit 1: 802.11w management frame protection
+};
+
+<MRVL_SEC_FLAGS> :: BitVec(16);
+<MRVL_SEC_LEVEL> :: BitVec(8);
+<MRVL_SEC_FEATURES> :: BitVec(24);
+
+// RALINK Vendor Data
+<RALINK_VENDOR_TYPE> :: BitVec(8) {
+    int_to_bv(8, 1) bvulte <RALINK_VENDOR_TYPE> and <RALINK_VENDOR_TYPE> bvulte int_to_bv(8, 2);
+};
+
+<RALINK_VENDOR_DATA> ::= <RALINK_CONFIG_DATA> | <RALINK_AGGREGATION_DATA>;
+//{
+    // Ralink-specific constraints across all data types
+    // Vendor type must be valid (1-2 for Config, Aggregation)
+//};
+
+<RALINK_CONFIG_DATA> ::= <RALINK_CFG_FLAGS> <RALINK_CFG_MODE> <RALINK_CFG_PARAMS>
+{
+    length(<RALINK_CFG_PARAMS>) = 56;
+    // Configuration mode: 0=Station, 1=AP, 2=Monitor, 3=Mesh
+    int_to_bv(8, 0) bvulte <RALINK_CFG_MODE> and <RALINK_CFG_MODE> bvulte int_to_bv(8, 3);
+};
+
+<RALINK_CFG_FLAGS> :: BitVec(16);
+<RALINK_CFG_MODE> :: BitVec(8);
+<RALINK_CFG_PARAMS> :: BitVec(56);
+
+<RALINK_AGGREGATION_DATA> ::= <RALINK_AGG_FLAGS> <RALINK_AGG_SIZE> <RALINK_AGG_COUNT> <RALINK_AGG_CONFIG>
+{
+    // A-MPDU aggregation size: 8-64 KB (power of 2)
+    <RALINK_AGG_SIZE> = int_to_bv(16, 8) or
+    <RALINK_AGG_SIZE> = int_to_bv(16, 16) or
+    <RALINK_AGG_SIZE> = int_to_bv(16, 32) or
+    <RALINK_AGG_SIZE> = int_to_bv(16, 64);
+    // Number of subframes: 1-64
+    int_to_bv(8, 1) bvulte <RALINK_AGG_COUNT> and <RALINK_AGG_COUNT> bvulte int_to_bv(8, 64);
+    length(<RALINK_AGG_CONFIG>) = 24;
+};
+
+<RALINK_AGG_FLAGS> :: BitVec(8);
+<RALINK_AGG_SIZE> :: BitVec(16);
+<RALINK_AGG_COUNT> :: BitVec(8);
+<RALINK_AGG_CONFIG> :: BitVec(24);
+
+// UBIQUITI Vendor Data
+<UBNT_VENDOR_TYPE> :: BitVec(8) {
+    int_to_bv(8, 1) bvulte <UBNT_VENDOR_TYPE> and <UBNT_VENDOR_TYPE> bvulte int_to_bv(8, 3);
+};
+
+<UBNT_VENDOR_DATA> ::= <UBNT_AIRMAX_DATA> | <UBNT_DEVICE_DATA> | <UBNT_MANAGEMENT_DATA>;
+//{
+    // Ubiquiti-specific constraints across all data types
+    // Vendor type must be valid (1-3 for AirMax, Device, Management)
+    
+//};
+
+<UBNT_AIRMAX_DATA> ::= <UBNT_AM_VERSION> <UBNT_AM_FLAGS> <UBNT_AM_PRIORITY> <UBNT_AM_CONFIG>
+{
+    // AirMax version: 1=AC, 2=AC Gen2, 3=AX
+    int_to_bv(8, 1) bvulte <UBNT_AM_VERSION> and <UBNT_AM_VERSION> bvulte int_to_bv(8, 3);
+    // AirMax priority: 0=Low, 1=Medium, 2=High, 3=Critical
+    int_to_bv(8, 0) bvulte <UBNT_AM_PRIORITY> and <UBNT_AM_PRIORITY> bvulte int_to_bv(8, 3);
+    length(<UBNT_AM_CONFIG>) = 48;
+    // Bit 0 of flags: AirMax enabled
+    // Bit 1: GPS sync enabled
+    // Bit 2: TDMA enabled
+};
+
+<UBNT_AM_VERSION> :: BitVec(8);
+<UBNT_AM_FLAGS> :: BitVec(16);
+<UBNT_AM_PRIORITY> :: BitVec(8);
+<UBNT_AM_CONFIG> :: BitVec(48);
+
+<UBNT_DEVICE_DATA> ::= <UBNT_DEV_MODEL> <UBNT_DEV_FLAGS> <UBNT_DEV_HWREV> <UBNT_DEV_CONFIG>
+{
+    length(<UBNT_DEV_CONFIG>) = 24;
+    // Device model: Common Ubiquiti product IDs
+    // 0x0001 = NanoStation, 0x0002 = PowerBeam, 0x0003 = LiteBeam, 0x0004 = AirFiber
+    <UBNT_DEV_MODEL> = 0x0001 or
+    <UBNT_DEV_MODEL> = 0x0002 or
+    <UBNT_DEV_MODEL> = 0x0003 or
+    <UBNT_DEV_MODEL> = 0x0004 or
+    <UBNT_DEV_MODEL> = 0x0005;
+    // Hardware revision: 1-15
+    int_to_bv(8, 1) bvulte <UBNT_DEV_HWREV> and <UBNT_DEV_HWREV> bvulte int_to_bv(8, 15);
+};
+
+<UBNT_DEV_MODEL> :: BitVec(16);
+<UBNT_DEV_FLAGS> :: BitVec(8);
+<UBNT_DEV_HWREV> :: BitVec(8);
+<UBNT_DEV_CONFIG> :: BitVec(24);
+
+<UBNT_MANAGEMENT_DATA> ::= <UBNT_MGMT_FLAGS> <UBNT_MGMT_VLAN> <UBNT_MGMT_CONFIG>
+{
+    length(<UBNT_MGMT_CONFIG>) = 48;
+    // Management VLAN ID: 1-4094 (valid VLAN range)
+    int_to_bv(16, 1) bvulte <UBNT_MGMT_VLAN> and <UBNT_MGMT_VLAN> bvulte int_to_bv(16, 4094);
+    // Bit 0 of flags: Remote management enabled
+    // Bit 1: SNMP enabled
+    // Bit 2: SSH enabled
+};
+
+<UBNT_MGMT_FLAGS> :: BitVec(16);
+<UBNT_MGMT_VLAN> :: BitVec(16);
+<UBNT_MGMT_CONFIG> :: BitVec(48);
+
+// ARUBA Vendor Data
+<ARUBA_VENDOR_TYPE> :: BitVec(8) {
+    int_to_bv(8, 1) bvulte <ARUBA_VENDOR_TYPE> and <ARUBA_VENDOR_TYPE> bvulte int_to_bv(8, 3);
+};
+
+<ARUBA_VENDOR_DATA> ::= <ARUBA_AP_DATA> | <ARUBA_MOBILITY_DATA> | <ARUBA_CLIENT_DATA>;
+//{
+    // Aruba-specific constraints across all data types
+    // Vendor type must be valid (1-3 for AP, Mobility, Client)
+    
+    // Aruba-specific: All data must comply with ArubaOS requirements
+    // All VLANs must be in valid range (checked per data type)
+    // All controller IPs must be valid unicast addresses
+//};
+
+<ARUBA_AP_DATA> ::= <ARUBA_AP_FLAGS> <ARUBA_AP_TYPE> <ARUBA_AP_GROUP> <ARUBA_AP_CONFIG>
+{
+    // AP type: 0=Campus, 1=Branch, 2=Remote, 3=Outdoor, 4=Industrial, 5=Hospitality
+    int_to_bv(8, 0) bvulte <ARUBA_AP_TYPE> and <ARUBA_AP_TYPE> bvulte int_to_bv(8, 5);
+    // AP group ID: 0-255 (0 = default group)
+    length(<ARUBA_AP_CONFIG>) = 48;
+    // Aruba-specific: Bit 0 of flags: Mesh enabled
+    // Bit 1: ARM (Adaptive Radio Management) enabled
+    // Bit 2: Client Match enabled
+    // Bit 3: AirMatch enabled
+    // Bit 4: Spectrum monitoring enabled
+    // Aruba-specific AP constraints:
+    // If mesh enabled (bit 0 of flags), AP type cannot be Branch (1)
+    // If outdoor type (3), spectrum monitoring should be enabled (bit 4)
+};
+
+<ARUBA_AP_FLAGS> :: BitVec(16);
+<ARUBA_AP_TYPE> :: BitVec(8);
+<ARUBA_AP_GROUP> :: BitVec(8);
+<ARUBA_AP_CONFIG> :: BitVec(48);
+
+<ARUBA_MOBILITY_DATA> ::= <ARUBA_MOB_FLAGS> <ARUBA_MOB_CONTROLLER> <ARUBA_MOB_VLAN> <ARUBA_MOB_CONFIG>
+{
+    length(<ARUBA_MOB_CONFIG>) = 16;
+    // Mobility controller IP should be non-zero for valid mobility
+    not (<ARUBA_MOB_CONTROLLER> = int_to_bv(32, 0));
+    // Mobility VLAN: 1-4094
+    int_to_bv(16, 1) bvulte <ARUBA_MOB_VLAN> and <ARUBA_MOB_VLAN> bvulte int_to_bv(16, 4094);
+    // Aruba-specific mobility constraints:
+    // Bit 0 of flags: Layer 2 roaming enabled
+    // Bit 1: Layer 3 roaming enabled
+    // Bit 2: Fast roaming (802.11r) enabled
+    // Bit 3: Opportunistic Key Caching enabled
+    // Bit 4: Mobility domain validation enabled
+    // If Layer 3 roaming enabled (bit 1), controller IP must be valid (non-zero)
+    // Both L2 and L3 roaming can be enabled simultaneously for hybrid mode
+};
+
+<ARUBA_MOB_FLAGS> :: BitVec(8);
+<ARUBA_MOB_CONTROLLER> :: BitVec(32);
+<ARUBA_MOB_VLAN> :: BitVec(16);
+<ARUBA_MOB_CONFIG> :: BitVec(16);
+
+<ARUBA_CLIENT_DATA> ::= <ARUBA_CL_FLAGS> <ARUBA_CL_ROLE> <ARUBA_CL_VLAN> <ARUBA_CL_CONFIG>
+{
+    // Client role: 0=Guest, 1=Employee, 2=Voice, 3=Video
+    int_to_bv(8, 0) bvulte <ARUBA_CL_ROLE> and <ARUBA_CL_ROLE> bvulte int_to_bv(8, 3);
+    // Client VLAN: 1-4094
+    int_to_bv(16, 1) bvulte <ARUBA_CL_VLAN> and <ARUBA_CL_VLAN> bvulte int_to_bv(16, 4094);
+    length(<ARUBA_CL_CONFIG>) = 48;
+    // Aruba-specific client constraints:
+    // Bit 0 of flags: 802.1X authentication required
+    // Bit 1: MAC authentication enabled
+    // Bit 2: Captive portal enabled
+    // Bit 3: User role enforcement enabled
+    // Bit 4: Device profiling enabled
+    // Bit 5: Policy enforcement firewall enabled
+    // Guest role (0) should have captive portal enabled (bit 2)
+    // Voice role (2) requires QoS priority and cannot use captive portal
+    // Employee role (1) typically requires 802.1X or MAC auth (bit 0 or 1)
+};
+
+<ARUBA_CL_FLAGS> :: BitVec(8);
+<ARUBA_CL_ROLE> :: BitVec(8);
+<ARUBA_CL_VLAN> :: BitVec(16);
+<ARUBA_CL_CONFIG> :: BitVec(48);
