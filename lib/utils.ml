@@ -119,7 +119,7 @@ exception User_error of string
 let error message (pos : Lexing.position) =
   let line = pos.Lexing.pos_lnum in
   let col  = pos.Lexing.pos_cnum - pos.Lexing.pos_bol in
-  let msg = Printf.sprintf "Error (line %d, column %d): %s" line col message in
+  let msg = Printf.sprintf "Error (%s, line %d, column %d): %s" (!Flags.filename |> Option.get) line col message in
   raise (User_error msg)
 
 let error_no_pos message =

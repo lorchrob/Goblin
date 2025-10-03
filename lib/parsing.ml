@@ -6,12 +6,14 @@ let parse: string -> Ast.ast
   with
   | Lexer.SyntaxError msg -> 
       let pos = lexbuf.Lexing.lex_curr_p in
-      Printf.eprintf "Syntax error at line %d, column %d: %s\n"
+      Printf.eprintf "Syntax error at %s, line %d, column %d: %s\n"
+        (!Flags.filename |> Option.get)
         pos.Lexing.pos_lnum (pos.Lexing.pos_cnum - pos.Lexing.pos_bol) msg;
       exit 1
   | Parser.Error  ->
       let pos = lexbuf.Lexing.lex_curr_p in
-      Printf.eprintf "Syntax error at line %d, column %d\n"
+      Printf.eprintf "Syntax error at %s, line %d, column %d\n"
+        (!Flags.filename |> Option.get)
         pos.Lexing.pos_lnum (pos.Lexing.pos_cnum - pos.Lexing.pos_bol);
       exit 1
 
@@ -26,7 +28,9 @@ let parse_sygus: string -> Ast.ast -> (SygusAst.sygus_ast, string) result
   let lexbuf = Lexing.from_string s in
   let error_message () =
     let pos = lexbuf.lex_curr_p in
-    Printf.sprintf "Syntax error at %s" (format_position pos)
+    Printf.sprintf "Syntax error at %s, %s" 
+    (!Flags.filename |> Option.get)
+    (format_position pos)
   in
   let sygus_ast =
     try
