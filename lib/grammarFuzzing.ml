@@ -386,13 +386,13 @@ let rec check_well_formed_rules (grammar : ast) : bool =
   | [] -> true
   | ProdRule(nt, rhsList, _) :: xs -> (not (List.length rhsList = 1 && isNonTerminalPresent nt rhsList)) && check_well_formed_rules xs
   | TypeAnnotation(_, _, _, _) :: xs -> check_well_formed_rules xs
-    
 
 let rec applyMutation (m : mutation) (g : ast) (count : int) : (Config.packet_type * grammar) option =
   Random.self_init () ;
   if count = 0 then None
   else
-    let nt = random_element Config.nonterminals in
+    (* let nt = random_element Config.nonterminals in *)
+    let nt = random_element (get_all_nt g) in
     match m with
     | Add -> print_endline "\n\nADDING\n\n" ; 
       let random_prod_rule = find_random_production_rule g in
