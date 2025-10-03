@@ -124,7 +124,7 @@ let error message (pos : Lexing.position) =
   raise (User_error msg)
 
 let error_no_pos message =
-  raise (User_error ("Error: " ^ message))
+  raise (User_error (Format.asprintf "Error (%s): %s" (Option.get !Flags.filename) message))
 
 let find_command_in_path cmd =
   match Sys.getenv_opt "PATH" with
