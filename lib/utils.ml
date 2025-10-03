@@ -112,7 +112,8 @@ let warning_print pp formatter value =
     Format.ifprintf formatter "%a" pp value
 
 let crash message = 
-  raise (Failure ("Internal error: " ^ message))
+  raise (Failure ((Format.asprintf 
+    "Internal error (%s): %s" (Option.get !Flags.filename) message)))
 
 exception User_error of string
 
