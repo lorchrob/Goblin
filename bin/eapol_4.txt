@@ -281,8 +281,8 @@ int_to_bv(16, 19) bvulte <GROUP_ID> and
 
 <GTK_KDE_DATA> ::= <KEY_ID_GTK> <KEY_FLAG_GTK> <GTK_VALUE>
 {
-    length(<GTK_VALUE>) = 128 or length(<GTK_VALUE>) = 256;
-    <KEY_ID_GTK> bvand int_to_bv(8, 0x03) = <KEY_ID_GTK>;
+    seq.len(<GTK_VALUE>) = 128 or seq.len(<GTK_VALUE>) = 256;
+    <KEY_ID_GTK> = int_to_bv(8, 3);
 };
 
 <KEY_ID_GTK> :: BitVec(8)
@@ -314,7 +314,7 @@ int_to_bv(16, 19) bvulte <GROUP_ID> and
 
 <IGTK_KDE_DATA> ::= <KEY_ID_IGTK> <IPN> <IGTK_VALUE>
 {
-    length(<IGTK_VALUE>) = 128 or length(<IGTK_VALUE>) = 256;
+    seq.len(<IGTK_VALUE>) = 128 or seq.len(<IGTK_VALUE>) = 256;
     int_to_bv(16, 4) bvulte <KEY_ID_IGTK> and <KEY_ID_IGTK> bvulte int_to_bv(16, 5);
 };
 
@@ -333,7 +333,7 @@ int_to_bv(16, 19) bvulte <GROUP_ID> and
 
 <BIGTK_KDE_DATA> ::= <KEY_ID_BIGTK> <BIPN> <BIGTK_VALUE>
 {
-    length(<BIGTK_VALUE>) = 128 or length(<BIGTK_VALUE>) = 256;
+    seq.len(<BIGTK_VALUE>) = 128 or seq.len(<BIGTK_VALUE>) = 256;
     int_to_bv(16, 6) bvulte <KEY_ID_BIGTK> and <KEY_ID_BIGTK> bvulte int_to_bv(16, 7);
 };
 
@@ -352,7 +352,6 @@ int_to_bv(16, 19) bvulte <GROUP_ID> and
 
 <OCI_DATA> ::= <PRIMARY_CHANNEL> <SECONDARY_CHANNEL> <BANDWIDTH> <SEGMENT_INFO>
 {
-    (length(<PRIMARY_CHANNEL>) + length(<SECONDARY_CHANNEL>) + length(<BANDWIDTH>) + length(<SEGMENT_INFO>)) bvugte int_to_bv(32, 24);
     int_to_bv(8, 1) bvulte <PRIMARY_CHANNEL> and <PRIMARY_CHANNEL> bvulte int_to_bv(8, 233);
 };
 
@@ -378,8 +377,8 @@ int_to_bv(16, 19) bvulte <GROUP_ID> and
 <MULTIBAND_KDE> ::= <KDE_TYPE_MULTIBAND> <KDE_LENGTH_MULTIBAND> <MULTIBAND_DATA>
 {
     <KDE_TYPE_MULTIBAND> <- int_to_bv(8, 12);
-    <KDE_LENGTH_MULTIBAND> <- int_to_bv(8, length(<MULTIBAND_DATA>) div 8);
-    length(<MULTIBAND_DATA>) bvugte int_to_bv(32, 8);
+    <KDE_LENGTH_MULTIBAND> <- int_to_bv(8, seq.len(<MULTIBAND_DATA>) div 8);
+    seq.len(<MULTIBAND_DATA>) >= 8;
 };
 
 <KDE_TYPE_MULTIBAND> :: BitVec(8) { <KDE_TYPE_MULTIBAND> <- int_to_bv(8, 12); };
@@ -397,10 +396,7 @@ int_to_bv(16, 19) bvulte <GROUP_ID> and
 
 <FTE_DATA> ::= <MIC_CONTROL> <MIC_FTE> <ANONCE_FTE> <SNONCE_FTE> <SUBELEMENTS>
 {
-    length(<MIC_FTE>) = 128;
-    length(<ANONCE_FTE>) = 256;
-    length(<SNONCE_FTE>) = 256;
-    length(<SUBELEMENTS>) bvulte int_to_bv(32, 512);
+    seq.len(<SUBELEMENTS>) <= 512;
 };
 
 <MIC_CONTROL> :: BitVec(16);
@@ -453,9 +449,9 @@ int_to_bv(16, 19) bvulte <GROUP_ID> and
 <HE_CAPS_KDE> ::= <KDE_TYPE_HE> <KDE_LENGTH_HE> <HE_CAPABILITIES>
 {
     <KDE_TYPE_HE> <- int_to_bv(8, 255);
-    <KDE_LENGTH_HE> <- int_to_bv(8, length(<HE_CAPABILITIES>) div 8);
-    length(<HE_CAPABILITIES>) bvugte int_to_bv(32, 216); // Minimum 27 bytes
-    length(<HE_CAPABILITIES>) bvulte int_to_bv(32, 600); // Maximum ~75 bytes
+    <KDE_LENGTH_HE> <- int_to_bv(8, seq.len(<HE_CAPABILITIES>) div 8);
+    seq.len(<HE_CAPABILITIES>) >= 216; // Minimum 27 bytes
+    seq.len(<HE_CAPABILITIES>) <= 600; // Maximum ~75 bytes
 };
 
 <KDE_TYPE_HE> :: BitVec(8) { <KDE_TYPE_HE> <- int_to_bv(8, 255); };
@@ -466,8 +462,8 @@ int_to_bv(16, 19) bvulte <GROUP_ID> and
 {
     <KDE_TYPE_EHT> <- int_to_bv(8, 255);
     <KDE_LENGTH_EHT> <- int_to_bv(8, length(<EHT_CAPABILITIES>) div 8);
-    length(<EHT_CAPABILITIES>) bvugte int_to_bv(32, 72); // Minimum 9 bytes
-    length(<EHT_CAPABILITIES>) bvulte int_to_bv(32, 800); // Maximum ~100 bytes
+    seq.len(<EHT_CAPABILITIES>) >= 72; // Minimum 9 bytes
+    seq.len(<EHT_CAPABILITIES>) <= 800; // Maximum ~100 bytes
 };
 
 <KDE_TYPE_EHT> :: BitVec(8) { <KDE_TYPE_EHT> <- int_to_bv(8, 255); };
@@ -635,7 +631,7 @@ int_to_bv(16, 19) bvulte <GROUP_ID> and
 
 <ATH_ADV_CAP_DATA> ::= <ATH_CAP_FLAGS> <ATH_CAP_FEATURES>
 {
-    length(<ATH_CAP_FEATURES>) bvulte int_to_bv(32, 128);
+    seq.len(<ATH_CAP_FEATURES>) <= 128;
 };
 
 <ATH_CAP_FLAGS> :: BitVec(16);
@@ -643,7 +639,7 @@ int_to_bv(16, 19) bvulte <GROUP_ID> and
 
 <ATH_XR_DATA> ::= <ATH_XR_FLAGS> <ATH_XR_PARAMS>
 {
-    <ATH_XR_FLAGS> bvand int_to_bv(8, 0xF0) = int_to_bv(8, 0);
+    <ATH_XR_FLAGS> = 0xF0 or <ATH_XR_FLAGS> = int_to_bv(8, 0);
 };
 
 <ATH_XR_FLAGS> :: BitVec(8);
@@ -797,7 +793,6 @@ int_to_bv(16, 19) bvulte <GROUP_ID> and
 <MS_WMM_DATA> ::= <WMM_SUBTYPE> <WMM_VERSION> <WMM_QOS_INFO> <WMM_AC_PARAMS>
 {
     <WMM_VERSION> <- int_to_bv(8, 1);
-    length(<WMM_AC_PARAMS>) = 128; // 4 ACs * 4 bytes each
 };
 
 <WMM_SUBTYPE> :: BitVec(8)
@@ -815,7 +810,7 @@ int_to_bv(16, 19) bvulte <GROUP_ID> and
 
 <WPS_ATTRIBUTE> ::= <WPS_ATTR_TYPE> <WPS_ATTR_LENGTH> <WPS_ATTR_DATA>
 {
-    <WPS_ATTR_LENGTH> = int_to_bv(16, length(<WPS_ATTR_DATA>) div 8);
+    <WPS_ATTR_LENGTH> = int_to_bv(16, seq.len(<WPS_ATTR_DATA>) div 8);
     int_to_bv(16, 1) bvulte <WPS_ATTR_LENGTH> and <WPS_ATTR_LENGTH> bvulte int_to_bv(16, 256);
 };
 
@@ -849,7 +844,7 @@ int_to_bv(16, 19) bvulte <GROUP_ID> and
 
 <P2P_ATTRIBUTE> ::= <P2P_ATTR_ID> <P2P_ATTR_LEN> <P2P_ATTR_BODY>
 {
-    <P2P_ATTR_LEN> <- int_to_bv(16, length(<P2P_ATTR_BODY>) div 8);
+    <P2P_ATTR_LEN> <- int_to_bv(16, seq.len(<P2P_ATTR_BODY>) div 8);
 };
 
 <P2P_ATTR_ID> :: BitVec(8)
@@ -905,7 +900,7 @@ int_to_bv(16, 19) bvulte <GROUP_ID> and
 
 <HS20_ATTRIBUTE> ::= <HS20_ATTR_ID> <HS20_ATTR_LEN> <HS20_ATTR_BODY>
 {
-    <HS20_ATTR_LEN> <- int_to_bv(16, length(<HS20_ATTR_BODY>) div 8);
+    <HS20_ATTR_LEN> <- int_to_bv(16, seq.len(<HS20_ATTR_BODY>) div 8);
 };
 
 <HS20_ATTR_ID> :: BitVec(8)
@@ -928,7 +923,7 @@ int_to_bv(16, 19) bvulte <GROUP_ID> and
 
 <MBO_ATTRIBUTE> ::= <MBO_ATTR_ID> <MBO_ATTR_LEN> <MBO_ATTR_BODY>
 {
-    <MBO_ATTR_LEN> <- int_to_bv(16, length(<MBO_ATTR_BODY>) div 8);
+    <MBO_ATTR_LEN> <- int_to_bv(16, seq.len(<MBO_ATTR_BODY>) div 8);
 };
 
 <MBO_ATTR_ID> :: BitVec(8)
@@ -993,7 +988,7 @@ int_to_bv(16, 19) bvulte <GROUP_ID> and
 <BCM_FBT_DATA> ::= <BCM_FBT_CAPABILITY> <BCM_FBT_KEY_HOLDER> <BCM_FBT_R1KH_ID> <BCM_FBT_GTK_LEN> <BCM_FBT_GTK>
 {
     int_to_bv(8, 16) bvulte <BCM_FBT_GTK_LEN> and <BCM_FBT_GTK_LEN> bvulte int_to_bv(8, 32);
-    <BCM_FBT_GTK_LEN> = int_to_bv(8, length(<BCM_FBT_GTK>) div 8);
+    <BCM_FBT_GTK_LEN> = int_to_bv(8, seq.len(<BCM_FBT_GTK>) div 8);
 };
 
 <BCM_FBT_CAPABILITY> :: BitVec(8);
@@ -1025,7 +1020,7 @@ int_to_bv(16, 19) bvulte <GROUP_ID> and
 <BCM_LEGACY_DATA> ::= <BCM_LEGACY_VERSION> <BCM_LEGACY_FLAGS> <BCM_LEGACY_DATA_BODY>
 {
     int_to_bv(8, 1) bvulte <BCM_LEGACY_VERSION> and <BCM_LEGACY_VERSION> bvulte int_to_bv(8, 3);
-    length(<BCM_LEGACY_DATA_BODY>) bvulte int_to_bv(32, 64);
+    seq.len(<BCM_LEGACY_DATA_BODY>) <= 64;
 };
 
 <BCM_LEGACY_VERSION> :: BitVec(8);
@@ -1053,17 +1048,14 @@ int_to_bv(16, 19) bvulte <GROUP_ID> and
 <BCM_TDLS_CAPABILITY> :: BitVec(16);
 <BCM_TDLS_STATUS> :: BitVec(8);
 
-<BCM_PKTFWD_DATA> ::= <BCM_PKTFWD_FLAGS> <BCM_PKTFWD_CONFIG>
-{
-    length(<BCM_PKTFWD_CONFIG>) = 32;
-};
+<BCM_PKTFWD_DATA> ::= <BCM_PKTFWD_FLAGS> <BCM_PKTFWD_CONFIG>;
 
 <BCM_PKTFWD_FLAGS> :: BitVec(8);
 <BCM_PKTFWD_CONFIG> :: BitVec(32);
 
 <BCM_SPECT_DATA> ::= <BCM_SPECT_FLAGS> <BCM_SPECT_CHANNELS>
 {
-    length(<BCM_SPECT_CHANNELS>) bvulte int_to_bv(32, 256);
+    seq.len(<BCM_SPECT_CHANNELS>) <= 256;
 };
 
 <BCM_SPECT_FLAGS> :: BitVec(8);
@@ -1162,26 +1154,17 @@ int_to_bv(16, 19) bvulte <GROUP_ID> and
 <INTEL_PM_INTERVAL> :: BitVec(16);
 <INTEL_PM_FLAGS> :: BitVec(8);
 
-<INTEL_QOS_DATA> ::= <INTEL_QOS_FLAGS> <INTEL_QOS_PARAMS>
-{
-    length(<INTEL_QOS_PARAMS>) = 32;
-};
+<INTEL_QOS_DATA> ::= <INTEL_QOS_FLAGS> <INTEL_QOS_PARAMS>;
 
 <INTEL_QOS_FLAGS> :: BitVec(8);
 <INTEL_QOS_PARAMS> :: BitVec(32);
 
-<INTEL_SEC_DATA> ::= <INTEL_SEC_FLAGS> <INTEL_SEC_FEATURES>
-{
-    length(<INTEL_SEC_FEATURES>) = 32;
-};
+<INTEL_SEC_DATA> ::= <INTEL_SEC_FLAGS> <INTEL_SEC_FEATURES>;
 
 <INTEL_SEC_FLAGS> :: BitVec(16);
 <INTEL_SEC_FEATURES> :: BitVec(32);
 
-<INTEL_RADIO_DATA> ::= <INTEL_RADIO_FLAGS> <INTEL_RADIO_CONFIG>
-{
-    length(<INTEL_RADIO_CONFIG>) = 32;
-};
+<INTEL_RADIO_DATA> ::= <INTEL_RADIO_FLAGS> <INTEL_RADIO_CONFIG>;
 
 <INTEL_RADIO_FLAGS> :: BitVec(8);
 <INTEL_RADIO_CONFIG> :: BitVec(32);
@@ -1216,19 +1199,13 @@ int_to_bv(16, 19) bvulte <GROUP_ID> and
 <INTEL_FR_THRESHOLD> :: BitVec(8);
 <INTEL_FR_CONFIG> :: BitVec(32);
 
-<INTEL_MESH_DATA> ::= <INTEL_MESH_FLAGS> <INTEL_MESH_ID> <INTEL_MESH_CONFIG>
-{
-    length(<INTEL_MESH_CONFIG>) = 64;
-};
+<INTEL_MESH_DATA> ::= <INTEL_MESH_FLAGS> <INTEL_MESH_ID> <INTEL_MESH_CONFIG>;
 
 <INTEL_MESH_FLAGS> :: BitVec(8);
 <INTEL_MESH_ID> :: BitVec(32);
 <INTEL_MESH_CONFIG> :: BitVec(64);
 
-<INTEL_ADV_FEATURES> ::= <INTEL_ADV_FLAGS> <INTEL_ADV_CONFIG>
-{
-    length(<INTEL_ADV_CONFIG>) = 64;
-};
+<INTEL_ADV_FEATURES> ::= <INTEL_ADV_FLAGS> <INTEL_ADV_CONFIG>;
 
 <INTEL_ADV_FLAGS> :: BitVec(16);
 <INTEL_ADV_CONFIG> :: BitVec(64);
@@ -1253,7 +1230,7 @@ int_to_bv(16, 19) bvulte <GROUP_ID> and
 
 <INTEL_SENSING_DATA> ::= <INTEL_SENS_FLAGS> <INTEL_SENS_CAPABILITY> <INTEL_SENS_CONFIG>
 {
-    length(<INTEL_SENS_CONFIG>) bvulte int_to_bv(32, 128);
+    seq.len(<INTEL_SENS_CONFIG>) <= 128;
 };
 
 <INTEL_SENS_FLAGS> :: BitVec(8);
@@ -1280,19 +1257,15 @@ int_to_bv(16, 19) bvulte <GROUP_ID> and
 
 <CISCO_AP_DATA> ::= <CISCO_AP_FLAGS> <CISCO_AP_NAME> <CISCO_AP_CONFIG>
 {
-    length(<CISCO_AP_NAME>) bvugte int_to_bv(32, 1) and length(<CISCO_AP_NAME>) bvulte int_to_bv(32, 32);
-    // AP name must be non-empty and max 32 bytes
-    length(<CISCO_AP_CONFIG>) = 64;
+    seq.len(<CISCO_AP_NAME>) >= 1 and seq.len(<CISCO_AP_NAME>) <= 32;
+    // AP name must be non-empty and max 32 bytes=
 };
 
 <CISCO_AP_FLAGS> :: BitVec(8);
 <CISCO_AP_NAME> :: List(Bool);
 <CISCO_AP_CONFIG> :: BitVec(64);
 
-<CISCO_CLIENT_DATA> ::= <CISCO_CLIENT_FLAGS> <CISCO_CLIENT_PARAMS>
-{
-    length(<CISCO_CLIENT_PARAMS>) = 32;
-};
+<CISCO_CLIENT_DATA> ::= <CISCO_CLIENT_FLAGS> <CISCO_CLIENT_PARAMS>;
 
 <CISCO_CLIENT_FLAGS> :: BitVec(8);
 <CISCO_CLIENT_PARAMS> :: BitVec(32);
@@ -1303,7 +1276,6 @@ int_to_bv(16, 19) bvulte <GROUP_ID> and
     int_to_bv(8, 0) bvulte <CISCO_QOS_PRIORITY> and <CISCO_QOS_PRIORITY> bvulte int_to_bv(8, 7);
     // QoS flags bit 0: DSCP preservation enabled
     // QoS flags bit 1: WMM enabled
-    length(<CISCO_QOS_CONFIG>) = 32;
 };
 
 <CISCO_QOS_FLAGS> :: BitVec(8);
@@ -1312,7 +1284,6 @@ int_to_bv(16, 19) bvulte <GROUP_ID> and
 
 <CISCO_MOBILITY_DATA> ::= <CISCO_MOB_FLAGS> <CISCO_MOB_DOMAIN_ID> <CISCO_MOB_CONFIG>
 {
-    length(<CISCO_MOB_CONFIG>) = 48;
     // Mobility domain ID should be non-zero for valid mobility
     not (<CISCO_MOB_DOMAIN_ID> = int_to_bv(16, 0));
 };
@@ -1338,9 +1309,6 @@ int_to_bv(16, 19) bvulte <GROUP_ID> and
     // Bit 1: Wi-Fi 7 support (only valid if version >= 5)
     // Bit 2: Dual-band simultaneous
     // Bit 3: 160MHz channel support
-    length(<QCOM_FC_FLAGS>) = 16;
-    length(<QCOM_FC_FEATURES>) = 32;
-    length(<QCOM_FC_CONFIG>) = 32;
 };
 
 <QCOM_FC_VERSION> :: BitVec(8);
@@ -1356,7 +1324,6 @@ int_to_bv(16, 19) bvulte <GROUP_ID> and
     int_to_bv(8, 1) bvulte <QCOM_MU_USERS> and <QCOM_MU_USERS> bvulte int_to_bv(8, 16);
     // Users cannot exceed streams
     <QCOM_MU_USERS> bvulte <QCOM_MU_STREAMS>;
-    length(<QCOM_MU_CONFIG>) = 24;
 };
 
 <QCOM_MU_FLAGS> :: BitVec(8);
@@ -1366,13 +1333,11 @@ int_to_bv(16, 19) bvulte <GROUP_ID> and
 
 <QCOM_BEAMFORM_DATA> ::= <QCOM_BF_FLAGS> <QCOM_BF_CAPABILITY> <QCOM_BF_ANTENNAS> <QCOM_BF_CONFIG>
 {
-    length(<QCOM_BF_CONFIG>) = 24;
     // Number of antennas for beamforming: 2-8
     int_to_bv(8, 2) bvulte <QCOM_BF_ANTENNAS> and <QCOM_BF_ANTENNAS> bvulte int_to_bv(8, 8);
     // Bit 0 of capability: Explicit beamforming
     // Bit 1: Implicit beamforming
     // Bit 2: NDP feedback support
-    length(<QCOM_BF_CAPABILITY>) = 16;
 };
 
 <QCOM_BF_FLAGS> :: BitVec(8);
@@ -1390,7 +1355,6 @@ int_to_bv(16, 19) bvulte <GROUP_ID> and
     <QCOM_PWR_MODE> = int_to_bv(8, 4);
     // Power level: 0-100 percentage
     int_to_bv(8, 0) bvulte <QCOM_PWR_LEVEL> and <QCOM_PWR_LEVEL> bvulte int_to_bv(8, 100);
-    length(<QCOM_PWR_PARAMS>) = 24;
 };
 
 <QCOM_PWR_MODE> :: BitVec(8);
@@ -1410,7 +1374,6 @@ int_to_bv(16, 19) bvulte <GROUP_ID> and
 
 <MTK_CHIPSET_DATA> ::= <MTK_CHIP_ID> <MTK_CHIP_VERSION> <MTK_CHIP_REVISION> <MTK_CHIP_CONFIG>
 {
-    length(<MTK_CHIP_CONFIG>) = 24;
     // Chip ID: Common MediaTek WiFi chip families
     // 0x7915 = MT7915, 0x7916 = MT7916, 0x7921 = MT7921, 0x7922 = MT7922, etc.
     <MTK_CHIP_ID> = 0x7915 or
@@ -1435,7 +1398,6 @@ int_to_bv(16, 19) bvulte <GROUP_ID> and
     int_to_bv(8, 0) bvulte <MTK_PERF_MODE> and <MTK_PERF_MODE> bvulte int_to_bv(8, 3);
     // Performance boost level: 0-10
     int_to_bv(8, 0) bvulte <MTK_PERF_BOOST> and <MTK_PERF_BOOST> bvulte int_to_bv(8, 10);
-    length(<MTK_PERF_CONFIG>) = 48;
 };
 
 <MTK_PERF_FLAGS> :: BitVec(8);
@@ -1445,7 +1407,6 @@ int_to_bv(16, 19) bvulte <GROUP_ID> and
 
 <MTK_SMART_DATA> ::= <MTK_SMART_FLAGS> <MTK_SMART_VERSION> <MTK_SMART_CONFIG>
 {
-    length(<MTK_SMART_CONFIG>) = 56;
     // Smart connection version: 1-3
     int_to_bv(8, 1) bvulte <MTK_SMART_VERSION> and <MTK_SMART_VERSION> bvulte int_to_bv(8, 3);
     // Bit 0 of flags: Smart connection enabled
@@ -1473,7 +1434,6 @@ int_to_bv(16, 19) bvulte <GROUP_ID> and
 
 <RTK_DEVICE_DATA> ::= <RTK_DEV_ID> <RTK_DEV_FLAGS> <RTK_DEV_SERIES> <RTK_DEV_CONFIG>
 {
-    length(<RTK_DEV_CONFIG>) = 24;
     // Device ID: Common Realtek WiFi chip series
     // 0x8822 = RTL8822, 0x8832 = RTL8832, 0x8852 = RTL8852, 0x8922 = RTL8922
     <RTK_DEV_ID> = 0x8822 or
@@ -1500,7 +1460,6 @@ int_to_bv(16, 19) bvulte <GROUP_ID> and
     // TX power limit: 10-30 dBm (typical regulatory limits)
     int_to_bv(8, 10) bvulte <RTK_TX_LIMIT> and <RTK_TX_LIMIT> bvulte int_to_bv(8, 30);
     // TX level cannot exceed limit (when normalized)
-    length(<RTK_TX_CONFIG>) = 24;
     // Realtek-specific: TX flags bit 0: Power by rate enabled
     // Bit 1: Power limit enabled
     // Bit 2: Thermal protection enabled
@@ -1513,7 +1472,6 @@ int_to_bv(16, 19) bvulte <GROUP_ID> and
 
 <RTK_ANTENNA_DATA> ::= <RTK_ANT_FLAGS> <RTK_ANT_CONFIG> <RTK_ANT_DIVERSITY> <RTK_ANT_COUNT>
 {
-    length(<RTK_ANT_CONFIG>) = 8;
     // Antenna diversity mode: 0=Main, 1=Aux, 2=Auto
     <RTK_ANT_DIVERSITY> = int_to_bv(8, 0) or
     <RTK_ANT_DIVERSITY> = int_to_bv(8, 1) or
@@ -1545,7 +1503,6 @@ int_to_bv(16, 19) bvulte <GROUP_ID> and
 
 <MRVL_WIRELESS_DATA> ::= <MRVL_WL_FLAGS> <MRVL_WL_BAND> <MRVL_WL_BANDWIDTH> <MRVL_WL_CONFIG>
 {
-    length(<MRVL_WL_CONFIG>) = 48;
     // Band: 0=2.4GHz, 1=5GHz, 2=6GHz, 3=Dual band
     int_to_bv(8, 0) bvulte <MRVL_WL_BAND> and <MRVL_WL_BAND> bvulte int_to_bv(8, 3);
     // Bandwidth: 20, 40, 80, 160 MHz (encoded as 0, 1, 2, 3)
@@ -1559,7 +1516,6 @@ int_to_bv(16, 19) bvulte <GROUP_ID> and
 
 <MRVL_MESH_DATA> ::= <MRVL_MESH_FLAGS> <MRVL_MESH_ID> <MRVL_MESH_TTL> <MRVL_MESH_CONFIG>
 {
-    length(<MRVL_MESH_CONFIG>) = 24;
     // Mesh ID should be non-zero for active mesh
     not (<MRVL_MESH_ID> = int_to_bv(16, 0));
     // TTL (Time To Live): 1-32 hops
@@ -1573,7 +1529,6 @@ int_to_bv(16, 19) bvulte <GROUP_ID> and
 
 <MRVL_SECURITY_DATA> ::= <MRVL_SEC_FLAGS> <MRVL_SEC_LEVEL> <MRVL_SEC_FEATURES>
 {
-    length(<MRVL_SEC_FEATURES>) = 24;
     // Security level: 0=Open, 1=WEP, 2=WPA, 3=WPA2, 4=WPA3
     int_to_bv(8, 0) bvulte <MRVL_SEC_LEVEL> and <MRVL_SEC_LEVEL> bvulte int_to_bv(8, 4);
     // Bit 0 of flags: Hardware encryption enabled
@@ -1597,7 +1552,6 @@ int_to_bv(16, 19) bvulte <GROUP_ID> and
 
 <RALINK_CONFIG_DATA> ::= <RALINK_CFG_FLAGS> <RALINK_CFG_MODE> <RALINK_CFG_PARAMS>
 {
-    length(<RALINK_CFG_PARAMS>) = 56;
     // Configuration mode: 0=Station, 1=AP, 2=Monitor, 3=Mesh
     int_to_bv(8, 0) bvulte <RALINK_CFG_MODE> and <RALINK_CFG_MODE> bvulte int_to_bv(8, 3);
 };
@@ -1615,7 +1569,6 @@ int_to_bv(16, 19) bvulte <GROUP_ID> and
     <RALINK_AGG_SIZE> = int_to_bv(16, 64);
     // Number of subframes: 1-64
     int_to_bv(8, 1) bvulte <RALINK_AGG_COUNT> and <RALINK_AGG_COUNT> bvulte int_to_bv(8, 64);
-    length(<RALINK_AGG_CONFIG>) = 24;
 };
 
 <RALINK_AGG_FLAGS> :: BitVec(8);
@@ -1641,7 +1594,6 @@ int_to_bv(16, 19) bvulte <GROUP_ID> and
     int_to_bv(8, 1) bvulte <UBNT_AM_VERSION> and <UBNT_AM_VERSION> bvulte int_to_bv(8, 3);
     // AirMax priority: 0=Low, 1=Medium, 2=High, 3=Critical
     int_to_bv(8, 0) bvulte <UBNT_AM_PRIORITY> and <UBNT_AM_PRIORITY> bvulte int_to_bv(8, 3);
-    length(<UBNT_AM_CONFIG>) = 48;
     // Bit 0 of flags: AirMax enabled
     // Bit 1: GPS sync enabled
     // Bit 2: TDMA enabled
@@ -1654,7 +1606,6 @@ int_to_bv(16, 19) bvulte <GROUP_ID> and
 
 <UBNT_DEVICE_DATA> ::= <UBNT_DEV_MODEL> <UBNT_DEV_FLAGS> <UBNT_DEV_HWREV> <UBNT_DEV_CONFIG>
 {
-    length(<UBNT_DEV_CONFIG>) = 24;
     // Device model: Common Ubiquiti product IDs
     // 0x0001 = NanoStation, 0x0002 = PowerBeam, 0x0003 = LiteBeam, 0x0004 = AirFiber
     <UBNT_DEV_MODEL> = 0x0001 or
@@ -1673,7 +1624,6 @@ int_to_bv(16, 19) bvulte <GROUP_ID> and
 
 <UBNT_MANAGEMENT_DATA> ::= <UBNT_MGMT_FLAGS> <UBNT_MGMT_VLAN> <UBNT_MGMT_CONFIG>
 {
-    length(<UBNT_MGMT_CONFIG>) = 48;
     // Management VLAN ID: 1-4094 (valid VLAN range)
     int_to_bv(16, 1) bvulte <UBNT_MGMT_VLAN> and <UBNT_MGMT_VLAN> bvulte int_to_bv(16, 4094);
     // Bit 0 of flags: Remote management enabled
@@ -1705,7 +1655,6 @@ int_to_bv(16, 19) bvulte <GROUP_ID> and
     // AP type: 0=Campus, 1=Branch, 2=Remote, 3=Outdoor, 4=Industrial, 5=Hospitality
     int_to_bv(8, 0) bvulte <ARUBA_AP_TYPE> and <ARUBA_AP_TYPE> bvulte int_to_bv(8, 5);
     // AP group ID: 0-255 (0 = default group)
-    length(<ARUBA_AP_CONFIG>) = 48;
     // Aruba-specific: Bit 0 of flags: Mesh enabled
     // Bit 1: ARM (Adaptive Radio Management) enabled
     // Bit 2: Client Match enabled
@@ -1723,7 +1672,6 @@ int_to_bv(16, 19) bvulte <GROUP_ID> and
 
 <ARUBA_MOBILITY_DATA> ::= <ARUBA_MOB_FLAGS> <ARUBA_MOB_CONTROLLER> <ARUBA_MOB_VLAN> <ARUBA_MOB_CONFIG>
 {
-    length(<ARUBA_MOB_CONFIG>) = 16;
     // Mobility controller IP should be non-zero for valid mobility
     not (<ARUBA_MOB_CONTROLLER> = int_to_bv(32, 0));
     // Mobility VLAN: 1-4094
@@ -1749,7 +1697,6 @@ int_to_bv(16, 19) bvulte <GROUP_ID> and
     int_to_bv(8, 0) bvulte <ARUBA_CL_ROLE> and <ARUBA_CL_ROLE> bvulte int_to_bv(8, 3);
     // Client VLAN: 1-4094
     int_to_bv(16, 1) bvulte <ARUBA_CL_VLAN> and <ARUBA_CL_VLAN> bvulte int_to_bv(16, 4094);
-    length(<ARUBA_CL_CONFIG>) = 48;
     // Aruba-specific client constraints:
     // Bit 0 of flags: 802.1X authentication required
     // Bit 1: MAC authentication enabled
