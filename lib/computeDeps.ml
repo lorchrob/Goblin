@@ -70,7 +70,7 @@ let rec sygus_ast_to_expr: SA.sygus_ast -> A.expr list
 | Node (_, sygus_asts) -> List.map sygus_ast_to_expr sygus_asts |> List.flatten
 
 let rec compute_dep: A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -> A.ast -> A.element -> string -> SA.sygus_ast
-= fun dep_map sygus_ast ast element var -> 
+= fun dep_map sygus_ast ast _element var -> 
   match Utils.StringMap.find_opt (process_constructor_str var) dep_map with 
   | None -> 
     Utils.crash ("Hanging identifier '" ^ var ^ "' when computing dependencies")
@@ -78,7 +78,28 @@ let rec compute_dep: A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -> 
     match sc with 
     | SmtConstraint _ -> Utils.crash "Encountered SmtConstraint when computing dependencies"
     | DerivedField (_, expr, _) -> 
-      evaluate ~dep_map sygus_ast ast element expr |> List.hd |> expr_to_sygus_ast
+      (*!! Need to update `element` here *)
+      (* Hacky workaround. Brittle. Need to refactor. Doesn't generalize. 
+         The problem is that when computing this new dependency, we may have to 
+         be at a different element in the input AST. Juggling the input AST and the 
+         sygus AST to evalute is tricky in general. 
+         Furthermore, the dep_map does not have enough information -- the string key 
+         could, in principle, map to different dependencies in different places in the 
+         input grammar. 
+
+         We need a refactoring that will put enough information in the sygus_ast 
+         to evaluate without tracking the input AST.
+         *)
+      let element' = List.find (fun element -> match element with 
+      | A.TypeAnnotation _ -> false 
+      | A.ProdRule (_, rhss, _) ->
+        List.exists (fun rhs -> match rhs with 
+        | A.StubbedRhs _ -> false 
+        | A.Rhs (_, scs, _, _) -> 
+          List.exists (fun sc' -> sc' = sc) scs
+        ) rhss 
+      ) ast in
+      evaluate ~dep_map sygus_ast ast element' expr |> List.hd |> expr_to_sygus_ast
   )
 
 and bool_list_to_il_int (signed : bool) (bits : bool list) p : A.expr =
@@ -396,14 +417,17 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -
     match acc, expr with 
     | [(A.IntConst (i, _))], A.BLConst (bits, _) -> [IntConst (i + (List.length bits), p)]
     | [(A.IntConst (i, _))], A.BVConst (_, bits, _) -> [IntConst (i + (List.length bits), p)]
+    | [(A.IntConst (i, _))], A.BConst _ -> [IntConst (i + 1, p)]
     | [(A.IntConst (i, _))], A.StrConst (str, _)  
     | [(A.IntConst (i, _))], A.PhConst (str, _) -> 
       if str = "<AC_TOKEN>" || str = "<SCALAR>" then [IntConst (i + 32*8, p)] 
       else if str = "<ELEMENT>" then [IntConst (i + 64*8, p)]
       else if str = "<CONFIRM_HASH>" then [IntConst (32*8, p)] 
       else if str = "<SEND_CONFIRM_COUNTER>" then [IntConst (2*8, p)] 
-      else Utils.crash "Tried to compute length of unknown placeholder"
-    | _ -> eval_fail 26
+      else (
+        [IntConst (String.length str, p)]
+      )
+    | _ -> Format.printf "Unexpected expr: %a\n" A.pp_print_expr expr; eval_fail 26
     ) [(A.IntConst (0, p))] exprs
   )
 | BVCast (len, expr, p) -> (

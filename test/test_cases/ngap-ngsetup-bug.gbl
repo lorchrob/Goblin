@@ -1,0 +1,123 @@
+<NGAP_PDU>                          ::= <pdu-type-choice> <pdu-procedure>;
+<pdu-type-choice>                   ::= <initiatingMessage>;
+<pdu-procedure>                     ::= <NGSetupRequest>;
+<NGSetupRequest>                    ::= <ng-procedure> <ng-pdu-length> <IE-Sequence-List> <ng-sequence> 
+{
+    <ng-pdu-length>                 <- int_to_bv(16, length(<IE-Sequence-List>)+length(<ng-sequence>));
+};
+
+<ng-procedure>                      :: Bool; 
+<initiatingMessage>                 :: Bool; 
+<IE-Sequence-List>                  ::= <sequence-extension-flag> <sequence-list-padding> <sequence-list-size>;
+<ng-sequence>                       ::= <IE-GlobalRANNodeID> <IE-RANNodeName> <IE-SupportedTAList> <IE-DefaultPagingDRX>;
+<IE-GlobalRANNodeID>                ::= <grn-sequence-id> <criticality-reject> <criticality-padding> <grn-length> <global-ran-node-id-value> {
+    <grn-length>                    <- int_to_bv(8, length(<global-ran-node-id-value>));
+};
+<IE-RANNodeName>                    :: Bool; 
+<IE-SupportedTAList>                :: Bool;
+<IE-DefaultPagingDRX>               :: BitVec(2);
+<global-ran-node-id-value>          :: BitVec(2);
+<ran-node-name-value>               :: BitVec(2);
+<supported-ta-value>                :: BitVec(2);
+<supported-ta-item-sequence>        ::= <extension-flag><preamble>;
+<BroadcastPLMNList-Values>          ::= <broadcast-plmn-list-length> <BroadcastPLMNList> {
+    <BroadcastPLMNList>.<_length> >= 1 and <BroadcastPLMNList>.<_length> <= 12;    
+};
+<BroadcastPLMNList>                 ::= <_length> <BroadcastPLMNItem> { <_length> = 1 ;}
+                                    | <_length> <BroadcastPLMNItem> <BroadcastPLMNList> { <_length> = <BroadcastPLMNList>.<_length> + 1 ; };
+<BroadcastPLMNItem>                 ::= <broadcast-plmn-sequence> <PLMNIdentity> <SliceSupportList-Values>;
+<broadcast-plmn-sequence>           ::= <extension-flag> <preamble> <broadcast-plmn-padding>;
+<SliceSupportList-Values>           ::= <SliceSupportList-values-length> <SliceSupportList>
+{
+    <SliceSupportList>.<_length> >= 1 and <SliceSupportList>.<_length> <= 1024;
+};
+<SliceSupportList>                  ::= <_length> <SliceSupportItem> { <_length> = 1 ; }
+                                    | <_length> <SliceSupportItem> <SliceSupportList> { <_length> = <SliceSupportList>.<_length> + 1 ; };
+<SliceSupportItem>                  ::= <slice-support-item-sequence> <S-NSSAI>;
+<slice-support-item-sequence>       ::= <extension-flag> <preamble>;
+<S-NSSAI>                           ::= <extension-flag> <s-nssai-options>;
+<s-nssai-options>                   ::= <without-sd> | <with-sd>;
+<with-sd>                           ::= <preamble-sd> <SST> <SD>;
+<without-sd>                        ::= <preamble-nosd> <SST>;
+<SD>                                ::= <sd-padding> <sd-value>;
+<default-pagingdrx-value>           ::= <extension-flag> <default-pagingdrx>;
+<GlobalGNB-ID>                      ::= <global-gnb-id-choice> <global-gnb-id-sequence>;
+<GlobalNgENB-ID>                    ::= <global-ng-enb-id-choice> <global-ng-enb-id-sequence>;
+<GlobalN3IWF-ID>                    ::= <global-n3iwf-id-choice> <global-n3iwf-id-sequence>;
+<global-gnb-id-sequence>            ::= <sequence-extension-flag> <preamble> <global-gnb-id>;
+<global-gnb-id>                     ::= <padding-global-gnb> <PLMNIdentity> <GNB-ID>;
+<PLMNIdentity>                      ::= <padding-plmn-id> <plmn-id>;
+<GNB-ID>                            ::= <gnb-id-choice> <gnb-id-string>;
+<gnb-id-string>                     ::= <gnb-id-string-length> <gnb-id-string-padding> <gnb-id-string-value> ;
+<global-ng-enb-id-sequence>         ::= <sequence-extension-flag> <preamble> <global-ng-enb-id>;
+<global-ng-enb-id>                  ::= <padding-global-gnb> <PLMNIdentity> <NgENB-ID>;
+<NgENB-ID>                          ::= <ng-enb-macro>
+                                    | <ng-enb-short>
+                                    | <ng-enb-long>;
+<global-n3iwf-id-sequence>          ::= <sequence-extension-flag> <preamble> <global-n3iwf-id-id>;
+<global-n3iwf-id-id>                ::= <padding-global-gnb> <PLMNIdentity> <n3IWF-ID>;
+<ng-enb-macro>                      ::= <ng-enb-macro-choice> <ng-enb-macro-string>;
+<ng-enb-short>                      ::= <ng-enb-short-choice> <ng-enb-short-string>;
+<ng-enb-long>                       ::= <ng-enb-long-choice> <ng-enb-long-string>;
+
+<sequence-extension-flag>           :: BitVec(1);
+<sequence-list-padding>             :: BitVec(7);
+<sequence-list-size>                :: BitVec(16)
+{
+    int_to_bv(16, 0) bvulte <sequence-list-size> and <sequence-list-size> bvulte int_to_bv(16, 65535);
+};
+<default-pagingdrx-length>          :: BitVec(8);
+<default-pagingdrx-sequence-id>     :: BitVec(16);
+<ran-node-name-sequence-id>         :: BitVec(16);
+<supported-ta-sequence-id>          :: BitVec(16);
+<ran-node-name-length>              :: BitVec(8);
+<ran-node-name>                     :: String;
+<length-ran-node-name-length>       :: BitVec(8);
+<ran-node-name-padding>             :: BitVec(7);
+<supported-ta-list-length>          :: BitVec(8);
+<tac-padding>                       :: BitVec(6);
+<broadcast-plmn-list-length>        :: BitVec(4);
+<broadcast-plmn-padding>            :: BitVec(2);
+<SliceSupportList-values-length>    :: BitVec(16);
+<default-pagingdrx>                 :: BitVec(2);
+<SST>                               :: BitVec(8);
+<NRCellIdentity>                    :: BitVec(36);
+<preamble-sd>                       :: BitVec(2);
+<preamble-nosd>                     :: BitVec(2);
+<sd-value>                          :: BitVec(24);
+<n3IWF-ID>                          :: BitVec(16);
+<ng-enb-macro-choice>               :: BitVec(2);
+<ng-enb-short-choice>               :: BitVec(2);
+<ng-enb-long-choice>                :: BitVec(2); 
+<ng-enb-macro-string>               :: BitVec(20);
+<ng-enb-short-string>               :: BitVec(18);
+<ng-enb-long-string>                :: BitVec(21);
+<gnb-id-string-length>              :: BitVec(4);
+<gnb-id-string-value>               :: List(Bool)
+{
+	seq.len(<gnb-id-string-value>) >= 22 and seq.len(<gnb-id-string-value>) <= 32 ;
+};
+<padding-plmn-id>                   :: BitVec(4);
+<plmn-id>                           :: BitVec(24);
+<padding-global-gnb>                :: BitVec(4);
+<preamble>                          :: BitVec(1);
+<ng-pdu-length>                     :: BitVec(16);
+<ng-procedure-code-padding>         :: BitVec(5);
+<extension-flag>                    :: BitVec(1);
+<im-choice-index>                   :: BitVec(2);
+<ng-procedure-code>                 :: BitVec(8);
+<initial-ue-procedure-code>         :: BitVec(8);
+<criticality-reject>                :: BitVec(2);
+<criticality-ignore>                :: BitVec(2);
+<criticality-notify>                :: BitVec(2);
+<criticality-padding>               :: BitVec(6);
+<global-gnb-id-choice>              :: BitVec(2);
+<global-ng-enb-id-choice>           :: BitVec(2);
+<global-n3iwf-id-choice>            :: BitVec(2);
+<grn-length>                        :: BitVec(8);
+<grn-sequence-id>                   :: BitVec(16);
+<supported-ta-length>		:: BitVec(8);
+<_length> :: Int;
+<sd-padding>		:: BitVec(3);
+<gnb-id-choice>		::BitVec(1);
+<gnb-id-string-padding> 	:: BitVec(3);

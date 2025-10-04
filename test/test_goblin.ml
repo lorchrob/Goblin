@@ -1423,6 +1423,14 @@ let dm_test16 () =
   | Ok _ -> ()  
   | Error msg -> fail msg
 
+let ngap_ngsetup_bug () = 
+  let input = "../../../test/test_cases/ngap-ngsetup-bug.gbl" in
+  let sygus_ast, _, ast = main_pipeline input in
+  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  match output with
+  | Ok _ -> ()  
+  | Error msg -> fail msg
+
 (*let md_test16 () = 
   let input = "../../../test/test_cases/test16" in
   let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
@@ -1627,6 +1635,7 @@ let () =
     "bug2", [test_case "bug2" `Quick bug2]; 
     "probabilities", [test_case "probabilities" `Quick probabilities]; 
     "probabilities_2", [test_case "probabilities_2" `Quick probabilities_2]; 
+    "ngap-ngsetup", [test_case "ngap-ngsetup" `Quick ngap_ngsetup_bug]; 
     (*"dd_test_another_ambiguous_reference_2", [test_case "dd_test_another_ambiguous_reference_2" `Quick dd_test_another_ambiguous_reference_2]; 
     "md_test_another_ambiguous_reference_2", [test_case "md_test_another_ambiguous_reference_2" `Quick md_test_another_ambiguous_reference_2];  *)
 
