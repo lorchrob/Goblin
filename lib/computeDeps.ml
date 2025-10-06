@@ -71,6 +71,10 @@ let rec sygus_ast_to_expr: SA.sygus_ast -> A.expr list
 
 let rec compute_dep: A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -> A.ast -> A.element -> string -> SA.sygus_ast
 = fun dep_map sygus_ast ast _element var -> 
+  if !Flags.debug then 
+    Format.printf "compute_dep: computing dependency for %s in sygus_ast %a\n"
+      var
+      SygusAst.pp_print_sygus_ast sygus_ast;
   match Utils.StringMap.find_opt (process_constructor_str var) dep_map with 
   | None -> 
     Utils.crash ("Hanging identifier '" ^ var ^ "' when computing dependencies")
@@ -78,7 +82,6 @@ let rec compute_dep: A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -> 
     match sc with 
     | SmtConstraint _ -> Utils.crash "Encountered SmtConstraint when computing dependencies"
     | DerivedField (_, expr, _) -> 
-      (*!! Need to update `element` here *)
       (* Hacky workaround. Brittle. Need to refactor. Doesn't generalize. 
          The problem is that when computing this new dependency, we may have to 
          be at a different element in the input AST. Juggling the input AST and the 
@@ -99,6 +102,9 @@ let rec compute_dep: A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -> 
           List.exists (fun sc' -> sc' = sc) scs
         ) rhss 
       ) ast in
+      if !Flags.debug then 
+        Format.printf "The dependency computation is under element %a\n\n" 
+          A.pp_print_element element';
       evaluate ~dep_map sygus_ast ast element' expr |> List.hd |> expr_to_sygus_ast
   )
 
@@ -120,6 +126,9 @@ and bool_list_to_il_int (signed : bool) (bits : bool list) p : A.expr =
          we would have to have composite il_types to track the various nesting. *)
 and evaluate_sygus_ast: A.semantic_constraint Utils.StringMap.t -> A.element -> A.ast -> SA.sygus_ast  -> SA.sygus_ast 
 = fun dep_map element ast sygus_ast ->
+  if !Flags.debug then 
+    Format.printf "Evaluating sygus ast %a\n" 
+    SygusAst.pp_print_sygus_ast sygus_ast;
   match sygus_ast with 
 | IntLeaf _ | BVLeaf _ | BLLeaf _ | BoolLeaf _ | StrLeaf _ | SetLeaf _ | UnitLeaf -> sygus_ast
 | VarLeaf var ->
@@ -135,6 +144,10 @@ and evaluate_sygus_ast: A.semantic_constraint Utils.StringMap.t -> A.element -> 
 
 and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -> A.ast -> A.element -> A.expr -> A.expr list
 = fun ?(dep_map=Utils.StringMap.empty) sygus_ast ast element expr -> 
+  if !Flags.debug then 
+    Format.printf "Evaluating expression %a under element %a\n\n"
+      A.pp_print_expr expr 
+      A.pp_print_element element;
   let call = evaluate ~dep_map sygus_ast ast element in
   match expr with 
 | NTExpr (_, [], _) -> Utils.crash "Unexpected case in evaluate 1"
@@ -460,7 +473,10 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -
 
 
 let rec compute_deps: A.semantic_constraint Utils.StringMap.t -> A.ast -> SA.sygus_ast -> SA.sygus_ast 
-= fun dep_map ast sygus_ast -> match sygus_ast with
+= fun dep_map ast sygus_ast -> 
+  if !Flags.debug then 
+    Format.printf "compute_deps\n";
+  match sygus_ast with
 | VarLeaf _ -> eval_fail 28
 | UnitLeaf -> Utils.crash "Unexpected case"
 | Node ((constructor, idx), subterms) -> 
