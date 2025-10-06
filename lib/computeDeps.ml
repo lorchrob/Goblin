@@ -217,14 +217,14 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -
 | StrLength (expr, _) -> (
   match call expr with 
   | [StrConst (str, p)] -> [IntConst (String.length str, p)]
-  | _ -> eval_fail 9
+  | _ -> eval_fail 10 
   )
 | BinOp (expr1, BVAnd, expr2, p) -> 
   let expr1 = call expr1 in 
   let expr2 = call expr2 in (
   match expr1, expr2 with 
   | [BVConst (len, bv1, _)], [BVConst (_, bv2, _)] -> [BVConst (len, List.map2 (&&) bv1 bv2, p)] 
-  | _ -> eval_fail 10
+  | _ -> eval_fail 11
   )
 | BinOp (expr1, BVOr, expr2, p) -> 
   let expr1 = call expr1 in 
@@ -418,6 +418,9 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -
     | [(A.IntConst (i, _))], A.BLConst (bits, _) -> [IntConst (i + (List.length bits), p)]
     | [(A.IntConst (i, _))], A.BVConst (_, bits, _) -> [IntConst (i + (List.length bits), p)]
     | [(A.IntConst (i, _))], A.BConst _ -> [IntConst (i + 1, p)]
+    | [(A.IntConst (i, _))], A.IntConst _ -> 
+      Utils.warning "Tried to compute the length of an Int value; using zero";
+      [IntConst (i, p)]
     | [(A.IntConst (i, _))], A.StrConst (str, _)  
     | [(A.IntConst (i, _))], A.PhConst (str, _) -> 
       if str = "<AC_TOKEN>" || str = "<SCALAR>" then [IntConst (i + 32*8, p)] 
