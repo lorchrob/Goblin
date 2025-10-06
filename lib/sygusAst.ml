@@ -192,6 +192,10 @@ let encode_metadata metadata =
   ) metadata.var_leaf_info;
   !metadata_bytes
 
+let flip_endianness e = match e with 
+| Little -> Big 
+| Big -> Little 
+
 (* Second component of output is metadata about placeholders.
    The last byte of metadata encodes the number of placeholders.
    Each placeholder has an associated offset and length (both in BYTES, not BITS).
@@ -201,25 +205,31 @@ let encode_metadata metadata =
    Byte1       Byte2       Byte3       Byte4       Byte5       Byte6       Byte7 
    ph1_offset  ph1_len     ph2_offset  ph2_len     ph3_offset  ph3_len     0x00 0x03
                                                                            (there are 3 placeholders)
+
+  `exception_list` denotes the list of fields to flip the default endianness (eg if default endianness is Big,
+  `serialize_bytes` will encode fields from `exception_list` as little endian.
 *)
-let serialize_bytes: endianness -> sygus_ast -> bytes * bytes 
-= fun endianness sygus_ast -> 
-  let rec serialize_aux endianness sygus_ast offset acc_metadata =
+let serialize_bytes: endianness -> string list -> sygus_ast -> bytes * bytes 
+= fun default_endianness exception_list sygus_ast -> 
+  let rec serialize_aux default_endianness exception_list sygus_ast offset acc_metadata =
     match sygus_ast with
     | Node ((id, _), subterms) ->
       if id.[0] = '_' then Bytes.empty, acc_metadata, offset else
-      let regex = Str.regexp "rg_id_list_con[0-9]+" in
-      let is_match = Str.string_match regex id 0 in
-      let endianness = if is_match then Little else Big in
+      let is_match = List.exists (fun str -> 
+        let regex = Str.regexp (String.lowercase_ascii str ^ "_con[0-9]+") in 
+        Str.string_match regex (String.lowercase_ascii id) 0 || 
+        Utils.str_eq_ci id str
+      ) exception_list in
+      let default_endianness = if is_match then flip_endianness default_endianness else default_endianness in
       List.fold_left
       (fun (acc_bytes, acc_metadata, current_offset) term ->
-        let term_bytes, term_metadata, new_offset = serialize_aux endianness term current_offset acc_metadata in
+        let term_bytes, term_metadata, new_offset = serialize_aux default_endianness exception_list term current_offset acc_metadata in
         (Bytes.cat acc_bytes term_bytes, term_metadata, new_offset))
       (Bytes.empty, acc_metadata, offset) subterms
       
     | BLLeaf bits
     | BVLeaf (_, bits) ->
-      let bit_bytes = bools_to_bytes endianness bits in
+      let bit_bytes = bools_to_bytes default_endianness bits in
       (bit_bytes, acc_metadata, offset + Bytes.length bit_bytes)
       
     | StrLeaf id 
@@ -234,7 +244,7 @@ let serialize_bytes: endianness -> sygus_ast -> bytes * bytes
       
     | BoolLeaf b ->  
       let bits = [b] in 
-      let bit_bytes = bools_to_bytes endianness bits in
+      let bit_bytes = bools_to_bytes default_endianness bits in
       (bit_bytes, acc_metadata, offset + Bytes.length bit_bytes)
 
     | IntLeaf _ -> Utils.crash "serializing final packet, unhandled case 2"
@@ -245,7 +255,7 @@ let serialize_bytes: endianness -> sygus_ast -> bytes * bytes
     var_leaf_count = 0;
     var_leaf_info = []
   } in
-  let serialized_bytes, final_metadata, _ = serialize_aux endianness sygus_ast 0 initial_metadata in
+  let serialized_bytes, final_metadata, _ = serialize_aux default_endianness exception_list sygus_ast 0 initial_metadata in
   let metadata_bytes = encode_metadata final_metadata in
   serialized_bytes, metadata_bytes
 
