@@ -654,7 +654,7 @@ let run_sequence (flag : bool) (c : child) : (provenance * output) * state * (bo
         other_success_calls := !other_success_calls + 1 ;
         let sygus_ast = BitFlips.flip_bits sygus_ast in
         (* grammar_byte_map := !grammar_byte_map ^ (Utils.capture_output Ast.pp_print_ast grammar); *)
-        let byte_serial, metadata = SygusAst.serialize_bytes SygusAst.Big ["RG_ID_LIST"] sygus_ast in
+        let byte_serial, metadata = SygusAst.serialize_bytes SygusAst.Big ["PACKET_BODY_LENGTH";"KEY_LENGTH";"KEY_DATA_LENGTH"] sygus_ast in
         (* Print hex to stdout and append to file *)
         Format.printf "%s\n" (bytes_to_hex byte_serial);
         let hex_str = "=== HEX RESULT [" ^ timestamp ^ "] ===\n" ^ (bytes_to_hex byte_serial) ^ "\n\n" in
@@ -675,7 +675,7 @@ let run_sequence (flag : bool) (c : child) : (provenance * output) * state * (bo
         Format.pp_print_flush Format.std_formatter ();
         Error (error ^ error2))
       in 
-      let packetToSend_2 = (
+      (* let packetToSend_2 = (
         let sygus_start_time = Unix.gettimeofday () in
         let canon_grammar = canonicalize (fst c |> snd) in
         match canon_grammar with
@@ -687,8 +687,8 @@ let run_sequence (flag : bool) (c : child) : (provenance * output) * state * (bo
             (* Print grammar to stdout and append to file *)
             
             let grammar = grammar_to_sygus in 
-        try
-          let sygus_out = Pipeline.sygusGrammarToPacket grammar in
+        try *)
+          (* let sygus_out = Pipeline.sygusGrammarToPacket grammar in
           match sygus_out with
           | Ok (packetToSend, _metadata) ->
             sygus_success_execution_time := ((Unix.gettimeofday ()) -. sygus_start_time) ;
@@ -733,12 +733,12 @@ let run_sequence (flag : bool) (c : child) : (provenance * output) * state * (bo
           Error (error ^ error2))
         | None ->
           log_error "SyGuS: Could not remove dead rules" timestamp;
-          Error "SyGuS: Could not remove dead rules")
-      | None ->
+          Error "SyGuS: Could not remove dead rules") *)
+      (* | None ->
         log_error "SyGuS: Could not canonicalize grammar" timestamp;
-        Error ("SyGuS: Could not canonicalize grammar"))
-        in
-        let packetToSend_ = (fun x -> match x with | true -> packetToSend_1 | false -> packetToSend_2) flag in
+        Error ("SyGuS: Could not canonicalize grammar")) *)
+        (* in *)
+        let packetToSend_ = packetToSend_1 in
         match packetToSend_ with
         | Ok (packetToSend, _metadata) ->
           (* grammar_byte_map := !grammar_byte_map ^ "\n HEX: " ^ bytes_to_hex packetToSend ^ "\n------------------------------\n"; *)
