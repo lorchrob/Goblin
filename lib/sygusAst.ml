@@ -211,25 +211,25 @@ let flip_endianness e = match e with
 *)
 let serialize_bytes: endianness -> string list -> sygus_ast -> bytes * bytes 
 = fun default_endianness exception_list sygus_ast -> 
-  let rec serialize_aux default_endianness exception_list sygus_ast offset acc_metadata =
+  let rec serialize_aux endianness exception_list sygus_ast offset acc_metadata =
     match sygus_ast with
-    | Node ((id, _), subterms) ->
+  | Node ((id, _), subterms) ->
       if id.[0] = '_' then Bytes.empty, acc_metadata, offset else
       let is_match = List.exists (fun str -> 
         let regex = Str.regexp (String.lowercase_ascii str ^ "_con[0-9]+") in 
         Str.string_match regex (String.lowercase_ascii id) 0 || 
         Utils.str_eq_ci id str
       ) exception_list in
-      let default_endianness = if is_match then flip_endianness default_endianness else default_endianness in
+      let endianness = if is_match then flip_endianness default_endianness else default_endianness in
       List.fold_left
       (fun (acc_bytes, acc_metadata, current_offset) term ->
-        let term_bytes, term_metadata, new_offset = serialize_aux default_endianness exception_list term current_offset acc_metadata in
+        let term_bytes, term_metadata, new_offset = serialize_aux endianness exception_list term current_offset acc_metadata in
         (Bytes.cat acc_bytes term_bytes, term_metadata, new_offset))
       (Bytes.empty, acc_metadata, offset) subterms
       
     | BLLeaf bits
     | BVLeaf (_, bits) ->
-      let bit_bytes = bools_to_bytes default_endianness bits in
+      let bit_bytes = bools_to_bytes endianness bits in
       (bit_bytes, acc_metadata, offset + Bytes.length bit_bytes)
       
     | StrLeaf id 
@@ -244,7 +244,7 @@ let serialize_bytes: endianness -> string list -> sygus_ast -> bytes * bytes
       
     | BoolLeaf b ->  
       let bits = [b] in 
-      let bit_bytes = bools_to_bytes default_endianness bits in
+      let bit_bytes = bools_to_bytes endianness bits in
       (bit_bytes, acc_metadata, offset + Bytes.length bit_bytes)
 
     | IntLeaf _ -> Utils.crash "serializing final packet, unhandled case 2"
