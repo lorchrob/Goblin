@@ -630,7 +630,7 @@ let callDriver_new packets packet =
     driver_calls := !driver_calls + 1 ;
     (driver_result, oracle_result, driver_score)
 
-let run_sequence (flag : bool) (c : child) : (provenance * output) * state * (bool * score) =
+let run_sequence (_flag : bool) (c : child) : (provenance * output) * state * (bool * score) =
   if c = (([],[]),0.0) then ((ValidPacket Config.num_packets, EXPECTED_OUTPUT), -1, (false, -1.0)) 
   else begin 
     let stateTransition = fst c |> fst in
