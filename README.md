@@ -5,7 +5,7 @@ To get started with Goblin, build using the instructions below and read through 
 
 ### Goblin dependencies
 
-* Note: Goblin is supported on **Ubuntu** and **macOs**. Other versions of Linux may work but have not been tested. Windows is not supported (but you can try using WSL).
+* Note: Goblin is supported on **Ubuntu** and **macOS**. Other versions of Linux may work but have not been tested. Windows is not supported (but you can try using WSL).
 
 * OCaml **version ≥ 5.1.1**
 
