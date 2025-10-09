@@ -14,6 +14,7 @@ type engine =
 type output_format = 
   | SExpression
   | Hex 
+  | HexPacked
 
 let debug = ref false
 let no_warnings = ref true
@@ -60,11 +61,13 @@ let parse_args () =
     let parse = function
     | "s-expression" -> Ok SExpression
     | "hex" -> Ok Hex 
+    | "hex-packed" -> Ok HexPacked
     | s -> Error (`Msg ("Invalid output format: " ^ s))
     in
     let print ppf = function
     | SExpression -> Format.fprintf ppf "s-expression"
     | Hex -> Format.fprintf ppf "hex"
+    | HexPacked -> Format.fprintf ppf "hex-packed"
     in
     Arg.conv (parse, print)
   in

@@ -259,21 +259,43 @@ let serialize_bytes: endianness -> string list -> sygus_ast -> bytes * bytes
   let metadata_bytes = encode_metadata final_metadata in
   serialized_bytes, metadata_bytes
 
-(* For a concrete example, try the following in main.ml: 
+let bytes_to_bools_be (bs : bytes) : bool list =
+  let n = Bytes.length bs in
+  let rec outer i acc =
+    if i = n then List.rev acc
+    else
+      let v = Char.code (Bytes.get bs i) in
+      (* MSB -> LSB: bit positions 7..0 *)
+      let rec inner bit acc' =
+        if bit < 0 then acc'
+        else
+          let b = ((v lsr bit) land 1) = 1 in
+          inner (bit - 1) (b :: acc')
+      in
+      outer (i + 1) (inner 7 acc)
+  in
+  outer 0 []
 
-  let ast = Parsing.parse
-  "
-  <S> ::= <A> <Placeholder> <B> <Placeholder2> <C> { <Placeholder> <- \"testa\"; <Placeholder2> <- \"testb\";};
-  <A> :: BitVec(16) { <A> <- int_to_bv(16, 256); }; 
-  <B> :: BitVec(8) { <B> <- int_to_bv(8, 256); }; 
-  <C> :: BitVec(8) { <C> <- int_to_bv(8, 256); }; 
-  <Placeholder> :: String;
-  <Placeholder2> :: String;
-  " in 
-  match Pipeline.sygusGrammarToPacket ast with
-  | Ok (bytes, metadata) -> 
-    Utils.print_bytes_as_hex bytes ;
-    Utils.print_bytes_as_hex metadata
-  | Error _ -> print_endline "error"
-  
-  *)
+let pad_bits (bits : bool list) : bool list =
+  let len = List.length bits in
+  let rem = len land 7 in                    (* faster mod 8 *)
+  if rem = 0 then bits
+  else
+    let k = 8 - rem in
+    let rec mk n acc = if n = 0 then acc else mk (n - 1) (false :: acc) in
+    bits @ mk k []
+
+let serialize_bytes_packed: sygus_ast -> bytes 
+= fun sygus_ast -> 
+  let rec bits_of_sa sygus_ast = match sygus_ast with 
+  | BLLeaf bits -> bits
+  | BVLeaf (_, bits) -> bits
+  | StrLeaf str | VarLeaf str -> 
+    let bytes = Bytes.of_string str in 
+    bytes_to_bools_be bytes 
+  | Node (_, children) -> 
+    List.concat_map bits_of_sa children
+  | _ -> assert false 
+  in 
+  let bits = BLLeaf (bits_of_sa sygus_ast |> pad_bits) in 
+  serialize_bytes Big [] bits |> fst
