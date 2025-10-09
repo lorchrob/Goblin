@@ -3,8 +3,9 @@
 <COMMIT> ::= <AUTH_ALGO> <AUTH_SEQ_COMMIT> <STATUS_CODE> <GROUP_ID> <AC_TOKEN> <SCALAR> <ELEMENT> <PASSWORD_IDENTIFIER> <REJECTED_GROUPS> <AC_TOKEN_CONTAINER> 
 {
 <AUTH_ALGO> <- int_to_bv(16, 3);
-int_to_bv(16, 19) bvulte <GROUP_ID> and 
-            <GROUP_ID> bvulte int_to_bv(16, 20); 
+<GROUP_ID> <- int_to_bv(16, 19) ;
+// int_to_bv(16, 19) bvulte <GROUP_ID> ;
+// and <GROUP_ID> bvulte int_to_bv(16, 20); 
 <AUTH_SEQ_COMMIT> <- int_to_bv(16, 1); 
 <STATUS_CODE> = int_to_bv(16, 0) or 
 <STATUS_CODE> = int_to_bv(16, 1) or 
