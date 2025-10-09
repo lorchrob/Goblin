@@ -654,7 +654,7 @@ let run_sequence (_flag : bool) (c : child) : (provenance * output) * state * (b
         other_success_calls := !other_success_calls + 1 ;
         let sygus_ast = BitFlips.flip_bits sygus_ast in
         (* grammar_byte_map := !grammar_byte_map ^ (Utils.capture_output Ast.pp_print_ast grammar); *)
-        let byte_serial, metadata = SygusAst.serialize_bytes SygusAst.Big ["PACKET_BODY_LENGTH";"KEY_LENGTH";"KEY_DATA_LENGTH"] sygus_ast in
+        let byte_serial, metadata = SygusAst.serialize_bytes SygusAst.Big ["PACKET_BODY_LENGTH";"KEY_LENGTH";"KEY_DATA_LENGTH";"KEY_INFORMATION_1";"KEY_INFORMATION_2";"KEY_INFORMATION_3";"KEY_INFORMATION_4"] sygus_ast in
         (* Print hex to stdout and append to file *)
         Format.printf "%s\n" (bytes_to_hex byte_serial);
         let hex_str = "=== HEX RESULT [" ^ timestamp ^ "] ===\n" ^ (bytes_to_hex byte_serial) ^ "\n\n" in
