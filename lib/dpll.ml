@@ -350,7 +350,9 @@ match dt with
       let children = List.map (fun ge -> match ge with 
         | A.Nonterminal (nt, idx_opt, _) ->
           Node ((nt, idx_opt), path @ [nt, idx_opt], [])  
-        | StubbedNonterminal (_, stub_id) -> DependentTermLeaf stub_id
+        | StubbedNonterminal (_id, stub_id) -> 
+          (*DependentTermLeaf stub_id*)
+          Node ((_id, None), path @ [_id, None], [DependentTermLeaf stub_id])
         ) ges in
        Some children 
     else 
