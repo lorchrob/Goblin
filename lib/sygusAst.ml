@@ -265,7 +265,6 @@ let bytes_to_bools_be (bs : bytes) : bool list =
     if i = n then List.rev acc
     else
       let v = Char.code (Bytes.get bs i) in
-      (* MSB -> LSB: bit positions 7..0 *)
       let rec inner bit acc' =
         if bit < 0 then acc'
         else
@@ -278,12 +277,53 @@ let bytes_to_bools_be (bs : bytes) : bool list =
 
 let pad_bits (bits : bool list) : bool list =
   let len = List.length bits in
-  let rem = len land 7 in                    (* faster mod 8 *)
+  (* faster mod 8 *)
+  let rem = len land 7 in                    
   if rem = 0 then bits
   else
     let k = 8 - rem in
     let rec mk n acc = if n = 0 then acc else mk (n - 1) (false :: acc) in
     bits @ mk k []
+
+let signed_min_width_bytes_int64 (n:int64) : int =
+  let open Int64 in
+  let fits w =
+    let bits = 8 * w in
+    let minv = neg (shift_left 1L (bits - 1)) in
+    let maxv = sub (shift_left 1L (bits - 1)) 1L in
+    n >= minv && n <= maxv
+  in
+  let rec find w =
+    if w > 8 then invalid_arg "signed value needs >8 bytes; use bigints"
+    else if fits w then w else find (w + 1)
+  in
+  find 1
+
+let int64_to_bytes_min
+    endianness
+    (n:int64)
+  : bytes =
+  let open Int64 in
+  let width = signed_min_width_bytes_int64 n in
+  let b = Bytes.create width in
+  begin match endianness with
+  | Big ->
+      for i = 0 to width - 1 do
+        let shift = (width - 1 - i) * 8 in
+        let byte = to_int (logand (shift_right_logical n shift) 0xFFL) in
+        Bytes.set b i (Char.chr byte)
+      done
+  | Little ->
+      for i = 0 to width - 1 do
+        let shift = i * 8 in
+        let byte = to_int (logand (shift_right_logical n shift) 0xFFL) in
+        Bytes.set b i (Char.chr byte)
+      done
+  end;
+  b
+
+let int_to_bytes_min endianness (n:int) : bytes =
+  int64_to_bytes_min endianness (Int64.of_int n)
 
 let serialize_bytes_packed: sygus_ast -> bytes 
 = fun sygus_ast -> 
@@ -292,6 +332,9 @@ let serialize_bytes_packed: sygus_ast -> bytes
   | BVLeaf (_, bits) -> bits
   | StrLeaf str | VarLeaf str -> 
     let bytes = Bytes.of_string str in 
+    bytes_to_bools_be bytes 
+  | IntLeaf i -> 
+    let bytes = int_to_bytes_min Big i in 
     bytes_to_bools_be bytes 
   | Node (_, children) -> 
     List.concat_map bits_of_sa children
