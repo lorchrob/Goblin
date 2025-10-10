@@ -340,5 +340,5 @@ let serialize_bytes_packed: sygus_ast -> bytes
     List.concat_map bits_of_sa children
   | _ -> assert false 
   in 
-  let bits = BLLeaf (bits_of_sa sygus_ast |> pad_bits) in 
-  serialize_bytes Big [] bits |> fst
+  let bits = BLLeaf (bits_of_sa sygus_ast) in 
+  serialize_bytes Little [] bits |> fst

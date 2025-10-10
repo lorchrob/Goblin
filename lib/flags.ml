@@ -123,7 +123,7 @@ let parse_args () =
   in
 
   let output_format_flag =
-    let doc = "Select an output format (s-expression or hex (DEFAULT: s-expression))" in
+    let doc = "Select an output format (s-expression, hex, or hex-packed (DEFAULT: s-expression))" in
     Arg.(value & opt output_conv SExpression & info ["output-format"] ~docv:"ENGINE" ~doc)
   in
 
