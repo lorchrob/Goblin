@@ -131,15 +131,15 @@ let main_pipeline ?(engine: Flags.engine option = None) ?(grammar: Ast.ast optio
 
   (* Serialize! *)
   Utils.debug_print Format.pp_print_string ppf "\nFinal result:\n";
-  let output = Utils.capture_output SygusAst.serialize sygus_ast in 
+  let output = Utils.capture_output Serialize.serialize sygus_ast in 
   if not !Flags.multiple_solutions then (
     if !Flags.output_format = Flags.SExpression then 
       SygusAst.pp_print_sygus_ast Format.std_formatter sygus_ast
     else if !Flags.output_format = Flags.Hex then 
-      let ast_bytes, _ = SygusAst.serialize_bytes Big [] sygus_ast in
+      let ast_bytes, _ = Serialize.serialize_bytes Big [] sygus_ast in
       Utils.print_bytes_as_hex ast_bytes 
     else if !Flags.output_format = Flags.HexPacked then 
-      let ast_bytes = SygusAst.serialize_bytes_packed sygus_ast in
+      let ast_bytes = Serialize.serialize_bytes_packed sygus_ast in
       Utils.print_bytes_as_hex ast_bytes 
   );
   sygus_ast, output, ast_to_return
@@ -212,7 +212,7 @@ let sygusGrammarToPacket ast =
       let sygus_ast = BitFlips.flip_bits sygus_ast in
 
       (* Serialize! *)
-      let output = SygusAst.serialize_bytes SygusAst.Big [] sygus_ast in 
+      let output = Serialize.serialize_bytes Serialize.Big [] sygus_ast in 
       Ok output) 
     else 
       let dummy_output = Bytes.empty, Bytes.empty in
