@@ -1,4 +1,4 @@
-module SA = SygusAst
+module SA = SolverAst
 module A = Ast
 module R = Res 
 
@@ -10,28 +10,28 @@ let (let*) = Res.(>>=)
 *)
 
 (* Check
-  1. The sygus_ast is an instance of the grammar (syntactic well-formedness)
+  1. The solver_ast is an instance of the grammar (syntactic well-formedness)
     a. The grammar starts at the start symbol 
-    b. Each non-leaf node in the sygus ast, along with its children, 
+    b. Each non-leaf node in the solver ast, along with its children, 
        has some corresponding grammar production rule 
-  2. Sygus_ast respects every semantic constraint in ast (semantic well-formedness)
+  2. Solver_ast respects every semantic constraint in ast (semantic well-formedness)
 *)
 
 (* Hacky helper function because in the sygus implementation, we use the generated 
-   constructor names in the sygus ast. *)
+   constructor names in the solver ast. *)
 
-let check_start_symbol: Ast.ast -> SygusAst.sygus_ast -> (unit, string) result 
-= fun ast sygus_ast -> match ast, sygus_ast with 
+let check_start_symbol: Ast.ast -> SolverAst.solver_ast -> (unit, string) result 
+= fun ast solver_ast -> match ast, solver_ast with 
 | A.ProdRule (nt, _, _) :: _, SA.Node ((constructor, _), _) -> 
   if Utils.str_eq_ci nt (Utils.extract_base_name constructor) 
     then Ok () 
   else 
-  Error ("Sygus AST root constructor '" ^ constructor ^ "' does not match the AST start symbol '" ^ nt ^ "'")
+  Error ("Solver AST root constructor '" ^ constructor ^ "' does not match the AST start symbol '" ^ nt ^ "'")
 | A.TypeAnnotation _ :: _, _ -> Utils.crash "Unexpected case in check_start_symbol"
-| _ -> Error "Sygus AST root node is a leaf node"
+| _ -> Error "Solver AST root node is a leaf node"
 
-let rec is_nt_applicable: SygusAst.sygus_ast -> (string * int option) list -> bool 
-= fun sygus_ast nt -> match sygus_ast, nt with
+let rec is_nt_applicable: SolverAst.solver_ast -> (string * int option) list -> bool 
+= fun solver_ast nt -> match solver_ast, nt with
   | Node (_, children), head :: tail -> 
     let child = List.find_opt (fun child -> match child with 
     | SA.Node (constructor, _) -> constructor = head
@@ -43,36 +43,36 @@ let rec is_nt_applicable: SygusAst.sygus_ast -> (string * int option) list -> bo
     )
   | _ -> true
 
-let is_sc_applicable: Ast.expr -> SygusAst.sygus_ast -> bool 
-= fun expr sygus_ast -> 
+let is_sc_applicable: Ast.expr -> SolverAst.solver_ast -> bool 
+= fun expr solver_ast -> 
   let nts = A.get_nts_from_expr2 expr in
-  let nts_are_applicable = List.map (is_nt_applicable sygus_ast) nts in 
+  let nts_are_applicable = List.map (is_nt_applicable solver_ast) nts in 
   List.for_all (fun a -> a) nts_are_applicable
 
-let handle_scs ast sygus_ast constructor element scs = 
+let handle_scs ast solver_ast constructor element scs = 
   let scs = List.map (fun sc -> match sc with 
   | A.SmtConstraint (expr, p) -> 
-    if is_sc_applicable expr sygus_ast || (* type annotation constraints are always applicable *)
+    if is_sc_applicable expr solver_ast || (* type annotation constraints are always applicable *)
        match element with | A.TypeAnnotation _ -> true | A.ProdRule _ -> false
     then (
       (if !Flags.debug then Format.fprintf Format.std_formatter "Constraint %a is applicable in %a"
         A.pp_print_expr expr
-        SA.pp_print_sygus_ast sygus_ast
+        SA.pp_print_solver_ast solver_ast
         );
-      ComputeDeps.evaluate sygus_ast ast element expr)
+      ComputeDeps.evaluate solver_ast ast element expr)
     else (
       (if !Flags.debug then Format.fprintf Format.std_formatter "Constraint %a is not applicable in %a"
         A.pp_print_expr expr
-        SA.pp_print_sygus_ast sygus_ast
+        SA.pp_print_solver_ast solver_ast
         );
       [BConst (true, p)]) (* If sc is not applicable, it trivially holds *)
   | DerivedField (nt, expr, p) -> 
     let expr = A.CompOp (NTExpr ([], [nt, None], p), Eq, expr, p) in
     (if !Flags.debug then Format.fprintf Format.std_formatter "Constraint %a is applicable in %a"
       A.pp_print_expr expr
-      SA.pp_print_sygus_ast sygus_ast
+      SA.pp_print_solver_ast solver_ast
       );
-    ComputeDeps.evaluate sygus_ast ast element expr
+    ComputeDeps.evaluate solver_ast ast element expr
   ) scs in
   let b = List.exists (fun sc -> match sc with 
   | [A.BConst (false, _)] -> true 
@@ -82,8 +82,8 @@ let handle_scs ast sygus_ast constructor element scs =
   if b then Error ("Semantic constraint on constructor '" ^ constructor ^ "' is falsified") else
   Ok ()
 
-let rec check_syntax_semantics: Ast.ast -> SygusAst.sygus_ast -> (unit, string) result 
-= fun ast sygus_ast -> match sygus_ast with 
+let rec check_syntax_semantics: Ast.ast -> SolverAst.solver_ast -> (unit, string) result 
+= fun ast solver_ast -> match solver_ast with 
   | Node ((constructor, _), children) -> 
     (* In dpll divide and conquer module, 
        we get an extra nesting of stub and concrete NTs 
@@ -107,7 +107,7 @@ let rec check_syntax_semantics: Ast.ast -> SygusAst.sygus_ast -> (unit, string) 
     match element with 
     | None -> Error ("Dangling constructor identifier " ^ (Utils.extract_base_name constructor))
     | Some (TypeAnnotation (_, _, scs, _) as element) -> 
-      handle_scs ast sygus_ast constructor element scs
+      handle_scs ast solver_ast constructor element scs
     | Some (A.ProdRule (_, rhss, _) as element) ->
       (* Find the matching production rule from ast, if one exists *)
       let rhs = List.find_opt (fun rhs -> match rhs with 
@@ -129,11 +129,11 @@ let rec check_syntax_semantics: Ast.ast -> SygusAst.sygus_ast -> (unit, string) 
         | (StubbedRhs _) -> assert false 
         | (Rhs (_, scs, _, _)) -> scs 
         in 
-        handle_scs ast sygus_ast constructor element scs)
+        handle_scs ast solver_ast constructor element scs)
   | _ -> Ok ()
 
-let check_sygus_ast: Ast.ast -> SygusAst.sygus_ast -> (unit, string) result 
-= fun ast sygus_ast -> 
-  SA.pp_print_sygus_ast Format.std_formatter sygus_ast;
-  let* _ = check_start_symbol ast sygus_ast in 
-  check_syntax_semantics ast sygus_ast
+let check_solver_ast: Ast.ast -> SolverAst.solver_ast -> (unit, string) result 
+= fun ast solver_ast -> 
+  SA.pp_print_solver_ast Format.std_formatter solver_ast;
+  let* _ = check_start_symbol ast solver_ast in 
+  check_syntax_semantics ast solver_ast

@@ -71,7 +71,7 @@ let main_pipeline ?(engine: Flags.engine option = None) ?(grammar: Ast.ast optio
   Utils.debug_print Ast.pp_print_ast ppf ast;
 
   (* Run engine(s) *)
-  let sygus_ast = 
+  let solver_ast = 
     match engine, !Flags.selected_engine with 
     (* Single engine mode.
        Two means of selecting engines -- command-line arg (default for users), 
@@ -131,18 +131,18 @@ let main_pipeline ?(engine: Flags.engine option = None) ?(grammar: Ast.ast optio
 
   (* Serialize! *)
   Utils.debug_print Format.pp_print_string ppf "\nFinal result:\n";
-  let output = Utils.capture_output Serialize.serialize sygus_ast in 
+  let output = Utils.capture_output Serialize.serialize solver_ast in 
   if not !Flags.multiple_solutions then (
     if !Flags.output_format = Flags.SExpression then 
-      SygusAst.pp_print_sygus_ast Format.std_formatter sygus_ast
+      SolverAst.pp_print_solver_ast Format.std_formatter solver_ast
     else if !Flags.output_format = Flags.Hex then 
-      let ast_bytes, _ = Serialize.serialize_bytes Big [] sygus_ast in
+      let ast_bytes, _ = Serialize.serialize_bytes Big [] solver_ast in
       Utils.print_bytes_as_hex ast_bytes 
     else if !Flags.output_format = Flags.HexPacked then 
-      let ast_bytes = Serialize.serialize_bytes_packed sygus_ast in
+      let ast_bytes = Serialize.serialize_bytes_packed solver_ast in
       Utils.print_bytes_as_hex ast_bytes 
   );
-  sygus_ast, output, ast_to_return
+  solver_ast, output, ast_to_return
 
 let rec collect_results results =
   match results with
@@ -187,32 +187,32 @@ let sygusGrammarToPacket ast =
     let sygus_outputs = List.map (Sygus.call_sygus ctx dep_map) asts in
 
     (* Parse SyGuS output. *)
-    let sygus_asts = List.map2 Parsing.parse_sygus sygus_outputs asts in
-    match collect_results sygus_asts with
+    let solver_asts = List.map2 Parsing.parse_sygus sygus_outputs asts in
+    match collect_results solver_asts with
     | Error e -> Error e
-    | Ok sygus_asts -> 
+    | Ok solver_asts -> 
       (* Catch infeasible response *)
-      let sygus_asts = 
-        if List.mem (SygusAst.VarLeaf "infeasible") sygus_asts 
-        then [SygusAst.VarLeaf "infeasible"]
-        else sygus_asts
+      let solver_asts = 
+        if List.mem (SolverAst.VarLeaf "infeasible") solver_asts 
+        then [SolverAst.VarLeaf "infeasible"]
+        else solver_asts
       in
 
       (* Recombine to single AST *)
-      let sygus_ast = Recombine.recombine sygus_asts in 
+      let solver_ast = Recombine.recombine solver_asts in 
 
       (* Compute dependencies *)
-      let sygus_ast = 
-        if not (List.mem (SygusAst.VarLeaf "infeasible") sygus_asts)
-        then ComputeDeps.compute_deps dep_map ast sygus_ast 
-        else SygusAst.VarLeaf "infeasible"
+      let solver_ast = 
+        if not (List.mem (SolverAst.VarLeaf "infeasible") solver_asts)
+        then ComputeDeps.compute_deps dep_map ast solver_ast 
+        else SolverAst.VarLeaf "infeasible"
       in  
 
       (* Bit flip mutations *)
-      let sygus_ast = BitFlips.flip_bits sygus_ast in
+      let solver_ast = BitFlips.flip_bits solver_ast in
 
       (* Serialize! *)
-      let output = Serialize.serialize_bytes Serialize.Big [] sygus_ast in 
+      let output = Serialize.serialize_bytes Serialize.Big [] solver_ast in 
       Ok output) 
     else 
       let dummy_output = Bytes.empty, Bytes.empty in

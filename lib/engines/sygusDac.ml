@@ -49,38 +49,38 @@ let sygus ppf ctx ast =
     
     (* Step 7: Parse SyGuS output *)
     Utils.debug_print Format.pp_print_string ppf "\nParsing SyGuS output:\n";
-    let sygus_asts = List.map2 Parsing.parse_sygus sygus_outputs asts in
-    let sygus_asts = List.map Result.get_ok sygus_asts in
-    let sygus_asts = 
-      if List.mem (SygusAst.VarLeaf "infeasible") sygus_asts 
-      then [SygusAst.VarLeaf "infeasible"]
-      else sygus_asts
+    let solver_asts = List.map2 Parsing.parse_sygus sygus_outputs asts in
+    let solver_asts = List.map Result.get_ok solver_asts in
+    let solver_asts = 
+      if List.mem (SolverAst.VarLeaf "infeasible") solver_asts 
+      then [SolverAst.VarLeaf "infeasible"]
+      else solver_asts
     in
-    Utils.debug_print Format.pp_print_string ppf "\nSyGuS ASTs:\n";
-    List.iter (Utils.debug_print SygusAst.pp_print_sygus_ast ppf) sygus_asts;
+    Utils.debug_print Format.pp_print_string ppf "\nSolver ASTs:\n";
+    List.iter (Utils.debug_print SolverAst.pp_print_solver_ast ppf) solver_asts;
 
     Format.pp_print_flush ppf ();
 
     (* Step 8: Recombine to single AST *)
     Utils.debug_print Format.pp_print_string ppf "\nRecombining to single AST:\n";
-    let sygus_ast = Recombine.recombine sygus_asts in 
-    Utils.debug_print SygusAst.pp_print_sygus_ast ppf sygus_ast;
+    let solver_ast = Recombine.recombine solver_asts in 
+    Utils.debug_print SolverAst.pp_print_solver_ast ppf solver_ast;
 
     Format.pp_print_flush ppf ();
 
     (* Step 9: Compute dependencies *)
     Utils.debug_print Format.pp_print_string ppf "\nComputing dependencies:\n";
-    let sygus_ast = 
-      if not (List.mem (SygusAst.VarLeaf "infeasible") sygus_asts)
-      then ComputeDeps.compute_deps dep_map ast sygus_ast 
-      else SygusAst.VarLeaf "infeasible"
+    let solver_ast = 
+      if not (List.mem (SolverAst.VarLeaf "infeasible") solver_asts)
+      then ComputeDeps.compute_deps dep_map ast solver_ast 
+      else SolverAst.VarLeaf "infeasible"
     in  
-    Utils.debug_print SygusAst.pp_print_sygus_ast ppf sygus_ast;
+    Utils.debug_print SolverAst.pp_print_solver_ast ppf solver_ast;
 
     (* Step 10: Bit flip mutations for BitList terms *)
     Utils.debug_print Format.pp_print_string ppf "\nBit flip mutations:\n";
-    let sygus_ast = BitFlips.flip_bits sygus_ast in 
-    Utils.debug_print SygusAst.pp_print_sygus_ast ppf sygus_ast;
+    let solver_ast = BitFlips.flip_bits solver_ast in 
+    Utils.debug_print SolverAst.pp_print_solver_ast ppf solver_ast;
 
-    Some sygus_ast
+    Some solver_ast
   ) else Some (VarLeaf "")

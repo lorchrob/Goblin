@@ -1,4 +1,4 @@
-module SA = SygusAst
+module SA = SolverAst
 module A = Ast
 
 (* TODO:
@@ -47,7 +47,7 @@ let process_constructor_str: string -> string
   if Str.string_match re input 0 then Str.matched_group 1 input |> String.uppercase_ascii
   else Utils.crash "Interal error (process_constructor_str): Input string does not match the required format" 
 
-let expr_to_sygus_ast: A.expr -> SA.sygus_ast 
+let expr_to_solver_ast: A.expr -> SA.solver_ast 
 = fun expr -> match expr with 
 | IntConst (i, _) -> IntLeaf i 
   | PhConst (s, _) -> VarLeaf s
@@ -56,9 +56,9 @@ let expr_to_sygus_ast: A.expr -> SA.sygus_ast
   | StrConst (s, _) -> StrLeaf s
 | _ -> A.pp_print_expr Format.std_formatter expr; eval_fail 1
 
-let rec sygus_ast_to_expr: SA.sygus_ast -> A.expr list
-= fun sygus_ast -> 
-  match sygus_ast with 
+let rec solver_ast_to_expr: SA.solver_ast -> A.expr list
+= fun solver_ast -> 
+  match solver_ast with 
 | IntLeaf i -> [IntConst (i, Lexing.dummy_pos)]
   | BVLeaf (len, bits) -> [BVConst (len, bits, Lexing.dummy_pos)]
   | BLLeaf bits -> [BLConst (bits, Lexing.dummy_pos)]
@@ -67,14 +67,14 @@ let rec sygus_ast_to_expr: SA.sygus_ast -> A.expr list
   | BoolLeaf b -> [BConst (b, Lexing.dummy_pos)]
 | SetLeaf _ -> Utils.error_no_pos "Sets are not yet supported in derived fields"
 | UnitLeaf -> Utils.crash "Unexpected case"
-| Node (_, sygus_asts) -> List.map sygus_ast_to_expr sygus_asts |> List.flatten
+| Node (_, solver_asts) -> List.map solver_ast_to_expr solver_asts |> List.flatten
 
-let rec compute_dep: A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -> A.ast -> A.element -> string -> SA.sygus_ast
-= fun dep_map sygus_ast ast _element var -> 
+let rec compute_dep: A.semantic_constraint Utils.StringMap.t -> SA.solver_ast -> A.ast -> A.element -> string -> SA.solver_ast
+= fun dep_map solver_ast ast _element var -> 
   if !Flags.debug then 
-    Format.printf "compute_dep: computing dependency for %s in sygus_ast %a\n"
+    Format.printf "compute_dep: computing dependency for %s in solver_ast %a\n"
       var
-      SA.pp_print_sygus_ast sygus_ast;
+      SA.pp_print_solver_ast solver_ast;
   match Utils.StringMap.find_opt (process_constructor_str var) dep_map with 
   | None -> 
     Utils.crash ("Hanging identifier '" ^ var ^ "' when computing dependencies")
@@ -85,12 +85,12 @@ let rec compute_dep: A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -> 
       (* Hacky workaround. Brittle. Need to refactor. Doesn't generalize. 
          The problem is that when computing this new dependency, we may have to 
          be at a different element in the input AST. Juggling the input AST and the 
-         sygus AST to evalute is tricky in general. 
+         solver AST to evalute is tricky in general. 
          Furthermore, the dep_map does not have enough information -- the string key 
          could, in principle, map to different dependencies in different places in the 
          input grammar. 
 
-         We need a refactoring that will put enough information in the sygus_ast 
+         We need a refactoring that will put enough information in the solver_ast 
          to evaluate without tracking the input AST.
          *)
       let element' = List.find (fun element -> match element with 
@@ -105,7 +105,7 @@ let rec compute_dep: A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -> 
       if !Flags.debug then 
         Format.printf "The dependency computation is under element %a\n\n" 
           A.pp_print_element element';
-      evaluate ~dep_map sygus_ast ast element' expr |> List.hd |> expr_to_sygus_ast
+      evaluate ~dep_map solver_ast ast element' expr |> List.hd |> expr_to_solver_ast
   )
 
 and bool_list_to_il_int (signed : bool) (bits : bool list) p : A.expr =
@@ -123,14 +123,14 @@ and bool_list_to_il_int (signed : bool) (bits : bool list) p : A.expr =
     A.IntConst (unsigned_val, p)
 
 
-and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -> A.ast -> A.element -> A.expr -> A.expr list
-= fun ?(dep_map=Utils.StringMap.empty) sygus_ast ast element expr -> 
+and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.solver_ast -> A.ast -> A.element -> A.expr -> A.expr list
+= fun ?(dep_map=Utils.StringMap.empty) solver_ast ast element expr -> 
   if !Flags.debug then 
-    Format.printf "Evaluating expression %a under element %a and sygus_ast %a\n\n"
+    Format.printf "Evaluating expression %a under element %a and solver_ast %a\n\n"
       A.pp_print_expr expr 
       A.pp_print_element element
-      SA.pp_print_sygus_ast sygus_ast;
-  let call = evaluate ~dep_map sygus_ast ast element in
+      SA.pp_print_solver_ast solver_ast;
+  let call = evaluate ~dep_map solver_ast ast element in
   match expr with 
 | NTExpr (_, [], _) -> Utils.crash "Unexpected case in evaluate 1"
 | NTExpr (_, (id, idx0) :: rest, p) ->
@@ -155,29 +155,29 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -
       ) ast 
   in 
   (
-  match sygus_ast with 
+  match solver_ast with 
   | VarLeaf _ | BVLeaf _ | IntLeaf _ | BLLeaf _ | BoolLeaf _ | StrLeaf _ | SetLeaf _ | UnitLeaf 
   | SA.Node (_, ([BVLeaf _] | [BLLeaf _] | [IntLeaf _] | [BoolLeaf _] | [StrLeaf _] | [SetLeaf _])) ->
-    sygus_ast_to_expr sygus_ast
+    solver_ast_to_expr solver_ast
   | Node ((_id, _), subterms) ->
     if !Flags.debug then 
-      Format.printf "nth: Looking for child_index %d in sygus_ast %a\n" 
+      Format.printf "nth: Looking for child_index %d in solver_ast %a\n" 
         child_index 
-        SA.pp_print_sygus_ast sygus_ast;
-    let child_sygus_ast = List.nth subterms child_index in 
-    match child_sygus_ast with 
+        SA.pp_print_solver_ast solver_ast;
+    let child_solver_ast = List.nth subterms child_index in 
+    match child_solver_ast with 
     | Node (_, [VarLeaf var]) -> 
       (* If we encounter a dependency, we have to compute it first.
          Could loop infinitely! Maybe use a cache to see if we've tried to compute this before? *)
       if Utils.StringMap.mem (remove_suffix var |> String.uppercase_ascii) dep_map 
       then 
-        let sygus_ast = compute_dep dep_map sygus_ast ast child_element var in 
-        compute_deps dep_map ast sygus_ast |> sygus_ast_to_expr
-      else child_sygus_ast |> sygus_ast_to_expr
+        let solver_ast = compute_dep dep_map solver_ast ast child_element var in 
+        compute_deps dep_map ast solver_ast |> solver_ast_to_expr
+      else child_solver_ast |> solver_ast_to_expr
     | Node _ when rest <> [] -> 
-      evaluate ~dep_map child_sygus_ast ast child_element (NTExpr ([], rest, p))
+      evaluate ~dep_map child_solver_ast ast child_element (NTExpr ([], rest, p))
     | _ ->
-      compute_deps dep_map ast child_sygus_ast |> sygus_ast_to_expr
+      compute_deps dep_map ast child_solver_ast |> solver_ast_to_expr
   )
 | UnOp (UPlus, expr, _) -> (
   match call expr with 
@@ -445,13 +445,13 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.sygus_ast -
   Utils.error "Regex operations not yet supported in derived fields" p
 
 
-and compute_deps: A.semantic_constraint Utils.StringMap.t -> A.ast -> SA.sygus_ast -> SA.sygus_ast 
-= fun dep_map ast sygus_ast -> 
+and compute_deps: A.semantic_constraint Utils.StringMap.t -> A.ast -> SA.solver_ast -> SA.solver_ast 
+= fun dep_map ast solver_ast -> 
   if !Flags.debug then 
-    Format.printf "compute_deps with ast %a, sygus_ast %a\n"
+    Format.printf "compute_deps with ast %a, solver_ast %a\n"
       A.pp_print_ast ast 
-      SA.pp_print_sygus_ast sygus_ast;
-  match sygus_ast with
+      SA.pp_print_solver_ast solver_ast;
+  match solver_ast with
 | VarLeaf _ -> eval_fail 28
 | UnitLeaf -> Utils.crash "Unexpected case"
 | Node ((constructor, idx), subterms) -> 
@@ -470,11 +470,11 @@ and compute_deps: A.semantic_constraint Utils.StringMap.t -> A.ast -> SA.sygus_a
     in
     if Utils.StringMap.mem (remove_suffix var |> String.uppercase_ascii) dep_map
     then 
-      SA.Node (_hd, [compute_dep dep_map sygus_ast ast element var]) 
-    else sygus_ast 
+      SA.Node (_hd, [compute_dep dep_map solver_ast ast element var]) 
+    else solver_ast 
   | SA.Node (_, ([BVLeaf _] | [BLLeaf _] | [IntLeaf _] | [BoolLeaf _] | [StrLeaf _] | [SetLeaf _])) -> subterm
   | SA.Node _ -> compute_deps dep_map ast subterm
   | _ -> subterm
   ) subterms in 
   Node ((constructor, idx), subterms)
-| _ -> sygus_ast
+| _ -> solver_ast

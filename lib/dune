@@ -5,8 +5,8 @@
  )
 
 (menhir
- (modules parser sygusParser))
+ (modules parser solverParser))
 
-(ocamllex lexer sygusLexer)
+(ocamllex lexer solverLexer)
 
 (include_subdirs unqualified)

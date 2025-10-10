@@ -1,4 +1,4 @@
-module SA = SygusAst
+module SA = SolverAst
 
 let xml_grammar : (string * string list) list = [
   ("xml-tree0", ["rec-xml-tree"; "xml-openclose-tag0"]);
@@ -138,7 +138,7 @@ and pp_block_statements = function
   | SA.Node (("block-statements", _), [_; stmt; rest]) ->
       pp_block_statement stmt ^ "\n" ^ pp_block_statements rest
   | SA.Node (("block-statements", _), [SA.Node (("nil", _), [_])]) -> ""
-  | sa -> SA.pp_print_sygus_ast Format.std_formatter sa; assert false
+  | sa -> SA.pp_print_solver_ast Format.std_formatter sa; assert false
 
 and pp_block_statement = function
   | SA.Node (("block-statement", _), [_; _; SA.Node (("rec-statement", _), _) as stmt]) ->
@@ -152,7 +152,7 @@ and pp_declaration = function
       "int " ^ id ^ " = " ^ pp_expr expr ^ ";"
   | SA.Node (("declaration", _), [_; _; SA.Node (("id", _), [SA.StrLeaf id])]) ->
       "int " ^ id ^ ";"
-  | sa -> SA.pp_print_sygus_ast Format.std_formatter sa; assert false
+  | sa -> SA.pp_print_solver_ast Format.std_formatter sa; assert false
 
 and pp_paren_expr = function
   | SA.Node (("paren_expr", _), [_; expr]) -> "(" ^ pp_expr expr ^ ")"
@@ -162,7 +162,7 @@ and pp_expr = function
   | SA.Node (("expr", _), [_; SA.Node (("id", _), [SA.StrLeaf id]); e]) ->
       id ^ " = " ^ pp_expr e
   | SA.Node (("expr", _), [_; test]) -> pp_test test
-  | sa -> SygusAst.pp_print_sygus_ast Format.std_formatter sa; assert false
+  | sa -> SolverAst.pp_print_solver_ast Format.std_formatter sa; assert false
 
 and pp_test = function
   | SA.Node (("test", _), [_; a; b]) -> pp_sum a ^ " < " ^ pp_sum b
@@ -178,7 +178,7 @@ and pp_term = function
   | SA.Node (("term", _), [_; SA.Node (("paren_expr", _), _) as pe]) -> pp_paren_expr pe
   | SA.Node (("term", _), [_; SA.Node (("id", _), [SA.StrLeaf id])]) -> id
   | SA.Node (("term", _), [SA.Node (("i", _), [SA.IntLeaf n])]) -> string_of_int n
-  | sa -> SA.pp_print_sygus_ast Format.std_formatter sa; assert false
+  | sa -> SA.pp_print_solver_ast Format.std_formatter sa; assert false
 
 (* CSV pretty printers *)
 let pp_raw_field = function
@@ -229,7 +229,7 @@ let pp_csv_file = function
         | _ -> None
       ) children in
       Format.asprintf "%s\n%s" (Option.get header) (Option.get records)
-  | sa -> SA.pp_print_sygus_ast Format.std_formatter sa; assert false
+  | sa -> SA.pp_print_solver_ast Format.std_formatter sa; assert false
 
 (* XML pretty-printers *)
 let pp_text = function
@@ -256,7 +256,7 @@ let pp_id = function
           ) id_parts in
           (Option.get part1) ^ ":" ^ (Option.get part2)
         )
-      | [sa] -> SA.pp_print_sygus_ast Format.std_formatter sa; assert false
+      | [sa] -> SA.pp_print_solver_ast Format.std_formatter sa; assert false
       | _ -> assert false
     )
   | _ -> assert false
@@ -382,9 +382,9 @@ let evaluate () =
     | None -> Utils.error_no_pos "You must specify an input filename with --file <filename>"
   in
   let input_string = Utils.read_file filename in
-  let sygus_ast = Parsing.parse_sygus input_string [] |> Result.get_ok in
-  let sygus_asts =
-    match sygus_ast with
+  let solver_ast = Parsing.parse_sygus input_string [] |> Result.get_ok in
+  let solver_asts =
+    match solver_ast with
     | SA.Node (_, children) -> children
     | _ -> assert false
   in
@@ -400,7 +400,7 @@ let evaluate () =
     if !Flags.debug then
       Format.fprintf Format.std_formatter "Output %d:\n%s\n" (i + 1) output;
     output
-  ) sygus_asts in
+  ) solver_asts in
 
   let total_length = List.fold_left (fun acc s -> acc + String.length s) 0 outputs in
   let count = List.length outputs in
@@ -422,7 +422,7 @@ let evaluate () =
   let all_paths, path_count = count_paths selected_grammar k in
   if !Flags.debug then Format.printf "%s grammar paths of length %d: %d\n" !Flags.analysis k path_count;
 
-  let observed_paths = collect_k_paths_from_outputs k sygus_asts in
+  let observed_paths = collect_k_paths_from_outputs k solver_asts in
   let observed_count = Utils.StringSet.cardinal observed_paths in
 
   (* Compute coverage percentage *)

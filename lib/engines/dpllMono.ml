@@ -21,13 +21,13 @@ let dpll ppf ctx ast =
   if not !Flags.only_parse then (
     (* Step 3: DPLL engine *)
     Utils.debug_print Format.pp_print_string ppf "\nStarting DPLL engine:\n";
-    let sygus_ast = Dpll.dpll ctx ast in 
-    Utils.debug_print SygusAst.pp_print_sygus_ast ppf sygus_ast;
+    let solver_ast = Dpll.dpll ctx ast in 
+    Utils.debug_print SolverAst.pp_print_solver_ast ppf solver_ast;
     
     (* Step 4: Compute dependent terms *)
     Utils.debug_print Format.pp_print_string ppf "\nComputing dependencies:\n";
-    let sygus_ast = ComputeDeps.compute_deps dep_map ast sygus_ast in  
-    Utils.debug_print SygusAst.pp_print_sygus_ast ppf sygus_ast; 
+    let solver_ast = ComputeDeps.compute_deps dep_map ast solver_ast in  
+    Utils.debug_print SolverAst.pp_print_solver_ast ppf solver_ast; 
 
-    sygus_ast
+    solver_ast
   ) else VarLeaf ""

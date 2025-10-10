@@ -1,5 +1,5 @@
-(* TODO: Distinguish between strings, placeholders, dep terms in sygus_ast type *)
-(* Using sygus asts to represent two different things. 
+(* TODO: Distinguish between strings, placeholders, dep terms in solver_ast type *)
+(* Using solver asts to represent two different things. 
       1. Lisp-style terms compatible with any input grammar, and 
       2. SMT solver models upon calling check-sat and get-model 
          (essentially a single node with a list of leaf children) *)
@@ -7,8 +7,8 @@
 type concrete_set = 
 | StringSet of Utils.StringSet.t 
 
-type sygus_ast = 
-| Node of (string * int option) * sygus_ast list 
+type solver_ast = 
+| Node of (string * int option) * solver_ast list 
 | BVLeaf of int * bool list 
 | IntLeaf of int
 | BLLeaf of bool list
@@ -49,17 +49,17 @@ let rec smtlib_of_stringset set =
         (Printf.sprintf "(set.singleton \"%s\")" x)
         (smtlib_of_stringset rest)
 
-let pp_print_sygus_ast: Format.formatter -> sygus_ast -> unit 
-= fun ppf sygus_ast -> 
-  let rec pp_print_sygus_ast' ppf sygus_ast = match sygus_ast with 
+let pp_print_solver_ast: Format.formatter -> solver_ast -> unit 
+= fun ppf solver_ast -> 
+  let rec pp_print_solver_ast' ppf solver_ast = match solver_ast with 
   | Node ((constructor, Some idx), subterms) -> 
     Format.fprintf ppf "(%s%d %a)"
     constructor idx
-    (Lib.pp_print_list pp_print_sygus_ast' " ") subterms 
+    (Lib.pp_print_list pp_print_solver_ast' " ") subterms 
   | Node ((constructor, None), subterms) -> 
     Format.fprintf ppf "(%s %a)"
     constructor 
-    (Lib.pp_print_list pp_print_sygus_ast' " ") subterms 
+    (Lib.pp_print_list pp_print_solver_ast' " ") subterms 
   | BVLeaf (_, bits) -> 
     let bits = List.map Bool.to_int bits in
     Format.fprintf ppf "0b%a"
@@ -96,4 +96,4 @@ let print_smt_bool_seq fmt (lst : bool list) : unit =
   in print_smt_bool_seq ppf bits
   in 
   Format.fprintf ppf "%a\n" 
-  pp_print_sygus_ast' sygus_ast
+  pp_print_solver_ast' solver_ast

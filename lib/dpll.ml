@@ -1,5 +1,5 @@
 module A = Ast
-module SA = SygusAst
+module SA = SolverAst
 module B = Batteries
 
 let (let*) = Res.(>>=)
@@ -597,9 +597,9 @@ let string_of_constructor (str, idx) = match idx with
 | None -> str 
 | Some idx -> str ^ (string_of_int idx)
 
-let rec model_of_sygus_ast: SygusAst.sygus_ast -> (model_value Utils.StringMap.t, unit) result
-= fun sygus_ast -> 
-  match sygus_ast with 
+let rec model_of_solver_ast: SolverAst.solver_ast -> (model_value Utils.StringMap.t, unit) result
+= fun solver_ast -> 
+  match solver_ast with 
   | VarLeaf var when var = "infeasible" -> 
     Format.pp_print_flush Format.std_formatter (); Error ()
   | Node (constructor, [SetLeaf (StringSet value)]) -> 
@@ -618,11 +618,11 @@ let rec model_of_sygus_ast: SygusAst.sygus_ast -> (model_value Utils.StringMap.t
     Ok (Utils.StringMap.singleton (string_of_constructor constructor) (ConcreteBitVector (len, value)))
   | Node (_, children) -> 
     (Res.seq_chain (fun acc child -> 
-      let* map = model_of_sygus_ast child in 
+      let* map = model_of_solver_ast child in 
       Ok (Utils.StringMap.merge Lib.union_keys acc map)  
     ) Utils.StringMap.empty children)
   | VarLeaf _ | BLLeaf _ | BVLeaf _ | UnitLeaf
-  | BoolLeaf _ | StrLeaf _ | IntLeaf _ | SetLeaf _ -> Utils.crash "Unexpected case in model_of_sygus_ast"
+  | BoolLeaf _ | StrLeaf _ | IntLeaf _ | SetLeaf _ -> Utils.crash "Unexpected case in model_of_solver_ast"
 
 let get_smt_result: A.ast -> Smt.solver_instance -> bool -> (model_value Utils.StringMap.t, unit) result option
 = fun ast solver get_model -> 
@@ -637,14 +637,14 @@ let get_smt_result: A.ast -> Smt.solver_instance -> bool -> (model_value Utils.S
     | Ok result -> result 
     | Error msg -> Format.fprintf Format.std_formatter "Error parsing: %s\n" msg; assert false 
     in
-    Some (model_of_sygus_ast result)
+    Some (model_of_solver_ast result)
   ) else if response = "sat" then None  
   else
     let result = match Parsing.parse_sygus response ast with 
     | Ok result -> result 
     | Error msg -> Format.fprintf Format.std_formatter "Error parsing: %s\n" msg; assert false 
     in
-    Some (model_of_sygus_ast result)
+    Some (model_of_solver_ast result)
 
 let ty_of_concrete_leaf leaf = match leaf with 
 | ConcreteBitListLeaf _ -> A.BitList 
@@ -731,7 +731,7 @@ let rec is_complete derivation_tree = match derivation_tree with
   let children = List.map is_complete children in
   List.length children > 0 && List.fold_left (&&) true children 
 
-let rec sygus_ast_of_derivation_tree: derivation_tree -> SA.sygus_ast 
+let rec solver_ast_of_derivation_tree: derivation_tree -> SA.solver_ast 
 = fun derivation_tree -> match derivation_tree with
 | DependentTermLeaf nt -> VarLeaf (String.lowercase_ascii (nt ^ "_con")) (* Match sygus encoding format *)
 | SymbolicLeaf (_, path) -> VarLeaf (String.concat "" (List.map fst path))
@@ -744,7 +744,7 @@ let rec sygus_ast_of_derivation_tree: derivation_tree -> SA.sygus_ast
 | ConcreteSetLeaf (_, (ConcreteStringSetLeaf set)) -> SetLeaf (StringSet set)
 | ConcreteBoolLeaf (_, b) -> BoolLeaf b
 | Node (nt, _, children) -> 
-  let children = List.map sygus_ast_of_derivation_tree children in 
+  let children = List.map solver_ast_of_derivation_tree children in 
   Node (nt, children)
 
 (*(* Naive computation of dt_frontier *)
@@ -820,7 +820,7 @@ let rec generate_n_solutions n ast model r derivation_tree declared_variables so
     | Some (Ok model2) -> (* sat *)
       if !Flags.debug then Format.pp_print_string Format.std_formatter "it was SAT, instantiating in derivation tree\n"; 
       derivation_tree := instantiate_terminals model2 !derivation_tree; 
-      let r2 = sygus_ast_of_derivation_tree !derivation_tree in 
+      let r2 = solver_ast_of_derivation_tree !derivation_tree in 
       (model, r) :: (generate_n_solutions (n-1) ast model2 r2 derivation_tree declared_variables solver blocking_clause_vars variable_stack assertion_level) 
     | None  
     | Some (Error ()) -> 
@@ -844,7 +844,7 @@ let rec generate_n_solutions n ast model r derivation_tree declared_variables so
       * Remove the constraints from the constraint set associated with nodes no longer in DT
 
 *)
-let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
+let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.solver_ast
 = fun ctx ast -> 
   let _ = match !Flags.seed with 
   | None -> 
@@ -1094,8 +1094,8 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
   | _ -> Utils.crash "internal error; expected a model but got none." in 
 
   derivation_tree := fill_unconstrained_nonterminals !derivation_tree;
-  (* Convert to sygus AST for later processing in the pipeline *)
-  let r = sygus_ast_of_derivation_tree !derivation_tree in 
+  (* Convert to solver AST for later processing in the pipeline *)
+  let r = solver_ast_of_derivation_tree !derivation_tree in 
   result := Some r;
   exit_flag := false;
   if !Flags.multiple_solutions then (
@@ -1108,7 +1108,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
                 solver blocking_clause_vars !variable_stack assertion_level |> List.split in 
 
     List.iter (fun r -> Format.fprintf Format.std_formatter "$\n%a" 
-      SA.pp_print_sygus_ast r;
+      SA.pp_print_solver_ast r;
     ) rs; 
     Format.pp_print_flush Format.std_formatter ();
 

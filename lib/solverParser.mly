@@ -1,5 +1,5 @@
 %{
-open SygusAst
+open SolverAst
 %}
 
 %token HYPHEN
@@ -40,7 +40,7 @@ open SygusAst
 
 %token EOF
 
-%start <SygusAst.sygus_ast> s
+%start <SolverAst.solver_ast> s
 
 %%
 

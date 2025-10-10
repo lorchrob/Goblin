@@ -1,15 +1,15 @@
-module SA = SygusAst
+module SA = SolverAst
 
 type endianness = 
 | Little 
 | Big
 
-let serialize: Format.formatter -> SA.sygus_ast -> unit 
-= fun ppf sygus_ast -> 
-  let rec pp_print_sygus_ast' ppf sygus_ast = match sygus_ast with 
+let serialize: Format.formatter -> SA.solver_ast -> unit 
+= fun ppf solver_ast -> 
+  let rec pp_print_solver_ast' ppf solver_ast = match solver_ast with 
   | SA.Node (_, subterms) -> 
     Format.fprintf ppf "%a"
-    (Lib.pp_print_list pp_print_sygus_ast' "") subterms 
+    (Lib.pp_print_list pp_print_solver_ast' "") subterms 
   | BLLeaf bits
   | BVLeaf (_, bits) -> 
     let bits = List.map Bool.to_int bits in
@@ -25,7 +25,7 @@ let serialize: Format.formatter -> SA.sygus_ast -> unit
       (Lib.pp_print_list Format.pp_print_string ", ") (Utils.StringSet.to_list s)
   in 
   Format.fprintf ppf "%a\n" 
-  pp_print_sygus_ast' sygus_ast
+  pp_print_solver_ast' solver_ast
 
 let bools_to_bytes endianness bools =
   (* Function to drop the first n elements of a list *)
@@ -70,7 +70,7 @@ let bools_to_bytes endianness bools =
   Bytes.of_string (String.concat "" (List.map (String.make 1) (List.map char_of_int byte_list)))
 
 (*******************************************
-    SERIALIZATION OF SYGUS_AST TO BYTES
+    SERIALIZATION OF SOLVER_AST TO BYTES
 ********************************************)
 
 type metadata = {
@@ -112,10 +112,10 @@ let flip_endianness e = match e with
   `exception_list` denotes the list of fields to flip the default endianness (eg if default endianness is Big,
   `serialize_bytes` will encode fields from `exception_list` as little endian.
 *)
-let serialize_bytes: endianness -> string list -> SA.sygus_ast -> bytes * bytes 
-= fun default_endianness exception_list sygus_ast -> 
-  let rec serialize_aux endianness exception_list sygus_ast offset acc_metadata =
-    match sygus_ast with
+let serialize_bytes: endianness -> string list -> SA.solver_ast -> bytes * bytes 
+= fun default_endianness exception_list solver_ast -> 
+  let rec serialize_aux endianness exception_list solver_ast offset acc_metadata =
+    match solver_ast with
   | SA.Node ((id, _), subterms) ->
       if id.[0] = '_' then Bytes.empty, acc_metadata, offset else
       let is_match = List.exists (fun str -> 
@@ -158,7 +158,7 @@ let serialize_bytes: endianness -> string list -> SA.sygus_ast -> bytes * bytes
     var_leaf_count = 0;
     var_leaf_info = []
   } in
-  let serialized_bytes, final_metadata, _ = serialize_aux default_endianness exception_list sygus_ast 0 initial_metadata in
+  let serialized_bytes, final_metadata, _ = serialize_aux default_endianness exception_list solver_ast 0 initial_metadata in
   let metadata_bytes = encode_metadata final_metadata in
   serialized_bytes, metadata_bytes
 
@@ -228,9 +228,9 @@ let int64_to_bytes_min
 let int_to_bytes_min endianness (n:int) : bytes =
   int64_to_bytes_min endianness (Int64.of_int n)
 
-let serialize_bytes_packed: SA.sygus_ast -> bytes 
-= fun sygus_ast -> 
-  let rec bits_of_sa sygus_ast = match sygus_ast with 
+let serialize_bytes_packed: SA.solver_ast -> bytes 
+= fun solver_ast -> 
+  let rec bits_of_sa solver_ast = match solver_ast with 
   | SA.BLLeaf bits -> bits
   | BVLeaf (_, bits) -> bits
   | StrLeaf str | VarLeaf str -> 
@@ -243,5 +243,5 @@ let serialize_bytes_packed: SA.sygus_ast -> bytes
     List.concat_map bits_of_sa children
   | _ -> assert false 
   in 
-  let bits = SA.BLLeaf (bits_of_sa sygus_ast) in 
+  let bits = SA.BLLeaf (bits_of_sa solver_ast) in 
   serialize_bytes Little [] bits |> fst

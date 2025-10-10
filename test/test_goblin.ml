@@ -1,7 +1,7 @@
 open Goblin.Pipeline
 open Goblin 
 open Alcotest
-module SA = SygusAst
+module SA = SolverAst
 
 (* 
 
@@ -12,7 +12,7 @@ TODO: support this test case
 let test_dpll_unsat_constraint () =
   let filename = "../../../test/test_cases/test_dpll_unsat_constraint" in
   let input = Utils.read_file filename in _, ast = Pipeline.main_pipeline filename in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg *)
@@ -53,72 +53,72 @@ let bug2 () =
     fail "expected error"
   with _ -> () 
 
-let test_check_sygus_ast () =
-  let filename = "../../../test/test_cases/test_check_sygus_ast" in
+let test_check_solver_ast () =
+  let filename = "../../../test/test_cases/test_check_solver_ast" in
   let input = Utils.read_file filename in 
   let ast = Parsing.parse input in
-  let sygus_ast = SygusAst.Node (("A", None), [SygusAst.Node (("B", None), [SygusAst.VarLeaf ""]); SygusAst.Node (("C", None), [SygusAst.VarLeaf ""])]) in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast = SolverAst.Node (("A", None), [SolverAst.Node (("B", None), [SolverAst.VarLeaf ""]); SolverAst.Node (("C", None), [SolverAst.VarLeaf ""])]) in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
-let test_check_sygus_ast_2 () =
-  let filename = "../../../test/test_cases/test_check_sygus_ast" in
+let test_check_solver_ast_2 () =
+  let filename = "../../../test/test_cases/test_check_solver_ast" in
   let input = Utils.read_file filename in 
   let ast = Parsing.parse input in 
-  let sygus_ast = SygusAst.Node (("A", None), [SygusAst.Node (("D", None), [SygusAst.VarLeaf ""]); SygusAst.Node (("C", None), [SygusAst.VarLeaf ""])]) in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast = SolverAst.Node (("A", None), [SolverAst.Node (("D", None), [SolverAst.VarLeaf ""]); SolverAst.Node (("C", None), [SolverAst.VarLeaf ""])]) in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> fail "Expected error"
   | Error _ -> ()
 
-let test_check_sygus_ast_3 () =
-  let filename = "../../../test/test_cases/test_check_sygus_ast_2" in
+let test_check_solver_ast_3 () =
+  let filename = "../../../test/test_cases/test_check_solver_ast_2" in
   let input = Utils.read_file filename in 
   let ast = Parsing.parse input in 
-  let sygus_ast = SygusAst.Node (("A", None), [SygusAst.Node (("B", None), [SygusAst.IntLeaf 3]); SygusAst.Node (("C", None), [SygusAst.IntLeaf 2])]) in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast = SolverAst.Node (("A", None), [SolverAst.Node (("B", None), [SolverAst.IntLeaf 3]); SolverAst.Node (("C", None), [SolverAst.IntLeaf 2])]) in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()
   | Error msg -> fail msg
 
-let test_check_sygus_ast_4 () =
-  let filename = "../../../test/test_cases/test_check_sygus_ast_2" in
+let test_check_solver_ast_4 () =
+  let filename = "../../../test/test_cases/test_check_solver_ast_2" in
   let input = Utils.read_file filename in 
   let ast = Parsing.parse input in 
-  let sygus_ast = SygusAst.Node (("A", None), [SygusAst.Node (("B", None), [SygusAst.Node (("G", None), [SygusAst.IntLeaf 1])]); SygusAst.Node (("C", None), [SygusAst.Node (("G", None), [SygusAst.IntLeaf (2)])])]) in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast = SolverAst.Node (("A", None), [SolverAst.Node (("B", None), [SolverAst.Node (("G", None), [SolverAst.IntLeaf 1])]); SolverAst.Node (("C", None), [SolverAst.Node (("G", None), [SolverAst.IntLeaf (2)])])]) in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> fail "Expected failure"
   | Error _ -> ()
 
-let test_check_sygus_ast_5 () =
-  let filename = "../../../test/test_cases/test_check_sygus_ast_2" in
+let test_check_solver_ast_5 () =
+  let filename = "../../../test/test_cases/test_check_solver_ast_2" in
   let input = Utils.read_file filename in 
   let ast = Parsing.parse input in 
-  let sygus_ast = SygusAst.Node (("C", None), [SygusAst.Node (("G", None), [SygusAst.IntLeaf 1])]) in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast = SolverAst.Node (("C", None), [SolverAst.Node (("G", None), [SolverAst.IntLeaf 1])]) in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> fail "Expected failure"
   | Error _ -> ()
 
-let test_check_sygus_ast_6 () =
-  let filename = "../../../test/test_cases/test_check_sygus_ast_3" in
+let test_check_solver_ast_6 () =
+  let filename = "../../../test/test_cases/test_check_solver_ast_3" in
   let input = Utils.read_file filename in 
   let ast = Parsing.parse input in 
-  let sygus_ast = SygusAst.Node (("A", None), [SygusAst.Node (("B", None), [SygusAst.IntLeaf (-1)]); SygusAst.Node (("C", None), [SygusAst.IntLeaf (-2)])]) in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast = SolverAst.Node (("A", None), [SolverAst.Node (("B", None), [SolverAst.IntLeaf (-1)]); SolverAst.Node (("C", None), [SolverAst.IntLeaf (-2)])]) in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()
   | Error msg -> fail msg
 
-let test_check_sygus_ast_7 () =
-  let filename = "../../../test/test_cases/test_check_sygus_ast_3" in
+let test_check_solver_ast_7 () =
+  let filename = "../../../test/test_cases/test_check_solver_ast_3" in
   let input = Utils.read_file filename in 
   let ast = Parsing.parse input in 
-  let sygus_ast = SygusAst.Node (("A", None), [SygusAst.Node (("B", None), [SygusAst.Node (("G", None), [SygusAst.IntLeaf (2)])]); SygusAst.Node (("C", None), [SygusAst.Node (("G", None), [SygusAst.IntLeaf (1)])])]) in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast = SolverAst.Node (("A", None), [SolverAst.Node (("B", None), [SolverAst.Node (("G", None), [SolverAst.IntLeaf (2)])]); SolverAst.Node (("C", None), [SolverAst.Node (("G", None), [SolverAst.IntLeaf (1)])])]) in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> fail "Expected failure"
   | Error _ -> ()
@@ -137,16 +137,16 @@ let sd_test_another_ambiguous_reference_2 () =
 
 (*let sd_test_another_ambiguous_reference () =
   let input = "../../../test/test_cases/test_another_ambiguous_reference" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let sd_test_dot_notation_2 () =
   let input = "../../../test/test_cases/test_dot_notation_2" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
@@ -160,24 +160,24 @@ let sd_test_cyclic_dependencies () =
 
 let sd_test_horizontal_ambiguous_reference_1 () =
   let input = "../../../test/test_cases/test_horizontal_ambiguous_reference_1" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let sd_test_vertical_ambiguous_reference_1 () =
   let input = "../../../test/test_cases/test_vertical_ambiguous_reference_1" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let sd_test_vertical_ambiguous_reference_2 () =
   let input = "../../../test/test_cases/test_vertical_ambiguous_reference_2" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
@@ -185,16 +185,16 @@ let sd_test_vertical_ambiguous_reference_2 () =
 (* Semantic constraint example *)
 let sd_test_sc () =
   let input = "../../../test/test_cases/test_sc" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let sd_test_placeholder () =
   let input = "../../../test/test_cases/test_placeholder" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
@@ -202,16 +202,16 @@ let sd_test_placeholder () =
 (* Dependent term calculation example *)
 let sd_test_dt () =
   let input = "../../../test/test_cases/test_dt" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let sd_test_dt2 () =
   let input = "../../../test/test_cases/test_dt2" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
@@ -219,128 +219,128 @@ let sd_test_dt2 () =
 (* Divide and conquer example *)
 let sd_test_dc () = 
   let input = "../../../test/test_cases/test_dc" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let sd_test_bl () = 
   let input = "../../../test/test_cases/test_bl" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let sd_test_ty_annot_sc2 () = 
   let input = "../../../test/test_cases/test_ty_annot_sc2" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let sd_test_mult_prod_rules () = 
   let input = "../../../test/test_cases/test_mult_prod_rules" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let sd_test_bv_len () = 
   let input = "../../../test/test_cases/test_bv_len" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let sd_test_dt3 () = 
   let input = "../../../test/test_cases/test_dt3" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let sd_test_dt4 () = 
   let input = "../../../test/test_cases/test_dt4" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let sd_test_dt5 () = 
   let input = "../../../test/test_cases/test_dt5" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let sd_test_dt6 () = 
   let input = "../../../test/test_cases/test_dt6" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 (* let sd_test_recombine () =
   let input = "../../../test/test_cases/test_recombine" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg *)
   
 let sd_test_dynamic_typing () = 
   let input = "../../../test/test_cases/test_dynamic_typing" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let sd_test_dot_notation () = 
   let input = "../../../test/test_cases/test_dot_notation" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let sd_overlapping_constraints () = 
   let input = "../../../test/test_cases/overlapping_constraints" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let sd_overlapping_constraints_2 () = 
   let input = "../../../test/test_cases/overlapping_constraints_2" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let sd_repeated_nt_dependency () = 
   let input = "../../../test/test_cases/repeated_nt_dependency" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let sd_test_strings () = 
   let input = "../../../test/test_cases/test_strings" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg*)
@@ -359,24 +359,24 @@ let dm_test_another_ambiguous_reference_2 () =
 
 let bug5 () =
   let input = "../../../test/test_cases/bug5.gbl" in
-  let sygus_ast, _, ast = main_pipeline input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dm_test_another_ambiguous_reference () =
   let input = "../../../test/test_cases/test_another_ambiguous_reference" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dm_test_dot_notation_2 () =
   let input = "../../../test/test_cases/test_dot_notation_2" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
@@ -390,24 +390,24 @@ let dm_test_cyclic_dependencies () =
 
 let dm_test_horizontal_ambiguous_reference_1 () =
   let input = "../../../test/test_cases/test_horizontal_ambiguous_reference_1" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dm_test_vertical_ambiguous_reference_1 () =
   let input = "../../../test/test_cases/test_vertical_ambiguous_reference_1" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dm_test_vertical_ambiguous_reference_2 () =
   let input = "../../../test/test_cases/test_vertical_ambiguous_reference_2" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
@@ -415,32 +415,32 @@ let dm_test_vertical_ambiguous_reference_2 () =
 (* Semantic constraint example *)
 let dm_test_sc () =
   let input = "../../../test/test_cases/test_sc" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dm_test_placeholder () =
   let input = "../../../test/test_cases/test_placeholder" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let probabilities () =
   let input = "../../../test/test_cases/probabilities.gbl" in
-  let sygus_ast, _, ast = main_pipeline input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let probabilities_2 () =
   let input = "../../../test/test_cases/probabilities_2.gbl" in
-  let sygus_ast, _, ast = main_pipeline input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
@@ -448,16 +448,16 @@ let probabilities_2 () =
 (* Dependent term calculation example *)
 let dm_test_dt () =
   let input = "../../../test/test_cases/test_dt" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dm_test_dt2 () =
   let input = "../../../test/test_cases/test_dt2" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
@@ -465,128 +465,128 @@ let dm_test_dt2 () =
 (* Divide and conquer example *)
 let dm_test_dc () = 
   let input = "../../../test/test_cases/test_dc" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dm_test_bl () = 
   let input = "../../../test/test_cases/test_bl" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dm_test_ty_annot_sc2 () = 
   let input = "../../../test/test_cases/test_ty_annot_sc2" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dm_test_mult_prod_rules () = 
   let input = "../../../test/test_cases/test_mult_prod_rules" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dm_test_bv_len () = 
   let input = "../../../test/test_cases/test_bv_len" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dm_test_dt3 () = 
   let input = "../../../test/test_cases/test_dt3" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dm_test_dt4 () = 
   let input = "../../../test/test_cases/test_dt4" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dm_test_dt5 () = 
   let input = "../../../test/test_cases/test_dt5" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dm_test_dt6 () = 
   let input = "../../../test/test_cases/test_dt6" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dm_test_recombine () =
   let input = "../../../test/test_cases/test_recombine" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
   
 let dm_test_dynamic_typing () = 
   let input = "../../../test/test_cases/test_dynamic_typing" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dm_test_dot_notation () = 
   let input = "../../../test/test_cases/test_dot_notation" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dm_overlapping_constraints () = 
   let input = "../../../test/test_cases/overlapping_constraints" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dm_overlapping_constraints_2 () = 
   let input = "../../../test/test_cases/overlapping_constraints_2" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dm_repeated_nt_dependency () = 
   let input = "../../../test/test_cases/repeated_nt_dependency" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dm_test_strings () = 
   let input = "../../../test/test_cases/test_strings" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
@@ -605,16 +605,16 @@ let dd_test_another_ambiguous_reference_2 () =
 
 let dd_test_another_ambiguous_reference () =
   let input = "../../../test/test_cases/test_another_ambiguous_reference" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dd_test_dot_notation_2 () =
   let input = "../../../test/test_cases/test_dot_notation_2" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
@@ -628,24 +628,24 @@ let dd_test_cyclic_dependencies () =
 
 let dd_test_horizontal_ambiguous_reference_1 () =
   let input = "../../../test/test_cases/test_horizontal_ambiguous_reference_1" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dd_test_vertical_ambiguous_reference_1 () =
   let input = "../../../test/test_cases/test_vertical_ambiguous_reference_1" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dd_test_vertical_ambiguous_reference_2 () =
   let input = "../../../test/test_cases/test_vertical_ambiguous_reference_2" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
@@ -653,16 +653,16 @@ let dd_test_vertical_ambiguous_reference_2 () =
 (* Semantic constraint example *)
 let dd_test_sc () =
   let input = "../../../test/test_cases/test_sc" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dd_test_placeholder () =
   let input = "../../../test/test_cases/test_placeholder" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
@@ -670,16 +670,16 @@ let dd_test_placeholder () =
 (* Dependent term calculation example *)
 let dd_test_dt () =
   let input = "../../../test/test_cases/test_dt" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dd_test_dt2 () =
   let input = "../../../test/test_cases/test_dt2" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
@@ -687,112 +687,112 @@ let dd_test_dt2 () =
 (* Divide and conquer example *)
 let dd_test_dc () = 
   let input = "../../../test/test_cases/test_dc" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dd_test_bl () = 
   let input = "../../../test/test_cases/test_bl" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dd_test_ty_annot_sc2 () = 
   let input = "../../../test/test_cases/test_ty_annot_sc2" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dd_test_mult_prod_rules () = 
   let input = "../../../test/test_cases/test_mult_prod_rules" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dd_test_bv_len () = 
   let input = "../../../test/test_cases/test_bv_len" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dd_test_dt3 () = 
   let input = "../../../test/test_cases/test_dt3" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dd_test_dt4 () = 
   let input = "../../../test/test_cases/test_dt4" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dd_test_dt5 () = 
   let input = "../../../test/test_cases/test_dt5" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dd_test_dt6 () = 
   let input = "../../../test/test_cases/test_dt6" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dd_test_recombine () =
   let input = "../../../test/test_cases/test_recombine" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
   
 let dd_test_dynamic_typing () = 
   let input = "../../../test/test_cases/test_dynamic_typing" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dd_test_dot_notation () = 
   let input = "../../../test/test_cases/test_dot_notation" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dd_repeated_nt_dependency () = 
   let input = "../../../test/test_cases/repeated_nt_dependency" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dd_test_strings () = 
   let input = "../../../test/test_cases/test_strings" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
@@ -811,16 +811,16 @@ let md_test_another_ambiguous_reference_2 () =
 
 let md_test_another_ambiguous_reference () =
   let input = "../../../test/test_cases/test_another_ambiguous_reference" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let md_test_dot_notation_2 () =
   let input = "../../../test/test_cases/test_dot_notation_2" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
@@ -834,24 +834,24 @@ let md_test_cyclic_dependencies () =
 
 let md_test_horizontal_ambiguous_reference_1 () =
   let input = "../../../test/test_cases/test_horizontal_ambiguous_reference_1" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let md_test_vertical_ambiguous_reference_1 () =
   let input = "../../../test/test_cases/test_vertical_ambiguous_reference_1" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let md_test_vertical_ambiguous_reference_2 () =
   let input = "../../../test/test_cases/test_vertical_ambiguous_reference_2" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
@@ -859,16 +859,16 @@ let md_test_vertical_ambiguous_reference_2 () =
 (* Semantic constraint example *)
 let md_test_sc () =
   let input = "../../../test/test_cases/test_sc" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 (*let md_test_placeholder () =
   let input = "../../../test/test_cases/test_placeholder" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg*)
@@ -876,16 +876,16 @@ let md_test_sc () =
 (* Dependent term calculation example *)
 let md_test_dt () =
   let input = "../../../test/test_cases/test_dt" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 (*let md_test_dt2 () =
   let input = "../../../test/test_cases/test_dt2" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg*)
@@ -893,200 +893,200 @@ let md_test_dt () =
 (* Divide and conquer example *)
 let md_test_dc () = 
   let input = "../../../test/test_cases/test_dc" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let md_test_bl () = 
   let input = "../../../test/test_cases/test_bl" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let md_test_ty_annot_sc2 () = 
   let input = "../../../test/test_cases/test_ty_annot_sc2" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let md_test_mult_prod_rules () = 
   let input = "../../../test/test_cases/test_mult_prod_rules" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let md_test_bv_len () = 
   let input = "../../../test/test_cases/test_bv_len" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let md_test_dt3 () = 
   let input = "../../../test/test_cases/test_dt3" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let md_test_dt4 () = 
   let input = "../../../test/test_cases/test_dt4" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let md_test_dt5 () = 
   let input = "../../../test/test_cases/test_dt5" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 (*let md_test_dt6 () = 
   let input = "../../../test/test_cases/test_dt6" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg*)
   
 let md_test_dynamic_typing () = 
   let input = "../../../test/test_cases/test_dynamic_typing" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let md_test_dot_notation () = 
   let input = "../../../test/test_cases/test_dot_notation" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let md_overlapping_constraints () = 
   let input = "../../../test/test_cases/overlapping_constraints" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let md_overlapping_constraints_2 () = 
   let input = "../../../test/test_cases/overlapping_constraints_2" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let md_repeated_nt_dependency () = 
   let input = "../../../test/test_cases/repeated_nt_dependency" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let md_test_strings () = 
   let input = "../../../test/test_cases/test_strings" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let sd_test2 () = 
   let input = "../../../test/test_cases/test2" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let sd_test3 () = 
   let input = "../../../test/test_cases/test3" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let sd_test4 () = 
   let input = "../../../test/test_cases/test4" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let sd_test5 () = 
   let input = "../../../test/test_cases/test5" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let sd_test6 () = 
   let input = "../../../test/test_cases/test6" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let sd_test7 () = 
   let input = "../../../test/test_cases/test7" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let sd_test8 () = 
   let input = "../../../test/test_cases/test8" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let sd_test9 () = 
   let input = "../../../test/test_cases/test9" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let sd_test11 () = 
   let input = "../../../test/test_cases/test11" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let sd_test14 () = 
   let input = "../../../test/test_cases/test14" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
@@ -1121,320 +1121,320 @@ let md_test17 () =
 
 let sd_test18 () = 
   let input = "../../../test/test_cases/test18" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg*)
 
 let dm_test18 () = 
   let input = "../../../test/test_cases/test18" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 (*let dd_test18 () = 
   let input = "../../../test/test_cases/test18" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let md_test18 () = 
   let input = "../../../test/test_cases/test18" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg*)
 
 let dm_test2 () = 
   let input = "../../../test/test_cases/test2" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dm_test3 () = 
   let input = "../../../test/test_cases/test3" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dm_test4 () = 
   let input = "../../../test/test_cases/test4" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dm_test5 () = 
   let input = "../../../test/test_cases/test5" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dm_test6 () = 
   let input = "../../../test/test_cases/test6" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dm_test7 () = 
   let input = "../../../test/test_cases/test7" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dm_test8 () = 
   let input = "../../../test/test_cases/test8" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
          
 let dm_test9 () = 
   let input = "../../../test/test_cases/test9" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dm_test13 () = 
   let input = "../../../test/test_cases/test13" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dm_test11 () = 
   let input = "../../../test/test_cases/test11" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dm_test12 () = 
   let input = "../../../test/test_cases/test12" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dm_test14 () = 
   let input = "../../../test/test_cases/test14" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 (*let dd_test3 () = 
   let input = "../../../test/test_cases/test3" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dd_test4 () = 
   let input = "../../../test/test_cases/test4" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dd_test5 () = 
   let input = "../../../test/test_cases/test5" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dd_test6 () = 
   let input = "../../../test/test_cases/test6" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dd_test7 () = 
   let input = "../../../test/test_cases/test7" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dd_test8 () = 
   let input = "../../../test/test_cases/test8" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dd_test9 () = 
   let input = "../../../test/test_cases/test9" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dd_test11 () = 
   let input = "../../../test/test_cases/test11" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dd_test12 () = 
   let input = "../../../test/test_cases/test12" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dd_test14 () = 
   let input = "../../../test/test_cases/test14" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let md_test2 () = 
   let input = "../../../test/test_cases/test2" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 (*let md_test3 () = 
   let input = "../../../test/test_cases/test3" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg*)
 
 let md_test4 () = 
   let input = "../../../test/test_cases/test4" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let md_test5 () = 
   let input = "../../../test/test_cases/test5" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let md_test6 () = 
   let input = "../../../test/test_cases/test6" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let md_test7 () = 
   let input = "../../../test/test_cases/test7" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let md_test8 () = 
   let input = "../../../test/test_cases/test8" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let md_test9 () = 
   let input = "../../../test/test_cases/test9" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let md_test11 () = 
   let input = "../../../test/test_cases/test11" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let md_test14 () = 
   let input = "../../../test/test_cases/test14" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let sd_test16 () = 
   let input = "../../../test/test_cases/test16" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some SygusDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg*)
 
 let example_fail () = 
   let input = "../../../test/test_cases/example-fail.gbl" in
-  let sygus_ast, _, ast = main_pipeline input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let dm_test16 () = 
   let input = "../../../test/test_cases/test16" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
 
 let ngap_ngsetup_bug () = 
   let input = "../../../test/test_cases/ngap-ngsetup-bug.gbl" in
-  let sygus_ast, _, ast = main_pipeline input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
@@ -1442,16 +1442,16 @@ let ngap_ngsetup_bug () =
   (* TODO: Support passing --starting-depth-limit functionally *)
 (*let msg2 () = 
   let input = "../../../test/test_cases/msg2.gbl" in
-  let sygus_ast, _, ast = main_pipeline input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg*)
 
 (*let md_test16 () = 
   let input = "../../../test/test_cases/test16" in
-  let sygus_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
-  let output = CheckSygusAst.check_sygus_ast ast sygus_ast in
+  let solver_ast, _, ast = main_pipeline ~engine:(Some MixedDac) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg*)
@@ -1464,11 +1464,11 @@ let test10 () =
 
 let () = 
   run "My_module" [
-    "test_check_sygus_ast", [test_case "test_check_sygus_ast" `Quick test_check_sygus_ast];
-    "test_check_sygus_ast_2", [test_case "test_check_sygus_ast_2" `Quick test_check_sygus_ast_2];
-    "test_check_sygus_ast_3", [test_case "test_check_sygus_ast_3" `Quick test_check_sygus_ast_3];
-    "test_check_sygus_ast_4", [test_case "test_check_sygus_ast_4" `Quick test_check_sygus_ast_4];
-    "test_check_sygus_ast_5", [test_case "test_check_sygus_ast_5" `Quick test_check_sygus_ast_5];
+    "test_check_solver_ast", [test_case "test_check_solver_ast" `Quick test_check_solver_ast];
+    "test_check_solver_ast_2", [test_case "test_check_solver_ast_2" `Quick test_check_solver_ast_2];
+    "test_check_solver_ast_3", [test_case "test_check_solver_ast_3" `Quick test_check_solver_ast_3];
+    "test_check_solver_ast_4", [test_case "test_check_solver_ast_4" `Quick test_check_solver_ast_4];
+    "test_check_solver_ast_5", [test_case "test_check_solver_ast_5" `Quick test_check_solver_ast_5];
 
     (*"sd_test_sc", [test_case "Semantic constraint" `Quick sd_test_sc];
     "sd_test_placeholder", [test_case "Placeholder" `Quick sd_test_placeholder];
@@ -1636,8 +1636,8 @@ let () =
 
     "test10", [test_case "test10" `Quick test10];
 
-    "test_check_sygus_ast_6", [test_case "test_check_sygus_ast_6" `Quick test_check_sygus_ast_6];
-    "test_check_sygus_ast_7", [test_case "test_check_sygus_ast_7" `Quick test_check_sygus_ast_7]; 
+    "test_check_solver_ast_6", [test_case "test_check_solver_ast_6" `Quick test_check_solver_ast_6];
+    "test_check_solver_ast_7", [test_case "test_check_solver_ast_7" `Quick test_check_solver_ast_7]; 
 
     (*"sd_test_another_ambiguous_reference_1", [test_case "sd_test_another_ambiguous_reference_1" `Quick sd_test_another_ambiguous_reference_1]; *)
     "dm_test_another_ambiguous_reference_1", [test_case "dm_test_another_ambiguous_reference_1" `Quick dm_test_another_ambiguous_reference_1]; 

@@ -649,12 +649,12 @@ let run_sequence (_flag : bool) (c : child) : (provenance * output) * state * (b
         output_string oc log_entry;
         close_out oc;
         Format.pp_print_flush Format.std_formatter ();
-        let sygus_ast, _, _ = Pipeline.main_pipeline ~grammar "dummy" in 
+        let solver_ast, _, _ = Pipeline.main_pipeline ~grammar "dummy" in 
         other_success_execution_time := ((Unix.gettimeofday ()) -. other_start_time) ;
         other_success_calls := !other_success_calls + 1 ;
-        let sygus_ast = BitFlips.flip_bits sygus_ast in
+        let solver_ast = BitFlips.flip_bits solver_ast in
         (* grammar_byte_map := !grammar_byte_map ^ (Utils.capture_output Ast.pp_print_ast grammar); *)
-        let byte_serial, metadata = Serialize.serialize_bytes Serialize.Big ["PACKET_BODY_LENGTH";"KEY_LENGTH";"KEY_DATA_LENGTH";"KEY_INFORMATION_1";"KEY_INFORMATION_2";"KEY_INFORMATION_3";"KEY_INFORMATION_4"] sygus_ast in
+        let byte_serial, metadata = Serialize.serialize_bytes Serialize.Big ["PACKET_BODY_LENGTH";"KEY_LENGTH";"KEY_DATA_LENGTH";"KEY_INFORMATION_1";"KEY_INFORMATION_2";"KEY_INFORMATION_3";"KEY_INFORMATION_4"] solver_ast in
         (* Print hex to stdout and append to file *)
         Format.printf "%s\n" (bytes_to_hex byte_serial);
         let hex_str = "=== HEX RESULT [" ^ timestamp ^ "] ===\n" ^ (bytes_to_hex byte_serial) ^ "\n\n" in
@@ -694,7 +694,7 @@ let run_sequence (_flag : bool) (c : child) : (provenance * output) * state * (b
             sygus_success_execution_time := ((Unix.gettimeofday ()) -. sygus_start_time) ;
             sygus_success_calls := !sygus_success_calls + 1 ;
             Format.printf "SYGUS CALL SUCCESS\n";
-            (* Format.printf "PRINTING SYGUS AST:\n"; *)
+            (* Format.printf "PRINTING SOLVER AST:\n"; *)
             (* Format.printf "%a\n" Ast.pp_print_ast grammar; *)
             Format.printf "PRINTING byte serialization SYGUS:\n";
             (* Print hex to stdout and append to file *)
@@ -790,12 +790,12 @@ let run_sequence (_flag : bool) (c : child) : (provenance * output) * state * (b
         output_string oc log_entry;
         close_out oc;
         Format.pp_print_flush Format.std_formatter ();
-        let sygus_ast, _, _ = Pipeline.main_pipeline ~grammar "dummy" in 
+        let solver_ast, _, _ = Pipeline.main_pipeline ~grammar "dummy" in 
         other_success_execution_time := ((Unix.gettimeofday ()) -. other_start_time) ;
         other_success_calls := !other_success_calls + 1 ;
-        let sygus_ast = BitFlips.flip_bits sygus_ast in
+        let solver_ast = BitFlips.flip_bits solver_ast in
         (* grammar_byte_map := !grammar_byte_map ^ (Utils.capture_output Ast.pp_print_ast grammar); *)
-        let byte_serial, metadata = Serialize.serialize_bytes Serialize.Big ["RG_ID_LIST"] sygus_ast in
+        let byte_serial, metadata = Serialize.serialize_bytes Serialize.Big ["RG_ID_LIST"] solver_ast in
         (* Print hex to stdout and append to file *)
         Format.printf "%s\n" (bytes_to_hex byte_serial);
         let hex_str = "=== HEX RESULT [" ^ timestamp ^ "] ===\n" ^ (bytes_to_hex byte_serial) ^ "\n\n" in
@@ -835,7 +835,7 @@ let run_sequence (_flag : bool) (c : child) : (provenance * output) * state * (b
             sygus_success_execution_time := ((Unix.gettimeofday ()) -. sygus_start_time) ;
             sygus_success_calls := !sygus_success_calls + 1 ;
             Format.printf "SYGUS CALL SUCCESS\n";
-            (* Format.printf "PRINTING SYGUS AST:\n"; *)
+            (* Format.printf "PRINTING SOLVER AST:\n"; *)
             (* Format.printf "%a\n" Ast.pp_print_ast grammar; *)
             Format.printf "PRINTING byte serialization SYGUS:\n";
             (* Print hex to stdout and append to file *)

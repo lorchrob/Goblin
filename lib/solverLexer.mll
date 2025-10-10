@@ -1,5 +1,5 @@
 {
-  open SygusParser
+  open SolverParser
 
   let debug = false
 
