@@ -107,8 +107,6 @@ let rec check_syntax_semantics: Ast.ast -> SygusAst.sygus_ast -> (unit, string) 
     match element with 
     | None -> Error ("Dangling constructor identifier " ^ (Utils.extract_base_name constructor))
     | Some (TypeAnnotation (_, _, scs, _) as element) -> 
-      Format.fprintf Format.std_formatter "Semantic constraints: %a\n"
-        (Lib.pp_print_list A.pp_print_semantic_constraint "; ") scs;
       handle_scs ast sygus_ast constructor element scs
     | Some (A.ProdRule (_, rhss, _) as element) ->
       (* Find the matching production rule from ast, if one exists *)

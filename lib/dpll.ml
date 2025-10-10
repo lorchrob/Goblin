@@ -80,12 +80,6 @@ Interfacing with the solver
     * Serialize the AST
 *)
 
-type solver_instance = {
-  in_channel : in_channel;   
-  out_channel : out_channel; 
-  err_channel : in_channel;  
-}
-
 type model_value = 
 | ConcreteBool of bool
 | ConcreteInt of int
@@ -199,13 +193,7 @@ let random_int_in_range: int -> int -> int
 = fun min max ->
   min + Random.int (max - min + 1) 
 
-let issue_solver_command: string -> solver_instance -> unit 
-= fun cmd_string solver -> 
-  if !Flags.debug then Format.pp_print_string Format.std_formatter ("Issuing " ^ cmd_string ^ "\n");
-  output_string solver.out_channel cmd_string;
-  flush solver.out_channel
-
-let declare_smt_variables: 'a -> Utils.StringSet.t ref -> A.il_type Utils.StringMap.t -> solver_instance -> 'b -> 'c -> unit 
+let declare_smt_variables: 'a -> Utils.StringSet.t ref -> A.il_type Utils.StringMap.t -> Smt.solver_instance -> 'b -> 'c -> unit 
 = fun variable_stack declared_variables ctx solver blocking_clause_vars assertion_level -> 
   Utils.StringMap.iter (fun var ty -> 
     if Utils.StringSet.mem var !declared_variables then 
@@ -219,59 +207,8 @@ let declare_smt_variables: 'a -> Utils.StringSet.t ref -> A.il_type Utils.String
         blocking_clause_vars := Utils.StringSet.add var !blocking_clause_vars; 
       let top = Stack.top variable_stack in 
       top := Utils.StringSet.add var !top;
-      issue_solver_command declaration_string solver
+      Smt.issue_solver_command declaration_string solver
   ) ctx 
-
-let read_check_sat_response solver = 
-  input_line solver.in_channel
-
-let read_get_model_response solver =
-  let rec loop acc =
-    try
-      let line = input_line solver.in_channel in
-      if String.starts_with ~prefix:"(error" line then raise (Failure "cvc5 error");
-      let acc = acc ^ "\n" ^ line in
-      if String.trim line = ")" then acc
-      else loop acc
-    with End_of_file -> acc
-  in
-  let result = loop "" in
-  result
-
-let initialize_solver () : solver_instance =
-  let cvc5 = Utils.find_command_in_path "cvc5" in
-  let cmd = 
-    Printf.sprintf "%s --produce-models --dag-thresh=0 --lang=smtlib2 --incremental" 
-      cvc5 
-  in
-  let set_logic_command = Format.asprintf "(set-logic QF_BVSNIAFS)\n" in
-  let declare_unit_type_command = "(declare-sort Unit 0)" in
-  (*let z3 = Utils.find_command_in_path "z3" in
-  let cmd = 
-    Printf.sprintf "%s -smt2 -in" 
-     z3 
-  in
-  let set_logic_command = Format.asprintf "(set-logic QF_SLIA)\n" in*)
-
-  let (in_chan, out_chan, err_chan) = Unix.open_process_full cmd (Unix.environment ()) in
-  let solver = { in_channel = in_chan; out_channel = out_chan; err_channel = err_chan } in
-  issue_solver_command set_logic_command solver;
-  issue_solver_command declare_unit_type_command solver;
-  issue_solver_command "(set-option :produce-models true)\n" solver;
-  solver
-
-let cleanup_solver (solver : solver_instance) : unit =
-  close_out_noerr solver.out_channel;
-  close_in_noerr solver.in_channel;
-  close_in_noerr solver.err_channel
-
-let assert_smt_constraint: solver_instance -> Ast.expr -> unit 
-= fun solver expr ->
-  let assert_cmd = 
-    Format.asprintf "(assert %a)\n" (Sygus.pp_print_expr Utils.StringMap.empty) expr 
-  in
-  issue_solver_command assert_cmd solver; 
-  ()
 
 (* State expression nonterminals in terms of absolute paths from 
    the root of the derivation tree *)
@@ -379,12 +316,12 @@ match dt with
   Node (nt, path, List.map r children)
 | leaf -> leaf 
 
-let new_decision_level: solver_instance -> int ref -> Utils.StringSet.t ref Stack.t ref -> unit 
+let new_decision_level: Smt.solver_instance -> int ref -> Utils.StringSet.t ref Stack.t ref -> unit 
 = fun solver assertion_level variable_stack ->
   let push_cmd = Format.asprintf "(push 1)" in
   Stack.push (ref Utils.StringSet.empty) (!variable_stack);
   assertion_level := !assertion_level + 1;
-  issue_solver_command push_cmd solver; 
+  Smt.issue_solver_command push_cmd solver; 
   ()
 
 let rec collect_constraints_of_dt ast = function 
@@ -468,7 +405,7 @@ let assert_applicable_constraints constraint_set derivation_tree ast solver =
         if !Flags.debug then Format.fprintf Format.std_formatter "Constraint %a is applicable in derivation tree %a\n"
           A.pp_print_expr expr 
           pp_print_derivation_tree derivation_tree;
-        assert_smt_constraint solver expr;
+        Smt.assert_smt_constraint solver expr;
         ConstraintSet.add expr acc
       ) else (
        if !Flags.debug then Format.fprintf Format.std_formatter "Constraint %a is not applicable in derivation tree %a\n"
@@ -625,9 +562,9 @@ let backtrack ctx ast assertion_level decision_stack solver backtrack_depth decl
               constraints_to_assert depth_limit start_symbol derivation_tree curr_st_node
               variable_stack blocking_clause_vars = 
   if !assertion_level = 1 then ( (* restarting *)
-    Utils.debug_print Format.pp_print_string Format.std_formatter "Restarting...\n";
-    issue_solver_command "(pop 1)" solver; 
-    issue_solver_command "(push 1)" solver;
+    Format.pp_print_string Format.std_formatter "Restarting...\n%!";
+    Smt.issue_solver_command "(pop 1)" solver; 
+    Smt.issue_solver_command "(push 1)" solver;
     (if not !backtrack_depth then raise (Failure "infeasible"));
     depth_limit := !depth_limit + 1;
     Format.fprintf Format.std_formatter "Increasing depth limit to %d\n" !depth_limit;
@@ -636,7 +573,7 @@ let backtrack ctx ast assertion_level decision_stack solver backtrack_depth decl
                        variable_stack blocking_clause_vars assertion_level; 
   ) else ( 
     assertion_level := !assertion_level - 1;
-    issue_solver_command "(pop 1)" solver;
+    Smt.issue_solver_command "(pop 1)" solver;
     let st_node = Stack.pop !decision_stack in
     let popped_vars = Stack.pop !variable_stack in 
     let STNode (dt, _, _, _) = st_node in 
@@ -687,14 +624,14 @@ let rec model_of_sygus_ast: SygusAst.sygus_ast -> (model_value Utils.StringMap.t
   | VarLeaf _ | BLLeaf _ | BVLeaf _ | UnitLeaf
   | BoolLeaf _ | StrLeaf _ | IntLeaf _ | SetLeaf _ -> Utils.crash "Unexpected case in model_of_sygus_ast"
 
-let get_smt_result: A.ast -> solver_instance -> bool -> (model_value Utils.StringMap.t, unit) result option
+let get_smt_result: A.ast -> Smt.solver_instance -> bool -> (model_value Utils.StringMap.t, unit) result option
 = fun ast solver get_model -> 
-  issue_solver_command "(check-sat)\n" solver;
-  let response = read_check_sat_response solver in
+  Smt.issue_solver_command "(check-sat)\n" solver;
+  let response = Smt.read_check_sat_response solver in
   if !Flags.debug then Format.fprintf Format.std_formatter "Solver response: %s\n" response;
   if response = "sat" && get_model then (
-    issue_solver_command "(get-model)\n" solver;
-    let response = read_get_model_response solver in
+    Smt.issue_solver_command "(get-model)\n" solver;
+    let response = Smt.read_get_model_response solver in
     if !Flags.debug then Format.fprintf Format.std_formatter "Solver response: %s\n" response;
     let result = match Parsing.parse_sygus response ast with 
     | Ok result -> result 
@@ -871,7 +808,7 @@ let push_blocking_clause variable_stack model dt declared_variables solver block
       (Lib.pp_print_list pp_print_model_pair " ") (Utils.StringMap.bindings model)
     else "(assert true)"
   in
-  issue_solver_command blocking_clause_str solver  
+  Smt.issue_solver_command blocking_clause_str solver  
 
 let rec generate_n_solutions n ast model r derivation_tree declared_variables solver blocking_clause_vars variable_stack assertion_level = 
   if n = 1 then 
@@ -922,7 +859,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
   in 
 
   (* Solver object *)
-  let solver = initialize_solver () in
+  let solver = Smt.initialize_solver () in
  
   (*!! IDEA: dynamically alter starting depth limit *)
   (*** HYPERPARAMETERS *)
@@ -1007,10 +944,10 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
 
      if !num_iterations = restart_rate then (
         num_iterations := 0;
-        (*Format.fprintf Format.std_formatter "Restarting\n";*)
+        Format.fprintf Format.std_formatter "Restarting\n";
         let pop_cmd = Format.asprintf "(pop %d)" !assertion_level in 
-        issue_solver_command pop_cmd solver; 
-        issue_solver_command "(push 1)" solver;
+        Smt.issue_solver_command pop_cmd solver; 
+        Smt.issue_solver_command "(push 1)" solver;
 
         (* prepare to generate another solution *)
         assertion_level := 1;
@@ -1177,7 +1114,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
 
     (* Need to pop all the way back to zeroth level so we can assert persisting blocking clause *)
     let pop_cmd = Format.asprintf "(pop %d)" !assertion_level in 
-    issue_solver_command pop_cmd solver; 
+    Smt.issue_solver_command pop_cmd solver; 
     declared_variables := !blocking_clause_vars;
     variable_stack :=  B.Stack.create () ;
     Stack.push (ref Utils.StringSet.empty) !variable_stack ;
@@ -1185,7 +1122,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
     List.iter (fun model -> 
       push_blocking_clause !variable_stack model derivation_tree declared_variables solver blocking_clause_vars assertion_level true
     ) models ;
-    issue_solver_command "(push 1)" solver;
+    Smt.issue_solver_command "(push 1)" solver;
 
     (* prepare to generate another solution *)
     assertion_level := 1;
@@ -1197,11 +1134,11 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.sygus_ast
   ()
   done; 
 
-  cleanup_solver solver;
+  Smt.cleanup_solver solver;
   Option.get !result 
 
   with Failure e -> 
-    cleanup_solver solver;
+    Smt.cleanup_solver solver;
     (if not (String.equal e "infeasible") then 
       Utils.crash e);
     Format.pp_print_flush Format.std_formatter ();
