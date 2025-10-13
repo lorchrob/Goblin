@@ -233,6 +233,7 @@ let serialize_bytes_packed: SA.solver_ast -> bytes
   let rec bits_of_sa solver_ast = match solver_ast with 
   | SA.BLLeaf bits -> bits
   | BVLeaf (_, bits) -> bits
+  | BoolLeaf bit -> [bit]
   | StrLeaf str | VarLeaf str -> 
     let bytes = Bytes.of_string str in 
     bytes_to_bools_be bytes 
