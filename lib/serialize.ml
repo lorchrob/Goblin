@@ -241,7 +241,10 @@ let serialize_bytes_packed: SA.solver_ast -> bytes
     bytes_to_bools_be bytes 
   | Node (_, children) -> 
     List.concat_map bits_of_sa children
-  | _ -> assert false 
+  | sa ->  
+    let msg = Format.asprintf "Error in serialize_bytes_packed: encountered unexpected solver AST %a" 
+      SolverAst.pp_print_solver_ast sa in 
+    Utils.crash msg
   in 
   let bits = SA.BLLeaf (bits_of_sa solver_ast) in 
   serialize_bytes Little [] bits |> fst
