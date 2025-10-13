@@ -1,0 +1,209 @@
+<NGAP_PDU>                                                  ::= <pdu-type-choice> <pdu-procedure>;
+<pdu-type-choice>                                           ::= <initiatingMessage>;
+<pdu-procedure>                                             ::= <NGReset>;
+<NGReset>                                                   ::= <ng-procedure> <ng-pdu-length> <IE-Sequence-List> 
+{
+    <ng-pdu-length>                                         <- int_to_bv(16, (length(<IE-Sequence-List>) div 8));
+};
+<ng-procedure>                                              ::= <ng-procedure-code-padding> <ng-procedure-code> <criticality-reject> <criticality-padding>;
+<initiatingMessage>                                         ::= <extension-flag> <im-choice-index>;          
+<IE-Sequence-List>                                          ::= <sequence-extension-flag> <sequence-list-padding> <sequence-list-size> <ng-reset-sequence> 
+{
+    int_to_bv(16, 0) bvulte <sequence-list-size> and <sequence-list-size> bvulte int_to_bv(16, 65535);
+    <sequence-list-size>                                    = int_to_bv(16, 2);
+};
+<ng-reset-sequence>                                         ::= <IE-Cause> <IE-ResetType>;
+<IE-Cause>                                                  ::= <cause-sequence-id> <criticality-ignore> <criticality-padding> <cause-length> <Cause> 
+{
+    <cause-length>                                          <- int_to_bv(8, length(<Cause>) div 8);
+};
+<IE-ResetType>                                              ::= <reset-type-sequence-id> <criticality-reject> <criticality-padding> <reset-type-length> <ResetType> 
+{
+    <reset-type-length>                                     <- int_to_bv(8, length(<ResetType>) div 8);
+};
+<Cause>                                                     ::= <CauseRadioNetwork>
+                                                            | <CauseTransport>
+                                                            | <CauseNas>
+                                                            | <CauseProtocol>
+                                                            | <CauseMisc>;
+<ResetType>                                                 ::= <ResetAll>
+                                                            | <UE-associatedLogicalNG-connectionList>;
+<ResetAll>                                                  ::= <extension-flag> <choice-reset-all> <reset-all-value>;
+<reset-all-value>                                           ::= <extension-flag> <reset-all-content>;  
+<UE-associatedLogicalNG-connectionList>                     ::= <choice-associatedng-connection> <UE-associatedLogicalNG-connectionList-value>;
+<associatedLogicalNG-connectionList>                        ::= <_length> <UE-associatedLogicalNG-connectionItem> { <_length> = 1 ;}
+                                                            | <_length> <associatedLogicalNG-connectionList> <UE-associatedLogicalNG-connectionItem> { <_length> = <associatedLogicalNG-connectionList>.<_length> + 1 ;};
+<UE-associatedLogicalNG-connectionItem>                     ::= <extension-flag> <preamble-1> <preamble-2> <preamble> <IE-RAN-UE-NGAP-ID> <IE-AMF-UE-NGAP-ID>{
+    <preamble-1>                                            = <IE-RAN-UE-NGAP-ID>.<_present>;
+    <preamble-2>                                            = <IE-AMF-UE-NGAP-ID>.<_present>;    
+};
+<IE-AMF-UE-NGAP-ID>                                         ::= <_present> <amf-ue-sequence-id> <criticality-reject> <criticality-padding> <amf-ue-sequence-id-length> <amf-ue-sequence-id-value> 
+                                                            { 
+                                                                <amf-ue-sequence-id-length> <- int_to_bv(8, (length(<amf-ue-sequence-id-value>) div 8)); 
+                                                                <_present>; 
+                                                            }
+                                                            | <_present> <Nil> { not <_present>; };
+<IE-RAN-UE-NGAP-ID>                                         ::= <_present> <ran-ue-ngap-sequence-id> <criticality-reject> <criticality-padding> <ran-ue-ngap-sequence-id-length> <ran-ue-ngap-sequence-id-value> 
+//!! Derived field being lifted to SMT constraint -- this should not happen!
+                                                            { 
+                                                                <ran-ue-ngap-sequence-id-length> <- int_to_bv(8, (length(<ran-ue-ngap-sequence-id-value>) div 8));
+                                                                <_present>;
+                                                            }
+                                                            | <_present> <Nil> { not <_present>; };
+<amf-ue-sequence-id-value>                                  ::= <amf-ue-ngap-length> <amf-ue-ngap-padding> <amf-ue-ngap> 
+{
+    int_to_bv(3, 0) bvulte <amf-ue-ngap-length> and <amf-ue-ngap-length> bvulte int_to_bv(3, 4);           
+    <amf-ue-ngap-length>                                    = int_to_bv(3, <amf-ue-ngap>.<_length>);
+};
+<CauseRadioNetwork>                                         ::= <choice-CauseRadioNetwork> <CauseRadioNetwork-value>;
+<CauseRadioNetwork-value>                                   ::= <extension-flag> <CauseRadioNetwork-content>;
+<CauseTransport>                                            ::= <choice-CauseTransport> <CauseTransport-value>;
+<CauseTransport-value>                                      ::= <extension-flag> <CauseTransport-content>;
+<CauseNas>                                                  ::= <choice-CauseNas> <CauseNas-value>;
+<CauseNas-value>                                            ::= <extension-flag> <CauseNas-content>;
+<CauseProtocol>                                             ::= <choice-CauseProtocol> <CauseProtocol-value>;
+<CauseProtocol-value>                                       ::= <extension-flag> <CauseProtocol-content>;
+<CauseMisc>                                                 ::= <choice-CauseMisc> <CauseMisc-value>;
+<CauseMisc-value>                                           ::= <extension-flag> <CauseMisc-content>;
+<ran-ue-ngap-sequence-id-value>                             ::= <ran-ue-ngap-length> <ran-ue-ngap-padding> <ran-ue-ngap>
+{
+    int_to_bv(2, 0) bvulte <ran-ue-ngap-length> and <ran-ue-ngap-length> bvulte int_to_bv(2, 3);
+    <ran-ue-ngap-length>                                    = int_to_bv(2, <ran-ue-ngap>.<_length>);
+};
+<UE-associatedLogicalNG-connectionList-value>               ::= <UE-associatedLogicalNG-connectionList-length> <associatedLogicalNG-connectionList>
+{
+    <associatedLogicalNG-connectionList>.<_length> >= 1 and <associatedLogicalNG-connectionList>.<_length> <= 65536;    
+    <UE-associatedLogicalNG-connectionList-length>          = int_to_bv(16, <associatedLogicalNG-connectionList>.<_length>);
+};
+<choice-associatedng-connection>                            :: BitVec(1)
+{
+    <choice-associatedng-connection>                        = 0b1;
+};
+<UE-associatedLogicalNG-connectionList-length>              :: BitVec(16);
+<reset-type-sequence-id>                                    :: BitVec(16)
+{
+    <reset-type-sequence-id>                                = int_to_bv(16, 88);
+};
+<cause-length>                                              :: BitVec(8);
+<reset-type-length>                                         :: BitVec(8);
+<cause-sequence-id>                                         :: BitVec(16)
+{
+    <cause-sequence-id>                                     = int_to_bv(16, 15);
+};
+<amf-ue-ngap>                                               ::= <_length> <amf-ue-ngap-unit> { <_length> = 0; } 
+                                                            | <_length> <amf-ue-ngap-unit> <amf-ue-ngap> { <amf-ue-ngap-unit> bvugt 0b00000000; <_length> = <amf-ue-ngap>.<_length> + 1; }; 
+
+<amf-ue-ngap-unit>                                          :: BitVec(8);
+<amf-ue-ngap-length>                                        :: BitVec(3);
+<amf-ue-ngap-padding>                                       :: BitVec(5)
+{
+    <amf-ue-ngap-padding>                                   = 0b00000;
+};
+<amf-ue-sequence-id-length>                                 :: BitVec(8);
+<amf-ue-sequence-id>                                        :: BitVec(16)
+{
+    <amf-ue-sequence-id>                                    = int_to_bv(16,10);
+};
+<ran-ue-ngap-sequence-id>                                   :: BitVec(16)
+{
+    <ran-ue-ngap-sequence-id>                               = int_to_bv(16,85);
+};
+<ran-ue-ngap-sequence-id-length>                            :: BitVec(8);
+<ran-ue-ngap-length>                                        :: BitVec(2);
+<ran-ue-ngap-padding>                                       :: BitVec(6)
+{
+    <ran-ue-ngap-padding>                                   = 0b000000;
+};
+<ran-ue-ngap>                                               ::= <_length> <ran-ue-ngap-unit> { <_length> = 0; }
+                                                            | <_length> <ran-ue-ngap-unit> <amf-ue-ngap> { <ran-ue-ngap-unit> bvugt 0b00000000; <_length> = <amf-ue-ngap>.<_length> + 1; }; 
+<ran-ue-ngap-unit>                                          :: BitVec(8);
+<Nil>                                                       :: Unit;
+<choice-reset-all>                                          :: BitVec(1)
+{
+    <choice-reset-all>                                      = 0b0;
+};
+<reset-all-content>                                         :: BitVec(1)
+{
+    <reset-all-content>                                     = 0b0;
+};   
+<choice-CauseTransport>                                     :: BitVec(3)
+{
+    <choice-CauseTransport>                                 = 0b001;
+};
+<CauseTransport-content>                                    :: BitVec(1);
+<choice-CauseNas>                                           :: BitVec(3)
+{
+    <choice-CauseNas>                                       = 0b010;
+};
+<CauseNas-content>                                          :: BitVec(2);
+<choice-CauseMisc>                                          :: BitVec(3)
+{
+    <choice-CauseMisc>                                      = 0b100;
+};
+<choice-CauseProtocol>                                      :: BitVec(3)
+{
+    <choice-CauseProtocol>                                  = 0b011;
+};
+<CauseProtocol-content>                                     :: BitVec(3)
+{
+    int_to_bv(3, 0) bvulte <CauseProtocol-content> and <CauseProtocol-content> bvulte int_to_bv(3, 6);
+};
+<CauseMisc-content>                                         :: BitVec(3)
+{
+    int_to_bv(3, 0) bvulte <CauseMisc-content> and <CauseMisc-content> bvulte int_to_bv(3, 5);
+};
+<CauseRadioNetwork-content>                                 :: BitVec(6)
+{
+    int_to_bv(6, 0) bvulte <CauseRadioNetwork-content> and <CauseRadioNetwork-content> bvulte int_to_bv(6, 49);
+};
+<choice-CauseRadioNetwork>                                  :: BitVec(3)
+{
+    <choice-CauseRadioNetwork>                              = 0b000;
+};
+<sequence-extension-flag>                                   :: Bool;
+<sequence-list-size>                                        :: BitVec(16);
+<preamble>                                                  :: BitVec(1)
+{
+    <preamble>                                              = int_to_bv(1, 0);
+};
+<ng-pdu-length>                                             :: BitVec(16);
+<ng-procedure-code-padding>                                 :: BitVec(5)
+{
+    <ng-procedure-code-padding>                             = int_to_bv(5, 0);
+};
+<extension-flag>                                            :: BitVec(1)
+{
+    <extension-flag>                                        = int_to_bv(1, 0);
+};
+<im-choice-index>                                           :: BitVec(2)
+{
+    <im-choice-index>                                       =  int_to_bv(2,0);
+};
+<ng-procedure-code>                                         :: BitVec(8)
+{
+    <ng-procedure-code>                                     =  int_to_bv(8,20);
+};
+<criticality-reject>                                        :: BitVec(2)
+{
+	<criticality-reject>                                    = int_to_bv(2, 0);
+};
+<criticality-ignore>                                        :: BitVec(2)
+{
+	<criticality-ignore>                                    = int_to_bv(2, 1);
+};
+<criticality-notify>                                        :: BitVec(2)
+{
+	<criticality-notify>                                    = int_to_bv(2,2);
+};         
+<criticality-padding>                                       :: BitVec(6)
+{
+    <criticality-padding>                                   =  int_to_bv(6,0);
+};
+<sequence-list-padding>                                     :: BitVec(7)
+{
+    <sequence-list-padding>                                 =  int_to_bv(7,0);
+};
+<_length>                                                   :: Int;
+<preamble-1>                                                :: Bool;
+<preamble-2>                                                :: Bool;
+<_present>                                                  :: Bool;

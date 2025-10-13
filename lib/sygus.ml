@@ -28,7 +28,10 @@ let rec pp_print_ty: Format.formatter -> A.il_type -> unit
 | String -> Format.fprintf ppf "String"
 | BitVector len -> Format.fprintf ppf "(_ BitVec %d)" len
 | BitList -> Format.fprintf ppf "(Seq Bool)"
-| ADT _ -> Utils.crash "sygus.ml (pp_print_ty)"
+| ADT _ -> 
+  (*Format.printf "%a\n"
+    (Lib.pp_print_list (fun _ppf ss -> Format.printf "%a" (Lib.pp_print_list Format.pp_print_string ", ") ss) "; ") sss;*)
+    Utils.crash "sygus.ml (pp_print_ty)"
 | Set ty -> Format.fprintf ppf "(Set %a)" pp_print_ty ty
 
 let pp_print_constructor: TC.context -> Ast.semantic_constraint Utils.StringMap.t -> Ast.ast ->  Format.formatter -> A.grammar_element -> unit 

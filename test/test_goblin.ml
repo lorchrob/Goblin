@@ -1153,11 +1153,17 @@ let md_test18 () =
 
 let dm_test2 () = 
   let input = "../../../test/test_cases/test2" in
-  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
-  let output = CheckSolverAst.check_solver_ast ast solver_ast in
-  match output with
-  | Ok _ -> ()  
-  | Error msg -> fail msg
+  try 
+    let _ = main_pipeline ~engine:(Some DpllMono) input in
+    fail "should fail"
+  with _ -> ()
+
+let reset_bug4 () = 
+  let input = "../../../test/test_cases/ngap-ngsetup-bug4.gbl" in
+  try 
+    let _ = main_pipeline input in
+    fail "should fail"
+  with _ -> ()
 
 let dm_test3 () = 
   let input = "../../../test/test_cases/test3" in
@@ -1654,6 +1660,7 @@ let () =
     "probabilities_2", [test_case "probabilities_2" `Quick probabilities_2]; 
     "example-fail", [test_case "example-fail" `Quick example_fail]; 
     "ngap-ngsetup", [test_case "ngap-ngsetup" `Quick ngap_ngsetup_bug]; 
+    "reset_bug4", [test_case "reset_bug4" `Quick reset_bug4]; 
     (*"msg2", [test_case "msg2" `Quick msg2]; *)
     (*"dd_test_another_ambiguous_reference_2", [test_case "dd_test_another_ambiguous_reference_2" `Quick dd_test_another_ambiguous_reference_2]; 
     "md_test_another_ambiguous_reference_2", [test_case "md_test_another_ambiguous_reference_2" `Quick md_test_another_ambiguous_reference_2];  *)

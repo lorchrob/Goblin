@@ -402,15 +402,15 @@ let assert_applicable_constraints constraint_set derivation_tree ast solver =
     ConstraintSet.fold (fun expr acc -> 
       if constraint_is_applicable expr derivation_tree ast then (
         (* declare_smt_variables declared_variables (Utils.StringMap.singleton path' A.Int) solver; *)
-        if !Flags.debug then Format.fprintf Format.std_formatter "Constraint %a is applicable in derivation tree %a\n"
+        (*if !Flags.debug then Format.fprintf Format.std_formatter "Constraint %a is applicable in derivation tree %a\n"
           A.pp_print_expr expr 
-          pp_print_derivation_tree derivation_tree;
+          pp_print_derivation_tree derivation_tree;*)
         Smt.assert_smt_constraint solver expr;
         ConstraintSet.add expr acc
       ) else (
-       if !Flags.debug then Format.fprintf Format.std_formatter "Constraint %a is not applicable in derivation tree %a\n"
+       (*if !Flags.debug then Format.fprintf Format.std_formatter "Constraint %a is not applicable in derivation tree %a\n"
           A.pp_print_expr expr 
-          pp_print_derivation_tree derivation_tree;
+          pp_print_derivation_tree derivation_tree;*)
         acc
       )
     )  !constraint_set ConstraintSet.empty 
@@ -562,7 +562,7 @@ let backtrack ctx ast assertion_level decision_stack solver backtrack_depth decl
               constraints_to_assert depth_limit start_symbol derivation_tree curr_st_node
               variable_stack blocking_clause_vars = 
   if !assertion_level = 1 then ( (* restarting *)
-    Format.pp_print_string Format.std_formatter "Restarting...\n%!";
+    (*Format.pp_print_string Format.std_formatter "Restarting...\n%!";*)
     Smt.issue_solver_command "(pop 1)" solver; 
     Smt.issue_solver_command "(push 1)" solver;
     (if not !backtrack_depth then raise (Failure "infeasible"));
@@ -944,7 +944,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.solver_ast
 
      if !num_iterations = restart_rate then (
         num_iterations := 0;
-        Format.fprintf Format.std_formatter "Restarting\n";
+        (*Format.fprintf Format.std_formatter "Restarting\n";*)
         let pop_cmd = Format.asprintf "(pop %d)" !assertion_level in 
         Smt.issue_solver_command pop_cmd solver; 
         Smt.issue_solver_command "(push 1)" solver;

@@ -113,10 +113,10 @@ let lift: A.ast -> A.element -> A.ast
          TODO: This step may be overly conservative. *)
       let scs = List.map (fun sc -> match sc with 
       | A.SmtConstraint _ -> sc 
-      | A.DerivedField (nt, expr, p) -> 
-        Utils.debug_print Format.pp_print_string Format.std_formatter "Lifting dependency to SMT constraint\n";
-        let expr = A.CompOp (NTExpr ([], [nt, None], p), Eq, expr, p) in 
-        A.SmtConstraint (expr, p)
+      | A.DerivedField (nt', _, _) -> 
+        let msg = Format.asprintf "Derived field %s defined is within the prod rule for nonterminal %s. However, nonterminal %s is itself SMT-constrained. Goblin does not currently support this overlap. To fix, model derived field %s with a (non-derived) equality constraint."
+          nt' nt nt nt' in
+        Utils.error msg p
       ) scs in
       ast @ [A.TypeAnnotation (nt, ty, scs, p)]
     else ast @ [element]
@@ -127,10 +127,10 @@ let lift: A.ast -> A.element -> A.ast
       | A.Rhs (ges, scs, prob, p) -> 
         let scs = List.map (fun sc -> match sc with 
         | A.SmtConstraint _ -> sc 
-        | A.DerivedField (nt, expr, _) -> 
-          Utils.debug_print Format.pp_print_string Format.std_formatter "Lifting dependency to SMT constraint\n";
-          let expr = A.CompOp (NTExpr ([], [nt, None], p), Eq, expr, p) in 
-          A.SmtConstraint (expr, p)
+        | A.DerivedField (nt', _, _) -> 
+        let msg = Format.asprintf "Derived field %s defined is within the prod rule for nonterminal %s. However, nonterminal %s is itself SMT-constrained. Goblin does not currently support this overlap. To fix, model derived field %s with a (non-derived) equality constraint."
+          nt' nt nt nt' in
+        Utils.error msg p
         ) scs in
         A.Rhs (ges, scs, prob, p)
       ) rhss in
