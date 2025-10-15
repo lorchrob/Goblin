@@ -913,6 +913,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.solver_ast
     Format.printf "Assertion level: %d\n" !assertion_level; *)
     Format.pp_print_flush Format.std_formatter () ;
     num_iterations := !num_iterations + 1;
+    (*Format.printf "num_iterations: %d\n%!" !num_iterations;*)
 
     (*if !num_iterations mod 100 = 0 then 
       Format.fprintf Format.std_formatter "num_iterations: %d\n" !num_iterations; *)
