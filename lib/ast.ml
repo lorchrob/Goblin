@@ -657,3 +657,8 @@ let rec nts_of_ast ast = match ast with
   let nts = Utils.StringSet.singleton nt in 
   Utils.StringSet.union nts (nts_of_ast tl)
 
+let find_element ast nt = 
+  List.find (fun element -> match element with 
+  | TypeAnnotation (nt', _, _, _) 
+  | ProdRule (nt', _, _) -> String.equal nt nt'
+  ) ast 

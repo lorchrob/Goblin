@@ -1,0 +1,4 @@
+//!! Should error!!
+<S> ::= <A> <B> { <A> <- <B>.<C>; };
+<B> ::= <C> <C>; 
+<A> :: Int; <C> :: Int;

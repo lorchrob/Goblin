@@ -7,6 +7,7 @@ let error e = Error e
 let bind r f = match r with Ok v -> f v | Error _ as e -> e
 
 let (>>=) = fun r f -> bind r f 
+let (let*) = fun r f -> bind r f
 
 let (>>) = fun r1 r2 -> bind r1 (fun _ -> r2)
 

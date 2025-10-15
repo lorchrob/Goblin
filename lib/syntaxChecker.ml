@@ -18,6 +18,7 @@
 *)
 
 open Ast
+open Res 
 
 module StringSet = Set.Make(
   struct type t = string 
@@ -200,17 +201,71 @@ let check_for_nonterminals expr p =
     Utils.error msg p 
   | _ -> expr
 
-let check_syntax_prod_rule: prod_rule_map -> Utils.StringSet.t -> prod_rule_rhs -> prod_rule_rhs
-= fun prm nt_set rhs -> match rhs with 
+let rec check_for_ambiguous_derived_fields ast expr rhs = 
+  let r = check_for_ambiguous_derived_fields ast in 
+  match expr with 
+  | NTExpr (_, (nt, _) :: nts, p) -> 
+    let rhs_nts = Ast.nts_of_rhs rhs in 
+    let matching_rhs_nts = List.filter (fun nt' -> String.equal nt nt') rhs_nts in 
+    if List.length matching_rhs_nts > 1 then 
+      Error () 
+    else (
+      let element = Ast.find_element ast nt in 
+      match element with 
+      | Ast.TypeAnnotation _ -> Ok ()
+      | Ast.ProdRule (_, rhss, _) -> 
+        Res.seq_ (List.map (r (NTExpr ([], nts, p))) rhss)
+    )
+  | NTExpr (_, [], _) -> Ok ()
+  | Match _ -> assert false 
+  | BinOp (expr1, _, expr2, _) -> 
+    let* _ = r expr1 rhs in 
+    r expr2 rhs
+  | UnOp (_, expr, _) -> 
+    r expr rhs
+  | StrInRe (expr1, expr2, _) 
+  | ReRange (expr1, expr2, _)
+  | CompOp (expr1, _, expr2, _) -> 
+    let* _ = r expr1 rhs in 
+    r expr2 rhs
+  | StrLength (expr, _)
+  | SeqLength (expr, _)
+  | StrToRe (expr, _) 
+  | ReStar (expr, _) 
+  | Length (expr, _)  
+  | BVCast (_, expr, _) 
+  | UbvToInt (expr, _) 
+  | SbvToInt (expr, _) 
+  | Singleton (expr, _) -> r expr rhs
+  | ReConcat (exprs, _) 
+  | ReUnion (exprs, _) ->
+    Res.seq_ (List.map (fun e -> r e rhs) exprs)
+  | BVConst _ 
+  | BLConst _ 
+  | BConst _ 
+  | PhConst _
+  | IntConst _ 
+  | StrConst _
+  | EmptySet _  -> Ok ()
+
+let check_syntax_prod_rule: ast -> prod_rule_map -> Utils.StringSet.t -> prod_rule_rhs -> prod_rule_rhs
+= fun ast prm nt_set rhs -> match rhs with 
 | Rhs (ges, scs, prob, p) ->
   let ges' = List.map Ast.grammar_element_to_string ges in
   let scs = List.map (fun sc -> match sc with 
-  | DerivedField (nt2, expr, p) -> 
-    if (not (Utils.StringSet.mem nt2 nt_set)) then Utils.error ("Dangling identifier <" ^ nt2 ^ ">") p else
-    if (not (List.mem nt2 ges')) then Utils.error ("DerivedField LHS identifier " ^ nt2 ^ " is not present on the RHS of the corresponding production rule") p else
-    let expr = check_dangling_identifiers nt_set p expr in 
-    let expr = check_prod_rule_nt_exprs prm (Utils.StringSet.of_list ges') expr in
-    DerivedField (nt2, expr, p)
+  | DerivedField (nt2, expr, p) -> (
+    match check_for_ambiguous_derived_fields ast expr rhs with 
+    | Error () -> 
+      let msg = Format.asprintf "Derived field %s is defined ambiguously. More concretely, the definition of %s contains some nonterminal expression <nt_1>.<nt_2>...<nt_n> where some <nt_i> has multiple occurrences in its production rule (and hence the nonterminal expression could evaluate to more than one term, depending on which occurrence you pick)." 
+      nt2 nt2 in 
+      Utils.error msg p
+    | Ok () -> 
+      if (not (Utils.StringSet.mem nt2 nt_set)) then Utils.error ("Dangling identifier <" ^ nt2 ^ ">") p else
+      if (not (List.mem nt2 ges')) then Utils.error ("DerivedField LHS identifier " ^ nt2 ^ " is not present on the RHS of the corresponding production rule") p else
+      let expr = check_dangling_identifiers nt_set p expr in 
+      let expr = check_prod_rule_nt_exprs prm (Utils.StringSet.of_list ges') expr in
+      DerivedField (nt2, expr, p)
+    )
   | SmtConstraint (expr, p) -> 
     let expr = check_for_nonterminals expr p in
     let expr = check_dangling_identifiers nt_set p expr in 
@@ -450,7 +505,7 @@ let check_syntax: prod_rule_map -> Utils.StringSet.t -> ast -> ast
   let ast = check_vacuity ast in
   let ast = List.map (fun element -> match element with 
   | ProdRule (nt, rhss, p) -> 
-    let rhss = List.map (check_syntax_prod_rule prm nt_set) rhss in
+    let rhss = List.map (check_syntax_prod_rule ast prm nt_set) rhss in
     let rhss = check_probabilities nt rhss p in 
     ProdRule (nt, rhss, p)
   | TypeAnnotation (nt, ty, scs, p) -> 

@@ -114,8 +114,6 @@ let crash message =
   raise (Failure ((Format.asprintf 
     "Internal error (%s): %s" (Option.get !Flags.filename) message)))
 
-exception User_error of string
-
 let error message (pos : Lexing.position) =
   let line = pos.Lexing.pos_lnum in
   let col  = pos.Lexing.pos_cnum - pos.Lexing.pos_bol in
@@ -126,10 +124,10 @@ let error message (pos : Lexing.position) =
     line 
     col 
     message in
-  raise (User_error msg)
+  raise (Failure msg)
 
 let error_no_pos message =
-  raise (User_error (Format.asprintf "Error (%s): %s" (Option.get !Flags.filename) message))
+  raise (Failure (Format.asprintf "Error (%s): %s" (Option.get !Flags.filename) message))
 
 let find_command_in_path cmd =
   match Sys.getenv_opt "PATH" with

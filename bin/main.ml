@@ -36,6 +36,6 @@ let () =
         let _ = Pipeline.main_pipeline filename in
         ()
      with
-  | exn -> 
-      Format.eprintf "(%s) %s@." (Option.get !Flags.filename) (Printexc.to_string exn);
+  | Failure s -> 
+      Format.eprintf "%s@." s; 
       exit 1

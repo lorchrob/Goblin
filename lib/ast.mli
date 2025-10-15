@@ -130,3 +130,4 @@ val prepend_nt_to_dot_exprs: string -> expr -> expr
 val get_nts_from_expr2: expr -> (string * int option) list list
 val scs_of_element: element -> semantic_constraint list
 val nts_of_ast: ast -> Utils.StringSet.t 
+val find_element: ast -> string -> element

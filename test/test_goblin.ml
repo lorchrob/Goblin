@@ -365,6 +365,13 @@ let bug5 () =
   | Ok _ -> ()  
   | Error msg -> fail msg
 
+let bug6 () =
+  let input = "../../../test/test_cases/bug6.gbl" in
+  try 
+    let _ = main_pipeline input in
+    fail "should fail"
+  with _ -> ()
+
 let dm_test_another_ambiguous_reference () =
   let input = "../../../test/test_cases/test_another_ambiguous_reference" in
   let solver_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
@@ -1655,6 +1662,7 @@ let () =
     "bug3", [test_case "bug3" `Quick bug3]; 
     "bug4", [test_case "bug4" `Quick bug4]; 
     "bug5", [test_case "bug5" `Quick bug5]; 
+    "bug6", [test_case "bug6" `Quick bug6]; 
     "bug2", [test_case "bug2" `Quick bug2]; 
     "probabilities", [test_case "probabilities" `Quick probabilities]; 
     "probabilities_2", [test_case "probabilities_2" `Quick probabilities_2]; 
