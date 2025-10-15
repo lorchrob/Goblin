@@ -399,6 +399,7 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.solver_ast 
   )
 | Length (expr, p) -> (
   let exprs = call expr in 
+  let r = 
   List.fold_left (fun acc expr ->
     match acc, expr with 
     | [(A.IntConst (i, _))], A.BLConst (bits, _) -> [IntConst (i + (List.length bits), p)]
@@ -414,10 +415,15 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.solver_ast 
       else if str = "<CONFIRM_HASH>" then [IntConst (32*8, p)] 
       else if str = "<SEND_CONFIRM_COUNTER>" then [IntConst (2*8, p)] 
       else (
-        [IntConst (String.length str, p)]
+        [IntConst (i + String.length str, p)]
       )
     | _ -> Format.printf "Unexpected expr: %a\n" A.pp_print_expr expr; eval_fail 26
-    ) [(A.IntConst (0, p))] exprs
+    ) [(A.IntConst (0, p))] exprs in 
+    (*Format.printf "Computed length of %a, got sub-expressions %a, and total value of %a\n"
+      A.pp_print_expr expr 
+      (Lib.pp_print_list A.pp_print_expr "; ") exprs 
+      (Lib.pp_print_list A.pp_print_expr "; ") r;*)
+    r 
   )
 | BVCast (len, expr, p) -> (
   match call expr with 
@@ -448,8 +454,8 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.solver_ast 
 and compute_deps: A.semantic_constraint Utils.StringMap.t -> A.ast -> SA.solver_ast -> SA.solver_ast 
 = fun dep_map ast solver_ast -> 
   if !Flags.debug then 
-    Format.printf "compute_deps with ast %a, solver_ast %a\n"
-      A.pp_print_ast ast 
+    Format.printf "compute_deps with solver_ast %a\n"
+      (*A.pp_print_ast ast *)
       SA.pp_print_solver_ast solver_ast;
   match solver_ast with
 | VarLeaf _ -> eval_fail 28
