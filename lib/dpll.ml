@@ -263,12 +263,11 @@ match dt with
 | Node ((nt, idx), path, []) -> 
   let forced_expansion = List.find_map (fun element -> match element with 
   | A.ProdRule (nt2, [Rhs (ges, scs, _, _)], _) -> 
-    let path' = (string_of_path (Utils.init path) |> String.lowercase_ascii) in
     if Utils.str_eq_ci nt nt2 then 
-      let constraints_to_add = List.concat_map (fun sc -> match sc with 
-      | A.SmtConstraint (e, _) -> [universalize_expr false path e] 
+      let constraints_to_add, _exprs = List.concat_map (fun sc -> match sc with 
+      | A.SmtConstraint (e, _) -> [universalize_expr false path e, e] 
       | DerivedField _ -> [] 
-      ) scs in
+      ) scs |> List.split in
       let expr_variables = List.map A.get_nts_from_expr2 constraints_to_add |> List.flatten in
       let ty_ctx = List.fold_left (fun acc nt -> 
         let ty = Utils.StringMap.find_opt (List.rev nt |> List.hd |> fst) ctx in 
@@ -277,9 +276,6 @@ match dt with
         | None -> Utils.crash ("couldn't find " ^ (List.rev nt |> List.hd |> fst))
         in
         let str = Format.asprintf "%a" (Lib.pp_print_list Sygus.pp_print_nt_helper "_") nt in
-        let str = 
-          if path' = "" then str else path' ^ "_" ^ str 
-        in 
         Utils.StringMap.add str ty acc
       ) Utils.StringMap.empty expr_variables in
       declare_smt_variables variable_stack declared_variables ty_ctx solver blocking_clause_vars assertion_level ;
@@ -299,10 +295,11 @@ match dt with
     let path' = string_of_path path |> String.lowercase_ascii in
     if Utils.str_eq_ci nt nt2 then 
       let constraints_to_add = List.concat_map (fun sc -> match sc with 
-      | A.SmtConstraint (e, _) -> [universalize_expr true path e] 
+      | A.SmtConstraint (e, _) -> 
+      declare_smt_variables variable_stack declared_variables (Utils.StringMap.singleton path' ty) solver blocking_clause_vars assertion_level;
+        [universalize_expr true path e] 
       | DerivedField _ -> [] 
       ) scs |> ConstraintSet.of_list in
-      declare_smt_variables variable_stack declared_variables (Utils.StringMap.singleton path' ty) solver blocking_clause_vars assertion_level;
       constraints_to_assert := ConstraintSet.union !constraints_to_assert constraints_to_add;
       Some [SymbolicLeaf (ty, path @ [(nt, idx)])]
     else None 
