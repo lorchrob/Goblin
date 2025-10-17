@@ -230,22 +230,31 @@ let int_to_bytes_min endianness (n:int) : bytes =
 
 let serialize_bytes_packed: SA.solver_ast -> bytes 
 = fun solver_ast -> 
-  let rec bits_of_sa solver_ast = match solver_ast with 
-  | SA.BLLeaf bits -> bits
-  | BVLeaf (_, bits) -> bits
-  | BoolLeaf bit -> [bit]
+  let rec bits_of_sa bit_count solver_ast = match solver_ast with 
+  | SA.BLLeaf bits -> (bit_count + List.length bits), bits
+  | BVLeaf (_, bits) -> (bit_count + List.length bits), bits
+  | BoolLeaf bit -> bit_count + 1, [bit]
+  | StrLeaf str | VarLeaf str when str = "trailing-bits" -> 
+    let num_bits_to_pad = (8 - (bit_count mod 8) mod 8) in 
+    let bits = Utils.replicate false num_bits_to_pad in 
+    (bit_count + List.length bits), bits
   | StrLeaf str | VarLeaf str -> 
     let bytes = Bytes.of_string str in 
-    bytes_to_bools_be bytes 
+    let bits = bytes_to_bools_be bytes in 
+    (bit_count + List.length bits), bits
   | IntLeaf i -> 
     let bytes = int_to_bytes_min Big i in 
-    bytes_to_bools_be bytes 
+    let bits = bytes_to_bools_be bytes in 
+    (bit_count + List.length bits), bits
   | Node (_, children) -> 
-    List.concat_map bits_of_sa children
+    List.fold_left (fun (acc_bit_count, acc_bits) child -> 
+      let acc_bit_count', bits' = bits_of_sa acc_bit_count child in 
+      acc_bit_count', acc_bits @ bits' 
+    ) (bit_count, []) children 
   | sa ->  
     let msg = Format.asprintf "Error in serialize_bytes_packed: encountered unexpected solver AST %a" 
       SolverAst.pp_print_solver_ast sa in 
     Utils.crash msg
   in 
-  let bits = SA.BLLeaf (bits_of_sa solver_ast) in 
+  let bits = SA.BLLeaf (bits_of_sa 0 solver_ast |> snd) in 
   serialize_bytes Little [] bits |> fst
