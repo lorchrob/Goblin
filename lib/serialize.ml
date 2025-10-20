@@ -234,7 +234,7 @@ let serialize_bytes_packed: SA.solver_ast -> bytes
   | SA.BLLeaf bits -> (bit_count + List.length bits), bits
   | BVLeaf (_, bits) -> (bit_count + List.length bits), bits
   | BoolLeaf bit -> bit_count + 1, [bit]
-  | StrLeaf str | VarLeaf str when String.equal str "TRAILING-BITS" -> 
+  | StrLeaf str | VarLeaf str when Utils.str_eq_ci str "trailing-bits" -> 
     let num_bits_to_pad = (8 - (bit_count mod 8) mod 8) in 
     let bits = Utils.replicate false num_bits_to_pad in 
     (bit_count + List.length bits), bits
