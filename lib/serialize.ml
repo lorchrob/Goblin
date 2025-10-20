@@ -248,11 +248,16 @@ let serialize_bytes_packed: SA.solver_ast -> bytes
     let bytes = int_to_bytes_min Big i in 
     let bits = bytes_to_bools_be bytes in 
     (bit_count + List.length bits), bits
-  | Node (_, children) -> 
-    List.fold_left (fun (acc_bit_count, acc_bits) child -> 
+  | Node ((id, _), children) -> 
+    if id.[0] = '_' then bit_count, [] else
+    let r = List.fold_left (fun (acc_bit_count, acc_bits) child -> 
       let acc_bit_count', bits' = bits_of_sa acc_bit_count child in 
       acc_bit_count', acc_bits @ bits' 
-    ) (bit_count, []) children 
+    ) (bit_count, []) children in
+    (*Format.printf "c: %s, bits: %a\n" 
+      id 
+      (Lib.pp_print_list Format.pp_print_bool ", ") (snd r);*)
+    r
   | sa ->  
     let msg = Format.asprintf "Error in serialize_bytes_packed: encountered unexpected solver AST %a" 
       SolverAst.pp_print_solver_ast sa in 
