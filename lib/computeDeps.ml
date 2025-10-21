@@ -415,7 +415,7 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.solver_ast 
       else if str = "<CONFIRM_HASH>" then [IntConst (32*8, p)] 
       else if str = "<SEND_CONFIRM_COUNTER>" then [IntConst (2*8, p)] 
       else (
-        [IntConst (i + String.length str, p)]
+        [IntConst (i + (String.length str * 8), p)]
       )
     | _ -> Format.printf "Unexpected expr: %a\n" A.pp_print_expr expr; eval_fail 26
     ) [(A.IntConst (0, p))] exprs in 
