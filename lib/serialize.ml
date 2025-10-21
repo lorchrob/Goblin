@@ -254,9 +254,11 @@ let serialize_bytes_packed: SA.solver_ast -> bytes
       let acc_bit_count', bits' = bits_of_sa acc_bit_count child in 
       acc_bit_count', acc_bits @ bits' 
     ) (bit_count, []) children in
-    (*Format.printf "c: %s, bits: %a\n" 
-      id 
-      (Lib.pp_print_list Format.pp_print_bool ", ") (snd r);*)
+    if !Flags.debug then (
+      Format.printf "Serializing %s to %a\n" 
+        id 
+        (Lib.pp_print_list Format.pp_print_bool ", ") (snd r)
+    );
     r
   | sa ->  
     let msg = Format.asprintf "Error in serialize_bytes_packed: encountered unexpected solver AST %a" 
