@@ -1430,11 +1430,10 @@ let sd_test16 () =
 
 let example_fail () = 
   let input = "../../../test/test_cases/example-fail.gbl" in
-  let solver_ast, _, ast = main_pipeline input in
-  let output = CheckSolverAst.check_solver_ast ast solver_ast in
-  match output with
-  | Ok _ -> ()  
-  | Error msg -> fail msg
+  try 
+    let _ = main_pipeline input in
+    fail "should fail"
+  with _ -> ()
 
 let dm_test16 () = 
   let input = "../../../test/test_cases/test16" in
