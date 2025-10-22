@@ -238,26 +238,10 @@ let rec infer_type_expr: context -> mode -> expr -> il_type option
       let error_message = "Type checking error: case expression " ^ expr_str ^ " has cases of differing types" in
       Utils.error error_message
     else List.hd inf_tys *)
-| Length (expr, p) -> (
+| Length (_expr, p) -> (
   if mode = SyGuS then 
     Utils.error "The length(.) function cannot be used in a (non-derived) SMT constraint" p 
-  else
-  let inf_ty = infer_type_expr ctx mode expr in
-  match inf_ty with 
-  | Some BitList 
-  | Some BitVector _ -> Some Int
-  | Some (ADT _ as inf_ty) -> 
-    let expr_str = Utils.capture_output Ast.pp_print_expr expr in 
-    let inf_ty_str = Utils.capture_output Ast.pp_print_ty inf_ty in
-    let error_message = "Type checking error: Input to length function " ^ expr_str ^ " has type " ^ inf_ty_str ^ " but must have type Int or BitVector" in 
-    type_checker_error mode error_message p;
-    Some Int
-  | Some inf_ty -> 
-    let expr_str = Utils.capture_output Ast.pp_print_expr expr in 
-    let inf_ty_str = Utils.capture_output Ast.pp_print_ty inf_ty in
-    let error_message = "Type checking error: Input to length function " ^ expr_str ^ " has type " ^ inf_ty_str ^ " but must have type Int or BitVector" in 
-    Utils.error error_message p
-  | None -> None
+  else Some Int
   )
 | BVCast (len, expr, p)  -> 
   let _ = check_type_expr ctx mode Int expr p in 

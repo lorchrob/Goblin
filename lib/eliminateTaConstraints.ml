@@ -1,13 +1,14 @@
 module A = Ast
 
 let eliminate_ta_constraints full_ast = 
-  let rec helper ast_prefix ast = match ast with 
-  | [] -> ast_prefix 
-  | (A.ProdRule _ as hd) :: tl -> 
-    helper (ast_prefix @ [hd]) tl   
-  | A.TypeAnnotation (nt, ty, scs, pos) :: tl -> 
-    let ast_prefix = List.map (function 
-    | A.TypeAnnotation _ as element -> element  
+  let rec helper full_ast ast = match ast with 
+  | [] -> full_ast 
+  | (A.ProdRule _) :: tl -> 
+    helper full_ast tl   
+  | A.TypeAnnotation (nt, _, scs, _) :: tl -> 
+    let full_ast = List.map (function 
+    | A.TypeAnnotation (nt2, ty, _, p) as element ->
+      if nt = nt2 then A.TypeAnnotation (nt2, ty, [], p) else element
     | A.ProdRule (nt3, rhss, pos2) -> 
       let rhss = List.map (function 
         | A.StubbedRhs _ as rhs -> rhs 
@@ -21,7 +22,7 @@ let eliminate_ta_constraints full_ast =
           else Rhs (ges, scs2, prob, pos3)
       ) rhss in 
       ProdRule (nt3, rhss, pos2) 
-    ) ast_prefix in 
-    helper (ast_prefix @ [TypeAnnotation (nt, ty, [], pos)]) tl 
+    ) full_ast in 
+    helper full_ast tl 
   in 
-  helper [] full_ast 
+  helper full_ast full_ast 
