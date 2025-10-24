@@ -97,7 +97,10 @@ and isPresentInExpr (nt:string) (e:expr) : bool =
     | BinOp (e1, _, e2, _) -> (isPresentInExpr nt e1) || (isPresentInExpr nt e2)
     | UnOp (_, e, _) -> (isPresentInExpr nt e)
     | CompOp (e1, _, e2, _) -> (isPresentInExpr nt e1) || (isPresentInExpr nt e2)
-    | Length (e, _) -> (isPresentInExpr nt e)
+    | BuiltInFunc (_, es, _) -> 
+      List.fold_left (fun acc e -> 
+        acc || isPresentInExpr nt e
+      ) false es
     | BVCast (_, e, _) -> (isPresentInExpr nt e)
     | NTExpr (_, n, _) -> (List.mem nt (List.map fst n))
     | Match (_, (nt2, _), caselist, _) -> (nt = nt2) || isPresentInCaseList nt caselist

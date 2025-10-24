@@ -54,6 +54,7 @@ let expr_to_solver_ast: A.expr -> SA.solver_ast
   | BVConst (len, bits, _) -> BVLeaf (len, bits)
   | BLConst (bits, _) -> BLLeaf bits
   | StrConst (s, _) -> StrLeaf s
+  | BConst (b, _) -> BoolLeaf b
 | _ -> A.pp_print_expr Format.std_formatter expr; eval_fail 1
 
 let rec solver_ast_to_expr: bool -> SA.solver_ast -> A.expr list
@@ -203,8 +204,8 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> bool -> SA.sol
   | [BVConst (len, b, p)] -> [BVConst (len, List.map not b, p)]
   | _ -> eval_fail 9
   )
-| SeqLength (expr, _) 
-| StrLength (expr, _) -> (
+| BuiltInFunc (SeqLength, [expr], _) 
+| BuiltInFunc (StrLength, [expr], _) -> (
   match call expr with 
   | [StrConst (str, p)] -> [IntConst (String.length str, p)]
   | _ -> eval_fail 10 
@@ -401,7 +402,7 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> bool -> SA.sol
     [BConst (contains str1 str2, p)] 
   | _ -> eval_fail 12
   )
-| Length (expr, p) -> (
+| BuiltInFunc (Length, [expr], p) -> (
   let exprs = evaluate ~dep_map true solver_ast ast element expr in
   let r = 
   List.fold_left (fun acc expr ->
@@ -434,25 +435,32 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> bool -> SA.sol
   | [IntConst (i, _)] -> [A.il_int_to_bv len i p]
   | _ -> eval_fail 27
  )
-| UbvToInt (expr, p) -> (
+| BuiltInFunc (UbvToInt, [expr], p) -> (
   match call expr with 
   | [BVConst (_, i, _) ] -> [bool_list_to_il_int false i p]
   | _ -> eval_fail 27
 ) 
-| SbvToInt (expr, p) -> (
+| BuiltInFunc (SbvToInt, [expr], p) -> (
   match call expr with 
   | [BVConst (_, i, _)] -> [bool_list_to_il_int true i p]
   | _ -> eval_fail 27
 )
+| BuiltInFunc (Repeat, [expr1; expr2], p) -> (
+  match call expr1, call expr2 with 
+  | [IntConst (i, _)], [BConst (b, _)] -> 
+    Format.printf "Evaluated repeat(%a, %a) to %a\n" 
+      A.pp_print_expr expr1 
+      A.pp_print_expr expr2 
+      (Lib.pp_print_list Format.pp_print_bool "; ") (Utils.replicate b i);
+      [A.BLConst (Utils.replicate b i, p)]
+  | _ -> eval_fail 27
+)
 | BVConst _ | BLConst _ | IntConst _ | BConst _ | PhConst _ | StrConst _ | EmptySet _ -> [expr]
 | Match (_, _, _, p) -> Utils.error "Match not yet supported in derived fields" p
-| BinOp (_, SetMembership, _, p) 
-| BinOp (_, SetUnion, _, p) 
-| BinOp (_, SetIntersection, _, p) 
-| Singleton (_, p) ->
-  Utils.error "Set operations not yet supported in derived fields" p
-| ReRange (_, _, p) | ReUnion (_, p) | ReStar (_, p) | ReConcat (_, p) | StrToRe (_, p) | StrInRe (_, _, p) -> 
-  Utils.error "Regex operations not yet supported in derived fields" p
+| e -> 
+  let msg = Format.asprintf "Expression %a not yet supported in the evaluator (try making this non-derived)" 
+    A.pp_print_expr e in 
+  Utils.error msg (A.pos_of_expr e) 
 
 
 and compute_deps: A.semantic_constraint Utils.StringMap.t -> A.ast -> SA.solver_ast -> SA.solver_ast 

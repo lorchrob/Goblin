@@ -222,22 +222,12 @@ let rec universalize_expr: bool -> (string * int option) list -> Ast.expr -> Ast
     let prefix = if is_type_annotation then Utils.init prefix else prefix in
     A.NTExpr (nts1, prefix @ nts2, p)
   | BVCast (len, expr, p) -> BVCast (len, r expr, p)
-  | UbvToInt (expr, p) -> UbvToInt (r expr, p)
-  | SbvToInt (expr, p) -> SbvToInt (r expr, p)
   | BinOp (expr1, op, expr2, p) -> BinOp (r expr1, op, r expr2, p) 
   | UnOp (op, expr, p) -> UnOp (op, r expr, p) 
   | CompOp (expr1, op, expr2, p) -> CompOp (r expr1, op, r expr2, p) 
-  | StrLength (expr, p) -> StrLength (r expr, p)
-  | SeqLength (expr, p) -> SeqLength (r expr, p)
-  | Length (expr, p) -> Length (r expr, p) 
   | Singleton (expr, p) -> Singleton (r expr, p)
   | Match _ -> Utils.crash "Unexpected case in universalize_expr"
-  | ReStar (expr, p) -> ReStar (r expr, p)
-  | StrToRe (expr, p) -> StrToRe (r expr, p) 
-  | StrInRe (expr1, expr2, p) -> StrInRe (r expr1, r expr2, p) 
-  | ReConcat (exprs, p) -> ReConcat (List.map r exprs, p)
-  | ReUnion (exprs, p) -> ReUnion (List.map r exprs, p) 
-  | ReRange (expr1, expr2, p) -> ReRange (r expr1, r expr2, p)
+  | BuiltInFunc (func, exprs, p) -> BuiltInFunc (func, List.map r exprs, p) 
   | BVConst _ 
   | BLConst _ 
   | BConst _ 

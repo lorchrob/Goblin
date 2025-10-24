@@ -56,6 +56,20 @@ type il_type =
 | ADT of string list list
 | Set of il_type
 
+type builtin_func = 
+| Repeat
+| ReUnion
+| ReRange
+| StrInRe 
+| StrToRe 
+| ReStar 
+| ReConcat 
+| Length 
+| StrLength 
+| SeqLength 
+| UbvToInt 
+| SbvToInt 
+
 type case = 
 (* A case is a list of <context, nonterminal> pairs (denoting a pattern) and the corresponding expression *)
 (* The int option eases dealing with horizontal ambiguous references *)
@@ -68,12 +82,7 @@ expr =
 | BinOp of expr * bin_operator * expr * Lexing.position
 | UnOp of unary_operator * expr * Lexing.position
 | CompOp of expr * comp_operator * expr * Lexing.position
-| Length of expr * Lexing.position
-| StrLength of expr * Lexing.position
-| SeqLength of expr * Lexing.position
 | BVCast of int * expr * Lexing.position
-| UbvToInt of expr * Lexing.position
-| SbvToInt of expr * Lexing.position
 (* First string list track the context of the nonterminal being matched 
    Int options are for clarifying ambiguous dot notation references, as in NTExpr *)
 | Match of (string * int option) list * (string * int option) * case list * Lexing.position
@@ -97,12 +106,7 @@ expr =
 | IntConst of int * Lexing.position
 | PhConst of string * Lexing.position
 | StrConst of string * Lexing.position
-| ReUnion of expr list * Lexing.position
-| ReRange of expr * expr * Lexing.position
-| StrInRe of expr * expr * Lexing.position
-| StrToRe of expr * Lexing.position
-| ReStar of expr * Lexing.position
-| ReConcat of expr list * Lexing.position
+| BuiltInFunc of builtin_func * expr list * Lexing.position
 
 type semantic_constraint = 
 | DerivedField of string * expr * Lexing.position (* <nonterminal> <- <expression> *)
@@ -137,25 +141,14 @@ let rec get_nts_from_expr: expr -> string list
     ) cases |> List.flatten)
   | BinOp (expr1, _, expr2, _) -> 
     r expr1 @ r expr2
+  | BVCast (_, expr, _) 
   | UnOp (_, expr, _) -> 
     r expr
-  | StrInRe (expr1, expr2, _) 
-  | ReRange (expr1, expr2, _)
   | CompOp (expr1, _, expr2, _) -> 
     r expr1 @ r expr2
-  | StrLength (expr, _)
-  | SeqLength (expr, _)
-  | StrToRe (expr, _) 
-  | ReStar (expr, _) 
-  | Length (expr, _) -> 
-    r expr
   | Singleton (expr, _) -> r expr
-  | ReConcat (exprs, _) 
-  | ReUnion (exprs, _) -> 
+  | BuiltInFunc (_, exprs, _) -> 
     List.concat_map r exprs
-  | BVCast (_, expr, _) 
-  | UbvToInt (expr, _) 
-  | SbvToInt (expr, _) -> r expr
   | BVConst _ 
   | BLConst _ 
   | BConst _ 
@@ -175,23 +168,12 @@ let rec get_nts_from_expr2: expr -> (string * int option) list list
     r expr1 @ r expr2
   | UnOp (_, expr, _) -> 
     r expr
-  | ReRange (expr1, expr2, _) 
-  | StrInRe (expr1, expr2, _)
   | CompOp (expr1, _, expr2, _) -> 
     r expr1 @ r expr2
-  | StrLength (expr, _)
-  | SeqLength (expr, _)
-  | StrToRe (expr, _)
-  | Length (expr, _) -> 
-    r expr
-  | ReStar (expr, _) 
   | Singleton (expr, _) -> r expr
-  | ReConcat (exprs, _) 
-  | ReUnion (exprs, _) -> 
+  | BuiltInFunc (_, exprs, _) -> 
     List.concat_map r exprs
-  | UbvToInt (expr, _) 
-  | BVCast (_, expr, _)  
-  | SbvToInt (expr, _) -> 
+  | BVCast (_, expr, _) ->
     r expr
   | BVConst _ 
   | BLConst _ 
@@ -214,27 +196,16 @@ let rec get_nts_from_expr_after_desugaring_dot_notation: expr -> (string * int o
     | Case (pattern, expr) -> 
       List.map (fun (nt_ctx, (nt, idx)) -> nt_ctx @ [nt, idx]) pattern @ r expr
     ) cases |> List.flatten)
-  | ReRange (expr1, expr2, _) 
-  | StrInRe (expr1, expr2, _)
   | BinOp (expr1, _, expr2, _) -> 
     r expr1 @ r expr2
-  | ReStar (expr, _) 
   | UnOp (_, expr, _) -> 
     r expr
   | CompOp (expr1, _, expr2, _) -> 
     r expr1 @ r expr2
-  | StrLength (expr, _)
-  | SeqLength (expr, _)
-  | StrToRe (expr, _) 
-  | Length (expr, _) -> 
-    r expr
   | Singleton (expr, _) -> r expr
-  | ReConcat (exprs, _) 
-  | ReUnion (exprs, _) -> 
+  | BuiltInFunc (_, exprs, _) -> 
     List.concat_map r exprs 
-  | BVCast (_, expr, _)  
-  | UbvToInt (expr, _) 
-  | SbvToInt (expr, _) -> 
+  | BVCast (_, expr, _) ->
     r expr
   | BVConst _ 
   | BLConst _ 
@@ -329,7 +300,22 @@ let rec pp_print_ty: Format.formatter -> il_type -> unit
 | ADT rules -> 
   Format.fprintf ppf "ADT: %a"
     (Lib.pp_print_list (Lib.pp_print_list Format.pp_print_string " ") "; ") rules
-    
+
+let pp_print_builtin_func ppf func = 
+  match func with 
+  | StrLength -> Format.fprintf ppf "str.len"
+  | Repeat -> Format.fprintf ppf "repeat"
+  | ReUnion -> Format.fprintf ppf "re.union"
+  | ReRange -> Format.fprintf ppf "re.range"
+  | StrInRe -> Format.fprintf ppf "str.in_re"
+  | StrToRe -> Format.fprintf ppf "str.to_re"
+  | ReStar -> Format.fprintf ppf "re.*"
+  | ReConcat -> Format.fprintf ppf "re.concat"
+  | Length -> Format.fprintf ppf "length"
+  | SeqLength -> Format.fprintf ppf "seq.len"
+  | UbvToInt -> Format.fprintf ppf "ubv_to_int"
+  | SbvToInt -> Format.fprintf ppf "sbv_to_int"
+
 let rec pp_print_case: Format.formatter -> case -> unit 
 = fun ppf case -> 
   match case with 
@@ -342,7 +328,7 @@ let rec pp_print_case: Format.formatter -> case -> unit
       (Lib.pp_print_list pp_print_pattern " ") pattern
 
 and pp_print_expr: Format.formatter -> expr -> unit 
-= fun ppf expr -> let r = pp_print_expr in match expr with
+= fun ppf expr -> match expr with
 | EmptySet (ty, _) -> 
   Format.fprintf ppf "set.empty<%a>"
     pp_print_ty ty
@@ -375,24 +361,13 @@ and pp_print_expr: Format.formatter -> expr -> unit
     pp_print_expr expr1 
     pp_print_comp_op op 
     pp_print_expr expr2
-| StrLength (expr, _) -> 
-  Format.fprintf ppf "str.len(%a)"
-    pp_print_expr expr 
-| SeqLength (expr, _) -> 
-  Format.fprintf ppf "seq.len(%a)"
-    pp_print_expr expr 
-| Length (expr, _) -> 
-  Format.fprintf ppf "length(%a)"
-    pp_print_expr expr 
+| BuiltInFunc (func, exprs, _) -> 
+  Format.fprintf ppf "%a(%a)"
+    pp_print_builtin_func func
+    (Lib.pp_print_list pp_print_expr ", ") exprs
 | BVCast (width, expr, _) -> 
   Format.fprintf ppf "int_to_bv(%d, %a)" 
     width 
-    pp_print_expr expr 
-| UbvToInt (expr, _) -> 
-  Format.fprintf ppf "ubv_to_int(%a)" 
-    pp_print_expr expr 
-| SbvToInt (expr, _) -> 
-  Format.fprintf ppf "sbv_to_int(%a)" 
     pp_print_expr expr 
 | Match (nts, nt, cases, _) -> 
   Format.fprintf ppf "(match %a with %a)"
@@ -425,26 +400,6 @@ and pp_print_expr: Format.formatter -> expr -> unit
 | IntConst (i, _) -> Format.fprintf ppf "%d" i
 | PhConst (s, _) -> Format.fprintf ppf "\"%s\"" s
 | StrConst (s, _) -> Format.fprintf ppf "\"%s\"" s
-| StrToRe (e, _) -> 
-  Format.fprintf ppf "(str.to_re %a)" 
-    r e 
-| ReStar (e, _) -> 
-  Format.fprintf ppf "(re.* %a)" 
-    r e 
-| StrInRe (e1, e2, _) -> 
-  Format.fprintf ppf "(str.in_re %a %a)" 
-    r e1 
-    r e2
-| ReConcat (es, _) -> 
-  Format.fprintf ppf "(re.++ %a)" 
-    (Lib.pp_print_list r " ") es  
-| ReUnion (es, _) -> 
-  Format.fprintf ppf "(re.union %a)" 
-    (Lib.pp_print_list r " ") es  
-| ReRange (e1, e2, _) ->  
-  Format.fprintf ppf "(re.range %a %a)" 
-    r e1 
-    r e2
 
 let pp_print_semantic_constraint: Format.formatter -> semantic_constraint -> unit 
 = fun ppf sc -> match sc with 
@@ -553,20 +508,9 @@ let rec expr_contains_dangling_nt: Utils.SILSet.t -> expr -> bool
     r expr
   | CompOp (expr1, _, expr2, _) -> 
     r expr1 || r expr2
-  | StrLength (expr, _)
-  | SeqLength (expr, _)
-  | ReStar (expr, _)  
-  | Length (expr, _) -> 
-    r expr
   | Singleton (expr, _) -> r expr
-  | ReRange (expr1, expr2, _) -> r expr1 || r expr2
-  | ReConcat (exprs, _) 
-  | ReUnion (exprs, _) -> List.map r exprs |> List.fold_left (||) false  
-  | StrInRe (expr1, expr2, _) -> r expr1 || r expr2
-  | StrToRe (expr, _) -> r expr
-  | BVCast (_, expr, _)  
-  | UbvToInt (expr, _) 
-  | SbvToInt (expr, _) -> r expr 
+  | BuiltInFunc (_, exprs, _) -> List.map r exprs |> List.fold_left (||) false  
+  | BVCast (_, expr, _)  -> r expr
   | BVConst _ 
   | BLConst _ 
   | BConst _ 
@@ -614,21 +558,11 @@ let rec prepend_nt_to_dot_exprs: string -> expr -> expr
   match expr with
   | NTExpr ([], nts, pos) -> NTExpr ([], (nt, None) :: nts, pos)
   | BVCast (len, expr, pos) -> BVCast (len, r expr, pos)
-  | UbvToInt (expr, pos) -> UbvToInt (r expr, pos)
-  | SbvToInt (expr, pos) -> SbvToInt (r expr, pos)
   | BinOp (expr1, op, expr2, pos) -> BinOp (r expr1, op, r expr2, pos) 
   | UnOp (op, expr, pos) -> UnOp (op, r expr, pos) 
   | CompOp (expr1, op, expr2, pos) -> CompOp (r expr1, op, r expr2, pos) 
-  | StrLength (expr, pos) -> StrLength (r expr, pos)
-  | Length (expr, pos) -> Length (r expr, pos) 
-  | SeqLength (expr, pos) -> SeqLength (r expr, pos) 
   | Singleton (expr, pos) -> Singleton (r expr, pos)
-  | ReRange (expr1, expr2, pos) -> ReRange (r expr1, r expr2, pos) 
-  | ReConcat (exprs, pos) -> ReConcat (List.map r exprs, pos)
-  | ReUnion (exprs, pos) -> ReUnion (List.map r exprs, pos) 
-  | StrInRe (expr1, expr2, pos) -> StrInRe (r expr1, r expr2, pos)
-  | ReStar (expr, pos) -> ReStar (r expr, pos)
-  | StrToRe (expr, pos) -> StrToRe (r expr, pos)
+  | BuiltInFunc (func, exprs, pos) -> BuiltInFunc (func, List.map r exprs, pos) 
   | Match _ -> Utils.crash "Unexpected case 1 in prepend_nt_to_dot_exprs"
   | NTExpr _ -> Utils.crash "Unexpected case 2 in prepend_nt_to_dot_exprs" 
   | BVConst _ 
@@ -662,3 +596,21 @@ let find_element ast nt =
   | TypeAnnotation (nt', _, _, _) 
   | ProdRule (nt', _, _) -> String.equal nt nt'
   ) ast 
+
+let pos_of_expr expr = match expr with 
+| NTExpr (_, _, pos) 
+| BVCast (_, _, pos) 
+| BinOp (_, _, _, pos) 
+| UnOp (_, _, pos) 
+| CompOp (_, _, _, pos) 
+| Singleton (_, pos) 
+| BuiltInFunc (_, _, pos) 
+| Match (_, _, _, pos) 
+| BVConst (_, _, pos) 
+| BLConst (_, pos)
+| BConst (_, pos) 
+| IntConst (_, pos) 
+| PhConst (_, pos) 
+| StrConst (_, pos) 
+| EmptySet (_, pos) -> pos 
+
