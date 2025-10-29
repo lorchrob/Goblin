@@ -24,8 +24,8 @@ def derivation_tree_is_complete ()
   return true iff every leaf of `derivation_tree` unifies with Leaf _
   (ie, every `DTNode` has a non-empty list of children)
 
-def perform_nth_expansion ()
-  _
+def perform_nth_expansion expansion_index 
+  _ 
 
 def perform_new_expansion ()
   expansion_index <$- index set of all open and unvisited derivation tree expansions 
@@ -35,28 +35,44 @@ def perform_new_expansion ()
   expanded_node, expansion_index, real_choice
 
 def universalize_constraint path constraint
-  _
+  nt_exprs <- get_all_nt_exprs(constraint) 
+  sigma <- map (fun nt_expr -> (nt_expr, path ++ serialize_nt_expr nt_expr)) nt_exprs
+  constraint <- apply_substitution(constraint, sigma) 
 
 def assert_applicable_constraints ()
-  _
+  for constraint in constraints_to_assert
+    if is_applicable(constraint, derivation_tree)
+      smt_assert(constraint)
 
 def instantiate_model_in_derivation_tree model 
-  _
-
-def fill_unconstrained_nonterminals ()
-  _
+  match derivation_tree with 
+  | Leaf (path, _) -> 
+    path <- serialize_path path 
+    if path in model 
+      Leaf (path, Some model[path])
+    else 
+      val <$- corresponding type from ctx 
+      Leaf (path, Some val)
+  | DTNode (nt, path, children)
+    DTNode (nt, path, map (instantiate_model_in_derivation_tree model) children)
 
 def generate_n_solutions () 
   _ 
 
 def output_results results 
-  _
+  print results to stdout 
 
-def push_blocking_clause model 
-  _
+def assert_blocking_clause model 
+  blocking_clause <- [] // interpret list elements disjunctively
+  for k, v in model
+    blocking_clause <- (not (k = v)) :: blocking_clause
+  if model != []
+    smt_assert blocking_clause
+
 
 def new_decision_level ()
-  _
+  smt_push 1
+  assertion_level <- assertion_level + 1
 
 def restart ()
   smt_pop assertion_level
@@ -158,7 +174,6 @@ while exit_flag
   | None -> 
     backtrack ()
 
-  fill_unconstrained_nonterminals ()
   num_iterations <- 0 
   exit_flag <- num_solutions <= num_solutions_to_find
   num_solutions <- num_solutions + sols_per_iter
@@ -167,7 +182,7 @@ while exit_flag
   smt_pop assertion_level 
 
   for model in models
-    push_blocking_clause model
+    assert_blocking_clause model
 
   smt_push 1
   assertion_level <- 1
