@@ -24,15 +24,20 @@ def derivation_tree_is_complete ()
   return true iff every leaf of `derivation_tree` unifies with Leaf _
   (ie, every `DTNode` has a non-empty list of children)
 
-def perform_nth_expansion expansion_index 
-  _ 
-
 def perform_new_expansion ()
-  expansion_index <$- index set of all open and unvisited derivation tree expansions 
-  perform_nth_expansion expansion_index
-  expanded_node <- derivation tree node from derivation tree that was expanded in `perform_nth_expansion`
-  real_choice <- true iff there was exactly one possible expansion
-  expanded_node, expansion_index, real_choice
+  dt_node, prod_rule <$- set of all expansions for open leaves in derivation_tree 
+  match dt_node, prod_rule with 
+  | DTNode ((nt, idx), path, children) as expanded_node, 
+    ProdRule (nt2, nts) -> 
+    assert nt = nt2
+    children' <- [] 
+    for (nt, idx) in nts
+      // Mutates `derivation_tree`
+      children' <- DTNode ((nt, idx), path ++ [nt, idx], []) :: children'
+    children <- children'
+    expanded_node // also return the node we just expanded
+    real_choice <- true iff there was exactly one possible expansion
+    expanded_node, real_choice
 
 def universalize_constraint path constraint
   nt_exprs <- get_all_nt_exprs(constraint) 
@@ -56,8 +61,19 @@ def instantiate_model_in_derivation_tree model
   | DTNode (nt, path, children)
     DTNode (nt, path, map (instantiate_model_in_derivation_tree model) children)
 
-def generate_n_solutions () 
-  _ 
+def generate_n_solutions model 
+  models <- [] 
+  results <- []
+  for _ in 1..n
+    push_blocking_clause model
+    match smt_get_model () with 
+    | Some model' -> 
+      result <- instantiate_model_in_derivation_tree model'
+      models <- model' :: models
+      results <- result :: results
+      model <- model'
+    | None -> 
+      break 
 
 def output_results results 
   print results to stdout 
@@ -104,9 +120,23 @@ def normalize_derivation_tree ()
   | DTNode (nt, path, _ :: _ as children) -> 
     DTNode (nt, path, map normalize_derivation_tree children)
   | DTNode ((nt, idx), path, []) -> 
-    forced_expansion <- _ 
-    children <- match forced_expansion with | None -> [] | Some children -> children 
-    Node ((nt, idx), path, map normalize_derivation_tree children)
+    nt_prod_rules <- set of all the prod rules for `nt` in `input` 
+    nt_type_annotations <- set of all type annotations for `nt` in `input` (at most 1) 
+    if |nt_prod_rules| = 1 
+      { _, rhs_nts, constraints } <- nt_prod_rules
+      for sc in constraints 
+        constraints_to_assert <- insert constraints_to_assert (universalize_constraint path sc)
+      children <- [] 
+      for (nt, idx) in rhs_nts
+        children <- DTNode ((nt, idx), path ++ [nt, idx], []) :: children
+      DTNode ((nt, idx), path, map normalize_derivation_tree children)
+    else if |nt_type_annotations| = 1 
+      ty <- type of `nt` from `ctx`
+      children <- [Leaf (ty, path @ [(nt, idx)])]
+      DTNode ((nt, idx), path, children)
+    else 
+      DTNode ((nt, idx), path, [])
+
 
 input <- Goblin input grammar from user
 ctx <- map of identifiers to their types
@@ -124,7 +154,7 @@ new_decision_level ()
 while exit_flag
   while ¬(derivation_tree_is_complete ())
     num_iterations <- num_iterations + 1
-    expanded_node, exansion_index, real_choice <- perform_new_expansion () 
+    expanded_node, real_choice <- perform_new_expansion () 
 
     if real_choice 
       new_decision_level () 
@@ -134,7 +164,7 @@ while exit_flag
     search_tree_node <- match search_tree_node with 
     | STNode (_, _, depth, visited) -> 
       new_search_tree_node <- STNode (derivation_tree, Some search_tree_node, depth + 1, children = [])
-      visited <- (new_search_tree_node, expansion_index) :: visited
+      visited <- new_search_tree_node :: visited
       new_search_tree_node
 
     if num_iterations = restart_rate 
@@ -142,7 +172,7 @@ while exit_flag
       pop_solver assertion_level 
       push_solver 1 
       assertion_level <- 1
-      depth_limit <- starting_depth_limit //!! 
+      depth_limit <- starting_depth_limit 
       initialize_globals ()
 
     match expanded_node, search_tree_node with 
@@ -177,7 +207,7 @@ while exit_flag
   num_iterations <- 0 
   exit_flag <- num_solutions <= num_solutions_to_find
   num_solutions <- num_solutions + sols_per_iter
-  models, results <- generate_n_solutions result 
+  models, results <- generate_n_solutions model result
   output_results (result :: results)
   smt_pop assertion_level 
 
