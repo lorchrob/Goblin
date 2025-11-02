@@ -890,7 +890,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.solver_ast
 
   (* we start at decision level 1 so we can undo all pushed assertions when restarting *)
   new_decision_level solver assertion_level variable_stack; 
-  Stack.push !curr_st_node !decision_stack;
+  (*Stack.push !curr_st_node !decision_stack;*)
 
   (* exit flag allows us to toggle between infinite looping (multiple solutions mode) 
      or stopping after one solution *)
