@@ -69,59 +69,25 @@ let rec generate_all_possible_exprs: TC.context -> string list -> A.expr -> A.ex
   | UnOp (op, expr, p) ->
     let exprs = r expr in 
     List.map (fun e -> A.UnOp (op, e, p)) exprs
-  | StrInRe (expr1, expr2, p) -> 
-    let exprs1 = r expr1 in 
-    let exprs2 = r expr2 in 
-    let pairs = cartesian_product exprs1 exprs2 in 
-    List.map (fun (e1, e2) -> A.StrInRe (e1, e2, p)) pairs
-  | ReRange (expr1, expr2, p) -> 
-    let exprs1 = r expr1 in 
-    let exprs2 = r expr2 in 
-    let pairs = cartesian_product exprs1 exprs2 in 
-    List.map (fun (e1, e2) -> A.ReRange (e1, e2, p)) pairs
   | CompOp (expr1, op, expr2, p) -> 
     let exprs1 = r expr1 in 
     let exprs2 = r expr2 in 
     let pairs = cartesian_product exprs1 exprs2 in
     List.map (fun (e1, e2) -> A.CompOp (e1, op, e2, p)) pairs 
-  | ReConcat ([expr1; expr2], p) -> 
+  | BuiltInFunc (func, [expr], p) -> 
+    let exprs = r expr in 
+    List.map (fun e -> A.BuiltInFunc (func, [e], p)) exprs 
+  | BuiltInFunc (func, [expr1; expr2], p) -> 
     let exprs1 = r expr1 in 
     let exprs2 = r expr2 in 
     let pairs = cartesian_product exprs1 exprs2 in
-    List.map (fun (e1, e2) -> A.ReConcat ([e1; e2], p)) pairs 
-  | ReUnion ([expr1; expr2], p) -> 
-    let exprs1 = r expr1 in 
-    let exprs2 = r expr2 in 
-    let pairs = cartesian_product exprs1 exprs2 in
-    List.map (fun (e1, e2) -> A.ReUnion ([e1; e2], p)) pairs 
-  | ReUnion (_, p) | ReConcat (_, p) -> Utils.error "re_union and re_concat must take exactly 2 arguments" p
-  | ReStar (expr, p) -> 
-    let exprs = r expr in 
-    List.map (fun e -> A.ReStar (e, p)) exprs 
-  | StrLength (expr, p) -> 
-    let exprs = r expr in 
-    List.map (fun e -> A.StrLength (e, p)) exprs
-  | SeqLength (expr, p) -> 
-    let exprs = r expr in 
-    List.map (fun e -> A.SeqLength (e, p)) exprs
+    List.map (fun (e1, e2) -> A.BuiltInFunc (func, [e1; e2], p)) pairs 
   | Singleton (expr, p) -> 
     let exprs = r expr in 
     List.map (fun e -> A.Singleton (e, p)) exprs
-  | StrToRe (expr, p) -> 
-    let exprs = r expr in 
-    List.map (fun e -> A.StrToRe (e, p)) exprs 
-  | Length (expr, p) -> 
-    let exprs = r expr in 
-    List.map (fun e -> A.Length (e, p)) exprs
   | BVCast (i, expr, p) -> 
     let exprs = r expr in 
     List.map (fun e -> A.BVCast (i, e, p)) exprs 
-  | UbvToInt (expr, p) -> 
-    let exprs = r expr in 
-    List.map (fun e -> A.UbvToInt (e, p)) exprs 
-  | SbvToInt (expr, p) -> 
-    let exprs = r expr in 
-    List.map (fun e -> A.SbvToInt (e, p)) exprs 
   | BVConst _ 
   | BLConst _ 
   | BConst _ 
@@ -129,6 +95,10 @@ let rec generate_all_possible_exprs: TC.context -> string list -> A.expr -> A.ex
   | IntConst _ 
   | StrConst _ 
   | EmptySet _ -> [expr]
+  | BuiltInFunc _ ->
+    let msg = Format.asprintf "Bad function arity in expression %a" 
+      A.pp_print_expr expr in 
+    Utils.error msg (A.pos_of_expr expr)
 
 let process_sc: TC.context -> string list -> A.semantic_constraint -> A.semantic_constraint 
 = fun ctx nts sc -> match sc with 

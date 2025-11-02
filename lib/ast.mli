@@ -44,23 +44,33 @@ type il_type =
 | ADT of string list list 
 | Set of il_type
 
+type builtin_func = 
+| Repeat
+| ReUnion
+| ReRange
+| StrInRe 
+| StrToRe 
+| ReStar 
+| ReConcat 
+| Length 
+| StrLength 
+| SeqLength 
+| UbvToInt 
+| SbvToInt 
+
 type case = 
 (* A case is a list of <context, nonterminal> pairs (denoting a pattern) and the corresponding expression *)
 (* The int option eases dealing with horizontal ambiguous references *)
 | Case of ((string * int option) list * (string * int option)) list * expr 
 | CaseStub of ((string * int option) list * (string * int option)) list
-and expr =
+and 
+expr = 
 | EmptySet of il_type * Lexing.position
 | Singleton of expr * Lexing.position
 | BinOp of expr * bin_operator * expr * Lexing.position
 | UnOp of unary_operator * expr * Lexing.position
 | CompOp of expr * comp_operator * expr * Lexing.position
-| Length of expr * Lexing.position
-| StrLength of expr * Lexing.position
-| SeqLength of expr * Lexing.position
 | BVCast of int * expr * Lexing.position
-| UbvToInt of expr * Lexing.position
-| SbvToInt of expr * Lexing.position
 (* First string list track the context of the nonterminal being matched 
    Int options are for clarifying ambiguous dot notation references, as in NTExpr *)
 | Match of (string * int option) list * (string * int option) * case list * Lexing.position
@@ -84,12 +94,7 @@ and expr =
 | IntConst of int * Lexing.position
 | PhConst of string * Lexing.position
 | StrConst of string * Lexing.position
-| ReUnion of expr list * Lexing.position
-| ReRange of expr * expr * Lexing.position
-| StrInRe of expr * expr * Lexing.position
-| StrToRe of expr * Lexing.position
-| ReStar of expr * Lexing.position
-| ReConcat of expr list * Lexing.position
+| BuiltInFunc of builtin_func * expr list * Lexing.position
 
 type semantic_constraint =
 | DerivedField of string * expr * Lexing.position
@@ -131,3 +136,5 @@ val get_nts_from_expr2: expr -> (string * int option) list list
 val scs_of_element: element -> semantic_constraint list
 val nts_of_ast: ast -> Utils.StringSet.t 
 val find_element: ast -> string -> element
+val pos_of_expr: expr -> Lexing.position
+val pp_print_builtin_func: Format.formatter -> builtin_func -> unit

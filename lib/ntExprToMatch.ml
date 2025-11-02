@@ -107,14 +107,13 @@ let rec pull_up_match_exprs: A.expr -> A.expr =
     Match (nt_ctx, nt, cases, p)
   | Singleton (expr, p) -> Singleton (r expr, p)
   | BVCast (len, expr, p) -> BVCast (len, r expr, p)
-  | Length (Match (nt_ctx, nt, cases, p), _) -> 
+  | BuiltInFunc (Length, [Match (nt_ctx, nt, cases, p)], _) -> 
     let cases = List.map (fun case -> match case with 
-    | A.Case (rule, expr) -> A.Case (rule, A.Length (expr, p))
+    | A.Case (rule, expr) -> A.Case (rule, BuiltInFunc (A.Length, [expr], p))
     | A.CaseStub rule -> A.CaseStub rule
     ) cases in
     Match (nt_ctx, nt, cases, p)
-  | StrLength (expr, p) -> StrLength (r expr, p)
-  | Length (expr, p) -> Length (r expr, p)
+  | BuiltInFunc (func, [expr], p) -> BuiltInFunc (func, [r expr], p)
   | Match (nt_ctx, nt, cases, p) -> 
     let cases = List.mapi (fun _ case -> match case with
       (* Merge redundant matching, e.g., from <A>.<B> + <A>.<C> > 0, we don't need to match on <A> twice. *)
@@ -322,15 +321,15 @@ fun ctx ast expr ->
       let matches_so_far, expr2 = r matches_so_far expr2 in
       matches_so_far, 
       CompOp (expr1, op, expr2, p1)
-    | Length (NTExpr (nt_ctx, nt1 :: nt2 :: nts, p1), p2) -> 
+    | BuiltInFunc (Length, [NTExpr (nt_ctx, nt1 :: nt2 :: nts, p1)], p2) -> 
       if SILSet.mem (nt_ctx @ [nt1]) matches_so_far then 
         matches_so_far,
-        Length (NTExpr (nt_ctx @ [nt1], nt2 :: nts, p1), p2)
+        BuiltInFunc (Length, [NTExpr (nt_ctx @ [nt1], nt2 :: nts, p1)], p2)
       else
         let matches_so_far = SILSet.add (nt_ctx @ [nt1]) matches_so_far in
         let rules, remaining_cases = gen_match_info ast nt1 nt2 nt_ctx in 
         let cases =  List.fold_left (fun acc rule ->
-          A.Case (rule, Length (NTExpr (nt_ctx @ [nt1], nt2 :: nts, p1), p2)) :: acc
+          A.Case (rule, BuiltInFunc (Length, [NTExpr (nt_ctx @ [nt1], nt2 :: nts, p1)], p2) ) :: acc
         ) [] rules
         in
         matches_so_far,
@@ -352,14 +351,10 @@ fun ctx ast expr ->
       let matches_so_far, expr = r matches_so_far expr in 
       matches_so_far,
       UnOp (op, expr, p1)
-    | StrLength (expr, p1) -> 
+    | BuiltInFunc (func, [expr], p) -> 
       let matches_so_far, expr = r matches_so_far expr in 
       matches_so_far,
-      StrLength (expr, p1) 
-    | Length (expr, p1) -> 
-      let matches_so_far, expr = r matches_so_far expr in 
-      matches_so_far,
-      Length (expr, p1) 
+      BuiltInFunc (func, [expr], p) 
     | Match (nt_ctx, nt_expr, cases, p1) -> 
       let cases, matches_so_far = List.fold_left (fun (acc_cases, acc_matches) case -> match case with 
         | A.Case (nts, expr) ->
@@ -465,10 +460,8 @@ let filter_out_dangling_nts expr =
     UnOp (op, helper ctx expr, p) 
   | CompOp (expr1, op, expr2, p) -> 
     CompOp (helper ctx expr1, op, helper ctx expr2, p) 
-  | StrLength (expr, p) -> 
-    StrLength (helper ctx expr, p)
-  | Length (expr, p) -> 
-    Length (helper ctx expr, p) 
+  | BuiltInFunc (func, [expr], p) -> 
+    BuiltInFunc (func, [helper ctx expr], p)
   | BVCast (len, expr, p) -> BVCast (len, helper ctx expr, p)
   | Singleton (expr, p) -> Singleton (helper ctx expr, p)
   | NTExpr _ 

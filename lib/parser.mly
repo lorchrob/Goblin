@@ -70,6 +70,7 @@ open Ast
 %token RE_UNION ; 
 %token RE_STAR ; 
 %token RE_CONCAT ;
+%token REPEAT ;
 
 %token<int> INTEGER
 %token<float> DECIMAL
@@ -279,20 +280,20 @@ expr:
   }
 | UBV_TO_INT; 
   LPAREN; e = expr; RPAREN; { 
-    UbvToInt (e, $startpos) 
+    BuiltInFunc (UbvToInt, [e], $startpos) 
   }
 | SBV_TO_INT; 
   LPAREN; e = expr; RPAREN; { 
-    SbvToInt (e, $startpos) 
+    BuiltInFunc (SbvToInt, [e], $startpos) 
   }
 | LENGTH; LPAREN; e = expr; RPAREN; { 
-    Length (e, $startpos) 
+    BuiltInFunc (Length, [e], $startpos) 
   }
 | STRLENGTH; LPAREN; e = expr; RPAREN; { 
-    StrLength (e, $startpos) 
+    BuiltInFunc (StrLength, [e], $startpos) 
   }
 | SEQLENGTH; LPAREN; e = expr; RPAREN; { 
-    SeqLength (e, $startpos) 
+    BuiltInFunc (SeqLength, [e], $startpos) 
   }
 | STRPREFIX; LPAREN; e1 = expr; COMMA; e2 = expr; RPAREN; { 
     CompOp (e1, StrPrefix, e2, $startpos) 
@@ -301,22 +302,25 @@ expr:
     CompOp (e1, StrContains, e2, $startpos) 
   }
 | STR_TO_RE; LPAREN; e = expr; RPAREN; { 
-    StrToRe (e, $startpos) 
+    BuiltInFunc (StrToRe, [e], $startpos) 
   }
 | STR_IN_RE; LPAREN; e1 = expr; COMMA; e2 = expr; RPAREN; { 
-    StrInRe (e1, e2, $startpos) 
+    BuiltInFunc (StrInRe, [e1; e2], $startpos) 
   }
 | RE_UNION; LPAREN; es = separated_nonempty_list(COMMA, expr); RPAREN; { 
-    ReUnion (es, $startpos) 
+    BuiltInFunc (ReUnion, es, $startpos) 
   } 
 | RE_RANGE; LPAREN; e1 = expr; COMMA; e2 = expr; RPAREN; { 
-    ReRange (e1, e2, $startpos) 
+    BuiltInFunc (ReRange, [e1; e2], $startpos) 
   } 
 | RE_CONCAT; LPAREN; es = separated_nonempty_list(COMMA, expr); RPAREN; { 
-    ReConcat (es, $startpos) 
+    BuiltInFunc (ReConcat, es, $startpos) 
   }
 | RE_STAR; LPAREN; e = expr; RPAREN; { 
-    ReStar (e, $startpos) 
+    BuiltInFunc (ReStar, [e], $startpos) 
+  } 
+| REPEAT; LPAREN; e1 = expr; COMMA; e2 = expr; RPAREN; { 
+    BuiltInFunc (Repeat, [e1; e2], $startpos) 
   } 
 
 (* Variables *)
