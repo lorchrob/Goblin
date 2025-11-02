@@ -49,8 +49,9 @@
     "str.in_re", STR_IN_RE ; 
     "re.range", RE_RANGE ; 
     "re.union", RE_UNION ; 
-    "re.*", RE_STAR ; 
+    "repeat", REPEAT ;
     "re.++", RE_CONCAT ;
+    "re.*", RE_STAR ; 
   ] 
 }
 

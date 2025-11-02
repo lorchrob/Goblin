@@ -85,19 +85,9 @@ let rec check_dangling_identifiers: Utils.StringSet.t -> Lexing.position -> expr
   | BinOp (expr1, op, expr2, p) -> BinOp (call expr1, op, call expr2, p) 
   | UnOp (op, expr, p) -> UnOp (op, call expr, p) 
   | CompOp (expr1, op, expr2, p) -> CompOp (call expr1, op, call expr2, p) 
-  | StrLength (expr, p) -> StrLength (call expr, p)
-  | Length (expr, p) -> Length (call expr, p) 
-  | SeqLength (expr, p) -> SeqLength (call expr, p) 
   | Match _ -> assert false (* -> Match (check_d_ids_nt_expr nt_expr, cases) *)
-  | StrInRe (expr1, expr2, p) -> StrInRe (call expr1, call expr2, p) 
-  | ReStar (expr, p) -> ReStar (call expr, p)
-  | StrToRe (expr, p) -> StrToRe (call expr, p) 
-  | ReConcat (exprs, p) -> ReConcat (List.map call exprs, p)
-  | ReUnion (exprs, p) -> ReUnion (List.map call exprs, p) 
-  | ReRange (expr1, expr2, p) -> ReRange (call expr1, call expr2, p)
+  | BuiltInFunc (func, exprs, p) -> BuiltInFunc (func, List.map call exprs, p) 
   | BVCast (width, expr, p) -> BVCast (width, call expr, p)
-  | UbvToInt (expr, p) -> UbvToInt (call expr, p)
-  | SbvToInt (expr, p) -> SbvToInt (call expr, p)
   | BVConst _ 
   | BLConst _ 
   | BConst _ 
@@ -133,18 +123,8 @@ let rec check_prod_rule_nt_exprs: prod_rule_map -> Utils.StringSet.t -> expr -> 
   | BinOp (expr1, op, expr2, p) -> BinOp (call expr1, op, call expr2, p) 
   | UnOp (op, expr, p) -> UnOp (op, call expr, p) 
   | CompOp (expr1, op, expr2, p) -> CompOp (call expr1, op, call expr2, p) 
-  | StrLength (expr, p) -> StrLength (call expr, p)
-  | ReStar (expr, p) -> ReStar (call expr, p)
-  | Length (expr, p) -> Length (call expr, p) 
-  | SeqLength (expr, p) -> SeqLength (call expr, p) 
-  | StrInRe (expr1, expr2, p) -> StrInRe (call expr1, call expr2, p) 
-  | StrToRe (expr, p) -> StrToRe (call expr, p) 
-  | ReConcat (exprs, p) -> ReConcat (List.map call exprs, p)
-  | ReUnion (exprs, p) -> ReUnion (List.map call exprs, p) 
-  | ReRange (expr1, expr2, p) -> ReRange (call expr1, call expr2, p)
+  | BuiltInFunc (func, exprs, p) -> BuiltInFunc (func, List.map call exprs, p) 
   | BVCast (width, expr, p) -> BVCast (width, call expr, p)
-  | UbvToInt (expr, p) -> UbvToInt (call expr, p)
-  | SbvToInt (expr, p) -> SbvToInt (call expr, p)
   | Match _ -> assert false (* -> Match (check_nt_expr_refs prm nt_expr, cases) *)
   | BVConst _ 
   | BLConst _ 
@@ -170,19 +150,9 @@ let rec check_type_annot_nt_exprs: prod_rule_map -> Utils.StringSet.t -> expr ->
   | BinOp (expr1, op, expr2, p) -> BinOp (call expr1, op, call expr2, p) 
   | UnOp (op, expr, p) -> UnOp (op, call expr, p) 
   | CompOp (expr1, op, expr2, p) -> CompOp (call expr1, op, call expr2, p) 
-  | StrLength (expr, p) -> StrLength (call expr, p)
-  | Length (expr, p) -> Length (call expr, p) 
-  | SeqLength (expr, p) -> SeqLength (call expr, p) 
   | Match _ -> assert false(* -> Match (check_nt_expr_refs prm nt_expr, cases) *)
-  | StrInRe (expr1, expr2, p) -> StrInRe (call expr1, call expr2, p) 
-  | ReStar (expr, p) -> ReStar (call expr, p)
-  | StrToRe (expr, p) -> StrToRe (call expr, p) 
-  | ReConcat (exprs, p) -> ReConcat (List.map call exprs, p)
-  | ReUnion (exprs, p) -> ReUnion (List.map call exprs, p) 
-  | ReRange (expr1, expr2, p) -> ReRange (call expr1, call expr2, p)
+  | BuiltInFunc (func, exprs, p) -> BuiltInFunc (func, List.map call exprs, p) 
   | BVCast (width, expr, p) -> BVCast (width, call expr, p)
-  | UbvToInt (expr, p) -> UbvToInt (call expr, p)
-  | SbvToInt (expr, p) -> SbvToInt (call expr, p)
   | BVConst _ 
   | BLConst _ 
   | BConst _ 
@@ -223,22 +193,12 @@ let rec check_for_ambiguous_derived_fields ast expr rhs =
     r expr2 rhs
   | UnOp (_, expr, _) -> 
     r expr rhs
-  | StrInRe (expr1, expr2, _) 
-  | ReRange (expr1, expr2, _)
   | CompOp (expr1, _, expr2, _) -> 
     let* _ = r expr1 rhs in 
     r expr2 rhs
-  | StrLength (expr, _)
-  | SeqLength (expr, _)
-  | StrToRe (expr, _) 
-  | ReStar (expr, _) 
-  | Length (expr, _)  
   | BVCast (_, expr, _) 
-  | UbvToInt (expr, _) 
-  | SbvToInt (expr, _) 
   | Singleton (expr, _) -> r expr rhs
-  | ReConcat (exprs, _) 
-  | ReUnion (exprs, _) ->
+  | BuiltInFunc (_, exprs, _) ->
     Res.seq_ (List.map (fun e -> r e rhs) exprs)
   | BVConst _ 
   | BLConst _ 
@@ -391,26 +351,16 @@ let str_const_to_ph_const ast =
   | StrConst (ph, p) -> PhConst (ph, p)
   | Singleton (expr, p) -> Singleton (handle_expr expr, p)
   | BVCast (len, expr, p) -> BVCast (len, handle_expr expr, p)
-  | UbvToInt (expr, p) -> UbvToInt (handle_expr expr, p)
-  | SbvToInt (expr, p) -> SbvToInt (handle_expr expr, p)
   | BinOp (expr1, op, expr2, p) -> BinOp (handle_expr expr1, op, handle_expr expr2, p) 
   | UnOp (op, expr, p) -> UnOp (op, handle_expr expr, p) 
   | CompOp (expr1, op, expr2, p) -> CompOp (handle_expr expr1, op, handle_expr expr2, p) 
-  | StrLength (expr, p) -> StrLength (handle_expr expr, p) 
-  | SeqLength (expr, p) -> SeqLength (handle_expr expr, p) 
-  | Length (expr, p) -> Length (handle_expr expr, p) 
   | Match (nt_ctx, nt, cases, p) -> 
     let cases = List.map (fun case -> match case with 
     | CaseStub _ -> case 
     | Case (nts, e) -> Case (nts, handle_expr e)
     ) cases in
     Match (nt_ctx, nt, cases, p) 
-  | StrInRe (expr1, expr2, p) -> StrInRe (handle_expr expr1, handle_expr expr2, p) 
-  | ReStar (expr, p) -> ReStar (handle_expr expr, p)
-  | StrToRe (expr, p) -> StrToRe (handle_expr expr, p) 
-  | ReConcat (exprs, p) -> ReConcat (List.map handle_expr exprs, p) 
-  | ReUnion (exprs, p) -> ReUnion (List.map handle_expr exprs, p) 
-  | ReRange (expr1, expr2, p) -> ReRange (handle_expr expr1, handle_expr expr2, p)
+  | BuiltInFunc (func, exprs, p) -> BuiltInFunc (func, List.map handle_expr exprs, p) 
   | NTExpr _ 
   | BVConst _ 
   | BLConst _ 

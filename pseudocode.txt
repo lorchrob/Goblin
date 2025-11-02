@@ -1,0 +1,220 @@
+Assume input Goblin grammar G comprised of a set of production rules (w/ semantic constraints) 
+and type annotations
+
+global starting_depth_limit, restart_rate, sols_per_iter, num_solutions_to_find,
+       input, ctx, assertion_level, constraints_to_assert, derivation_tree, search_tree_node, 
+       decision_stack, depth_limit, backtrack_depth
+
+def initialize_hyperparams () 
+  starting_depth_limit <- \alpha 
+  restart_rate <- \beta
+  sols_per_iter <- \gamma
+  num_solutions_to_find <- \delta
+
+def initialize_globals ()
+  constraints_to_assert <- {}
+  derivation_tree <- DTNode ((start_symbol, Some 0), path=[start_symbol, Some 0], children=[])
+  derivation_tree <- normalize_derivation_tree () 
+  constraints_to_assert <- assert_applicable_constraints ()
+  search_tree_node <- STNode (derivation_tree, parent=None, depth=0, children=[])
+  decision_stack <- [] 
+  backtract_depth <- false
+
+def derivation_tree_is_complete () 
+  return true iff every leaf of `derivation_tree` unifies with Leaf _
+  (ie, every `DTNode` has a non-empty list of children)
+
+def perform_new_expansion ()
+  dt_node, prod_rule <$- set of all expansions for open leaves in derivation_tree 
+  match dt_node, prod_rule with 
+  | DTNode ((nt, idx), path, children) as expanded_node, 
+    ProdRule (nt2, nts) -> 
+    assert nt = nt2
+    children' <- [] 
+    for (nt, idx) in nts
+      // Mutates `derivation_tree`
+      children' <- DTNode ((nt, idx), path ++ [nt, idx], []) :: children'
+    children <- children'
+    expanded_node // also return the node we just expanded
+    real_choice <- true iff there was exactly one possible expansion
+    expanded_node, real_choice
+
+def universalize_constraint path constraint
+  nt_exprs <- get_all_nt_exprs(constraint) 
+  sigma <- map (fun nt_expr -> (nt_expr, path ++ serialize_nt_expr nt_expr)) nt_exprs
+  constraint <- apply_substitution(constraint, sigma) 
+
+def assert_applicable_constraints ()
+  for constraint in constraints_to_assert
+    if is_applicable(constraint, derivation_tree)
+      smt_assert(constraint)
+
+def instantiate_model_in_derivation_tree model 
+  match derivation_tree with 
+  | Leaf (path, _) -> 
+    path <- serialize_path path 
+    if path in model 
+      Leaf (path, Some model[path])
+    else 
+      val <$- corresponding type from ctx 
+      Leaf (path, Some val)
+  | DTNode (nt, path, children)
+    DTNode (nt, path, map (instantiate_model_in_derivation_tree model) children)
+
+def generate_n_solutions model 
+  models <- [] 
+  results <- []
+  for _ in 1..n
+    push_blocking_clause model
+    match smt_get_model () with 
+    | Some model' -> 
+      result <- instantiate_model_in_derivation_tree model'
+      models <- model' :: models
+      results <- result :: results
+      model <- model'
+    | None -> 
+      break 
+
+def output_results results 
+  print results to stdout 
+
+def assert_blocking_clause model 
+  blocking_clause <- [] // interpret list elements disjunctively
+  for k, v in model
+    blocking_clause <- (not (k = v)) :: blocking_clause
+  if model != []
+    smt_assert blocking_clause
+
+
+def new_decision_level ()
+  smt_push 1
+  assertion_level <- assertion_level + 1
+
+def restart ()
+  smt_pop assertion_level
+  smt_push 1
+  if ¬backtrack_depth
+    raise Infeasible
+  depth_limit <- depth_limit + 1
+  initialize_globals ()
+
+def backtrack ()
+  if assertion_level = 1 
+    restart ()
+  else 
+    assertion_level <- assertion_level - 1
+    smt_pop 1
+    new_search_tree_node <- pop decision_stack
+    STNode (new_derivation_tree, _, _, _) <- new_search_tree_node 
+    original_constraints <- collect_constraints_of_dt derivation_tree
+    maintained_constraints <- collect_constraints_of_dt new_derivation_tree 
+    constraints_to_remove <- original_constraints - maintained_constraints
+    constraints_to_assert <- constraints_to_assert - constraints_to_remove
+    derivation_tree <- new_derivation_tree 
+    search_tree_node <- new_search_tree_node 
+
+def normalize_derivation_tree ()
+  match derivation_tree with 
+  | Leaf _ -> 
+    derivation_tree 
+  | DTNode (nt, path, _ :: _ as children) -> 
+    DTNode (nt, path, map normalize_derivation_tree children)
+  | DTNode ((nt, idx), path, []) -> 
+    nt_prod_rules <- set of all the prod rules for `nt` in `input` 
+    nt_type_annotations <- set of all type annotations for `nt` in `input` (at most 1) 
+    if |nt_prod_rules| = 1 
+      { _, rhs_nts, constraints } <- nt_prod_rules
+      for sc in constraints 
+        constraints_to_assert <- insert constraints_to_assert (universalize_constraint path sc)
+      children <- [] 
+      for (nt, idx) in rhs_nts
+        children <- DTNode ((nt, idx), path ++ [nt, idx], []) :: children
+      DTNode ((nt, idx), path, map normalize_derivation_tree children)
+    else if |nt_type_annotations| = 1 
+      ty <- type of `nt` from `ctx`
+      children <- [Leaf (ty, path @ [(nt, idx)])]
+      DTNode ((nt, idx), path, children)
+    else 
+      DTNode ((nt, idx), path, [])
+
+
+input <- Goblin input grammar from user
+ctx <- map of identifiers to their types
+
+initialize_hyperparams () 
+initialize_globals ()
+
+depth_limit <- starting_depth_limit
+exit_flag <- true 
+num_iterations <- 0
+assertion_level <- 0
+
+new_decision_level ()
+
+while exit_flag
+  while ¬(derivation_tree_is_complete ())
+    num_iterations <- num_iterations + 1
+    expanded_node, real_choice <- perform_new_expansion () 
+
+    if real_choice 
+      new_decision_level () 
+      push decision_stack search_tree_node
+
+    normalize_derivation_tree ()
+    search_tree_node <- match search_tree_node with 
+    | STNode (_, _, depth, visited) -> 
+      new_search_tree_node <- STNode (derivation_tree, Some search_tree_node, depth + 1, children = [])
+      visited <- new_search_tree_node :: visited
+      new_search_tree_node
+
+    if num_iterations = restart_rate 
+      num_iterations = 0
+      pop_solver assertion_level 
+      push_solver 1 
+      assertion_level <- 1
+      depth_limit <- starting_depth_limit 
+      initialize_globals ()
+
+    match expanded_node, search_tree_node with 
+    | Leaf _, _ -> () 
+    | Node (nt, path, children), STNode (_, _, depth, _) -> 
+      if depth > depth_limit
+        backtrack_depth <- true 
+        backtrack ()
+
+      grammar_rule <- grammar rule defining `nt` in `input`
+
+      match grammar_rule with 
+      | TypeAnnotation _ -> () 
+      | ProdRule (_, rhss, _) -> 
+        chosen_rhs <- the rhs used to expand `nt` 
+        semantic_constraints <- get_semantic_constraints chosen_rhs 
+        for sc in semantic_constraints
+          constraints_to_assert <- insert constraints_to_assert (universalize_constraint path sc)
+          assert_applicable_constraints ()
+
+        match smt_check_sat () with 
+        | SAT -> () 
+        | UNSAT -> backtrack ()
+  end while
+
+  match smt_get_model () with 
+  | Some model -> 
+    result <- instantiate_model_in_derivation_tree model 
+  | None -> 
+    backtrack ()
+
+  num_iterations <- 0 
+  exit_flag <- num_solutions <= num_solutions_to_find
+  num_solutions <- num_solutions + sols_per_iter
+  models, results <- generate_n_solutions model result
+  output_results (result :: results)
+  smt_pop assertion_level 
+
+  for model in models
+    assert_blocking_clause model
+
+  smt_push 1
+  assertion_level <- 1
+  initialize_globals ()
+end while

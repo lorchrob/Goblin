@@ -65,10 +65,10 @@ let rec infer_type_expr: context -> mode -> expr -> il_type option
     Utils.error error_message p
   | None -> None
   )
-| SeqLength (expr, p) -> 
+| BuiltInFunc (SeqLength, [expr], p) -> 
   let _ = check_type_expr ctx mode BitList expr p in 
   Some Int
-| StrLength (expr, p) -> 
+| BuiltInFunc (StrLength, [expr], p) -> 
   let _ = check_type_expr ctx mode String expr p in 
   Some Int
 | BinOp (expr1, BVAnd, expr2, pos) 
@@ -238,15 +238,14 @@ let rec infer_type_expr: context -> mode -> expr -> il_type option
       let error_message = "Type checking error: case expression " ^ expr_str ^ " has cases of differing types" in
       Utils.error error_message
     else List.hd inf_tys *)
-| Length (_expr, p) -> (
+| BuiltInFunc (Length, _, p) -> 
   if mode = SyGuS then 
     Utils.error "The length(.) function cannot be used in a (non-derived) SMT constraint" p 
   else Some Int
-  )
 | BVCast (len, expr, p)  -> 
   let _ = check_type_expr ctx mode Int expr p in 
   Some (BitVector len)
-| UbvToInt (expr, p)  -> 
+| BuiltInFunc (UbvToInt, [expr], p)  -> 
   let inf_ty = infer_type_expr ctx mode expr in (
   match inf_ty with 
   | Some (BitVector _) -> Some Int
@@ -257,7 +256,7 @@ let rec infer_type_expr: context -> mode -> expr -> il_type option
     Utils.error error_message p
   | None -> None
   )
-| SbvToInt (expr, p)  -> 
+| BuiltInFunc (SbvToInt, [expr], p)  -> 
   let inf_ty = infer_type_expr ctx mode expr in (
   match inf_ty with 
   | Some (BitVector _) -> Some Int
@@ -285,8 +284,8 @@ let rec infer_type_expr: context -> mode -> expr -> il_type option
     let error_message = "Placeholders can only be in derived fields" in 
     Utils.error error_message p
 (* TODO: Add proper RegEx type *)
-| ReStar (expr, p) 
-| StrToRe (expr, p) -> 
+| BuiltInFunc (ReStar, [expr], p) 
+| BuiltInFunc (StrToRe, [expr], p) -> 
   let inf_ty = infer_type_expr ctx mode expr in (
   match inf_ty with 
   | Some String -> Some String 
@@ -296,7 +295,22 @@ let rec infer_type_expr: context -> mode -> expr -> il_type option
     let msg = "Type checking error: str.to_re/re.* expected type String, given type " ^ ty_str in 
     Utils.error msg p
   )
-| StrInRe (expr1, expr2, p) -> 
+| BuiltInFunc (Repeat, [expr1; expr2], p) -> 
+  let inf_ty1 = infer_type_expr ctx mode expr1 in
+  let inf_ty2 = infer_type_expr ctx mode expr2 in (
+  match inf_ty1, inf_ty2 with 
+  | Some Int, Some Bool -> Some BitList 
+  | _, None 
+  | None, _ -> None 
+  | Some ty1, Some ty2 ->
+    let msg = Format.asprintf "Type checking error: repeat expected args of type int and bool, but got args of type %a and %a" 
+      Ast.pp_print_ty ty1 
+      Ast.pp_print_ty ty2 
+    in
+    Utils.error msg p
+  )
+
+| BuiltInFunc (StrInRe, [expr1; expr2], p) -> 
   let inf_ty1 = infer_type_expr ctx mode expr1 in
   let inf_ty2 = infer_type_expr ctx mode expr2 in (
   match inf_ty1, inf_ty2 with 
@@ -308,7 +322,7 @@ let rec infer_type_expr: context -> mode -> expr -> il_type option
     let msg = "Type checking error: str.in_re expected type String, given type " ^ ty_str in 
     Utils.error msg p
   )
-| ReRange (expr1, expr2, p) -> 
+| BuiltInFunc (ReRange, [expr1; expr2], p) -> 
   let inf_ty1 = infer_type_expr ctx mode expr1 in
   let inf_ty2 = infer_type_expr ctx mode expr2 in (
   match inf_ty1, inf_ty2 with 
@@ -320,8 +334,8 @@ let rec infer_type_expr: context -> mode -> expr -> il_type option
     let msg = "Type checking error: str.in_re expected type String, given type " ^ ty_str in 
     Utils.error msg p
   )
-| ReConcat (exprs, p) 
-| ReUnion (exprs, p) -> 
+| BuiltInFunc (ReConcat, exprs, p) 
+| BuiltInFunc (ReUnion, exprs, p) -> 
   let inf_tys = List.map (infer_type_expr ctx mode) exprs in
   if List.for_all (fun ty -> match ty with 
   | Some String -> true 
@@ -339,7 +353,10 @@ let rec infer_type_expr: context -> mode -> expr -> il_type option
     let ty_str = Utils.capture_output Ast.pp_print_ty (Option.get inf_ty) in 
     let msg = "Type checking error: re.(union | ++) expected type String, given type " ^ ty_str in 
     Utils.error msg p
-
+| e -> 
+  let msg = Format.asprintf "Unexpected expression in type checker: %a" 
+    Ast.pp_print_expr e in
+  Utils.crash msg 
 
 and check_type_expr: context -> mode -> il_type -> expr -> Lexing.position -> expr 
 = fun ctx mode exp_ty expr p -> 

@@ -7,27 +7,17 @@ let rec calculate_casts: expr -> expr
   | IntConst (i, p) -> Ast.il_int_to_bv len i p
   | _ -> BVCast (len, expr, p)
   )
-| UbvToInt (expr, p) -> UbvToInt (calculate_casts expr, p) 
-| SbvToInt (expr, p) -> SbvToInt (calculate_casts expr, p) 
-| ReRange (expr1, expr2, p) -> ReRange (calculate_casts expr1, calculate_casts expr2, p) 
-| StrInRe (expr1, expr2, p) -> StrInRe (calculate_casts expr1, calculate_casts expr2, p) 
 | BinOp (expr1, op, expr2, p) -> BinOp (calculate_casts expr1, op, calculate_casts expr2, p) 
-| ReStar (expr, p) -> ReStar (calculate_casts expr, p) 
-| StrToRe (expr, p) -> StrToRe (calculate_casts expr, p)
 | UnOp (op, expr, p) -> UnOp (op, calculate_casts expr, p) 
 | Singleton (expr, p) -> Singleton (calculate_casts expr, p)
 | CompOp (expr1, op, expr2, p) -> CompOp (calculate_casts expr1, op, calculate_casts expr2, p) 
-| StrLength (expr, p) -> StrLength (calculate_casts expr, p) 
-| SeqLength (expr, p) -> SeqLength (calculate_casts expr, p) 
-| Length (expr, p) -> Length (calculate_casts expr, p) 
 | Match (nt_ctx, nt, cases, p) -> 
   let cases = List.map (fun case -> match case with 
   | CaseStub _ -> case 
   | Case (nts, e) -> Case (nts, calculate_casts e)
   ) cases in
   Match (nt_ctx, nt, cases, p)
-| ReConcat (exprs, p) -> ReConcat (List.map calculate_casts exprs, p)
-| ReUnion (exprs, p) -> ReUnion (List.map calculate_casts exprs, p)
+| BuiltInFunc (func, exprs, p) -> BuiltInFunc (func, List.map calculate_casts exprs, p)
 | NTExpr _ 
 | BVConst _ 
 | BLConst _ 

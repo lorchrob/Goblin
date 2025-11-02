@@ -261,13 +261,14 @@ and pp_print_expr: ?nt_prefix:string -> TC.context -> Format.formatter -> A.expr
     Format.fprintf ppf "(%a %a)"
       pp_print_unop op 
       r expr
-  | StrLength (expr, _) -> 
+  | BuiltInFunc (StrLength, [expr], _) -> 
     Format.fprintf ppf "(str.len %a)"
       r expr
-  | SeqLength (expr, _) -> 
+  | BuiltInFunc (SeqLength, [expr], _) -> 
     Format.fprintf ppf "(seq.len %a)"
       r expr
-  | Length (_, p) -> Utils.error "length(.) function is not yet supported in SMT constraints" p
+  | BuiltInFunc (Length, _, p) -> Utils.error "length(.) function is not yet supported in SMT constraints" p
+  | BuiltInFunc (Repeat, _, p) -> Utils.error "repeat(.,.) function is not yet supported in SMT constraints" p
   | EmptySet (ty, _) -> 
     Format.fprintf ppf "(as set.empty (Set %a))"
       pp_print_ty ty  
@@ -291,32 +292,10 @@ and pp_print_expr: ?nt_prefix:string -> TC.context -> Format.formatter -> A.expr
     Format.fprintf ppf "((_ int_to_bv %d) %a)"
       width 
       r e 
-  | UbvToInt (e, _) -> 
-    Format.fprintf ppf "(ubv_to_int %a)"
-      r e 
-  | SbvToInt (e, _) -> 
-    Format.fprintf ppf "(sbv_to_int %a)"
-      r e 
-  | ReStar (e, _) -> 
-  Format.fprintf ppf "(re.* %a)" 
-    r e 
-  | ReConcat (es, _) -> 
-    Format.fprintf ppf "(re.++ %a)" 
-    (Lib.pp_print_list r " ") es  
-  | StrToRe (e, _) -> 
-      Format.fprintf ppf "(str.to_re %a)" 
-        r e 
-  | StrInRe (e1, e2, _) -> 
-    Format.fprintf ppf "(str.in_re %a %a)" 
-      r e1 
-      r e2
-  | ReUnion (es, _) -> 
-    Format.fprintf ppf "(re.union %a)" 
-      (Lib.pp_print_list r " ") es  
-  | ReRange (e1, e2, _) ->  
-    Format.fprintf ppf "(re.range %a %a)" 
-      r e1 
-      r e2
+  | BuiltInFunc (func, es, _) -> 
+    Format.fprintf ppf "(%a %a)"
+      A.pp_print_builtin_func func 
+      (Lib.pp_print_list r " ") es
 
 
 let pp_print_semantic_constraint_ty_annot: TC.context -> Format.formatter -> string -> A.il_type -> A.semantic_constraint -> unit 
