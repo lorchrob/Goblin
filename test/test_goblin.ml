@@ -27,31 +27,29 @@ let test_dpll_unsat_constraint () =
 
 let bug1 () =
   let input = "../../../test/test_cases/bug1.gbl" in
-  try 
-    let _ = main_pipeline input in
-    fail "expected error"
-  with _ -> () 
+  match main_pipeline input with
+  | _ -> Alcotest.fail "Expected exception, but got success"
+  | exception _ -> ()  
 
 let bug4 () =
   let input = "../../../test/test_cases/bug4.gbl" in
-  try 
-    let _ = main_pipeline input in
-    fail "expected error"
-  with _ -> () 
+  match main_pipeline input with
+  | _ -> Alcotest.fail "Expected exception, but got success"
+  | exception _ -> ()  
 
 let bug3 () =
   let input = "../../../test/test_cases/bug3.gbl" in
-  try 
-    let _ = main_pipeline input in
-    fail "expected error"
-  with _ -> () 
+  match main_pipeline input with
+  | _ -> Alcotest.fail "Expected exception, but got success"
+  | exception _ -> ()  
 
 let bug2 () =
   let input = "../../../test/test_cases/bug2.gbl" in
-  try 
-    let _ = main_pipeline input in
-    fail "expected error"
-  with _ -> () 
+  let solver_ast, _, ast = main_pipeline input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
+  match output with
+  | Ok _ -> ()  
+  | Error msg -> fail msg
 
 let test_check_solver_ast () =
   let filename = "../../../test/test_cases/test_check_solver_ast" in
@@ -390,10 +388,9 @@ let dm_test_dot_notation_2 () =
 
 let dm_test_cyclic_dependencies () =
   let input = "../../../test/test_cases/test_cyclic_dependencies" in
-  try 
-    let _ = main_pipeline ~engine:(Some DpllMono) input in
-    fail "expected error"
-  with _ -> () 
+  match main_pipeline input with
+  | _ -> Alcotest.fail "Expected exception, but got success"
+  | exception _ -> ()  
 
 let dm_test_horizontal_ambiguous_reference_1 () =
   let input = "../../../test/test_cases/test_horizontal_ambiguous_reference_1" in
@@ -1107,10 +1104,9 @@ let sd_test17 () =
 
 let dm_test17 () = 
   let input = "../../../test/test_cases/test17" in
-  try 
-    let _ = main_pipeline ~engine:(Some DpllMono) input in
-    fail "expected error"
-  with _ -> () 
+  match main_pipeline input with
+  | _ -> Alcotest.fail "Expected exception, but got success"
+  | exception _ -> ()  
 
 (*let dd_test17 () = 
   let input = "../../../test/test_cases/test17" in
@@ -1472,7 +1468,7 @@ let test10 () =
   let input = "../../../test/test_cases/test10" in
   match main_pipeline ~engine:(Some SygusDac) input with
   | _ -> Alcotest.fail "Expected exception, but got success"
-  | exception _ -> ()  (* test passes *)
+  | exception _ -> ()  
 
 let () = 
   run "My_module" [

@@ -329,7 +329,7 @@ let rec pp_print_ty: Format.formatter -> il_type -> unit
 | ADT rules -> 
   Format.fprintf ppf "ADT: %a"
     (Lib.pp_print_list (Lib.pp_print_list Format.pp_print_string " ") "; ") rules
-    
+
 let rec pp_print_case: Format.formatter -> case -> unit 
 = fun ppf case -> 
   match case with 
