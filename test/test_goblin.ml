@@ -43,6 +43,12 @@ let bug3 () =
   | _ -> Alcotest.fail "Expected exception, but got success"
   | exception _ -> ()  
 
+let bug8 () =
+  let input = "../../../test/test_cases/bug8.gbl" in
+  match main_pipeline input with
+  | _ -> Alcotest.fail "Expected exception, but got success"
+  | exception _ -> ()  
+
 let bug2 () =
   let input = "../../../test/test_cases/bug2.gbl" in
   let solver_ast, _, ast = main_pipeline input in
@@ -1659,6 +1665,7 @@ let () =
     "bug5", [test_case "bug5" `Quick bug5]; 
     "bug6", [test_case "bug6" `Quick bug6]; 
     "bug2", [test_case "bug2" `Quick bug2]; 
+    "bug8", [test_case "bug8" `Quick bug8]; 
     "probabilities", [test_case "probabilities" `Quick probabilities]; 
     "probabilities_2", [test_case "probabilities_2" `Quick probabilities_2]; 
     "example-fail", [test_case "example-fail" `Quick example_fail]; 

@@ -254,6 +254,7 @@ let check_syntax_prod_rule: ast -> prod_rule_map -> Utils.StringSet.t -> prod_ru
   let ges' = List.map Ast.grammar_element_to_string ges in
   let scs = List.map (fun sc -> match sc with 
   | DerivedField (nt2, expr, p) -> (
+    let expr = check_dangling_identifiers nt_set p expr in 
     match check_for_ambiguous_derived_fields ast expr rhs with 
     | Error () -> 
       let msg = Format.asprintf "Derived field %s is defined ambiguously. More concretely, the definition of %s contains some nonterminal expression <nt_1>.<nt_2>...<nt_n> where some <nt_i> has multiple occurrences in its production rule (and hence the nonterminal expression could evaluate to more than one term, depending on which occurrence you pick)." 
@@ -262,7 +263,6 @@ let check_syntax_prod_rule: ast -> prod_rule_map -> Utils.StringSet.t -> prod_ru
     | Ok () -> 
       if (not (Utils.StringSet.mem nt2 nt_set)) then Utils.error ("Dangling identifier <" ^ nt2 ^ ">") p else
       if (not (List.mem nt2 ges')) then Utils.error ("DerivedField LHS identifier " ^ nt2 ^ " is not present on the RHS of the corresponding production rule") p else
-      let expr = check_dangling_identifiers nt_set p expr in 
       let expr = check_prod_rule_nt_exprs prm (Utils.StringSet.of_list ges') expr in
       DerivedField (nt2, expr, p)
     )
@@ -511,9 +511,9 @@ let check_syntax: prod_rule_map -> Utils.StringSet.t -> ast -> ast
   | TypeAnnotation (nt, ty, scs, p) -> 
     let scs = List.map (fun sc -> match sc with 
     | DerivedField (nt2, expr, p) ->
+      let expr = check_dangling_identifiers nt_set p expr in  
       if (not (Utils.StringSet.mem nt2 nt_set)) then Utils.error ("Dangling identifier <" ^ nt2 ^ ">") p else
       if (not (nt2 = nt)) then Utils.error ("DerivedField LHS identifier " ^ nt2 ^ " is not present in the corresponding type annotation") p else
-      let expr = check_dangling_identifiers nt_set p expr in 
       let expr = check_type_annot_nt_exprs prm (Utils.StringSet.singleton nt) expr in
       DerivedField (nt2, expr, p) 
     | SmtConstraint (expr, p) -> 
