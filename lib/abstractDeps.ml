@@ -26,6 +26,7 @@ let rec calculate_casts: expr -> expr
 | PhConst _ 
 | StrConst _ 
 | EmptySet _ -> expr
+| SynthAttr _ -> assert false
 
 let stub_grammar_element: TypeChecker.context -> semantic_constraint list -> grammar_element -> semantic_constraint option * grammar_element * TypeChecker.context
 = fun ctx scs ge -> match ge with 
@@ -34,6 +35,7 @@ let stub_grammar_element: TypeChecker.context -> semantic_constraint list -> gra
   match List.find_opt (fun sc -> match sc with
   | SmtConstraint _ -> false 
   | DerivedField (nt2, _, _) -> nt = nt2
+  | AttrDef _ -> assert false
   ) scs with 
   | Some dep -> 
     let stub_id = Utils.mk_fresh_stub_id nt in
@@ -47,6 +49,7 @@ let stub_ty_annot
   match List.find_opt (fun sc -> match sc with
   | SmtConstraint _ -> false 
   | DerivedField (nt2, _, _) -> nt = nt2
+  | AttrDef _ -> assert false
   ) scs with 
   | Some dep -> 
     let stub_id = Utils.mk_fresh_stub_id nt in
@@ -61,6 +64,7 @@ let simp_rhss: TypeChecker.context -> prod_rule_rhs -> semantic_constraint Utils
   let scs = List.map (fun sc -> match sc with 
   | DerivedField (nt, expr, p) -> DerivedField (nt, calculate_casts expr, p)
   | SmtConstraint (expr, p) -> SmtConstraint (calculate_casts expr, p)
+  | AttrDef _ -> assert false
   ) scs in 
   (* Abstract away dependent terms. Whenever we abstract away a term, we store 
      a mapping from the abstracted stub ID to the original dependency *)
@@ -94,6 +98,7 @@ let simp_ast: TypeChecker.context -> ast -> (semantic_constraint Utils.StringMap
     let scs = List.map (fun sc -> match sc with 
     | DerivedField (nt, expr, p) -> DerivedField (nt, calculate_casts expr, p)
     | SmtConstraint (expr, p) -> SmtConstraint (calculate_casts expr, p)
+    | AttrDef _ -> assert false
     ) scs in 
     let dep_map, element, ctx = stub_ty_annot acc_ctx nt ty scs p in
     let dep_map = Utils.StringMap.merge Lib.union_keys dep_map acc_dep_map in

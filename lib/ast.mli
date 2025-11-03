@@ -65,6 +65,7 @@ type case =
 | CaseStub of ((string * int option) list * (string * int option)) list
 and 
 expr = 
+| SynthAttr of string * string * Lexing.position (* NT string * attribute name *)
 | EmptySet of il_type * Lexing.position
 | Singleton of expr * Lexing.position
 | BinOp of expr * bin_operator * expr * Lexing.position
@@ -99,6 +100,7 @@ expr =
 type semantic_constraint =
 | DerivedField of string * expr * Lexing.position
 | SmtConstraint of expr * Lexing.position
+| AttrDef of string * expr * Lexing.position (* attribute := <expression> *)
 
 type grammar_element =
 | Nonterminal of string * int option * Lexing.position

@@ -493,6 +493,7 @@ let process_sc: TC.context -> A.ast -> A.semantic_constraint -> A.semantic_const
     in 
     let expr = filter_out_dangling_nts expr in
     SmtConstraint (expr, p)
+  | AttrDef _ -> assert false
 
 let convert_nt_exprs_to_matches: TC.context -> A.ast -> A.ast = 
   fun ctx ast -> 

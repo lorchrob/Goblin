@@ -78,6 +78,7 @@ let merge: A.ast -> A.element -> A.ast
            resolveAmbiguities. *)
         Utils.debug_print Format.pp_print_string Format.std_formatter "Replacing dependency with sygus expr";
         A.SmtConstraint (A.prepend_nt_to_dot_exprs nt (A.CompOp (NTExpr([], [nt2, None], p), Eq, expr, p)), p)
+      | AttrDef _ -> assert false
       ) scs in 
       let ast = List.fold_left (fun acc element -> match element with
       | A.TypeAnnotation _ -> acc @ [element]
@@ -117,6 +118,7 @@ let lift: A.ast -> A.element -> A.ast
         let msg = Format.asprintf "Derived field %s defined is within the prod rule for nonterminal %s. However, nonterminal %s is itself SMT-constrained. Goblin does not currently support this overlap. To fix, model derived field %s with a (non-derived) equality constraint."
           nt' nt nt nt' in
         Utils.error msg p
+      | AttrDef _ -> assert false
       ) scs in
       ast @ [A.TypeAnnotation (nt, ty, scs, p)]
     else ast @ [element]
@@ -131,6 +133,7 @@ let lift: A.ast -> A.element -> A.ast
         let msg = Format.asprintf "Derived field %s defined is within the prod rule for nonterminal %s. However, nonterminal %s is itself SMT-constrained. Goblin does not currently support this overlap. To fix, model derived field %s with a (non-derived) equality constraint."
           nt' nt nt nt' in
         Utils.error msg p
+      | AttrDef _ -> assert false
         ) scs in
         A.Rhs (ges, scs, prob, p)
       ) rhss in

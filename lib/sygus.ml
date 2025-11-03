@@ -80,6 +80,7 @@ let pp_print_datatypes: Format.formatter -> TC.context -> Ast.semantic_constrain
     Format.fprintf ppf "(declare-datatype %s (\n\t(%s)\n))\n"
       (String.uppercase_ascii stub_id)
       ((String.lowercase_ascii stub_id) ^ "_con")
+  | AttrDef _ -> assert false
   | SmtConstraint _ -> Utils.crash "dependency map contains a SmtConstraint"
   ) dep_map;
   List.iter (fun element -> match element with 
@@ -144,6 +145,7 @@ Utils.StringMap.iter (fun stub_id dep -> match dep with
   (String.lowercase_ascii stub_id) 
   (String.uppercase_ascii stub_id) 
 | SmtConstraint _ -> Utils.crash "dependency map contains a SmtConstraint"
+  | AttrDef _ -> assert false
 ) dep_map
 
 let rec pp_print_match: Format.formatter -> TC.context -> (string * int option) list -> string * int option -> A.case list -> unit 
@@ -296,11 +298,13 @@ and pp_print_expr: ?nt_prefix:string -> TC.context -> Format.formatter -> A.expr
     Format.fprintf ppf "(%a %a)"
       A.pp_print_builtin_func func 
       (Lib.pp_print_list r " ") es
+  | SynthAttr _ -> assert false
 
 
 let pp_print_semantic_constraint_ty_annot: TC.context -> Format.formatter -> string -> A.il_type -> A.semantic_constraint -> unit 
 = fun ctx ppf nt ty sc -> match sc with 
 | A.DerivedField _ -> () 
+| AttrDef _ -> assert false
 | SmtConstraint (expr, _) -> 
   let constraint_id = fresh_constraint () in 
   Format.fprintf ppf "(define-fun %s ((%s0 %a)) Bool \n\t%a\n)\n"
@@ -418,6 +422,7 @@ let pp_print_rules: Ast.semantic_constraint Utils.StringMap.t -> Format.formatte
       (String.lowercase_ascii stub_id) 
       (String.uppercase_ascii stub_id) 
       ((String.lowercase_ascii stub_id) ^ "_con")
+  | AttrDef _ -> assert false
   | SmtConstraint _ -> Utils.crash "dependency map contains a SmtConstraint"
   ) dep_map
 

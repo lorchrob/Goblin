@@ -77,6 +77,7 @@ type case =
 | CaseStub of ((string * int option) list * (string * int option)) list
 and
 expr = 
+| SynthAttr of string * string * Lexing.position (* NT string * attribute name *)
 | EmptySet of il_type * Lexing.position
 | Singleton of expr * Lexing.position
 | BinOp of expr * bin_operator * expr * Lexing.position
@@ -111,6 +112,7 @@ expr =
 type semantic_constraint = 
 | DerivedField of string * expr * Lexing.position (* <nonterminal> <- <expression> *)
 | SmtConstraint of expr * Lexing.position (* Any boolean expression *)
+| AttrDef of string * expr * Lexing.position (* attribute := <expression> *)
 
 type grammar_element = 
 | Nonterminal of string * int option * Lexing.position
@@ -135,6 +137,7 @@ let rec get_nts_from_expr: expr -> string list
   let r = get_nts_from_expr in
   match expr with 
   | NTExpr (_, nts, _) -> List.map fst nts 
+  | SynthAttr _ -> assert false
   | Match (_, (nt, _), cases, _) -> nt :: (List.map (fun case -> match case with 
     | CaseStub _ -> []
     | Case (_, expr) -> r expr
@@ -163,6 +166,7 @@ let rec get_nts_from_expr2: expr -> (string * int option) list list
   let r = get_nts_from_expr2 in
   match expr with 
   | NTExpr (nts1, nts2, _) -> [nts1 @ nts2]
+  | SynthAttr _ -> assert false
   | Match _ -> Utils.crash "Unexpected case in get_nts_from_expr2"
   | BinOp (expr1, _, expr2, _) -> 
     r expr1 @ r expr2
@@ -214,6 +218,7 @@ let rec get_nts_from_expr_after_desugaring_dot_notation: expr -> (string * int o
   | IntConst _ 
   | StrConst _ 
   | EmptySet _ -> []
+  | SynthAttr _ -> assert false
 
 let pp_print_nt_helper_dots: Format.formatter -> string * int option -> unit 
 = fun ppf (nt, idx) -> 
@@ -329,6 +334,9 @@ let rec pp_print_case: Format.formatter -> case -> unit
 
 and pp_print_expr: Format.formatter -> expr -> unit 
 = fun ppf expr -> match expr with
+| SynthAttr (nt, attr, _) -> 
+  Format.fprintf ppf "<%s>.%s"
+    nt attr
 | EmptySet (ty, _) -> 
   Format.fprintf ppf "set.empty<%a>"
     pp_print_ty ty
@@ -409,6 +417,10 @@ let pp_print_semantic_constraint: Format.formatter -> semantic_constraint -> uni
     pp_print_expr expr
 | SmtConstraint (expr, _) -> 
   Format.fprintf ppf "%a;"
+    pp_print_expr expr
+| AttrDef (attr, expr, _) -> 
+  Format.fprintf ppf "%s <- %a;"
+    attr 
     pp_print_expr expr
 
 let pp_print_grammar_element: Format.formatter -> grammar_element ->  unit 
@@ -501,7 +513,8 @@ let rec expr_contains_dangling_nt: Utils.SILSet.t -> expr -> bool
       (Lib.pp_print_list pp_print_nt_with_underscores ", ") (Utils.SILSet.elements ctx)
       pp_print_nt_with_underscores nt_expr (Utils.SILSet.mem nt_expr ctx); *)
     res
-    
+  | SynthAttr (nt, _, p) -> 
+    r (NTExpr ([], [nt, None], p))
   | BinOp (expr1, _, expr2, _) -> 
     r expr1 || r expr2
   | UnOp (_, expr, _) -> 
@@ -525,11 +538,13 @@ let rec expr_contains_dangling_nt: Utils.SILSet.t -> expr -> bool
 let sc_constrains_nt: string -> semantic_constraint -> bool 
 = fun nt sc -> match sc with 
 | SmtConstraint (expr, _) -> List.mem nt (get_nts_from_expr expr)
-| DerivedField (nt2, _, _) -> nt = nt2
+| DerivedField (nt2, _, _) 
+| AttrDef (nt2, _, _) -> nt = nt2
 
 let get_nts_from_sc: semantic_constraint -> string list 
 = fun sc -> match sc with 
 | SmtConstraint (expr, _) -> get_nts_from_expr expr
+| AttrDef (nt2, _, _)
 | DerivedField (nt2, _, _) -> [nt2]
 
 (* To be called before desugaring NTs to match expressions and resolving ambiguities.
@@ -572,6 +587,7 @@ let rec prepend_nt_to_dot_exprs: string -> expr -> expr
   | PhConst _ 
   | StrConst _
   | EmptySet _ -> expr
+  | SynthAttr _ -> assert false
 
 let scs_of_element = function 
 | ProdRule (_, rhss, _) -> 
@@ -612,5 +628,6 @@ let pos_of_expr expr = match expr with
 | IntConst (_, pos) 
 | PhConst (_, pos) 
 | StrConst (_, pos) 
+| SynthAttr (_, _, pos)
 | EmptySet (_, pos) -> pos 
 

@@ -99,6 +99,7 @@ let rec generate_all_possible_exprs: TC.context -> string list -> A.expr -> A.ex
     let msg = Format.asprintf "Bad function arity in expression %a" 
       A.pp_print_expr expr in 
     Utils.error msg (A.pos_of_expr expr)
+  | SynthAttr _ -> assert false
 
 let process_sc: TC.context -> string list -> A.semantic_constraint -> A.semantic_constraint 
 = fun ctx nts sc -> match sc with 
@@ -110,6 +111,7 @@ let process_sc: TC.context -> string list -> A.semantic_constraint -> A.semantic
       | [] -> Utils.crash "unexpected case"
     in
     DerivedField (nt, expr, p)
+  | AttrDef _ -> assert false
   | SmtConstraint (expr, p) -> 
     let exprs = generate_all_possible_exprs ctx nts expr in
     let expr = List.fold_left (fun acc expr -> A.BinOp (expr, GLAnd, acc, p)) (BConst (true, p)) exprs in
@@ -129,6 +131,7 @@ let process_sc_to_list: TC.context -> string list -> A.semantic_constraint -> A.
   | SmtConstraint (expr, p) -> 
     let exprs = generate_all_possible_exprs ctx nts expr in
     List.map (fun expr -> A.SmtConstraint (expr, p)) exprs
+  | AttrDef _ -> assert false
 
 (* Same as resolve_ambiguities, but we desugar to a list of 
    semantic constraints rather than a conjunction of generated 
@@ -148,6 +151,7 @@ let resolve_ambiguities_dpll: TC.context -> A.ast -> A.ast
     (* Filter out scs with dot notation expressions of the form <nt1>[n], where 
        [n] does not apply to this production rule *)
     let scs = List.filter (function 
+    | A.AttrDef _ -> assert false
     | A.SmtConstraint (expr, _)  
     | A.DerivedField (_, expr, _) ->
       let nts = A.get_nts_from_expr2 expr |> List.map List.hd in

@@ -80,6 +80,9 @@ let rec check_dangling_identifiers: Utils.StringSet.t -> Lexing.position -> expr
     let nt_expr' = List.map fst nt_expr in
     let _ = check_d_ids_nt_expr nt_expr' in 
     NTExpr (nt_ctx, nt_expr, p)
+  | SynthAttr (nt, attr, p) -> 
+    let _ = check_d_ids_nt_expr [nt] in 
+    SynthAttr (nt, attr, p)
   | EmptySet (ty, p) -> EmptySet (ty, p)
   | Singleton (expr, p) -> Singleton (call expr, p)
   | BinOp (expr1, op, expr2, p) -> BinOp (call expr1, op, call expr2, p) 
@@ -118,6 +121,11 @@ let rec check_prod_rule_nt_exprs: prod_rule_map -> Utils.StringSet.t -> expr -> 
     else
       let nt_expr = check_nt_expr_refs prm nt_expr p in 
       NTExpr (nt_context, nt_expr, p) 
+  | SynthAttr (nt, attr, p) -> 
+    if (not (Utils.StringSet.mem nt nts)) 
+    then 
+      Utils.error ("Nonterminal " ^ nt ^ " not found in current production rule RHS or type annotation") p
+    else SynthAttr (nt, attr, p)
   | EmptySet (ty, p) -> EmptySet (ty, p)
   | Singleton (expr, p) -> Singleton (call expr, p)
   | BinOp (expr1, op, expr2, p) -> BinOp (call expr1, op, call expr2, p) 
@@ -158,6 +166,7 @@ let rec check_type_annot_nt_exprs: prod_rule_map -> Utils.StringSet.t -> expr ->
   | BConst _ 
   | IntConst _ 
   | PhConst _ 
+  | SynthAttr _
   | StrConst _ -> expr
 
 (* Every SMT constraint must contain some nonterminal. Everything else is trivial, ie, reduces to either 
@@ -206,6 +215,7 @@ let rec check_for_ambiguous_derived_fields ast expr rhs =
   | PhConst _
   | IntConst _ 
   | StrConst _
+  | SynthAttr _
   | EmptySet _  -> Ok ()
 
 let check_syntax_prod_rule: ast -> prod_rule_map -> Utils.StringSet.t -> prod_rule_rhs -> prod_rule_rhs
@@ -213,6 +223,10 @@ let check_syntax_prod_rule: ast -> prod_rule_map -> Utils.StringSet.t -> prod_ru
 | Rhs (ges, scs, prob, p) ->
   let ges' = List.map Ast.grammar_element_to_string ges in
   let scs = List.map (fun sc -> match sc with 
+  | AttrDef (nt2, expr, p) -> 
+    let expr = check_dangling_identifiers nt_set p expr in 
+    let expr = check_prod_rule_nt_exprs prm (Utils.StringSet.of_list ges') expr in
+    AttrDef (nt2, expr, p)
   | DerivedField (nt2, expr, p) -> (
     let expr = check_dangling_identifiers nt_set p expr in 
     match check_for_ambiguous_derived_fields ast expr rhs with 
@@ -282,11 +296,13 @@ let remove_circular_deps: ast -> ast
         | Rhs (nt, scs, prob, p) -> 
           let sygus_exprs = List.filter (fun sc -> match sc with
           | SmtConstraint _ -> true 
+          | AttrDef _ -> true (* for now, handle attributes at the SMT level *)
           | DerivedField _ -> false
           ) scs in 
           let dependencies = List.filter (fun sc -> match sc with
           | SmtConstraint _ -> false 
           | DerivedField _ -> true
+          | AttrDef _ -> false
           ) scs in
           let dependencies = match TopologicalSort.canonicalize_scs dependencies with 
           | None -> dependencies
@@ -309,6 +325,7 @@ let check_scs_for_dep_terms: semantic_constraint list -> semantic_constraint lis
   ) StringSet.empty scs in
   let deps_to_convert = List.fold_left (fun acc sc -> match sc with 
   | DerivedField _ -> acc
+  | AttrDef (_, expr, _)
   | SmtConstraint (expr, _) -> 
     let nts = Ast.get_nts_from_expr expr |> StringSet.of_list in 
     let intersection = StringSet.inter dep_terms nts in
@@ -325,6 +342,7 @@ let check_scs_for_dep_terms: semantic_constraint list -> semantic_constraint lis
       in 
       Utils.error msg p
     ) else sc :: acc
+  | AttrDef _ 
   | SmtConstraint _ -> sc :: acc
   ) [] scs |> List.rev
 
@@ -366,11 +384,13 @@ let str_const_to_ph_const ast =
   | BLConst _ 
   | BConst _ 
   | IntConst _ 
+  | SynthAttr _
   | PhConst _ as expr -> expr
   in
 
   let handle_sc ty sc = match sc with 
   | SmtConstraint _ -> sc 
+  | AttrDef _ -> sc
   | DerivedField (nt, expr, p) -> 
     let expr = 
       if ty = Placeholder then handle_expr expr else expr 
@@ -460,6 +480,10 @@ let check_syntax: prod_rule_map -> Utils.StringSet.t -> ast -> ast
     ProdRule (nt, rhss, p)
   | TypeAnnotation (nt, ty, scs, p) -> 
     let scs = List.map (fun sc -> match sc with 
+    | AttrDef (nt2, expr, p) ->
+      let expr = check_dangling_identifiers nt_set p expr in 
+      let expr = check_prod_rule_nt_exprs prm (Utils.StringSet.singleton nt) expr in
+      AttrDef (nt2, expr, p)
     | DerivedField (nt2, expr, p) ->
       let expr = check_dangling_identifiers nt_set p expr in  
       if (not (Utils.StringSet.mem nt2 nt_set)) then Utils.error ("Dangling identifier <" ^ nt2 ^ ">") p else

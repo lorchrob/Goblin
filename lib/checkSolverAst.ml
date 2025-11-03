@@ -73,6 +73,7 @@ let handle_scs ast solver_ast constructor element scs =
       SA.pp_print_solver_ast solver_ast
       );
     ComputeDeps.evaluate false solver_ast ast element expr
+  | AttrDef _ -> assert false
   ) scs in
   let b = List.exists (fun sc -> match sc with 
   | [A.BConst (false, _)] -> true 

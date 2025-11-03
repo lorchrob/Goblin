@@ -388,6 +388,9 @@ let check_prod_rhs ctx rhss = match rhss with
     let exp_ty = Bool in
     let expr = check_type_expr ctx SyGuS exp_ty expr p in 
     SmtConstraint (expr, p)
+  | AttrDef (attr, expr, p) -> 
+    let _ = infer_type_expr ctx SyGuS expr in 
+    AttrDef (attr, expr, p)
   ) scs in 
   Rhs (ges, scs, prob, p)
 | StubbedRhs _ -> assert false
@@ -413,6 +416,9 @@ let check_types: context -> ast -> ast
       let exp_ty = Bool in
       let expr = check_type_expr ctx SyGuS exp_ty expr p in 
       SmtConstraint (expr, p)
+    | AttrDef (attr, expr, p) -> 
+      let _ = infer_type_expr ctx SyGuS expr in 
+      AttrDef (attr, expr, p)
     ) scs in 
     TypeAnnotation (nt, ty, scs, p)
   ) ast in 

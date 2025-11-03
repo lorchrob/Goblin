@@ -71,6 +71,7 @@ open Ast
 %token RE_STAR ; 
 %token RE_CONCAT ;
 %token REPEAT ;
+%token GETS ;
 
 %token<int> INTEGER
 %token<float> DECIMAL
@@ -150,6 +151,9 @@ semantic_constraint:
   }
 | e = expr { 
     SmtConstraint (e, $startpos) 
+  }
+| attr = ID; GETS; e = expr { 
+    AttrDef (attr, e, $startpos)
   }
 
 expr: 
@@ -322,12 +326,12 @@ expr:
 | REPEAT; LPAREN; e1 = expr; COMMA; e2 = expr; RPAREN; { 
     BuiltInFunc (Repeat, [e1; e2], $startpos) 
   } 
-
-(* Variables *)
 | e = nt_expr; (* _ = option(index); *) { 
     NTExpr ([], e, $startpos) 
   }
-(* Arbitrary parens *)
+| nt = nonterminal; DOT; attr = ID; { 
+    SynthAttr (nt, attr, $startpos) 
+  }
 | LPAREN; e = expr; RPAREN; { e }
 
 nt_expr: 

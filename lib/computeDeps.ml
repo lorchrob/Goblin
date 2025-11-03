@@ -86,6 +86,7 @@ let rec compute_dep: A.semantic_constraint Utils.StringMap.t -> SA.solver_ast ->
   | Some sc -> (
     match sc with 
     | SmtConstraint _ -> Utils.crash "Encountered SmtConstraint when computing dependencies"
+    | AttrDef _ -> assert false
     | DerivedField (_, expr, _) -> 
       (* Hacky workaround. Brittle. Need to refactor. Doesn't generalize. 
          The problem is that when computing this new dependency, we may have to 

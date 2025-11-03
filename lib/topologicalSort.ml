@@ -171,6 +171,7 @@ let get_all_nt_scs scs =
   List.fold_left (fun acc sc -> match sc with 
   | DerivedField (nt, _, _) -> nt :: acc
   | SmtConstraint _ -> acc
+  | AttrDef _ -> assert false
   ) [] scs
 
 let get_all_dependencies_from_scs scs = 
@@ -179,6 +180,7 @@ let get_all_dependencies_from_scs scs =
   | DerivedField (nt1, expr, _) -> 
     let nts = Ast.get_nts_from_expr expr in 
     acc @ List.map (fun nt2 -> (nt1, nt2)) nts
+  | AttrDef _ -> assert false
   ) [] scs
 
 

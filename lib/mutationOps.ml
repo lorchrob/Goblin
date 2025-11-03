@@ -119,6 +119,7 @@ let rec remove_constraints (nt : string) (clist : semantic_constraint list) : se
             if isPresentInExpr nt e 
                 then (remove_constraints nt xs)
             else SmtConstraint(e, pos)::(remove_constraints nt xs) 
+        | AttrDef _ -> assert false 
 
 let rec apply_delete_to_rule nt production_options = 
     match production_options with

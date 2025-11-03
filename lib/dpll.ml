@@ -235,6 +235,7 @@ let rec universalize_expr: bool -> (string * int option) list -> Ast.expr -> Ast
   | PhConst _ 
   | StrConst _ 
   | EmptySet _ -> expr
+  | SynthAttr _ -> assert false
 
 let string_of_path path = 
   let path = List.map (fun (nt, idx) -> match idx with 
@@ -257,6 +258,7 @@ match dt with
       let constraints_to_add, _exprs = List.concat_map (fun sc -> match sc with 
       | A.SmtConstraint (e, _) -> [universalize_expr false path e, e] 
       | DerivedField _ -> [] 
+      | AttrDef _ -> assert false
       ) scs |> List.split in
       let expr_variables = List.map A.get_nts_from_expr2 constraints_to_add |> List.flatten in
       let ty_ctx = List.fold_left (fun acc nt -> 
@@ -289,6 +291,7 @@ match dt with
       declare_smt_variables variable_stack declared_variables (Utils.StringMap.singleton path' ty) solver blocking_clause_vars assertion_level;
         [universalize_expr true path e] 
       | DerivedField _ -> [] 
+      | AttrDef _ -> assert false
       ) scs |> ConstraintSet.of_list in
       constraints_to_assert := ConstraintSet.union !constraints_to_assert constraints_to_add;
       Some [SymbolicLeaf (ty, path @ [(nt, idx)])]
@@ -325,6 +328,7 @@ let rec collect_constraints_of_dt ast = function
       let expr = (universalize_expr true path expr) in
         [expr] 
     | DerivedField _ -> [] 
+    | AttrDef _ -> assert false
     ) |> ConstraintSet.of_list in 
     ConstraintSet.union constraints child_constraints
   | _ -> ConstraintSet.empty
@@ -994,6 +998,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.solver_ast
                   variable_stack blocking_clause_vars
           )
         | A.DerivedField _ -> ()
+        | A.AttrDef _ -> assert false
         ) scs;
       | A.ProdRule (_, rhss, _) -> 
         (*Format.fprintf Format.std_formatter "Finding the chosen rule for %a\n" 
@@ -1035,6 +1040,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.solver_ast
             (* don't instantiate yet -- we haven't hit the leaf nodes *)
             (* derivation_tree := instantiate_terminals model derivation_tree;  *)
           | A.DerivedField _ -> ()
+          | A.AttrDef _ -> assert false
           ) scs;
 
           (* Assert the constraints from this choice (and also try to assert constraints hanging around from earlier on,
