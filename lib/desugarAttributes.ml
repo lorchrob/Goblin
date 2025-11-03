@@ -1,3 +1,26 @@
+(* 
+   * Attribute types are NOT inferred from RHS
+     * This becomes a problem if we want to allow circular attribute definitions, 
+       type inference becomes nontrivial
+   * Check for dangling attribute references 
+   * Mandate that if there is an attribute definition of one RHS, 
+     there must be a corresponding def in all RHSs
+   * Only allow attribute definition in prod rules, not type annotations
+     * Supporting on type annotations would require extra technical boring work
+     * They would not be inherently interesting, because they could only be some expression of the single NT
+       that could be inlined at the "call site"
+   * Disallow duplicate attribute definitions in a single RHS
+
+   * Desugar SynthAttr to NTExpr
+   * Desugar AttrDef to SmtConstraint, 
+     add nonterminal for the attribute to the prod rule, 
+     and add corresponding type annotation if one doesn't already exist
+
+   Q: Allow circular attribute definitions?
+   Q: Allow "non-derived" attribute "definitions"? 
+   Q: Allow unconstrained attributes in some cases (explicitly annotated)?
+*)
+
 module A = Ast
 
 let rec synth_attr_to_nt_expr 
