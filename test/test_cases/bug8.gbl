@@ -1,0 +1,6 @@
+//!! Shouldn't crash (`<ghost>` is dangling)
+<S> ::= <L> <Payload> { <L> <- length(<_Payload>); };
+<L> :: Int; 
+<Payload> ::= <F1> <ghost> ;
+<F1> :: BitVec(8); 
+<_ghost> :: BitVec(8);
