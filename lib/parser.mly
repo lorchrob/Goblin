@@ -110,6 +110,11 @@ element:
     | None -> TypeAnnotation (nt, t, [], $startpos) 
     | Some scs -> TypeAnnotation (nt, t, scs, $startpos) 
   }
+(* Attribute type annotation *) 
+| attribute = ID; TYPEANNOT; t = il_type; SEMICOLON;
+  { 
+    TypeAnnotation ("_" ^ attribute, t, [], $startpos) 
+  }
 (* Production rule *)
 | nt = nonterminal; PRODUCTION; rhss = separated_nonempty_list(OPTION, rhs); SEMICOLON;
   { 

@@ -65,6 +65,15 @@ let main_pipeline ?(engine: Flags.engine option = None) ?(grammar: Ast.ast optio
   let ast = TypeChecker.check_types ctx ast in
   Utils.debug_print Format.pp_print_string ppf "\nType checking complete:\n";
 
+  (* Attribute checking *)
+  let ast = AttributeChecker.check_attributes ctx ast in
+  Utils.debug_print Format.pp_print_string ppf "\nAttribute checking complete:\n";
+
+  (* Desugar attributes *)
+  Utils.debug_print Format.pp_print_string ppf "\nDesugaring attributes:\n";
+  let ast = DesugarAttributes.desugar_attributes ctx ast in
+  Utils.debug_print Ast.pp_print_ast ppf ast;
+
   (* Populate nonterminal indices *)
   Utils.debug_print Format.pp_print_string ppf "\nPopulating indices:\n";
   let ast = PopulateIndices.populate_indices ast in

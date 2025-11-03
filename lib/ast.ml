@@ -137,7 +137,7 @@ let rec get_nts_from_expr: expr -> string list
   let r = get_nts_from_expr in
   match expr with 
   | NTExpr (_, nts, _) -> List.map fst nts 
-  | SynthAttr _ -> assert false
+  | SynthAttr (nt, _, _) -> [nt] 
   | Match (_, (nt, _), cases, _) -> nt :: (List.map (fun case -> match case with 
     | CaseStub _ -> []
     | Case (_, expr) -> r expr
@@ -419,7 +419,7 @@ let pp_print_semantic_constraint: Format.formatter -> semantic_constraint -> uni
   Format.fprintf ppf "%a;"
     pp_print_expr expr
 | AttrDef (attr, expr, _) -> 
-  Format.fprintf ppf "%s <- %a;"
+  Format.fprintf ppf "%s := %a;"
     attr 
     pp_print_expr expr
 

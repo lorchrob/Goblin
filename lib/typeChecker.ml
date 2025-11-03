@@ -16,10 +16,19 @@ let build_context: ast -> ast * context
   let ctx = List.fold_left (fun acc element -> match element with 
   | ProdRule (nt, rhss, _) -> 
     let options = List.map (fun rhs -> match rhs with
-      | Rhs (ges, _, _, _) -> List.fold_left (fun acc ge -> match ge with 
+      | Rhs (ges, scs, _, _) -> 
+        (* User ges *)
+        let options1 = List.fold_left (fun acc ge -> match ge with 
         | Nonterminal (nt, _, _) 
         | StubbedNonterminal (nt, _) -> nt :: acc
-      ) [] ges |> List.rev
+        ) [] ges |> List.rev in 
+        (* Generated attribute ges *)
+        let options2 = List.fold_left (fun acc sc -> match sc with 
+        | SmtConstraint _  
+        | DerivedField _ -> acc 
+        | AttrDef (attr, _, _) -> ("_" ^ attr) :: acc
+        ) [] scs |> List.rev in 
+        options1 @ options2
       | StubbedRhs _ -> []
     ) rhss in
     Utils.StringMap.add nt (ADT options) acc 
@@ -353,6 +362,10 @@ let rec infer_type_expr: context -> mode -> expr -> il_type option
     let ty_str = Utils.capture_output Ast.pp_print_ty (Option.get inf_ty) in 
     let msg = "Type checking error: re.(union | ++) expected type String, given type " ^ ty_str in 
     Utils.error msg p
+| SynthAttr (_, attr, _) ->
+  (* The parser already inserts the underscore in the TypeAnnotation in the AST, 
+     so we need to add it here to find it in the context *)
+  Utils.StringMap.find_opt ("_" ^ attr) ctx
 | e -> 
   let msg = Format.asprintf "Unexpected expression in type checker: %a" 
     Ast.pp_print_expr e in
