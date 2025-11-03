@@ -257,7 +257,7 @@ The semantics of the dot operator will be discussed in more detail in a later se
 
 When running Goblin on the above grammar, a possible output is 
 `(S0 (L0 (_sum0 100) (I0 101) (L0 (_sum0 (- 1)) (I0 (- 1)) (L0 (_sum1 0) (Nil0 ())))))`. 
-This is verbose and a bit hard for humans to read, but it denotes the list [101, 1]. 
+This is verbose and a bit hard for humans to read, but it denotes the list `[101, -1]`. 
 Also, we can confirm that the `_sumN` variables indeed track the list sum "so far".
 Notice that when mapping Goblin's output to a concrete term, 
 I ignored the `_sumN` variables since they are ghost.
@@ -460,6 +460,7 @@ See `evaluation` and `test/test_cases` for example `.gbl` files (Goblin input fi
 ### How does Goblin work?
 
 STUB
+
 
 
 
