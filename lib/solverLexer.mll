@@ -40,7 +40,7 @@ let digit = ['0'-'9']
 let bit = ['0' '1']
 let int = digit+
 let letter = ['a'-'z' 'A'-'Z']
-let id = ['a'-'z' 'A'-'Z' '_'] ['a'-'z' 'A'-'Z' '_' '-' '0'-'9']*
+let id = ['a'-'z' 'A'-'Z' '_' '%'] ['a'-'z' 'A'-'Z' '_' '-' '%' '0'-'9']*
 let comment = ';' [^ '\n' '\r']* 
 
 rule read = 

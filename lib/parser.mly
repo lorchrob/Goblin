@@ -113,7 +113,7 @@ element:
 (* Attribute type annotation *) 
 | attribute = ID; TYPEANNOT; t = il_type; SEMICOLON;
   { 
-    TypeAnnotation ("_" ^ attribute, t, [], $startpos) 
+    TypeAnnotation ("%_" ^ attribute, t, [], $startpos) 
   }
 (* Production rule *)
 | nt = nonterminal; PRODUCTION; rhss = separated_nonempty_list(OPTION, rhs); SEMICOLON;

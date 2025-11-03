@@ -6,7 +6,7 @@ let rec synth_attr_to_nt_expr
   match expr with
   | A.SynthAttr (nt, attr, p) ->
     let nt1 = nt, None in 
-    let nt2 = "_" ^ attr, None in 
+    let nt2 = "%_" ^ attr, None in 
     A.NTExpr ([], [nt1; nt2], p)
   | A.BVCast (len, expr, pos) -> A.BVCast (len, r expr, pos)
   | BinOp (expr1, op, expr2, pos) -> BinOp (r expr1, op, r expr2, pos) 
@@ -33,8 +33,8 @@ let handle_sc _ctx sc = match sc with
   A.SmtConstraint (expr, p), None
 | A.AttrDef (attr, expr, p) ->
   let expr = synth_attr_to_nt_expr expr in 
-  let c = A.CompOp (NTExpr ([], ["_" ^ attr, None], p), A.Eq, expr, p) in 
-  A.SmtConstraint (c, p), Some ("_" ^ attr)
+  let c = A.CompOp (NTExpr ([], ["%_" ^ attr, None], p), A.Eq, expr, p) in 
+  A.SmtConstraint (c, p), Some ("%_" ^ attr)
 
 let desugar_attributes ctx ast = 
   let ast = List.map (fun element -> match element with 

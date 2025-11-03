@@ -26,7 +26,7 @@ let build_context: ast -> ast * context
         let options2 = List.fold_left (fun acc sc -> match sc with 
         | SmtConstraint _  
         | DerivedField _ -> acc 
-        | AttrDef (attr, _, _) -> ("_" ^ attr) :: acc
+        | AttrDef (attr, _, _) -> ("%_" ^ attr) :: acc
         ) [] scs |> List.rev in 
         options1 @ options2
       | StubbedRhs _ -> []
@@ -365,7 +365,7 @@ let rec infer_type_expr: context -> mode -> expr -> il_type option
 | SynthAttr (_, attr, _) ->
   (* The parser already inserts the underscore in the TypeAnnotation in the AST, 
      so we need to add it here to find it in the context *)
-  Utils.StringMap.find_opt ("_" ^ attr) ctx
+  Utils.StringMap.find_opt ("%_" ^ attr) ctx
 | e -> 
   let msg = Format.asprintf "Unexpected expression in type checker: %a" 
     Ast.pp_print_expr e in

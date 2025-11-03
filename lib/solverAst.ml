@@ -53,10 +53,20 @@ let pp_print_solver_ast: Format.formatter -> solver_ast -> unit
 = fun ppf solver_ast -> 
   let rec pp_print_solver_ast' ppf solver_ast = match solver_ast with 
   | Node ((constructor, Some idx), subterms) -> 
+    (* Don't include attributes in output *)
+    let subterms = List.filter (fun st -> match st with 
+    | Node ((constructor, _), _) -> not (constructor.[0] = '%')
+    | _ -> true 
+    ) subterms in
     Format.fprintf ppf "(%s%d %a)"
     constructor idx
     (Lib.pp_print_list pp_print_solver_ast' " ") subterms 
   | Node ((constructor, None), subterms) -> 
+    (* Don't include attributes in output *)
+    let subterms = List.filter (fun st -> match st with 
+    | Node ((constructor, _), _) -> not (constructor.[0] = '%')
+    | _ -> true 
+    ) subterms in
     Format.fprintf ppf "(%s %a)"
     constructor 
     (Lib.pp_print_list pp_print_solver_ast' " ") subterms 
