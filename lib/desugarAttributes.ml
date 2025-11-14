@@ -44,6 +44,7 @@ let rec synth_attr_to_nt_expr
   | PhConst _ 
   | NTExpr _
   | StrConst _
+  | InhAttr _
   | EmptySet _ -> expr
   | Match _ -> assert false
 
@@ -65,10 +66,13 @@ let desugar_attributes ctx ast =
     let rhss = List.map (fun rhs -> match rhs with 
     | A.StubbedRhs _ -> rhs
     | A.Rhs (ges, scs, prob, p) -> 
+      (* Synthesized attributes *)
       let scs, new_ges = List.map (handle_sc ctx) scs |> List.split in 
       let new_ges = List.filter_map Fun.id new_ges in
-      let new_ges = List.map (fun str -> A.Nonterminal (str, None, p)) new_ges in
-      A.Rhs (ges @ new_ges, scs, prob, p)
+      let new_ges = List.map (fun str -> A.Nonterminal (str, None, [], p)) new_ges in
+      (* Inherited attributes *)
+      let new_ges2 = _ in
+      A.Rhs (ges @ new_ges @ new_ges2, scs, prob, p)
     ) rhss in 
     A.ProdRule (nt, rhss, p)
   | A.TypeAnnotation _ -> element

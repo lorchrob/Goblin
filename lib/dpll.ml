@@ -150,6 +150,8 @@ type derivation_tree =
 type search_tree =
   (* DT at this node of the search tree, parent node, depth, and child nodes (if any). 
      child nodes have integer indices to denote that they are the nth expansion option. *)
+  (*!! TODO: The `search_tree` in the `(search_tree * int) list ref` is not used. 
+             It takes nontrivial space -- remove!! *)
 | STNode of derivation_tree * search_tree option * int * (search_tree * int) list ref
 
 let rec pp_print_derivation_tree ppf derivation_tree = match derivation_tree with 
@@ -235,6 +237,7 @@ let rec universalize_expr: bool -> (string * int option) list -> Ast.expr -> Ast
   | PhConst _ 
   | StrConst _ 
   | EmptySet _ -> expr
+  | InhAttr _ 
   | SynthAttr _ -> assert false
 
 let string_of_path path = 
@@ -273,7 +276,7 @@ match dt with
       declare_smt_variables variable_stack declared_variables ty_ctx solver blocking_clause_vars assertion_level ;
       constraints_to_assert := ConstraintSet.union !constraints_to_assert (ConstraintSet.of_list constraints_to_add); 
       let children = List.map (fun ge -> match ge with 
-        | A.Nonterminal (nt, idx_opt, _) ->
+        | A.Nonterminal (nt, idx_opt, _, _) ->
           Node ((nt, idx_opt), path @ [nt, idx_opt], [])  
         | StubbedNonterminal (_id, stub_id) -> 
           (*DependentTermLeaf stub_id*)
@@ -530,7 +533,7 @@ let find_new_expansion ast derivation_tree curr_st_node =
       match rhs with 
       | A.Rhs (ges, _, _, _) -> 
         let children = List.map (fun ge -> match ge with 
-        | A.Nonterminal (nt, idx_opt, _) ->
+        | A.Nonterminal (nt, idx_opt, _, _) ->
           Node ((nt, idx_opt), path @ [nt, idx_opt], [])  
         | StubbedNonterminal (_, stub_id) -> DependentTermLeaf stub_id
         ) ges in 
@@ -1012,7 +1015,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.solver_ast
         | A.Rhs (ges, _, _, _) -> 
           if List.length ges = List.length children then 
             List.for_all2 (fun child ge -> match child, ge with 
-            | Node ((nt, idx), _, _), A.Nonterminal (nt2, idx2, _) -> 
+            | Node ((nt, idx), _, _), A.Nonterminal (nt2, idx2, _, _) -> 
               Utils.str_eq_ci nt nt2 && idx = idx2
             | DependentTermLeaf stub_id1, A.StubbedNonterminal (_, stub_id2) -> 
               Utils.str_eq_ci stub_id1 stub_id2

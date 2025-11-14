@@ -14,12 +14,12 @@ let type_checker_error mode error_msg p = match mode with
 let build_context: ast -> ast * context
 = fun ast -> 
   let ctx = List.fold_left (fun acc element -> match element with 
-  | ProdRule (nt, rhss, _) -> 
+  | ProdRule (nt, ias, rhss, _) -> 
     let options = List.map (fun rhs -> match rhs with
       | Rhs (ges, scs, _, _) -> 
         (* User ges *)
         let options1 = List.fold_left (fun acc ge -> match ge with 
-        | Nonterminal (nt, _, _) 
+        | Nonterminal (nt, _, _, _) 
         | StubbedNonterminal (nt, _) -> nt :: acc
         ) [] ges |> List.rev in 
         (* Generated attribute ges *)

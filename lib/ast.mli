@@ -65,6 +65,7 @@ type case =
 | CaseStub of ((string * int option) list * (string * int option)) list
 and 
 expr = 
+| InhAttr of string * Lexing.position
 | SynthAttr of string * string * Lexing.position (* NT string * attribute name *)
 | EmptySet of il_type * Lexing.position
 | Singleton of expr * Lexing.position
@@ -103,7 +104,7 @@ type semantic_constraint =
 | AttrDef of string * expr * Lexing.position (* attribute := <expression> *)
 
 type grammar_element =
-| Nonterminal of string * int option * Lexing.position
+| Nonterminal of string * int option * expr list * Lexing.position
 | StubbedNonterminal of string * string
 
 type prod_rule_rhs = 
@@ -112,7 +113,8 @@ type prod_rule_rhs =
 | StubbedRhs of string
 
 type element =
-| ProdRule of string * prod_rule_rhs list * Lexing.position
+(* NT LHS * inherited attributes * RHSs * position *)
+| ProdRule of string * expr list * prod_rule_rhs list * Lexing.position
 | TypeAnnotation of string * il_type * semantic_constraint list * Lexing.position
 
 type ast = element list

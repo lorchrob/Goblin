@@ -4,7 +4,7 @@ open Graph
 let rec from_ge_list_to_string_list (ge_list : grammar_element list) : string list = 
   match ge_list with
   | [] -> []  
-  | Nonterminal(x, _, _)::xs -> x :: from_ge_list_to_string_list xs 
+  | Nonterminal(x, _, _, _)::xs -> x :: from_ge_list_to_string_list xs 
   | StubbedNonterminal(x,y)::xs -> x :: y :: from_ge_list_to_string_list xs 
 
 let rec get_all_nt_from_rhs (rvalue : prod_rule_rhs list) : string list = 
@@ -26,7 +26,7 @@ let rec get_all_dependencies_from_grammar (g : ast) : (string * string) list =
 let rec get_nt_from_geList geList = 
   match geList with
   | [] -> []
-  | Nonterminal(x, _, _) :: xs -> x :: (get_nt_from_geList xs)
+  | Nonterminal(x, _, _, _) :: xs -> x :: (get_nt_from_geList xs)
   | StubbedNonterminal _ :: xs -> (get_nt_from_geList xs)
  
 let rec get_nt_from_rhs rhs =
@@ -44,7 +44,7 @@ let rec get_all_nt (g : ast) : string list =
 let rec get_dependencies (nt : string) (geList : grammar_element list) : string list =
   match geList with
   | [] -> []
-  | Nonterminal(x, _, _) :: xs -> 
+  | Nonterminal(x, _, _, _) :: xs -> 
     if nt = x 
       then x :: (get_dependencies nt xs)
     else get_dependencies nt xs
@@ -137,7 +137,7 @@ let has_problematic_immediate_left_recursion (grammar : ast) : bool =
         let all_alternatives_left_recursive = 
           List.for_all (fun rhs ->
             match rhs with
-            | Rhs(Nonterminal(nt, _, _) :: _, _, _, _) -> nt = lhs
+            | Rhs(Nonterminal(nt, _, _, _) :: _, _, _, _) -> nt = lhs
             | _ -> false
           ) rhs_list
         in

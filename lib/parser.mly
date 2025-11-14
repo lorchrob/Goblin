@@ -118,7 +118,11 @@ element:
 (* Production rule *)
 | nt = nonterminal; PRODUCTION; rhss = separated_nonempty_list(OPTION, rhs); SEMICOLON;
   { 
-    ProdRule (nt, rhss, $startpos) 
+    ProdRule (nt, [], rhss, $startpos) 
+  }
+| nt = nonterminal; LPAREN; params = separated_nonempty_list(COMMA, ID); RPAREN; PRODUCTION; rhss = separated_nonempty_list(OPTION, rhs); SEMICOLON;
+  { 
+    ProdRule (nt, params, rhss, $startpos) 
   }
 
 rhs:
@@ -147,7 +151,10 @@ semantic_constraint_list:
 
 grammar_element:
 | nt = nonterminal { 
-    Nonterminal(nt, None, $startpos) 
+    Nonterminal(nt, None, [], $startpos) 
+  }
+| nt = nonterminal; LPAREN; args = separated_nonempty_list(COMMA, expr); RPAREN; { 
+    Nonterminal(nt, None, args, $startpos) 
   }
 
 semantic_constraint:
@@ -162,6 +169,7 @@ semantic_constraint:
   }
 
 expr: 
+| id = ID; { InhAttr (id, $startpos) }
 | EMPTYSET; LT; ty = il_type; GT; 
   { 
     EmptySet (ty, $startpos) 

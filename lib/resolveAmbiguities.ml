@@ -99,6 +99,7 @@ let rec generate_all_possible_exprs: TC.context -> string list -> A.expr -> A.ex
     let msg = Format.asprintf "Bad function arity in expression %a" 
       A.pp_print_expr expr in 
     Utils.error msg (A.pos_of_expr expr)
+  | InhAttr _
   | SynthAttr _ -> assert false
 
 let process_sc: TC.context -> string list -> A.semantic_constraint -> A.semantic_constraint 
@@ -158,7 +159,7 @@ let resolve_ambiguities_dpll: TC.context -> A.ast -> A.ast
       List.for_all (fun (nt1, idx1) -> 
         List.exists (function 
         | A.StubbedNonterminal _ -> false 
-        | A.Nonterminal (nt2, idx2, _) -> nt1 = nt2 && idx1 = idx2 
+        | A.Nonterminal (nt2, idx2, _, _) -> nt1 = nt2 && idx1 = idx2 
         ) ges
       ) nts  
     ) scs in 

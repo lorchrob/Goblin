@@ -142,13 +142,13 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> bool -> SA.sol
 | NTExpr (_, (id, idx0) :: rest, p) ->
   let child_index, child_element = match element with 
   | A.TypeAnnotation _ -> 0, element
-  | A.ProdRule (_, rhss, _) ->
+  | A.ProdRule (_, _, rhss, _) ->
     (* Find child_index within the rule, not across all rules *) 
       let ci = List.find_map (fun rhs -> match rhs with 
       | A.StubbedRhs _ -> None 
       | Rhs (ges, _, _, _) ->
         Utils.find_index_opt (fun ge -> match ge with 
-        | A.Nonterminal (nt, idx, _) -> 
+        | A.Nonterminal (nt, idx, _, _) -> 
           Utils.str_eq_ci id nt && 
           idx0 = idx 
         | StubbedNonterminal (nt, _) -> 
@@ -157,7 +157,7 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> bool -> SA.sol
       ) rhss in 
       Option.get ci, List.find (fun element -> match element with 
       | A.TypeAnnotation (id2, _, _, _)
-      | A.ProdRule (id2, _, _) -> Utils.str_eq_ci id id2
+      | A.ProdRule (id2, _, _, _) -> Utils.str_eq_ci id id2
       ) ast 
   in 
   (
@@ -479,7 +479,7 @@ and compute_deps: A.semantic_constraint Utils.StringMap.t -> A.ast -> SA.solver_
   | SA.Node (_hd, [VarLeaf var]) -> 
     let element = List.find_opt (fun element -> match element with 
     | A.TypeAnnotation (nt, _, _, _)  
-    | ProdRule (nt, _, _) -> 
+    | ProdRule (nt, _, _, _) -> 
       Utils.str_eq_ci nt (Utils.extract_base_name constructor)
     ) ast in
     let element = match element with 

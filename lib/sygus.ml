@@ -36,7 +36,7 @@ let rec pp_print_ty: Format.formatter -> A.il_type -> unit
 
 let pp_print_constructor: TC.context -> Ast.semantic_constraint Utils.StringMap.t -> Ast.ast ->  Format.formatter -> A.grammar_element -> unit 
 = fun ctx dep_map ast ppf ge -> match ge with 
-| A.Nonterminal (nt, _, _) ->
+| A.Nonterminal (nt, _, _, _) ->
   let d_str = fresh_destructor () in 
   let ty_str = 
   match Utils.StringMap.find_opt nt dep_map,
