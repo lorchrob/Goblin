@@ -422,6 +422,14 @@ let length_attr () =
   | Ok _ -> ()  
   | Error msg -> fail msg
 
+let inh_attr () =
+  let input = "../../../test/test_cases/inh-attr.gbl" in
+  let solver_ast, _, ast = main_pipeline input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
+  match output with
+  | Ok _ -> ()  
+  | Error msg -> fail msg
+
 let dm_test_vertical_ambiguous_reference_2 () =
   let input = "../../../test/test_cases/test_vertical_ambiguous_reference_2" in
   let solver_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
@@ -1680,6 +1688,7 @@ let () =
     "ngap-ngsetup", [test_case "ngap-ngsetup" `Quick ngap_ngsetup_bug]; 
     "reset_bug4", [test_case "reset_bug4" `Quick reset_bug4]; 
     "length_attr", [test_case "length_attr" `Quick length_attr]; 
+    "inh_attr", [test_case "inh_attr" `Quick inh_attr]; 
     (*"msg2", [test_case "msg2" `Quick msg2]; *)
     (*"dd_test_another_ambiguous_reference_2", [test_case "dd_test_another_ambiguous_reference_2" `Quick dd_test_another_ambiguous_reference_2]; 
     "md_test_another_ambiguous_reference_2", [test_case "md_test_another_ambiguous_reference_2" `Quick md_test_another_ambiguous_reference_2];  *)

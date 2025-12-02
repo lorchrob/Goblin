@@ -17,6 +17,8 @@ let build_context: ast -> ast * context
   | ProdRule (nt, ias, rhss, _) -> 
     let options = List.map (fun rhs -> match rhs with
       | Rhs (ges, scs, _, _) -> 
+        (* options1, options2, and option3 represent the extra generated nonterminals 
+           that will exist after we desugar attributes in desugarAttributes.ml *)
         (* User ges *)
         let options1 = List.fold_left (fun acc ge -> match ge with 
         | Nonterminal (nt, _, _, _) 

@@ -119,7 +119,8 @@ let rec check_syntax_semantics: Ast.ast -> SolverAst.solver_ast -> (unit, string
           List.for_all2 (fun child ge ->  
             match child, ge with 
             | _, A.StubbedNonterminal _ -> false 
-            | SA.Node ((constructor, _), _), Nonterminal (nt, _, _, _) -> Utils.str_eq_ci (Utils.extract_base_name constructor) nt
+            | SA.Node ((constructor, _), _), Nonterminal (nt, _, _, _) -> 
+              Utils.str_eq_ci (Utils.extract_base_name constructor) nt
             | _, _ -> true
           ) children ges
       ) rhss in 
