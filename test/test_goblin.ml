@@ -422,6 +422,12 @@ let length_attr () =
   | Ok _ -> ()  
   | Error msg -> fail msg
 
+let length_attr_fail_1 () =
+  let input = "../../../test/test_cases/length-attr-fail-1.gbl" in
+  match main_pipeline input with
+  | _ -> Alcotest.fail "Expected exception, but got success"
+  | exception _ -> ()  
+
 let inh_attr () =
   let input = "../../../test/test_cases/inh-attr.gbl" in
   let solver_ast, _, ast = main_pipeline input in
@@ -1688,6 +1694,7 @@ let () =
     "ngap-ngsetup", [test_case "ngap-ngsetup" `Quick ngap_ngsetup_bug]; 
     "reset_bug4", [test_case "reset_bug4" `Quick reset_bug4]; 
     "length_attr", [test_case "length_attr" `Quick length_attr]; 
+    "length_attr_fail_1", [test_case "length_attr_fail_1" `Quick length_attr_fail_1]; 
     "inh_attr", [test_case "inh_attr" `Quick inh_attr]; 
     (*"msg2", [test_case "msg2" `Quick msg2]; *)
     (*"dd_test_another_ambiguous_reference_2", [test_case "dd_test_another_ambiguous_reference_2" `Quick dd_test_another_ambiguous_reference_2]; 

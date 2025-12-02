@@ -71,7 +71,9 @@ let main_pipeline ?(engine: Flags.engine option = None) ?(grammar: Ast.ast optio
   (* Desugar attributes *)
   Utils.debug_print Format.pp_print_string ppf "\nDesugaring attributes:\n";
   let ast = DesugarAttributes.desugar_attributes ctx ast in
-  (*!! Ideally, the checker would take as input the base AST, not the desugared one. *)
+  (*!! Ideally, the checker would take as input the base AST, not the desugared one. 
+       But then we have to update the checker to deal with attributes. 
+       This is probably worth it in the long run. *)
   let ast_to_return = ast in 
   Utils.debug_print Ast.pp_print_ast ppf ast;
 
