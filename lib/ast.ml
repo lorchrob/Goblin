@@ -432,7 +432,14 @@ let pp_print_semantic_constraint: Format.formatter -> semantic_constraint -> uni
 
 let pp_print_grammar_element: Format.formatter -> grammar_element ->  unit 
 = fun ppf g_el -> match g_el with 
-| Nonterminal (nt, idx, _, _) -> pp_print_nt_with_dots ppf [nt, idx]
+| Nonterminal (nt, idx, ias, _) -> (
+  match ias with 
+  | [] -> pp_print_nt_with_dots ppf [nt, idx]
+  | _ :: _ -> 
+    Format.fprintf ppf "%a(%a)"
+      pp_print_nt_with_dots [nt, idx] 
+      (Lib.pp_print_list pp_print_expr ", ") ias
+  )
 | StubbedNonterminal (_, stub_id) -> Format.pp_print_string ppf stub_id
 
 let pp_print_prob ppf prob = 

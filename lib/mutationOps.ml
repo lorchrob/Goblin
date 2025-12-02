@@ -11,7 +11,7 @@ let random_element (lst: 'a list) : 'a =
 let rec isNonTerminalPresent nt_name prod_options = 
     match prod_options with 
     | [] -> false 
-    | Rhs(ge_list, _, _, p) :: xs -> (List.mem (Nonterminal (nt_name, None, p)) ge_list) || (isNonTerminalPresent nt_name xs) 
+    | Rhs(ge_list, _, _, p) :: xs -> (List.mem (Nonterminal (nt_name, None, [], p)) ge_list) || (isNonTerminalPresent nt_name xs) 
     | _ :: ys -> isNonTerminalPresent nt_name ys 
 
 let rec removeFromList nt lst =
@@ -126,9 +126,9 @@ let rec apply_delete_to_rule nt production_options =
     | [] -> [] 
     | Rhs(geList, scList, prob, pos) :: xs -> 
         if (List.length geList) > 1 then
-            let deleteFromGrammarElementList = removeFromList (Nonterminal (nt, None, pos)) geList in
-            let deleteFromConstraintList = remove_constraints nt scList in
-            Rhs(deleteFromGrammarElementList, deleteFromConstraintList, prob, pos) :: xs 
+          let deleteFromGrammarElementList = removeFromList (Nonterminal (nt, None, [], pos)) geList in
+          let deleteFromConstraintList = remove_constraints nt scList in
+          Rhs(deleteFromGrammarElementList, deleteFromConstraintList, prob, pos) :: xs 
         else Rhs(geList, scList, prob, pos) :: xs
     | StubbedRhs(s)::xs -> StubbedRhs(s) :: (apply_delete_to_rule nt xs) 
 
@@ -141,10 +141,10 @@ let rec mutation_delete g nt =
             let found = isNonTerminalPresent nt production_options in
             if found then
                 let po = apply_delete_to_rule nt production_options in
-                    (ProdRule(nonTerminal, _, po, pos) :: xs, true)
+                (ProdRule(nonTerminal, [], po, pos) :: xs, true)
             else 
                 let (gg, r) = mutation_delete xs nt in
-                (ProdRule(nonTerminal, _, production_options, pos) :: gg, r) 
+                (ProdRule(nonTerminal, [], production_options, pos) :: gg, r) 
                 (* (ProdRule(nonTerminal, production_options)::xs, false)        *)
             (* else 
                 let (gg, r) = mutation_delete xs nt
@@ -194,7 +194,7 @@ let rec mutation_update g nt operation =
             else 
                 let (gg, r) = mutation_update xs nt operation
                     in 
-            (ProdRule(nonTerminal, _, production_options, p) :: gg, r)
+            (ProdRule(nonTerminal, [], production_options, p) :: gg, r)
     | TypeAnnotation(v, w, x, p) :: ys -> 
         if v = nt then
             let po = update_constraint nt x operation in

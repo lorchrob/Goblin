@@ -9,19 +9,19 @@ let eliminate_ta_constraints full_ast =
     let full_ast = List.map (function 
     | A.TypeAnnotation (nt2, ty, _, p) as element ->
       if nt = nt2 then A.TypeAnnotation (nt2, ty, [], p) else element
-    | A.ProdRule (nt3, rhss, pos2) -> 
+    | A.ProdRule (nt3, ias, rhss, pos2) -> 
       let rhss = List.map (function 
         | A.StubbedRhs _ as rhs -> rhs 
         | Rhs (ges, scs2, prob, pos3) -> 
           let contains_nt = List.exists (fun ge -> match ge with 
           | A.StubbedNonterminal _ -> false 
-          | A.Nonterminal (nt2, _, _) -> nt = nt2
+          | A.Nonterminal (nt2, _, _, _) -> nt = nt2
           ) ges in 
           if contains_nt then 
             Rhs (ges, scs2 @ scs, prob, pos3)
           else Rhs (ges, scs2, prob, pos3)
       ) rhss in 
-      ProdRule (nt3, rhss, pos2) 
+      ProdRule (nt3, ias, rhss, pos2) 
     ) full_ast in 
     helper full_ast tl 
   in 

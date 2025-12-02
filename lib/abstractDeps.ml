@@ -26,12 +26,13 @@ let rec calculate_casts: expr -> expr
 | PhConst _ 
 | StrConst _ 
 | EmptySet _ -> expr
+| InhAttr _
 | SynthAttr _ -> assert false
 
 let stub_grammar_element: TypeChecker.context -> semantic_constraint list -> grammar_element -> semantic_constraint option * grammar_element * TypeChecker.context
 = fun ctx scs ge -> match ge with 
 | StubbedNonterminal _ -> None, ge, ctx 
-| Nonterminal (nt, _, _) -> (
+| Nonterminal (nt, _, _, _) -> (
   match List.find_opt (fun sc -> match sc with
   | SmtConstraint _ -> false 
   | DerivedField (nt2, _, _) -> nt = nt2
@@ -54,7 +55,7 @@ let stub_ty_annot
   | Some dep -> 
     let stub_id = Utils.mk_fresh_stub_id nt in
     let ctx = Utils.StringMap.remove nt ctx in
-    Utils.StringMap.singleton stub_id dep, ProdRule (nt, [Rhs ([StubbedNonterminal(nt, stub_id)], [], None, p)], p), ctx
+    Utils.StringMap.singleton stub_id dep, ProdRule (nt, [], [Rhs ([StubbedNonterminal(nt, stub_id)], [], None, p)], p), ctx
   | None -> Utils.StringMap.empty, TypeAnnotation (nt, ty, scs, p), ctx
 
 
@@ -86,14 +87,14 @@ let simp_rhss: TypeChecker.context -> prod_rule_rhs -> semantic_constraint Utils
 let simp_ast: TypeChecker.context -> ast -> (semantic_constraint Utils.StringMap.t * ast * TypeChecker.context) 
 = fun ctx ast -> 
   let dep_map, ast, ctx = List.fold_left (fun (acc_dep_map, acc_elements, acc_ctx) element -> match element with 
-  | ProdRule (nt, rhss, p) -> 
+  | ProdRule (nt, ias, rhss, p) -> 
     let dep_map, rhss, ctx = List.fold_left (fun (acc_dep_map, acc_rhss, acc_ctx) rhs -> 
       let dep_map, rhs, ctx = (simp_rhss acc_ctx rhs) in 
       let dep_map = Utils.StringMap.merge Lib.union_keys dep_map acc_dep_map in
       dep_map, rhs :: acc_rhss, ctx
     ) (acc_dep_map, [], acc_ctx)  rhss in
     let dep_map = Utils.StringMap.merge Lib.union_keys dep_map Utils.StringMap.empty in
-    dep_map, ProdRule (nt, List.rev rhss, p) :: acc_elements, ctx 
+    dep_map, ProdRule (nt, ias, List.rev rhss, p) :: acc_elements, ctx 
   | TypeAnnotation (nt, ty, scs, p) -> 
     let scs = List.map (fun sc -> match sc with 
     | DerivedField (nt, expr, p) -> DerivedField (nt, calculate_casts expr, p)

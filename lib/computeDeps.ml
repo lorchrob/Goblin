@@ -101,7 +101,7 @@ let rec compute_dep: A.semantic_constraint Utils.StringMap.t -> SA.solver_ast ->
          *)
       let element' = List.find (fun element -> match element with 
       | A.TypeAnnotation _ -> false 
-      | A.ProdRule (_, rhss, _) ->
+      | A.ProdRule (_, _, rhss, _) ->
         List.exists (fun rhs -> match rhs with 
         | A.StubbedRhs _ -> false 
         | A.Rhs (_, scs, _, _) -> 

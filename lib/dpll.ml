@@ -256,7 +256,7 @@ let r = normalize_derivation_tree ctx ast declared_variables solver constraints_
 match dt with 
 | Node ((nt, idx), path, []) -> 
   let forced_expansion = List.find_map (fun element -> match element with 
-  | A.ProdRule (nt2, [Rhs (ges, scs, _, _)], _) -> 
+  | A.ProdRule (nt2, _, [Rhs (ges, scs, _, _)], _) -> 
     if Utils.str_eq_ci nt nt2 then 
       let constraints_to_add, _exprs = List.concat_map (fun sc -> match sc with 
       | A.SmtConstraint (e, _) -> [universalize_expr false path e, e] 
@@ -285,7 +285,7 @@ match dt with
        Some children 
     else 
       None
-  | A.ProdRule (_, _, _) -> None 
+  | A.ProdRule (_, _, _, _) -> None 
   | TypeAnnotation (nt2, ty, scs, _) ->
     let path' = string_of_path path |> String.lowercase_ascii in
     if Utils.str_eq_ci nt nt2 then 
@@ -322,7 +322,7 @@ let rec collect_constraints_of_dt ast = function
     let child_constraints = List.map (collect_constraints_of_dt ast) children in 
     let child_constraints = List.fold_left ConstraintSet.union ConstraintSet.empty child_constraints in
     let grammar_rule = List.find (fun element -> match element with 
-      | A.ProdRule (nt2, _, _) 
+      | A.ProdRule (nt2, _, _, _) 
       | TypeAnnotation (nt2, _, _, _) -> nt = nt2
       ) ast in 
     let constraints = A.scs_of_element grammar_rule |> 
@@ -347,10 +347,10 @@ let rec nt_will_be_reached derivation_tree ast nt =
     let rule = List.find (fun element -> match element with
     | A.TypeAnnotation (nt2, _, _, _) 
     (*!!! Index needs to be taken into account, see bug4.gbl *)
-    | A.ProdRule (nt2, _, _) -> nt2 = (fst head)
+    | A.ProdRule (nt2, _, _, _) -> nt2 = (fst head)
     ) ast in 
     match rule with 
-    | ProdRule (_, rhss, _) -> 
+    | ProdRule (_, _, rhss, _) -> 
       (* There are multiple options. Conservatively say the nt may not be reached. 
          TODO: This is a safe approximation. A more exact analysis would see if the nt is reachable in all cases. *)
       if List.length rhss <> 1 then false
@@ -488,9 +488,9 @@ let find_new_expansion ast derivation_tree curr_st_node =
   | Node ((nt, _), _, []) ->
     let probs =
     match List.find_opt (fun e -> match e with
-    | A.ProdRule (nt2, _, _) | TypeAnnotation (nt2, _, _, _) -> nt = nt2
+    | A.ProdRule (nt2, _, _, _) | TypeAnnotation (nt2, _, _, _) -> nt = nt2
     ) ast with
-    | Some (ProdRule (_, rhss, _)) ->
+    | Some (ProdRule (_, _, rhss, _)) ->
       List.map (function A.Rhs (_, _, Some p, _) -> p | _ -> 1.0 /. (float_of_int (List.length rhss))) rhss
     | Some (TypeAnnotation _) -> [1.0]
     | None -> Utils.crash "No matching grammar rule"
@@ -520,7 +520,7 @@ let find_new_expansion ast derivation_tree curr_st_node =
   | Node ((nt, idx), path, []) -> 
     let element = List.find (fun element -> match element with 
     | A.TypeAnnotation (nt2, _, _, _) 
-    | ProdRule (nt2, _, _) -> Utils.str_eq_ci nt nt2
+    | ProdRule (nt2, _, _, _) -> Utils.str_eq_ci nt nt2
     ) ast in (
     match element with 
     | TypeAnnotation (_, ty, _, _) -> 
@@ -528,7 +528,7 @@ let find_new_expansion ast derivation_tree curr_st_node =
         let expanded_node = Node ((nt, idx), path, [SymbolicLeaf (ty, path @ [(nt, idx)])]) in 
         expanded_node, expanded_node 
       else assert false 
-    | ProdRule (_nt', rhss, _) -> 
+    | ProdRule (_nt', _, rhss, _) -> 
       let rhs = List.nth rhss n in 
       match rhs with 
       | A.Rhs (ges, _, _, _) -> 
@@ -849,7 +849,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.solver_ast
 
   let start_symbol, start_path = match List.hd ast with 
   | A.TypeAnnotation (nt, _, _, _) -> nt, [nt, Some 0]
-  | ProdRule (nt, _, _) -> nt, [nt, Some 0]
+  | ProdRule (nt, _, _, _) -> nt, [nt, Some 0]
   in 
 
   (* Solver object *)
@@ -975,7 +975,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.solver_ast
 
       (* Find the associated AST rule for the new expansion *)
       let grammar_rule = List.find (fun element -> match element with 
-      | A.ProdRule (nt2, _, _) 
+      | A.ProdRule (nt2, _, _, _) 
       | A.TypeAnnotation (nt2, _, _, _) -> Utils.str_eq_ci (fst nt) nt2
       ) ast in 
       let path' = string_of_path path |> String.lowercase_ascii in
@@ -1003,7 +1003,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.solver_ast
         | A.DerivedField _ -> ()
         | A.AttrDef _ -> assert false
         ) scs;
-      | A.ProdRule (_, rhss, _) -> 
+      | A.ProdRule (_, _, rhss, _) -> 
         (*Format.fprintf Format.std_formatter "Finding the chosen rule for %a\n" 
           pp_print_derivation_tree expanded_node; *)
         let chosen_rule = List.find (fun rhs -> match rhs with 

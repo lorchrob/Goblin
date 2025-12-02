@@ -14,7 +14,7 @@ let type_checker_error mode error_msg p = match mode with
 let build_context: ast -> ast * context
 = fun ast -> 
   let ctx = List.fold_left (fun acc element -> match element with 
-  | ProdRule (nt, ias, rhss, _) -> 
+  | ProdRule (nt, _, rhss, _) -> 
     let options = List.map (fun rhs -> match rhs with
       | Rhs (ges, scs, _, _) -> 
         (* User ges *)
@@ -362,10 +362,14 @@ let rec infer_type_expr: context -> mode -> expr -> il_type option
     let ty_str = Utils.capture_output Ast.pp_print_ty (Option.get inf_ty) in 
     let msg = "Type checking error: re.(union | ++) expected type String, given type " ^ ty_str in 
     Utils.error msg p
+| InhAttr (attr, _) ->
+  (* The parser already inserts the underscore in the TypeAnnotation in the AST, 
+     so we need to add it here to find it in the context *)
+  Some (Utils.StringMap.find ("%_" ^ attr) ctx)
 | SynthAttr (_, attr, _) ->
   (* The parser already inserts the underscore in the TypeAnnotation in the AST, 
      so we need to add it here to find it in the context *)
-  Utils.StringMap.find_opt ("%_" ^ attr) ctx
+  Some (Utils.StringMap.find ("%_" ^ attr) ctx)
 | e -> 
   let msg = Format.asprintf "Unexpected expression in type checker: %a" 
     Ast.pp_print_expr e in
@@ -411,9 +415,9 @@ let check_prod_rhs ctx rhss = match rhss with
 let check_types: context -> ast -> ast 
 = fun ctx ast -> 
   let ast = List.map (fun element -> match element with 
-  | ProdRule (nt, rhss, p) -> 
+  | ProdRule (nt, ias, rhss, p) -> 
     let rhss = List.map (check_prod_rhs ctx) rhss in
-    ProdRule (nt, rhss, p)
+    ProdRule (nt, ias, rhss, p)
   | TypeAnnotation (nt, ty, scs, p) -> 
     let scs = List.map (fun sc -> match sc with 
     | DerivedField (nt2, expr, p) ->
