@@ -1,7 +1,15 @@
 module A = Ast
 
 let check_element _ctx element = match element with 
-| A.TypeAnnotation _ -> element
+| A.TypeAnnotation (_, _, scs, p) -> 
+  let scs = List.filter (fun sc -> match sc with 
+  | A.AttrDef _ -> true 
+  | _ -> false 
+  ) scs in 
+  if List.length scs > 0 then 
+    let msg = "Synthesized attribute definitions are not allowed in type annotations" in 
+    Utils.error msg p
+  else element
 | A.ProdRule (nt, _, rhss, p) -> 
   (* Check each rhs has exactly the same set of synthesized attributes *)
   let synth_attrss = List.map (fun rhs -> match rhs with 

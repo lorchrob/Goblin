@@ -6,9 +6,18 @@ let eliminate_ta_constraints full_ast =
   | (A.ProdRule _) :: tl -> 
     helper full_ast tl   
   | A.TypeAnnotation (nt, _, scs, _) :: tl -> 
+    let attrs = List.filter (fun sc -> match sc with 
+    | A.AttrDef _ -> true 
+    | _ -> false 
+    ) scs in
+    let scs_no_attrs = List.filter (fun sc -> match sc with 
+    | A.AttrDef _ -> false 
+    | _ -> true 
+    ) scs in
     let full_ast = List.map (function 
     | A.TypeAnnotation (nt2, ty, _, p) as element ->
-      if nt = nt2 then A.TypeAnnotation (nt2, ty, [], p) else element
+      (* Maintain attribute definitions because we will detect and reject later *)
+      if nt = nt2 then A.TypeAnnotation (nt2, ty, attrs, p) else element
     | A.ProdRule (nt3, ias, rhss, pos2) -> 
       let rhss = List.map (function 
         | A.StubbedRhs _ as rhs -> rhs 
@@ -18,7 +27,9 @@ let eliminate_ta_constraints full_ast =
           | A.Nonterminal (nt2, _, _, _) -> nt = nt2
           ) ges in 
           if contains_nt then 
-            Rhs (ges, scs2 @ scs, prob, pos3)
+            (* Push up the scs not containing attribute definitions because we will detect 
+               and reject type annotation attributes later *)
+            Rhs (ges, scs2 @ scs_no_attrs, prob, pos3)
           else Rhs (ges, scs2, prob, pos3)
       ) rhss in 
       ProdRule (nt3, ias, rhss, pos2) 
