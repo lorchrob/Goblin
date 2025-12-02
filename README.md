@@ -39,6 +39,13 @@ Run `make` from the top-level directory
 
 See the files within [the `doc` directory](https://github.com/lorchrob/Goblin/blob/master/doc). In particular, we have a [Goblin tutorial](https://github.com/lorchrob/Goblin/blob/master/doc/tutorial.md) and [an additional file describing Goblin syntax](https://github.com/lorchrob/Goblin/blob/master/doc/syntax.md).
 
+### Feedback, questions, bug reports
+
+Do not hesitate to reach out to me at `robert-lorch@uiowa.edu` with any feedback, questions, or concerns.
+Goblin is a work in progress, so I appreciate bug reports (include the input file and all the command-line options used). 
+Also, I am happy to assist with any questions regarding how to specify a certain input format in Goblin, 
+or how to integrate Goblin into your fuzzing workflow.
+
 ### Citing Goblin
 
 Details to come :)
