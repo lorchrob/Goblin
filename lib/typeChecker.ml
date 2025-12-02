@@ -14,7 +14,7 @@ let type_checker_error mode error_msg p = match mode with
 let build_context: ast -> ast * context
 = fun ast -> 
   let ctx = List.fold_left (fun acc element -> match element with 
-  | ProdRule (nt, _, rhss, _) -> 
+  | ProdRule (nt, ias, rhss, _) -> 
     let options = List.map (fun rhs -> match rhs with
       | Rhs (ges, scs, _, _) -> 
         (* User ges *)
@@ -28,7 +28,8 @@ let build_context: ast -> ast * context
         | DerivedField _ -> acc 
         | AttrDef (attr, _, _) -> ("%_" ^ attr) :: acc
         ) [] scs |> List.rev in 
-        options1 @ options2
+        let options3 = List.map (fun ia -> "%_" ^ ia) ias in 
+        options1 @ options2 @ options3
       | StubbedRhs _ -> []
     ) rhss in
     Utils.StringMap.add nt (ADT options) acc 
