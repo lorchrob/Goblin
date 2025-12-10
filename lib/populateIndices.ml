@@ -5,7 +5,7 @@ let disambiguate_nonterminals (rhss : A.prod_rule_rhs list) : A.prod_rule_rhs li
   let total_counts = Hashtbl.create 10 in
 
   let count_elem = function
-    | A.Nonterminal (name, _, _) ->
+    | A.Nonterminal (name, _, _, _) ->
         let count = Hashtbl.find_opt total_counts name |> Option.value ~default:0 in
         Hashtbl.replace total_counts name (count + 1)
     | _ -> ()
@@ -20,10 +20,10 @@ let disambiguate_nonterminals (rhss : A.prod_rule_rhs list) : A.prod_rule_rhs li
   let running_indices = Hashtbl.create 10 in
 
   let disambiguate_elem = function
-    | A.Nonterminal (name, _, pos) ->
+    | A.Nonterminal (name, _, ias, pos) ->
       let idx = Hashtbl.find_opt running_indices name |> Option.value ~default:0 in
       Hashtbl.replace running_indices name (idx + 1);
-      A.Nonterminal (name, Some idx, pos)
+      A.Nonterminal (name, Some idx, ias, pos)
     | other -> other
   in
 
@@ -39,7 +39,7 @@ let disambiguate_nonterminals (rhss : A.prod_rule_rhs list) : A.prod_rule_rhs li
 let populate_indices ast = 
   List.map (fun element -> match element with 
   | A.TypeAnnotation _ -> element 
-  | A.ProdRule (nt, rhss, pos) -> 
+  | A.ProdRule (nt, ias, rhss, pos) -> 
     let rhss = disambiguate_nonterminals rhss in 
-    ProdRule (nt, rhss, pos)
+    ProdRule (nt, ias, rhss, pos)
   ) ast

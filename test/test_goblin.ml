@@ -414,6 +414,40 @@ let dm_test_vertical_ambiguous_reference_1 () =
   | Ok _ -> ()  
   | Error msg -> fail msg
 
+let length_attr () =
+  let input = "../../../test/test_cases/length-attr.gbl" in
+  let solver_ast, _, ast = main_pipeline input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
+  match output with
+  | Ok _ -> ()  
+  | Error msg -> fail msg
+
+let length_attr_fail_1 () =
+  let input = "../../../test/test_cases/length-attr-fail-1.gbl" in
+  match main_pipeline input with
+  | _ -> Alcotest.fail "Expected exception, but got success"
+  | exception _ -> ()  
+
+let length_attr_fail_2 () =
+  let input = "../../../test/test_cases/length-attr-fail-2.gbl" in
+  match main_pipeline input with
+  | _ -> Alcotest.fail "Expected exception, but got success"
+  | exception _ -> ()  
+
+let length_attr_fail_3 () =
+  let input = "../../../test/test_cases/length-attr-fail-3.gbl" in
+  match main_pipeline input with
+  | _ -> Alcotest.fail "Expected exception, but got success"
+  | exception _ -> ()  
+
+let inh_attr () =
+  let input = "../../../test/test_cases/inh-attr.gbl" in
+  let solver_ast, _, ast = main_pipeline input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
+  match output with
+  | Ok _ -> ()  
+  | Error msg -> fail msg
+
 let dm_test_vertical_ambiguous_reference_2 () =
   let input = "../../../test/test_cases/test_vertical_ambiguous_reference_2" in
   let solver_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
@@ -1671,6 +1705,11 @@ let () =
     "example-fail", [test_case "example-fail" `Quick example_fail]; 
     "ngap-ngsetup", [test_case "ngap-ngsetup" `Quick ngap_ngsetup_bug]; 
     "reset_bug4", [test_case "reset_bug4" `Quick reset_bug4]; 
+    "length_attr", [test_case "length_attr" `Quick length_attr]; 
+    "length_attr_fail_1", [test_case "length_attr_fail_1" `Quick length_attr_fail_1]; 
+    "length_attr_fail_2", [test_case "length_attr_fail_2" `Quick length_attr_fail_2]; 
+    "length_attr_fail_3", [test_case "length_attr_fail_3" `Quick length_attr_fail_3]; 
+    "inh_attr", [test_case "inh_attr" `Quick inh_attr]; 
     (*"msg2", [test_case "msg2" `Quick msg2]; *)
     (*"dd_test_another_ambiguous_reference_2", [test_case "dd_test_another_ambiguous_reference_2" `Quick dd_test_another_ambiguous_reference_2]; 
     "md_test_another_ambiguous_reference_2", [test_case "md_test_another_ambiguous_reference_2" `Quick md_test_another_ambiguous_reference_2];  *)

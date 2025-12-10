@@ -63,14 +63,17 @@ open Ast
 %token UNION
 %token INTERSECTION
 %token MEMBER
+%token LSQBRACKET
+%token RSQBRACKET
 
-%token STR_TO_RE ; 
-%token STR_IN_RE ; 
-%token RE_RANGE ; 
-%token RE_UNION ; 
-%token RE_STAR ; 
-%token RE_CONCAT ;
-%token REPEAT ;
+%token STR_TO_RE  
+%token STR_IN_RE  
+%token RE_RANGE  
+%token RE_UNION  
+%token RE_STAR  
+%token RE_CONCAT 
+%token REPEAT 
+%token GETS 
 
 %token<int> INTEGER
 %token<float> DECIMAL
@@ -109,10 +112,19 @@ element:
     | None -> TypeAnnotation (nt, t, [], $startpos) 
     | Some scs -> TypeAnnotation (nt, t, scs, $startpos) 
   }
+(* Attribute type annotation *) 
+| attribute = ID; TYPEANNOT; t = il_type; SEMICOLON;
+  { 
+    TypeAnnotation ("%_" ^ attribute, t, [], $startpos) 
+  }
 (* Production rule *)
 | nt = nonterminal; PRODUCTION; rhss = separated_nonempty_list(OPTION, rhs); SEMICOLON;
   { 
-    ProdRule (nt, rhss, $startpos) 
+    ProdRule (nt, [], rhss, $startpos) 
+  }
+| nt = nonterminal; LPAREN; params = separated_nonempty_list(COMMA, ID); RPAREN; PRODUCTION; rhss = separated_nonempty_list(OPTION, rhs); SEMICOLON;
+  { 
+    ProdRule (nt, params, rhss, $startpos) 
   }
 
 rhs:
@@ -128,7 +140,7 @@ il_type:
 | BOOL { Bool }
 | INT { Int }
 | STRINGTYPE { String }
-| BITVECTOR; LPAREN; len = INTEGER; RPAREN; { BitVector (len) }
+| BITVECTOR; LPAREN; len = INTEGER; RPAREN; { BitVector len }
 | LIST; LPAREN; BOOL; RPAREN; { BitList }
 | SET; LPAREN; ty = il_type; RPAREN; { Set ty } 
 
@@ -141,7 +153,10 @@ semantic_constraint_list:
 
 grammar_element:
 | nt = nonterminal { 
-    Nonterminal(nt, None, $startpos) 
+    Nonterminal(nt, None, [], $startpos) 
+  }
+| nt = nonterminal; LPAREN; args = separated_nonempty_list(COMMA, expr); RPAREN; { 
+    Nonterminal(nt, None, args, $startpos) 
   }
 
 semantic_constraint:
@@ -151,8 +166,12 @@ semantic_constraint:
 | e = expr { 
     SmtConstraint (e, $startpos) 
   }
+| attr = ID; GETS; e = expr { 
+    AttrDef (attr, e, $startpos)
+  }
 
 expr: 
+| id = ID; { InhAttr (id, $startpos) }
 | EMPTYSET; LT; ty = il_type; GT; 
   { 
     EmptySet (ty, $startpos) 
@@ -322,17 +341,23 @@ expr:
 | REPEAT; LPAREN; e1 = expr; COMMA; e2 = expr; RPAREN; { 
     BuiltInFunc (Repeat, [e1; e2], $startpos) 
   } 
-
-(* Variables *)
 | e = nt_expr; (* _ = option(index); *) { 
     NTExpr ([], e, $startpos) 
   }
-(* Arbitrary parens *)
+| nt = indexed_nonterminal; DOT; attr = ID; { 
+    SynthAttr (fst nt, attr, $startpos) 
+  }
 | LPAREN; e = expr; RPAREN; { e }
 
 nt_expr: 
-| nt = nonterminal { [nt, None] }
-| nt = nonterminal; DOT; nts = nt_expr; { (nt, None) :: nts }
+| nt = indexed_nonterminal { [nt] }
+| nt = indexed_nonterminal; DOT; nts = nt_expr; { nt :: nts }
 
 nonterminal:
 | LT; str = ID; GT; { str }
+
+indexed_nonterminal:
+| LT; str = ID; GT; i = option(index); { str, i }
+
+index:
+| LSQBRACKET; i = INTEGER; RSQBRACKET { i }

@@ -4,7 +4,7 @@ open Graph
 let rec from_ge_list_to_string_list (ge_list : grammar_element list) : string list = 
   match ge_list with
   | [] -> []  
-  | Nonterminal(x, _, _)::xs -> x :: from_ge_list_to_string_list xs 
+  | Nonterminal(x, _, _, _)::xs -> x :: from_ge_list_to_string_list xs 
   | StubbedNonterminal(x,y)::xs -> x :: y :: from_ge_list_to_string_list xs 
 
 let rec get_all_nt_from_rhs (rvalue : prod_rule_rhs list) : string list = 
@@ -15,7 +15,7 @@ let rec get_all_nt_from_rhs (rvalue : prod_rule_rhs list) : string list =
 
 let get_all_dependencies_from_one_element (ge : element) : (string * string) list = 
   match ge with 
-  | ProdRule(lvalue, rhs, _) -> (List.map (fun x-> (lvalue, x))(get_all_nt_from_rhs rhs))  |> (List.filter (fun (x,y) ->  x <> y) )
+  | ProdRule(lvalue, _, rhs, _) -> (List.map (fun x-> (lvalue, x))(get_all_nt_from_rhs rhs))  |> (List.filter (fun (x,y) ->  x <> y) )
   | TypeAnnotation(_, _, _, _) -> [] 
 
 let rec get_all_dependencies_from_grammar (g : ast) : (string * string) list = 
@@ -26,7 +26,7 @@ let rec get_all_dependencies_from_grammar (g : ast) : (string * string) list =
 let rec get_nt_from_geList geList = 
   match geList with
   | [] -> []
-  | Nonterminal(x, _, _) :: xs -> x :: (get_nt_from_geList xs)
+  | Nonterminal(x, _, _, _) :: xs -> x :: (get_nt_from_geList xs)
   | StubbedNonterminal _ :: xs -> (get_nt_from_geList xs)
  
 let rec get_nt_from_rhs rhs =
@@ -38,13 +38,13 @@ let rec get_nt_from_rhs rhs =
 let rec get_all_nt (g : ast) : string list =
   match g with
   | [] -> []
-  | ProdRule (nt, rhs, _) :: xs -> nt :: (get_nt_from_rhs rhs)  @ (get_all_nt xs)
+  | ProdRule (nt, _, rhs, _) :: xs -> nt :: (get_nt_from_rhs rhs)  @ (get_all_nt xs)
   | TypeAnnotation (_, _, _, _) :: xs -> get_all_nt xs
 
 let rec get_dependencies (nt : string) (geList : grammar_element list) : string list =
   match geList with
   | [] -> []
-  | Nonterminal(x, _, _) :: xs -> 
+  | Nonterminal(x, _, _, _) :: xs -> 
     if nt = x 
       then x :: (get_dependencies nt xs)
     else get_dependencies nt xs
@@ -64,7 +64,7 @@ let rec get_edge_pairs (nts : (string * (string list)) list): (string * string) 
 let rec get_all_rules (nt : string) (g : ast) : prod_rule_rhs list =
   match g with
   | [] -> []
-  | ProdRule (a, prod_rule_lst, _) :: xs ->
+  | ProdRule (a, _, prod_rule_lst, _) :: xs ->
     if a = nt
       then prod_rule_lst @ (get_all_rules nt xs)
     else
@@ -115,8 +115,8 @@ let print_list lst =
 let rec collect_rules_for_nt (cnt : string) (ogrammar : ast) : ast = 
   match ogrammar with 
   | [] -> [] 
-  | ProdRule(x, y, pos):: xs -> 
-    if x = cnt then ProdRule(x, y, pos):: collect_rules_for_nt cnt xs
+  | ProdRule(x, a, y, pos):: xs -> 
+    if x = cnt then ProdRule(x, a, y, pos):: collect_rules_for_nt cnt xs
     else collect_rules_for_nt cnt xs 
     | TypeAnnotation(x, y, z, pos)::xs -> 
       if x = cnt then TypeAnnotation(x, y, z, pos)  :: collect_rules_for_nt cnt xs
@@ -132,12 +132,12 @@ let rec collect_rules (non_term_list : string list ) (ogrammar : ast) (cgrammar 
 (* Check for immediate left recursion where ALL alternatives start with the same non-terminal *)
 let has_problematic_immediate_left_recursion (grammar : ast) : bool =
   let check_rule = function
-    | ProdRule(lhs, rhs_list, _) ->
+    | ProdRule(lhs, _, rhs_list, _) ->
         (* Check if ALL alternatives start with the same non-terminal (lhs) *)
         let all_alternatives_left_recursive = 
           List.for_all (fun rhs ->
             match rhs with
-            | Rhs(Nonterminal(nt, _, _) :: _, _, _, _) -> nt = lhs
+            | Rhs(Nonterminal(nt, _, _, _) :: _, _, _, _) -> nt = lhs
             | _ -> false
           ) rhs_list
         in
@@ -171,6 +171,7 @@ let get_all_nt_scs scs =
   List.fold_left (fun acc sc -> match sc with 
   | DerivedField (nt, _, _) -> nt :: acc
   | SmtConstraint _ -> acc
+  | AttrDef _ -> assert false
   ) [] scs
 
 let get_all_dependencies_from_scs scs = 
@@ -179,6 +180,7 @@ let get_all_dependencies_from_scs scs =
   | DerivedField (nt1, expr, _) -> 
     let nts = Ast.get_nts_from_expr expr in 
     acc @ List.map (fun nt2 -> (nt1, nt2)) nts
+  | AttrDef _ -> assert false
   ) [] scs
 
 

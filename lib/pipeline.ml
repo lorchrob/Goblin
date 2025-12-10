@@ -56,7 +56,6 @@ let main_pipeline ?(engine: Flags.engine option = None) ?(grammar: Ast.ast optio
   let prm = SyntaxChecker.build_prm ast in
   let nt_set = SyntaxChecker.build_nt_set ast in
   let ast = SyntaxChecker.check_syntax prm nt_set ast in 
-  let ast_to_return = ast in
   Utils.debug_print Format.pp_print_string ppf "\nSyntactic checks complete:\n";
   Utils.debug_print Ast.pp_print_ast ppf ast;
 
@@ -64,6 +63,19 @@ let main_pipeline ?(engine: Flags.engine option = None) ?(grammar: Ast.ast optio
   let ast, ctx = TypeChecker.build_context ast in
   let ast = TypeChecker.check_types ctx ast in
   Utils.debug_print Format.pp_print_string ppf "\nType checking complete:\n";
+
+  (* Attribute checking *)
+  let ast = AttributeChecker.check_attributes ctx ast in
+  Utils.debug_print Format.pp_print_string ppf "\nAttribute checking complete:\n";
+
+  (* Desugar attributes *)
+  Utils.debug_print Format.pp_print_string ppf "\nDesugaring attributes:\n";
+  let ast = DesugarAttributes.desugar_attributes ctx ast in
+  (*!! Ideally, the checker would take as input the base AST, not the desugared one. 
+       But then we have to update the checker to deal with attributes. 
+       This is probably worth it in the long run. *)
+  let ast_to_return = ast in 
+  Utils.debug_print Ast.pp_print_ast ppf ast;
 
   (* Populate nonterminal indices *)
   Utils.debug_print Format.pp_print_string ppf "\nPopulating indices:\n";

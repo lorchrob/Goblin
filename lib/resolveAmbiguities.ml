@@ -99,6 +99,8 @@ let rec generate_all_possible_exprs: TC.context -> string list -> A.expr -> A.ex
     let msg = Format.asprintf "Bad function arity in expression %a" 
       A.pp_print_expr expr in 
     Utils.error msg (A.pos_of_expr expr)
+  | InhAttr _
+  | SynthAttr _ -> assert false
 
 let process_sc: TC.context -> string list -> A.semantic_constraint -> A.semantic_constraint 
 = fun ctx nts sc -> match sc with 
@@ -110,6 +112,7 @@ let process_sc: TC.context -> string list -> A.semantic_constraint -> A.semantic
       | [] -> Utils.crash "unexpected case"
     in
     DerivedField (nt, expr, p)
+  | AttrDef _ -> assert false
   | SmtConstraint (expr, p) -> 
     let exprs = generate_all_possible_exprs ctx nts expr in
     let expr = List.fold_left (fun acc expr -> A.BinOp (expr, GLAnd, acc, p)) (BConst (true, p)) exprs in
@@ -129,6 +132,7 @@ let process_sc_to_list: TC.context -> string list -> A.semantic_constraint -> A.
   | SmtConstraint (expr, p) -> 
     let exprs = generate_all_possible_exprs ctx nts expr in
     List.map (fun expr -> A.SmtConstraint (expr, p)) exprs
+  | AttrDef _ -> assert false
 
 (* Same as resolve_ambiguities, but we desugar to a list of 
    semantic constraints rather than a conjunction of generated 
@@ -139,7 +143,7 @@ let process_sc_to_list: TC.context -> string list -> A.semantic_constraint -> A.
    case at a time, ignoring constraints that aren't applicable in that case. *)
 let resolve_ambiguities_dpll: TC.context -> A.ast -> A.ast 
 = fun ctx ast -> List.map (fun element -> match element with
-| A.ProdRule (nt, rhss, p) ->
+| A.ProdRule (nt, ias, rhss, p) ->
   (*!! Need to assume universally unique IDs *)
   let nts = List.concat_map A.nts_of_rhs rhss in 
   let rhss = List.map (fun rhs -> match rhs with 
@@ -148,20 +152,21 @@ let resolve_ambiguities_dpll: TC.context -> A.ast -> A.ast
     (* Filter out scs with dot notation expressions of the form <nt1>[n], where 
        [n] does not apply to this production rule *)
     let scs = List.filter (function 
+    | A.AttrDef _ -> assert false
     | A.SmtConstraint (expr, _)  
     | A.DerivedField (_, expr, _) ->
       let nts = A.get_nts_from_expr2 expr |> List.map List.hd in
       List.for_all (fun (nt1, idx1) -> 
         List.exists (function 
         | A.StubbedNonterminal _ -> false 
-        | A.Nonterminal (nt2, idx2, _) -> nt1 = nt2 && idx1 = idx2 
+        | A.Nonterminal (nt2, idx2, _, _) -> nt1 = nt2 && idx1 = idx2 
         ) ges
       ) nts  
     ) scs in 
     A.Rhs (ges, scs, prob, p) 
   | StubbedRhs _ -> rhs 
   ) rhss in 
-  A.ProdRule (nt, rhss, p)
+  A.ProdRule (nt, ias, rhss, p)
 | TypeAnnotation (nt, ty, scs, p) -> 
   let scs = List.concat_map (process_sc_to_list ctx [nt]) scs in
   TypeAnnotation (nt, ty, scs, p)
@@ -169,11 +174,11 @@ let resolve_ambiguities_dpll: TC.context -> A.ast -> A.ast
 
 let resolve_ambiguities: TC.context -> A.ast -> A.ast 
 = fun ctx ast -> List.map (fun element -> match element with
-| A.ProdRule (nt, rhss, p) ->
+| A.ProdRule (nt, ias, rhss, p) ->
   let rhss = List.map (fun rhs -> match rhs with 
   | A.Rhs (ges, scs, prob, _) -> A.Rhs (ges, List.map (process_sc ctx (A.nts_of_rhs rhs)) scs, prob, p) 
   | StubbedRhs _ -> rhs 
   ) rhss in 
-  A.ProdRule (nt, rhss, p)
+  A.ProdRule (nt, ias, rhss, p)
 | TypeAnnotation (nt, ty, scs, p) -> TypeAnnotation (nt, ty, List.map (process_sc ctx [nt]) scs, p)
 ) ast  

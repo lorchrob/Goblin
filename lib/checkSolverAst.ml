@@ -22,7 +22,7 @@ let (let*) = Res.(>>=)
 
 let check_start_symbol: Ast.ast -> SolverAst.solver_ast -> (unit, string) result 
 = fun ast solver_ast -> match ast, solver_ast with 
-| A.ProdRule (nt, _, _) :: _, SA.Node ((constructor, _), _) -> 
+| A.ProdRule (nt, _, _, _) :: _, SA.Node ((constructor, _), _) -> 
   if Utils.str_eq_ci nt (Utils.extract_base_name constructor) 
     then Ok () 
   else 
@@ -73,6 +73,7 @@ let handle_scs ast solver_ast constructor element scs =
       SA.pp_print_solver_ast solver_ast
       );
     ComputeDeps.evaluate false solver_ast ast element expr
+  | AttrDef _ -> assert false
   ) scs in
   let b = List.exists (fun sc -> match sc with 
   | [A.BConst (false, _)] -> true 
@@ -101,14 +102,14 @@ let rec check_syntax_semantics: Ast.ast -> SolverAst.solver_ast -> (unit, string
     let element = List.find_opt (fun element -> match element with
     | A.TypeAnnotation (nt, _, _, _) -> 
       Utils.str_eq_ci (Utils.extract_base_name constructor) nt 
-    | A.ProdRule (nt, _, _) -> 
+    | A.ProdRule (nt, _, _, _) -> 
       Utils.str_eq_ci (Utils.extract_base_name constructor) nt 
     ) ast in (
     match element with 
     | None -> Error ("Dangling constructor identifier " ^ (Utils.extract_base_name constructor))
     | Some (TypeAnnotation (_, _, scs, _) as element) -> 
       handle_scs ast solver_ast constructor element scs
-    | Some (A.ProdRule (_, rhss, _) as element) ->
+    | Some (A.ProdRule (_, _, rhss, _) as element) ->
       (* Find the matching production rule from ast, if one exists *)
       let rhs = List.find_opt (fun rhs -> match rhs with 
       | A.StubbedRhs _ -> false 
@@ -118,7 +119,8 @@ let rec check_syntax_semantics: Ast.ast -> SolverAst.solver_ast -> (unit, string
           List.for_all2 (fun child ge ->  
             match child, ge with 
             | _, A.StubbedNonterminal _ -> false 
-            | SA.Node ((constructor, _), _), Nonterminal (nt, _, _) -> Utils.str_eq_ci (Utils.extract_base_name constructor) nt
+            | SA.Node ((constructor, _), _), Nonterminal (nt, _, _, _) -> 
+              Utils.str_eq_ci (Utils.extract_base_name constructor) nt
             | _, _ -> true
           ) children ges
       ) rhss in 

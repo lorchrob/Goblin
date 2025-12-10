@@ -225,3 +225,18 @@ let parse_str_nat_suffix (s : string) : string * int option =
     match int_of_string_opt suffix with
     | Some n -> (prefix, Some n)
     | None -> (s, None)  (* fallback, shouldn't normally happen *)
+
+let all_equal (xs : 'a list) (eq : 'a -> 'a -> bool) : bool =
+  match xs with
+  | [] | [_] -> true
+  | x :: rest -> List.for_all (fun y -> eq x y) rest
+
+(* Naive but whatever *)
+let has_duplicate eq lst =
+  let rec aux = function
+    | [] -> false
+    | x :: xs ->
+        if List.exists (fun y -> eq x y) xs then true
+        else aux xs
+  in
+  aux lst

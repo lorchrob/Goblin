@@ -71,6 +71,7 @@ rule read =
   | white { read lexbuf }
   | newline { Lexing.new_line lexbuf ; read lexbuf }
   | "//" [^ '\n']* '\n' { read lexbuf }
+  | ":=" { GETS }
   | "::=" { PRODUCTION }
   | "::" {TYPEANNOT}
   | "|" { OPTION }
@@ -86,6 +87,8 @@ rule read =
   (* | "->" { ARROW } *)
   | "str.++" { STRCONCAT }
   | "+" { PLUS }
+  | "[" { LSQBRACKET } 
+  | "]" { RSQBRACKET }
   | "-" { MINUS }
   | "*" { TIMES }
   | "div" { DIV }

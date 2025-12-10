@@ -1,0 +1,8 @@
+<S> ::= <L> <Payload> 
+  { <L> = <Payload>.len; };
+<Payload> ::= <BV8> <BL> 
+  { len := 8 + seq.len(<BL>); };
+<L> :: Int;
+<BV8> :: BitVec(8);
+<BL> :: List(Bool);
+len :: Int;

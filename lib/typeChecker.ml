@@ -14,12 +14,24 @@ let type_checker_error mode error_msg p = match mode with
 let build_context: ast -> ast * context
 = fun ast -> 
   let ctx = List.fold_left (fun acc element -> match element with 
-  | ProdRule (nt, rhss, _) -> 
+  | ProdRule (nt, ias, rhss, _) -> 
     let options = List.map (fun rhs -> match rhs with
-      | Rhs (ges, _, _, _) -> List.fold_left (fun acc ge -> match ge with 
-        | Nonterminal (nt, _, _) 
+      | Rhs (ges, scs, _, _) -> 
+        (* options1, options2, and option3 represent the extra generated nonterminals 
+           that will exist after we desugar attributes in desugarAttributes.ml *)
+        (* User ges *)
+        let options1 = List.fold_left (fun acc ge -> match ge with 
+        | Nonterminal (nt, _, _, _) 
         | StubbedNonterminal (nt, _) -> nt :: acc
-      ) [] ges |> List.rev
+        ) [] ges |> List.rev in 
+        (* Generated attribute ges *)
+        let options2 = List.fold_left (fun acc sc -> match sc with 
+        | SmtConstraint _  
+        | DerivedField _ -> acc 
+        | AttrDef (attr, _, _) -> ("%_" ^ attr) :: acc
+        ) [] scs |> List.rev in 
+        let options3 = List.map (fun ia -> "%_" ^ ia) ias in 
+        options1 @ options2 @ options3
       | StubbedRhs _ -> []
     ) rhss in
     Utils.StringMap.add nt (ADT options) acc 
@@ -353,6 +365,14 @@ let rec infer_type_expr: context -> mode -> expr -> il_type option
     let ty_str = Utils.capture_output Ast.pp_print_ty (Option.get inf_ty) in 
     let msg = "Type checking error: re.(union | ++) expected type String, given type " ^ ty_str in 
     Utils.error msg p
+| InhAttr (attr, _) ->
+  (* The parser already inserts the underscore in the TypeAnnotation in the AST, 
+     so we need to add it here to find it in the context *)
+  Some (Utils.StringMap.find ("%_" ^ attr) ctx)
+| SynthAttr (_, attr, _) ->
+  (* The parser already inserts the underscore in the TypeAnnotation in the AST, 
+     so we need to add it here to find it in the context *)
+  Some (Utils.StringMap.find ("%_" ^ attr) ctx)
 | e -> 
   let msg = Format.asprintf "Unexpected expression in type checker: %a" 
     Ast.pp_print_expr e in
@@ -388,6 +408,10 @@ let check_prod_rhs ctx rhss = match rhss with
     let exp_ty = Bool in
     let expr = check_type_expr ctx SyGuS exp_ty expr p in 
     SmtConstraint (expr, p)
+  | AttrDef (attr, expr, p) -> 
+    let exp_ty = Utils.StringMap.find ("%_" ^ attr) ctx in 
+    let expr = check_type_expr ctx SyGuS exp_ty expr p in 
+    AttrDef (attr, expr, p)
   ) scs in 
   Rhs (ges, scs, prob, p)
 | StubbedRhs _ -> assert false
@@ -395,9 +419,9 @@ let check_prod_rhs ctx rhss = match rhss with
 let check_types: context -> ast -> ast 
 = fun ctx ast -> 
   let ast = List.map (fun element -> match element with 
-  | ProdRule (nt, rhss, p) -> 
+  | ProdRule (nt, ias, rhss, p) -> 
     let rhss = List.map (check_prod_rhs ctx) rhss in
-    ProdRule (nt, rhss, p)
+    ProdRule (nt, ias, rhss, p)
   | TypeAnnotation (nt, ty, scs, p) -> 
     let scs = List.map (fun sc -> match sc with 
     | DerivedField (nt2, expr, p) ->
@@ -413,7 +437,14 @@ let check_types: context -> ast -> ast
       let exp_ty = Bool in
       let expr = check_type_expr ctx SyGuS exp_ty expr p in 
       SmtConstraint (expr, p)
+    | AttrDef (attr, expr, p) -> 
+      let _ = infer_type_expr ctx SyGuS expr in 
+      AttrDef (attr, expr, p)
     ) scs in 
     TypeAnnotation (nt, ty, scs, p)
   ) ast in 
   ast
+
+let pp_print_ctx ppf ctx = 
+  Format.fprintf ppf "%a\n" 
+    (Lib.pp_print_list (fun _ (nt, ty) -> Format.printf "%s -> %a" nt Ast.pp_print_ty ty) "; ") (Utils.StringMap.bindings ctx) 

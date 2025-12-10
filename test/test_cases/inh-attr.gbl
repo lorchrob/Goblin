@@ -1,0 +1,14 @@
+<Repeat> ::= <Val> <L>(<Val>) <Length> { <Length> = <L>.len; <Length> > 0; };
+<L>(v) ::= <E> <L>(v) { <E> = v; len := 1 + <L>.len; } | <Nil> { len := 0; };
+
+<Val> :: Int;
+<E> :: Int;
+<Nil> :: Unit;
+<Length> :: Int;
+len :: Int;
+v :: Int; // Probably want to inline this
+
+// * Each lhs <Nt>(v) ::= ... desugars to extra nonterminal %_v on RHS
+// * Each call site <Nt>(<expr>) is desugared to a semantic constraint that <Nt>.<%_attribute> = <expr>
+// * Here, we need actually <Nt>[i].<_attribute> = <expr> for the corresponding i
+// * Check call args have the correct type

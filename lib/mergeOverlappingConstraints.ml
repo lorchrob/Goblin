@@ -25,23 +25,23 @@ let merge: A.ast -> A.element -> A.ast
     if A.ast_constrains_nt ast nt then 
       let ast = List.fold_left (fun acc element -> match element with
       | A.TypeAnnotation _ -> acc @ [element]
-      | A.ProdRule (nt2, rhss, p) -> 
+      | A.ProdRule (nt2, ias, rhss, p) -> 
         let rhss = List.map (fun rhs -> match rhs with 
         | A.StubbedRhs _ -> rhs 
         | A.Rhs (ges, scs2, prob, p) -> 
           if List.exists (fun ge -> match ge with 
-          | A.Nonterminal (nt3, _, _) -> nt = nt3  
+          | A.Nonterminal (nt3, _, _, _) -> nt = nt3  
           | A.StubbedNonterminal _ -> false
           ) ges 
           then A.Rhs (ges, scs @ scs2, prob, p) (* Push up the constraints *)
           else rhs
         ) rhss in 
-        acc @ [A.ProdRule (nt2, rhss, p)]
+        acc @ [A.ProdRule (nt2, ias, rhss, p)]
       ) [] ast in 
       ast @ [A.TypeAnnotation (nt, ty, [], p)]
     (* If no overlapping constraint, no action is required *)
     else ast @ [element]
-  | A.ProdRule (nt, rhss, p) -> 
+  | A.ProdRule (nt, ias, rhss, p) -> 
     (* To find overlaps, look for semantic constraint pairs where 
         * One semantic constraint is in __this__ production rule and has a nonterminal of the form 
           <nt_1>...<nt_n>
@@ -78,28 +78,29 @@ let merge: A.ast -> A.element -> A.ast
            resolveAmbiguities. *)
         Utils.debug_print Format.pp_print_string Format.std_formatter "Replacing dependency with sygus expr";
         A.SmtConstraint (A.prepend_nt_to_dot_exprs nt (A.CompOp (NTExpr([], [nt2, None], p), Eq, expr, p)), p)
+      | AttrDef _ -> assert false
       ) scs in 
       let ast = List.fold_left (fun acc element -> match element with
       | A.TypeAnnotation _ -> acc @ [element]
-      | A.ProdRule (nt2, rhss, _) -> 
+      | A.ProdRule (nt2, ias, rhss, _) -> 
         let rhss = List.map (fun rhs -> match rhs with 
         | A.StubbedRhs _ -> rhs 
         | A.Rhs (ges, scs2, prob, p) -> 
           if List.exists (fun ge -> match ge with 
-          | A.Nonterminal (nt3, _, _) -> nt = nt3  
+          | A.Nonterminal (nt3, _, _, _) -> nt = nt3  
           | A.StubbedNonterminal _ -> false
           ) ges 
           then 
             A.Rhs (ges, scs @ scs2, prob, p) (* Push up the constraints *)
           else rhs
         ) rhss in 
-        acc @ [A.ProdRule (nt2, rhss, p)]
+        acc @ [A.ProdRule (nt2, ias, rhss, p)]
       ) [] ast in 
       let rhss = List.map (fun rhs -> match rhs with 
       | A.StubbedRhs _ -> rhs 
       | Rhs (ges, _, prob, p) -> Rhs (ges, [], prob, p)
       ) rhss in
-      ast @ [A.ProdRule (nt, rhss, p)]
+      ast @ [A.ProdRule (nt, ias, rhss, p)]
     (* If no overlapping constraint, no action is required *)
     else ast @ [element]
 
@@ -117,10 +118,11 @@ let lift: A.ast -> A.element -> A.ast
         let msg = Format.asprintf "Derived field %s defined is within the prod rule for nonterminal %s. However, nonterminal %s is itself SMT-constrained. Goblin does not currently support this overlap. To fix, model derived field %s with a (non-derived) equality constraint."
           nt' nt nt nt' in
         Utils.error msg p
+      | AttrDef _ -> assert false
       ) scs in
       ast @ [A.TypeAnnotation (nt, ty, scs, p)]
     else ast @ [element]
-  | A.ProdRule (nt, rhss, p) -> 
+  | A.ProdRule (nt, ias, rhss, p) -> 
     if A.ast_constrains_nt ast nt then 
       let rhss = List.map (fun rhs -> match rhs with
       | A.StubbedRhs _ -> rhs 
@@ -131,10 +133,11 @@ let lift: A.ast -> A.element -> A.ast
         let msg = Format.asprintf "Derived field %s defined is within the prod rule for nonterminal %s. However, nonterminal %s is itself SMT-constrained. Goblin does not currently support this overlap. To fix, model derived field %s with a (non-derived) equality constraint."
           nt' nt nt nt' in
         Utils.error msg p
+      | AttrDef _ -> assert false
         ) scs in
         A.Rhs (ges, scs, prob, p)
       ) rhss in
-      ast @ [A.ProdRule (nt, rhss, p)]
+      ast @ [A.ProdRule (nt, ias, rhss, p)]
     else ast @ [element]
 
 let detect: A.ast -> A.element -> bool
@@ -142,7 +145,7 @@ let detect: A.ast -> A.element -> bool
   | A.TypeAnnotation (_, _, [], _) -> false 
   | A.TypeAnnotation (nt, _, _ :: _, _) -> 
     A.ast_constrains_nt ast nt 
-  | A.ProdRule (nt, rhss, _) -> 
+  | A.ProdRule (nt, _, rhss, _) -> 
     let scs = List.concat_map (fun rhs -> match rhs with 
     | A.StubbedRhs _ -> []
     | A.Rhs (_, scs, _, _) -> scs

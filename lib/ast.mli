@@ -65,6 +65,8 @@ type case =
 | CaseStub of ((string * int option) list * (string * int option)) list
 and 
 expr = 
+| InhAttr of string * Lexing.position
+| SynthAttr of string * string * Lexing.position (* NT string * attribute name *)
 | EmptySet of il_type * Lexing.position
 | Singleton of expr * Lexing.position
 | BinOp of expr * bin_operator * expr * Lexing.position
@@ -99,9 +101,10 @@ expr =
 type semantic_constraint =
 | DerivedField of string * expr * Lexing.position
 | SmtConstraint of expr * Lexing.position
+| AttrDef of string * expr * Lexing.position (* attribute := <expression> *)
 
 type grammar_element =
-| Nonterminal of string * int option * Lexing.position
+| Nonterminal of string * int option * expr list * Lexing.position
 | StubbedNonterminal of string * string
 
 type prod_rule_rhs = 
@@ -110,7 +113,8 @@ type prod_rule_rhs =
 | StubbedRhs of string
 
 type element =
-| ProdRule of string * prod_rule_rhs list * Lexing.position
+(* NT LHS * inherited attributes * RHSs * position *)
+| ProdRule of string * string list * prod_rule_rhs list * Lexing.position
 | TypeAnnotation of string * il_type * semantic_constraint list * Lexing.position
 
 type ast = element list
@@ -138,3 +142,4 @@ val nts_of_ast: ast -> Utils.StringSet.t
 val find_element: ast -> string -> element
 val pos_of_expr: expr -> Lexing.position
 val pp_print_builtin_func: Format.formatter -> builtin_func -> unit
+val eq_il_type: il_type -> il_type -> bool

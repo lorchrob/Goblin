@@ -77,6 +77,8 @@ type case =
 | CaseStub of ((string * int option) list * (string * int option)) list
 and
 expr = 
+| InhAttr of string * Lexing.position 
+| SynthAttr of string * string * Lexing.position (* NT string * attribute name *)
 | EmptySet of il_type * Lexing.position
 | Singleton of expr * Lexing.position
 | BinOp of expr * bin_operator * expr * Lexing.position
@@ -111,9 +113,11 @@ expr =
 type semantic_constraint = 
 | DerivedField of string * expr * Lexing.position (* <nonterminal> <- <expression> *)
 | SmtConstraint of expr * Lexing.position (* Any boolean expression *)
+| AttrDef of string * expr * Lexing.position (* attribute := <expression> *)
 
 type grammar_element = 
-| Nonterminal of string * int option * Lexing.position
+(* Nonterminal name * optional index * inherited attributes * position *)
+| Nonterminal of string * int option * expr list * Lexing.position
 | StubbedNonterminal of string * string (* Ignore *)
 
 type prod_rule_rhs =
@@ -122,7 +126,8 @@ type prod_rule_rhs =
 | StubbedRhs of string (* Ignore *)
 
 type element = 
-| ProdRule of string * prod_rule_rhs list * Lexing.position
+(* NT LHS * inherited attributes * RHSs * position *)
+| ProdRule of string * string list * prod_rule_rhs list * Lexing.position
 | TypeAnnotation of string * il_type * semantic_constraint list * Lexing.position
 
 (* This is the type of the grammar terms *)
@@ -135,6 +140,7 @@ let rec get_nts_from_expr: expr -> string list
   let r = get_nts_from_expr in
   match expr with 
   | NTExpr (_, nts, _) -> List.map fst nts 
+  | SynthAttr (nt, _, _) -> [nt] 
   | Match (_, (nt, _), cases, _) -> nt :: (List.map (fun case -> match case with 
     | CaseStub _ -> []
     | Case (_, expr) -> r expr
@@ -155,6 +161,7 @@ let rec get_nts_from_expr: expr -> string list
   | PhConst _
   | IntConst _ 
   | StrConst _
+  | InhAttr _
   | EmptySet _  -> [] 
 
 (* This function is used before desugaring dot expressions *)
@@ -163,6 +170,8 @@ let rec get_nts_from_expr2: expr -> (string * int option) list list
   let r = get_nts_from_expr2 in
   match expr with 
   | NTExpr (nts1, nts2, _) -> [nts1 @ nts2]
+  | InhAttr _
+  | SynthAttr _ -> assert false
   | Match _ -> Utils.crash "Unexpected case in get_nts_from_expr2"
   | BinOp (expr1, _, expr2, _) -> 
     r expr1 @ r expr2
@@ -214,6 +223,8 @@ let rec get_nts_from_expr_after_desugaring_dot_notation: expr -> (string * int o
   | IntConst _ 
   | StrConst _ 
   | EmptySet _ -> []
+  | InhAttr _
+  | SynthAttr _ -> assert false
 
 let pp_print_nt_helper_dots: Format.formatter -> string * int option -> unit 
 = fun ppf (nt, idx) -> 
@@ -329,6 +340,10 @@ let rec pp_print_case: Format.formatter -> case -> unit
 
 and pp_print_expr: Format.formatter -> expr -> unit 
 = fun ppf expr -> match expr with
+| SynthAttr (nt, attr, _) -> 
+  Format.fprintf ppf "<%s>.%s"
+    nt attr
+| InhAttr (attr, _) -> Format.pp_print_string ppf attr
 | EmptySet (ty, _) -> 
   Format.fprintf ppf "set.empty<%a>"
     pp_print_ty ty
@@ -410,10 +425,21 @@ let pp_print_semantic_constraint: Format.formatter -> semantic_constraint -> uni
 | SmtConstraint (expr, _) -> 
   Format.fprintf ppf "%a;"
     pp_print_expr expr
+| AttrDef (attr, expr, _) -> 
+  Format.fprintf ppf "%s := %a;"
+    attr 
+    pp_print_expr expr
 
 let pp_print_grammar_element: Format.formatter -> grammar_element ->  unit 
 = fun ppf g_el -> match g_el with 
-| Nonterminal (nt, idx, _) -> pp_print_nt_with_dots ppf [nt, idx]
+| Nonterminal (nt, idx, ias, _) -> (
+  match ias with 
+  | [] -> pp_print_nt_with_dots ppf [nt, idx]
+  | _ :: _ -> 
+    Format.fprintf ppf "%a(%a)"
+      pp_print_nt_with_dots [nt, idx] 
+      (Lib.pp_print_list pp_print_expr ", ") ias
+  )
 | StubbedNonterminal (_, stub_id) -> Format.pp_print_string ppf stub_id
 
 let pp_print_prob ppf prob = 
@@ -438,9 +464,15 @@ let pp_print_prod_rule_rhs: Format.formatter -> prod_rule_rhs -> unit
 
 let pp_print_element: Format.formatter -> element ->  unit 
 = fun ppf el -> match el with 
-| ProdRule (nt, rhss, _) -> 
+| ProdRule (nt, [], rhss, _) -> 
   Format.fprintf ppf "%a ::= %a;"
     pp_print_nt_with_dots [nt, None]
+    (Lib.pp_print_list pp_print_prod_rule_rhs " | ") rhss
+
+| ProdRule (nt, ias, rhss, _) -> 
+  Format.fprintf ppf "%a(%a) ::= %a;"
+    pp_print_nt_with_dots [nt, None]
+    (Lib.pp_print_list Format.pp_print_string ", ") ias
     (Lib.pp_print_list pp_print_prod_rule_rhs " | ") rhss
 
 | TypeAnnotation (nt, ty, [], _) -> 
@@ -476,7 +508,7 @@ let il_int_to_bv: int -> int -> Lexing.position -> expr
 
 let grammar_element_to_string: grammar_element -> string 
 = fun grammar_element -> match grammar_element with 
-  | Nonterminal (nt2, _, _) -> nt2
+  | Nonterminal (nt2, _, _, _) -> nt2
   | StubbedNonterminal (_, stub_id) -> stub_id
 
 (* Used before divide and conquer *)
@@ -484,7 +516,7 @@ let nts_of_rhs: prod_rule_rhs -> string list
 = fun rhs -> match rhs with 
 | Rhs (ges, _, _, _) -> 
   List.map (fun ge -> match ge with 
-  | Nonterminal (nt, _, _) -> nt 
+  | Nonterminal (nt, _, _, _) -> nt 
   | StubbedNonterminal (nt, _) -> nt (* TODO: Not sure which tuple element we want, first or second *)
   ) ges
 | StubbedRhs _ -> [] 
@@ -501,7 +533,8 @@ let rec expr_contains_dangling_nt: Utils.SILSet.t -> expr -> bool
       (Lib.pp_print_list pp_print_nt_with_underscores ", ") (Utils.SILSet.elements ctx)
       pp_print_nt_with_underscores nt_expr (Utils.SILSet.mem nt_expr ctx); *)
     res
-    
+  | SynthAttr (nt, _, p) -> 
+    r (NTExpr ([], [nt, None], p))
   | BinOp (expr1, _, expr2, _) -> 
     r expr1 || r expr2
   | UnOp (_, expr, _) -> 
@@ -517,6 +550,7 @@ let rec expr_contains_dangling_nt: Utils.SILSet.t -> expr -> bool
   | PhConst _
   | IntConst _ 
   | StrConst _ 
+  | InhAttr _
   | EmptySet _ -> false
   | Match _ -> 
     Utils.crash "Encountered Match in expr_contains_dangling_nt. 
@@ -525,11 +559,13 @@ let rec expr_contains_dangling_nt: Utils.SILSet.t -> expr -> bool
 let sc_constrains_nt: string -> semantic_constraint -> bool 
 = fun nt sc -> match sc with 
 | SmtConstraint (expr, _) -> List.mem nt (get_nts_from_expr expr)
-| DerivedField (nt2, _, _) -> nt = nt2
+| DerivedField (nt2, _, _) 
+| AttrDef (nt2, _, _) -> nt = nt2
 
 let get_nts_from_sc: semantic_constraint -> string list 
 = fun sc -> match sc with 
 | SmtConstraint (expr, _) -> get_nts_from_expr expr
+| AttrDef (nt2, _, _)
 | DerivedField (nt2, _, _) -> [nt2]
 
 (* To be called before desugaring NTs to match expressions and resolving ambiguities.
@@ -545,7 +581,7 @@ let ast_constrains_nt: ast -> string -> bool
   List.exists (fun element -> match element with 
     | TypeAnnotation (nt2, _, _ :: _, _) when nt = nt2 -> true 
     | TypeAnnotation _ -> false
-    | ProdRule (_, rhss, _) -> List.exists (fun rhs -> match rhs with 
+    | ProdRule (_, _, rhss, _) -> List.exists (fun rhs -> match rhs with 
       | Rhs (_, scs, _, _) -> List.exists (sc_constrains_nt nt) scs
       | StubbedRhs _ -> false
     ) rhss
@@ -572,9 +608,11 @@ let rec prepend_nt_to_dot_exprs: string -> expr -> expr
   | PhConst _ 
   | StrConst _
   | EmptySet _ -> expr
+  | InhAttr _
+  | SynthAttr _ -> assert false
 
 let scs_of_element = function 
-| ProdRule (_, rhss, _) -> 
+| ProdRule (_, _, rhss, _) -> 
   List.concat_map (function 
   | StubbedRhs _ -> [] 
   | Rhs (_, scs, _, _) -> scs
@@ -583,7 +621,7 @@ let scs_of_element = function
 
 let rec nts_of_ast ast = match ast with 
 | [] -> Utils.StringSet.empty  
-| ProdRule (nt, rhss, _) :: tl -> 
+| ProdRule (nt, _, rhss, _) :: tl -> 
   let nts = nt :: (List.concat_map nts_of_rhs rhss) in 
   let nts = Utils.StringSet.of_list nts in 
   Utils.StringSet.union nts (nts_of_ast tl)
@@ -594,7 +632,7 @@ let rec nts_of_ast ast = match ast with
 let find_element ast nt = 
   List.find (fun element -> match element with 
   | TypeAnnotation (nt', _, _, _) 
-  | ProdRule (nt', _, _) -> String.equal nt nt'
+  | ProdRule (nt', _, _, _) -> String.equal nt nt'
   ) ast 
 
 let pos_of_expr expr = match expr with 
@@ -612,5 +650,22 @@ let pos_of_expr expr = match expr with
 | IntConst (_, pos) 
 | PhConst (_, pos) 
 | StrConst (_, pos) 
+| SynthAttr (_, _, pos)
+| InhAttr (_, pos)
 | EmptySet (_, pos) -> pos 
 
+let rec eq_il_type ty1 ty2 = match ty1, ty2 with 
+| Unit, Unit
+| Bool, Bool
+| Int, Int
+| (Placeholder | String), (Placeholder | String)
+| BitList, BitList -> true
+| BitVector w1, BitVector w2 -> w1 = w2
+| ADT s1, ADT s2 -> 
+  List.length s1 = List.length s1 &&
+  List.for_all2 (fun s1 s2 -> 
+    List.length s1 = List.length s2 && 
+    List.for_all2 String.equal s1 s2
+  ) s1 s2
+| Set ty1, Set ty2 -> eq_il_type ty1 ty2
+| _ -> false
