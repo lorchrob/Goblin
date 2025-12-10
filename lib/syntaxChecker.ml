@@ -71,9 +71,14 @@ let rec check_dangling_identifiers: Utils.StringSet.t -> Lexing.position -> expr
   let call = check_dangling_identifiers nt_set p in 
   let check_d_ids_nt_expr nt_expr = 
     List.iter (fun nt -> match Utils.StringSet.find_opt nt nt_set with 
-    | None -> Utils.error ("Dangling identifier <" ^ nt ^ ">") p
+    | None -> Utils.error ("Dangling identifier <" ^ nt ^ "> (you are referencing a nonterminal which either does not exist or is not present in the current context)") p
     | Some _ -> ()
     ) nt_expr
+  in
+  let check_d_ids_attribute attr = 
+    match Utils.StringSet.find_opt ("%_" ^ attr) nt_set with 
+    | None -> Utils.error (Format.asprintf "Dangling identifier %s (you are trying to access an attribute that was never defined)" attr) p
+    | Some _ -> ()
   in
   match expr with 
   | NTExpr (nt_ctx, nt_expr, p) -> 
@@ -82,6 +87,7 @@ let rec check_dangling_identifiers: Utils.StringSet.t -> Lexing.position -> expr
     NTExpr (nt_ctx, nt_expr, p)
   | SynthAttr (nt, attr, p) -> 
     let _ = check_d_ids_nt_expr [nt] in 
+    let _ = check_d_ids_attribute attr in 
     SynthAttr (nt, attr, p)
   | EmptySet (ty, p) -> EmptySet (ty, p)
   | Singleton (expr, p) -> Singleton (call expr, p)

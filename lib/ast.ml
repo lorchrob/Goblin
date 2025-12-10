@@ -654,3 +654,18 @@ let pos_of_expr expr = match expr with
 | InhAttr (_, pos)
 | EmptySet (_, pos) -> pos 
 
+let rec eq_il_type ty1 ty2 = match ty1, ty2 with 
+| Unit, Unit
+| Bool, Bool
+| Int, Int
+| (Placeholder | String), (Placeholder | String)
+| BitList, BitList -> true
+| BitVector w1, BitVector w2 -> w1 = w2
+| ADT s1, ADT s2 -> 
+  List.length s1 = List.length s1 &&
+  List.for_all2 (fun s1 s2 -> 
+    List.length s1 = List.length s2 && 
+    List.for_all2 String.equal s1 s2
+  ) s1 s2
+| Set ty1, Set ty2 -> eq_il_type ty1 ty2
+| _ -> false

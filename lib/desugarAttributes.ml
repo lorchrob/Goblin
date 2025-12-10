@@ -93,8 +93,8 @@ let desugar_attributes ctx ast =
     | A.Rhs (ges, scs, prob, p) -> 
       (* Desugar synthesized and inherited attributes within NTExprs, 
          and generate new grammar elements for synthesized attributes *)
-      let scs, new_ges = List.map (handle_sc ctx) scs |> List.split in 
       let new_scs = List.concat_map (gen_constraints_from_ge ast) ges in
+      let scs, new_ges = List.map (handle_sc ctx) (scs @ new_scs) |> List.split in 
       let ges = List.map (fun ge -> match ge with 
       | A.StubbedNonterminal _ -> ge 
       | A.Nonterminal (nt, idx, _, p) -> A.Nonterminal (nt, idx, [], p)
@@ -104,7 +104,8 @@ let desugar_attributes ctx ast =
       let new_ges = List.map (fun str -> A.Nonterminal (str, None, [], p)) new_ges in
       (* Inherited attributes *)
       let new_ges2 = List.map (fun str -> A.Nonterminal ("%_" ^ str, None, [], p)) ias in
-      A.Rhs (ges @ new_ges @ new_ges2, scs @ new_scs, prob, p)
+      (*let scs, _ = List.map (handle_sc ctx) (scs @ new_scs) |> List.split in *)
+      A.Rhs (ges @ new_ges @ new_ges2, scs, prob, p)
     ) rhss in 
     A.ProdRule (nt, [], rhss, p)
   | A.TypeAnnotation _ -> element

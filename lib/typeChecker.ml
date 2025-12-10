@@ -444,3 +444,7 @@ let check_types: context -> ast -> ast
     TypeAnnotation (nt, ty, scs, p)
   ) ast in 
   ast
+
+let pp_print_ctx ppf ctx = 
+  Format.fprintf ppf "%a\n" 
+    (Lib.pp_print_list (fun _ (nt, ty) -> Format.printf "%s -> %a" nt Ast.pp_print_ty ty) "; ") (Utils.StringMap.bindings ctx) 
