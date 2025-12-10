@@ -87,6 +87,8 @@ rule read =
   (* | "->" { ARROW } *)
   | "str.++" { STRCONCAT }
   | "+" { PLUS }
+  | "[" { LSQBRACKET } 
+  | "]" { RSQBRACKET }
   | "-" { MINUS }
   | "*" { TIMES }
   | "div" { DIV }

@@ -63,15 +63,17 @@ open Ast
 %token UNION
 %token INTERSECTION
 %token MEMBER
+%token LSQBRACKET
+%token RSQBRACKET
 
-%token STR_TO_RE ; 
-%token STR_IN_RE ; 
-%token RE_RANGE ; 
-%token RE_UNION ; 
-%token RE_STAR ; 
-%token RE_CONCAT ;
-%token REPEAT ;
-%token GETS ;
+%token STR_TO_RE  
+%token STR_IN_RE  
+%token RE_RANGE  
+%token RE_UNION  
+%token RE_STAR  
+%token RE_CONCAT 
+%token REPEAT 
+%token GETS 
 
 %token<int> INTEGER
 %token<float> DECIMAL
@@ -138,7 +140,7 @@ il_type:
 | BOOL { Bool }
 | INT { Int }
 | STRINGTYPE { String }
-| BITVECTOR; LPAREN; len = INTEGER; RPAREN; { BitVector (len) }
+| BITVECTOR; LPAREN; len = INTEGER; RPAREN; { BitVector len }
 | LIST; LPAREN; BOOL; RPAREN; { BitList }
 | SET; LPAREN; ty = il_type; RPAREN; { Set ty } 
 
@@ -342,14 +344,20 @@ expr:
 | e = nt_expr; (* _ = option(index); *) { 
     NTExpr ([], e, $startpos) 
   }
-| nt = nonterminal; DOT; attr = ID; { 
-    SynthAttr (nt, attr, $startpos) 
+| nt = indexed_nonterminal; DOT; attr = ID; { 
+    SynthAttr (fst nt, attr, $startpos) 
   }
 | LPAREN; e = expr; RPAREN; { e }
 
 nt_expr: 
-| nt = nonterminal { [nt, None] }
-| nt = nonterminal; DOT; nts = nt_expr; { (nt, None) :: nts }
+| nt = indexed_nonterminal { [nt] }
+| nt = indexed_nonterminal; DOT; nts = nt_expr; { nt :: nts }
 
 nonterminal:
 | LT; str = ID; GT; { str }
+
+indexed_nonterminal:
+| LT; str = ID; GT; i = option(index); { str, i }
+
+index:
+| LSQBRACKET; i = INTEGER; RSQBRACKET { i }
