@@ -1,0 +1,30 @@
+// * Attribute types are inferred from RHS
+//   * Actually - this becomes a problem if we want to allow circular attribute definitions, 
+//     type inference becomes nontrivial
+// * CHECK for dangling attribute references 
+// * CHECK synth attribute definition has the right inferred type (DONE)
+// * CHECK that if there is an attribute definition of one RHS, (DONE)
+//   there must be a corresponding def in all RHSs 
+//   (if this is limiting, we could allow user to specify attribute as unconstrained) 
+// * CHECK no synth attributes in type annotations 
+//   * Supporting on type annotations would require extra technical boring work
+//   * They would not be inherently interesting, because they could only be some expression of the single NT
+//     that could be inlined at the "call site"
+// * CHECK no duplicate attribute definitions in a single RHS
+
+// * Desugar SynthAttr to NTExpr
+// * Desugar AttrDef to SmtConstraint, 
+//   add nonterminal for the attribute to the prod rule, 
+//   and add corresponding type annotation if one doesn't already exist
+
+// Q: Allow circular attribute definitions?
+// Q: Allow "non-derived" attribute "definitions"? 
+// Q: Allow unconstrained attributes in some cases (explicitly annotated)?
+
+<S> ::= <L> <Payload> 
+  { <L> = <Payload>.len; };
+<Payload> ::= <BV8> <BL> { len := 8 + seq.len(<BL>); } ;
+<L> :: Int { len := 0; };
+<BV8> :: BitVec(8);
+<BL> :: List(Bool);
+len :: Int;
