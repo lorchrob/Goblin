@@ -37,6 +37,18 @@ let bug4 () =
   | _ -> Alcotest.fail "Expected exception, but got success"
   | exception _ -> ()  
 
+let inh_attr_fail_1 () =
+  let input = "../../../test/test_cases/inh-attr-fail-1.gbl" in
+  match main_pipeline input with
+  | _ -> Alcotest.fail "Expected exception, but got success"
+  | exception _ -> ()  
+
+let inh_attr_fail_2 () =
+  let input = "../../../test/test_cases/inh-attr-fail-2.gbl" in
+  match main_pipeline input with
+  | _ -> Alcotest.fail "Expected exception, but got success"
+  | exception _ -> ()  
+
 let bug3 () =
   let input = "../../../test/test_cases/bug3.gbl" in
   match main_pipeline input with
@@ -1718,6 +1730,8 @@ let () =
     "length_attr_fail_2", [test_case "length_attr_fail_2" `Quick length_attr_fail_2]; 
     "length_attr_fail_3", [test_case "length_attr_fail_3" `Quick length_attr_fail_3]; 
     "inh_attr", [test_case "inh_attr" `Quick inh_attr]; 
+    "inh_attr_fail_1", [test_case "inh_attr_fail_1" `Quick inh_attr_fail_1]; 
+    "inh_attr_fail_2", [test_case "inh_attr_fail_2" `Quick inh_attr_fail_2]; 
     "index", [test_case "index" `Quick index]; 
     (*"msg2", [test_case "msg2" `Quick msg2]; *)
     (*"dd_test_another_ambiguous_reference_2", [test_case "dd_test_another_ambiguous_reference_2" `Quick dd_test_another_ambiguous_reference_2]; 
