@@ -1,22 +1,6 @@
 module A = Ast
 
 let disambiguate_nonterminals (rhss : A.prod_rule_rhs list) : A.prod_rule_rhs list =
-  (* First pass: count total occurrences of each Nonterminal name *)
-  let total_counts = Hashtbl.create 10 in
-
-  let count_elem = function
-    | A.Nonterminal (name, _, _, _) ->
-        let count = Hashtbl.find_opt total_counts name |> Option.value ~default:0 in
-        Hashtbl.replace total_counts name (count + 1)
-    | _ -> ()
-  in
-
-  List.iter (function
-    | A.Rhs (elems, _, _, _) -> List.iter count_elem elems
-    | StubbedRhs _ -> ()
-  ) rhss;
-
-  (* Second pass: assign indices only to repeated Nonterminals *)
   let running_indices = Hashtbl.create 10 in
 
   let disambiguate_elem = function
@@ -30,11 +14,13 @@ let disambiguate_nonterminals (rhss : A.prod_rule_rhs list) : A.prod_rule_rhs li
   let disambiguate_rhs = function
     | A.StubbedRhs _ as stub -> stub
     | Rhs (elems, constraints, prob, pos) ->
-        let new_elems = List.map disambiguate_elem elems in
-        Rhs (new_elems, constraints, prob, pos)
+      let new_elems = List.map disambiguate_elem elems in
+      Rhs (new_elems, constraints, prob, pos)
   in
 
-  List.map disambiguate_rhs rhss
+  List.fold_left (fun acc rhs -> 
+    acc @ [disambiguate_rhs rhs]
+  ) [] rhss
 
 let populate_indices ast = 
   List.map (fun element -> match element with 

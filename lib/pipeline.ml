@@ -74,13 +74,20 @@ let main_pipeline ?(engine: Flags.engine option = None) ?(grammar: Ast.ast optio
   (*!! Ideally, the checker would take as input the base AST, not the desugared one. 
        But then we have to update the checker to deal with attributes. 
        This is probably worth it in the long run. *)
-  let ast_to_return = ast in 
   Utils.debug_print Ast.pp_print_ast ppf ast;
 
   (* Populate nonterminal indices *)
   Utils.debug_print Format.pp_print_string ppf "\nPopulating indices:\n";
   let ast = PopulateIndices.populate_indices ast in
   Utils.debug_print Ast.pp_print_ast ppf ast;
+
+  (*!! To properly test non-DPLL engines, this should be set within the engine below and not outside *)
+  let ast_to_return = ResolveAmbiguities.resolve_ambiguities_dpll ctx ast in
+
+  (*let ast_to_return = ResolveAmbiguities.resolve_ambiguities_dpll ctx ast in*)
+
+  (*Format.printf "ast_to_return: %a\n"
+    Ast.pp_print_ast ast_to_return;*)
 
   (* Run engine(s) *)
   let solver_ast = 

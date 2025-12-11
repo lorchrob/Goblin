@@ -67,7 +67,7 @@ let handle_scs ast solver_ast constructor element scs =
         );
       [BConst (true, p)]) (* If sc is not applicable, it trivially holds *)
   | DerivedField (nt, expr, p) -> 
-    let expr = A.CompOp (NTExpr ([], [nt, None], p), Eq, expr, p) in
+    let expr = A.CompOp (NTExpr ([], [nt, Some 0], p), Eq, expr, p) in
     (if !Flags.debug then Format.fprintf Format.std_formatter "Constraint %a is applicable in %a"
       A.pp_print_expr expr
       SA.pp_print_solver_ast solver_ast

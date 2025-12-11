@@ -72,13 +72,15 @@ let handle_sc _ctx sc = match sc with
 *)
 let gen_constraints_from_ge ast ge = match ge with 
 | A.StubbedNonterminal _ -> []
-| A.Nonterminal (nt, _, attrs, p) -> 
+| A.Nonterminal (nt, idx, attrs, p) -> 
   List.mapi (fun i attr -> 
     let element = A.find_element ast nt in 
     match element with 
     | A.ProdRule (_, attr_params, _, _) -> 
       let attr_param = List.nth attr_params i in
-      let c = A.CompOp (A.NTExpr ([], [nt, None; "%_" ^ attr_param, None], p), 
+      (*!!! TODO: If at a stage of the pipeline where `idx` is still None (and we haven't updated it here), 
+            it is too course-grained *)
+      let c = A.CompOp (A.NTExpr ([], [nt, idx; "%_" ^ attr_param, None], p), 
                         A.Eq, 
                         attr, p) in 
       A.SmtConstraint (c, p)

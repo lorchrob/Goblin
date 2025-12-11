@@ -155,13 +155,14 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> bool -> SA.sol
           Utils.str_eq_ci id nt 
         ) ges
       ) rhss in 
-      Option.get ci, List.find (fun element -> match element with 
+      Option.get ci, 
+      List.find (fun element -> match element with 
       | A.TypeAnnotation (id2, _, _, _)
       | A.ProdRule (id2, _, _, _) -> Utils.str_eq_ci id id2
       ) ast 
   in 
   (
-  match solver_ast with 
+  match solver_ast with  
   | VarLeaf _ | BVLeaf _ | IntLeaf _ | BLLeaf _ | BoolLeaf _ | StrLeaf _ | SetLeaf _ | UnitLeaf 
   | SA.Node (_, ([BVLeaf _] | [BLLeaf _] | [IntLeaf _] | [BoolLeaf _] | [StrLeaf _] | [SetLeaf _])) ->
     solver_ast_to_expr computing_length solver_ast
@@ -205,7 +206,11 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> bool -> SA.sol
   | [BVConst (len, b, p)] -> [BVConst (len, List.map not b, p)]
   | _ -> eval_fail 9
   )
-| BuiltInFunc (SeqLength, [expr], _) 
+| BuiltInFunc (SeqLength, [expr], _) -> (
+  match call expr with 
+  | [A.BLConst (bits, p)] -> [IntConst (List.length bits, p)]
+  | _ -> eval_fail 29
+  )
 | BuiltInFunc (StrLength, [expr], _) -> (
   match call expr with 
   | [StrConst (str, p)] -> [IntConst (String.length str, p)]
