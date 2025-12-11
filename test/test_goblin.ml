@@ -57,6 +57,14 @@ let bug2 () =
   | Ok _ -> ()  
   | Error msg -> fail msg
 
+let index () =
+  let input = "../../../test/test_cases/index.gbl" in
+  let solver_ast, _, ast = main_pipeline input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
+  match output with
+  | Ok _ -> ()  
+  | Error msg -> fail msg
+
 let test_check_solver_ast () =
   let filename = "../../../test/test_cases/test_check_solver_ast" in
   let input = Utils.read_file filename in 
@@ -1710,6 +1718,7 @@ let () =
     "length_attr_fail_2", [test_case "length_attr_fail_2" `Quick length_attr_fail_2]; 
     "length_attr_fail_3", [test_case "length_attr_fail_3" `Quick length_attr_fail_3]; 
     "inh_attr", [test_case "inh_attr" `Quick inh_attr]; 
+    "index", [test_case "index" `Quick index]; 
     (*"msg2", [test_case "msg2" `Quick msg2]; *)
     (*"dd_test_another_ambiguous_reference_2", [test_case "dd_test_another_ambiguous_reference_2" `Quick dd_test_another_ambiguous_reference_2]; 
     "md_test_another_ambiguous_reference_2", [test_case "md_test_another_ambiguous_reference_2" `Quick md_test_another_ambiguous_reference_2];  *)
