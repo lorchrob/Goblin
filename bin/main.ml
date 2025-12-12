@@ -23,7 +23,7 @@ let () =
     else 
       let filename = match !Flags.filename with 
       | Some filename -> filename 
-      | None -> Utils.error_no_pos "You must specify an input filename with --file <filename>"
+      | None -> Utils.error_no_pos "You must specify an input file with --file <file_path>"
       in
 
       if !Flags.dump_clp then 
