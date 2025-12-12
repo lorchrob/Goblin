@@ -111,8 +111,13 @@ let warning msg =
     Format.printf "Warning: %s\n" msg 
 
 let crash message = 
-  raise (Failure ((Format.asprintf 
-    "Internal error (%s): %s" (Option.get !Flags.filename) message)))
+  match !Flags.filename with 
+  | Some filename -> 
+    raise (Failure ((Format.asprintf 
+      "Internal error (%s): %s" filename message)))
+  | None -> 
+    raise (Failure ((Format.asprintf 
+      "Internal error: %s" message)))
 
 let error message (pos : Lexing.position) =
   let line = pos.Lexing.pos_lnum in
@@ -127,7 +132,11 @@ let error message (pos : Lexing.position) =
   raise (Failure msg)
 
 let error_no_pos message =
-  raise (Failure (Format.asprintf "Error (%s): %s" (Option.get !Flags.filename) message))
+  match !Flags.filename with 
+  | Some filename -> 
+    raise (Failure (Format.asprintf "Error (%s): %s" filename message))
+  | None -> 
+    raise (Failure (Format.asprintf "Error: %s" message))
 
 let find_command_in_path cmd =
   match Sys.getenv_opt "PATH" with
