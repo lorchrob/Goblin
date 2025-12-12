@@ -174,16 +174,18 @@ of integers), but we want to encode a **semantic** constraint which restricts th
 of the grammar. In Goblin, we encode this as follows: 
 
 ```
-<S> ::= <I> <I> { <I> + <I> = 100; } ;
+<S> ::= <I> <I> { <I>[0] + <I>[1] = 100; } ;
 <I> :: Int;
 ```
 
 The context-free portion of the grammar is exactly the same, 
-but we also added the semantic constraint `<I> + <I> = 100` 
+but we also added the semantic constraint `<I>[0] + <I>[1] = 100` 
 within curly braces on the corresponding production rule. 
 The semantics are that whenever the production rule `<S> ::= <I> <I>` 
 is taken in a derivation, 
-we must only generate terms such that `<I> + <I>` is equal to `100`. 
+we must only generate terms such that `<I>[0] + <I>[1]` is equal to `100`. 
+The indices in square brackets disambiguate the instance of `<I>` that is being referred to 
+in the semantic constraint.
 
 How about our earlier list example? How would we encode a context-sensitive grammar 
 describing lists of integers that sum to 100? 
@@ -460,6 +462,7 @@ See `evaluation` and `test/test_cases` for example `.gbl` files (Goblin input fi
 ### How does Goblin work?
 
 STUB
+
 
 
 
