@@ -129,6 +129,7 @@ type element =
 (* NT LHS * inherited attributes * RHSs * position *)
 | ProdRule of string * string list * prod_rule_rhs list * Lexing.position
 | TypeAnnotation of string * il_type * semantic_constraint list * Lexing.position
+| InlinedTypeProdRule of string * (string * il_type) list * prod_rule_rhs list * Lexing.position
 
 (* This is the type of the grammar terms *)
 type ast = element list
@@ -475,6 +476,14 @@ let pp_print_element: Format.formatter -> element ->  unit
     (Lib.pp_print_list Format.pp_print_string ", ") ias
     (Lib.pp_print_list pp_print_prod_rule_rhs " | ") rhss
 
+| InlinedTypeProdRule (nt, ias, rhss, _) -> 
+  Format.fprintf ppf "%a(%a) ::= %a;"
+    pp_print_nt_with_dots [nt, None]
+    (Lib.pp_print_list (fun ppf (ia_nt, ia_ty) -> 
+      Format.fprintf ppf "%s:: %a" ia_nt pp_print_ty ia_ty
+    ) ", ") ias
+    (Lib.pp_print_list pp_print_prod_rule_rhs " | ") rhss
+
 | TypeAnnotation (nt, ty, [], _) -> 
   Format.fprintf ppf "%a :: %a;"
     pp_print_nt_with_dots [nt, None] 
@@ -581,6 +590,7 @@ let ast_constrains_nt: ast -> string -> bool
   List.exists (fun element -> match element with 
     | TypeAnnotation (nt2, _, _ :: _, _) when nt = nt2 -> true 
     | TypeAnnotation _ -> false
+    | InlinedTypeProdRule _ -> assert false
     | ProdRule (_, _, rhss, _) -> List.exists (fun rhs -> match rhs with 
       | Rhs (_, scs, _, _) -> List.exists (sc_constrains_nt nt) scs
       | StubbedRhs _ -> false
@@ -612,6 +622,7 @@ let rec prepend_nt_to_dot_exprs: string -> expr -> expr
   | SynthAttr _ -> assert false
 
 let scs_of_element = function 
+| InlinedTypeProdRule _ -> assert false
 | ProdRule (_, _, rhss, _) -> 
   List.concat_map (function 
   | StubbedRhs _ -> [] 
@@ -621,6 +632,7 @@ let scs_of_element = function
 
 let rec nts_of_ast ast = match ast with 
 | [] -> Utils.StringSet.empty  
+| InlinedTypeProdRule _ :: _ -> assert false
 | ProdRule (nt, _, rhss, _) :: tl -> 
   let nts = nt :: (List.concat_map nts_of_rhs rhss) in 
   let nts = Utils.StringSet.of_list nts in 
@@ -631,6 +643,7 @@ let rec nts_of_ast ast = match ast with
 
 let find_element ast nt = 
   List.find (fun element -> match element with 
+  | InlinedTypeProdRule _ -> assert false
   | TypeAnnotation (nt', _, _, _) 
   | ProdRule (nt', _, _, _) -> String.equal nt nt'
   ) ast 

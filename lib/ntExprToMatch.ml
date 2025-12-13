@@ -29,6 +29,7 @@ let gen_match_info ast (nt1, idx1) (nt2, _idx2) nt_ctx =
   (* Collect the corresponding patterns from the AST *) 
   let rules = List.find_map (fun element -> match element with 
   | A.TypeAnnotation _ -> None 
+  | A.InlinedTypeProdRule _ -> assert false
   | A.ProdRule (nt3, _, rhss, _) -> 
     if nt1 = nt3 then 
       Some (List.map (fun rhs -> match rhs with
@@ -498,6 +499,7 @@ let process_sc: TC.context -> A.ast -> A.semantic_constraint -> A.semantic_const
 let convert_nt_exprs_to_matches: TC.context -> A.ast -> A.ast = 
   fun ctx ast -> 
     List.map (fun element -> match element with
+    | A.InlinedTypeProdRule _ -> assert false
     | A.ProdRule (nt, ias, rhss, p) -> 
       let rhss = List.map (fun rhs -> match rhs with 
       | A.Rhs (ges, scs, prob, p) -> A.Rhs (ges, List.map (process_sc ctx ast) scs, prob, p) 
