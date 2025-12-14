@@ -129,6 +129,10 @@ type element =
 (* NT LHS * inherited attributes * RHSs * position *)
 | ProdRule of string * string list * prod_rule_rhs list * Lexing.position
 | TypeAnnotation of string * il_type * semantic_constraint list * Lexing.position
+(* A production rule with inherited attributes that have type annotations inlined. *)
+(* The definition of the variable is local to the rule. *)
+(* This is merely an artifact from parsing, and is meant to be syntax sugar that wil
+ be translated to the appropriate regular ProdRule and TypeAnnotation after parsing. *)
 | InlinedTypeProdRule of string * (string * il_type) list * prod_rule_rhs list * Lexing.position
 
 (* This is the type of the grammar terms *)
