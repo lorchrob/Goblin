@@ -76,6 +76,7 @@ let gen_constraints_from_ge ast ge = match ge with
   List.mapi (fun i attr -> 
     let element = A.find_element ast nt in 
     match element with 
+    | A.InlinedTypeProdRule (_, _, _, _)  -> assert false
     | A.ProdRule (_, attr_params, _, _) -> 
       let attr_param = List.nth attr_params i in
       (*!!! TODO: If at a stage of the pipeline where `idx` is still None (and we haven't updated it here), 
@@ -89,6 +90,7 @@ let gen_constraints_from_ge ast ge = match ge with
 
 let desugar_attributes ctx ast = 
   let ast = List.map (fun element -> match element with 
+  | A.InlinedTypeProdRule _  -> assert false
   | A.ProdRule (nt, ias, rhss, p) -> 
     let rhss = List.map (fun rhs -> match rhs with 
     | A.StubbedRhs _ -> rhs

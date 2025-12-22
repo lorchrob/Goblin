@@ -28,4 +28,5 @@ let populate_indices ast =
   | A.ProdRule (nt, ias, rhss, pos) -> 
     let rhss = disambiguate_nonterminals rhss in 
     ProdRule (nt, ias, rhss, pos)
+  | A.InlinedTypeProdRule _ -> assert false
   ) ast

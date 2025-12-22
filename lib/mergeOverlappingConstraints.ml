@@ -37,10 +37,12 @@ let merge: A.ast -> A.element -> A.ast
           else rhs
         ) rhss in 
         acc @ [A.ProdRule (nt2, ias, rhss, p)]
+      | A.InlinedTypeProdRule _ -> assert false
       ) [] ast in 
       ast @ [A.TypeAnnotation (nt, ty, [], p)]
     (* If no overlapping constraint, no action is required *)
     else ast @ [element]
+  | A.InlinedTypeProdRule _ -> assert false
   | A.ProdRule (nt, ias, rhss, p) -> 
     (* To find overlaps, look for semantic constraint pairs where 
         * One semantic constraint is in __this__ production rule and has a nonterminal of the form 
@@ -95,6 +97,7 @@ let merge: A.ast -> A.element -> A.ast
           else rhs
         ) rhss in 
         acc @ [A.ProdRule (nt2, ias, rhss, p)]
+      | A.InlinedTypeProdRule _ -> assert false
       ) [] ast in 
       let rhss = List.map (fun rhs -> match rhs with 
       | A.StubbedRhs _ -> rhs 
@@ -139,12 +142,14 @@ let lift: A.ast -> A.element -> A.ast
       ) rhss in
       ast @ [A.ProdRule (nt, ias, rhss, p)]
     else ast @ [element]
+  | A.InlinedTypeProdRule _ -> assert false
 
 let detect: A.ast -> A.element -> bool
 = fun ast element -> match element with 
   | A.TypeAnnotation (_, _, [], _) -> false 
   | A.TypeAnnotation (nt, _, _ :: _, _) -> 
     A.ast_constrains_nt ast nt 
+  | A.InlinedTypeProdRule _ -> assert false
   | A.ProdRule (nt, _, rhss, _) -> 
     let scs = List.concat_map (fun rhs -> match rhs with 
     | A.StubbedRhs _ -> []

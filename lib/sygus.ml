@@ -46,6 +46,7 @@ let pp_print_constructor: TC.context -> Ast.semantic_constraint Utils.StringMap.
   | _, Some ty -> 
     let type_annot = List.find_opt (fun element -> match element with 
     | A.ProdRule _ -> false 
+    | A.InlinedTypeProdRule _ -> assert false
     | TypeAnnotation (nt2, _, _, _) -> nt = nt2 
     ) ast
     in (
@@ -85,6 +86,7 @@ let pp_print_datatypes: Format.formatter -> TC.context -> Ast.semantic_constrain
   ) dep_map;
   List.iter (fun element -> match element with 
   | A.TypeAnnotation _ -> ()
+  | A.InlinedTypeProdRule _ -> assert false
   | ProdRule (nt, _, rhss, _) -> 
     Format.fprintf ppf "(declare-datatype %s (%a\n))\n"
       (String.uppercase_ascii nt)
@@ -130,6 +132,7 @@ let pp_print_compop: Format.formatter -> A.comp_operator -> unit
 
 let pp_print_nt_decs: Ast.semantic_constraint Utils.StringMap.t -> Format.formatter -> A.ast -> unit 
 = fun dep_map ppf ast -> List.iter (fun element -> match element with 
+  | A.InlinedTypeProdRule _ -> assert false
   | A.ProdRule (nt, _, _, _) ->
   Format.fprintf ppf "\t(%s %s)\n"
   (String.lowercase_ascii nt)
@@ -384,6 +387,7 @@ let pp_print_semantic_constraints_prod_rule
 let pp_print_constraints: TC.context -> Format.formatter -> A.ast -> unit 
 = fun ctx ppf ast -> match ast with 
 | [] -> Utils.crash "Input grammar must have at least one production rule or type annotation"
+| A.InlinedTypeProdRule _ :: _ -> assert false
 | A.ProdRule (nt, _, rhss, _) :: _ -> 
       if List.exists (fun rhs -> match rhs with | A.Rhs (_, _ :: _, _, _) -> true | _ -> false) rhss then
   let rhss = List.mapi (fun i rhs -> (rhs, i)) rhss in
@@ -406,6 +410,7 @@ let pp_print_rhs: string -> Format.formatter -> A.prod_rule_rhs * int -> unit
 let pp_print_rules: Ast.semantic_constraint Utils.StringMap.t -> Format.formatter -> A.ast -> unit 
 = fun dep_map ppf ast -> 
   List.iter (fun element -> match element with 
+  | A.InlinedTypeProdRule _ -> assert false
   | A.ProdRule (nt, _, rhss, _) -> 
     Format.fprintf ppf "\t(%s %s (%a))\n"
       (String.lowercase_ascii nt) 
@@ -430,6 +435,7 @@ let pp_print_rules: Ast.semantic_constraint Utils.StringMap.t -> Format.formatte
 let pp_print_grammar: Format.formatter -> Ast.semantic_constraint Utils.StringMap.t -> A.ast -> unit 
 = fun ppf dep_map ast -> 
   let top_datatype_str = match List.hd ast with 
+  | A.InlinedTypeProdRule _ -> assert false
   | A.ProdRule (nt, _, _, _) -> String.uppercase_ascii nt
   | TypeAnnotation (_, ty, _, _) -> 
     Utils.capture_output pp_print_ty ty

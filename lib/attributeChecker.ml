@@ -10,6 +10,7 @@ let check_element attribute_ctx ctx element = match element with
     let msg = "Synthesized attribute definitions are not allowed in type annotations" in 
     Utils.error msg p
   else element
+| A.InlinedTypeProdRule _ -> assert false
 | A.ProdRule (nt, _, rhss, p) -> 
   (* Check all inherited attribute "calls" are type-correct and arity-correct 
      (also covering the "default" case where nothing is passed *)
@@ -75,6 +76,7 @@ let check_attributes ctx ast =
   (* Map from nonterminals to inferred attribute arg types *)
   let attribute_ctx = List.fold_left (fun acc element -> match element with 
   | A.TypeAnnotation _ -> acc 
+  | A.InlinedTypeProdRule _ -> assert false
   | A.ProdRule (nt, ias, _, _) -> 
     let tys = List.map (fun ia -> 
       let ia = "%_" ^ ia in 

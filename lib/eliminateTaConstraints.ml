@@ -3,6 +3,7 @@ module A = Ast
 let eliminate_ta_constraints full_ast = 
   let rec helper full_ast ast = match ast with 
   | [] -> full_ast 
+  | (A.InlinedTypeProdRule _) :: _ -> assert false
   | (A.ProdRule _) :: tl -> 
     helper full_ast tl   
   | A.TypeAnnotation (nt, _, scs, _) :: tl -> 
@@ -18,6 +19,7 @@ let eliminate_ta_constraints full_ast =
     | A.TypeAnnotation (nt2, ty, _, p) as element ->
       (* Maintain attribute definitions because we will detect and reject later *)
       if nt = nt2 then A.TypeAnnotation (nt2, ty, attrs, p) else element
+    | A.InlinedTypeProdRule _ -> assert false
     | A.ProdRule (nt3, ias, rhss, pos2) -> 
       let rhss = List.map (function 
         | A.StubbedRhs _ as rhs -> rhs 

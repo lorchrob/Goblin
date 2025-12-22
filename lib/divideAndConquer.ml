@@ -27,6 +27,7 @@ let stub_subproblems: ast -> ast * ast list
       let ast', subproblems1 = stub_subproblems' elements in 
       let rhss, subproblems2 = stub_subproblems_prod_rule_rhss nt elements rhss in
       ProdRule (nt, ias, rhss, p) :: ast', subproblems1 @ subproblems2
+    | InlinedTypeProdRule _ -> assert false
     | TypeAnnotation (_, _, [], _) -> 
       let ast', subproblems = stub_subproblems' elements in 
       element :: ast', subproblems

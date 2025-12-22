@@ -47,6 +47,11 @@ let main_pipeline ?(engine: Flags.engine option = None) ?(grammar: Ast.ast optio
     ast
   in
 
+  (* Desugar local variables *)
+  let ast = DesugarLocalVars.desugar_local_vars ast in
+  Utils.debug_print Format.pp_print_string ppf "\nDesugaring local variables complete:\n";
+  Utils.debug_print Ast.pp_print_ast ppf ast;
+
   (* Desugar type annotation constraints *) 
   let ast = EliminateTaConstraints.eliminate_ta_constraints ast in 
   Utils.debug_print Format.pp_print_string ppf "\nType annotation constraints eliminated:\n";

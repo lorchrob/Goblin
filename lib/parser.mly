@@ -102,7 +102,10 @@ open Ast
 %%
 
 s: d = list(element); EOF { d } ;
-	
+
+inlined_typed_attr:
+| attr = ID; TYPEANNOT; t = il_type; { (attr, t) }
+
 element:
 (* Type annotaion *)
 | nt = nonterminal; TYPEANNOT; t = il_type; 
@@ -125,6 +128,10 @@ element:
 | nt = nonterminal; LPAREN; params = separated_nonempty_list(COMMA, ID); RPAREN; PRODUCTION; rhss = separated_nonempty_list(OPTION, rhs); SEMICOLON;
   { 
     ProdRule (nt, params, rhss, $startpos) 
+  }
+| nt = nonterminal; LPAREN; typedparams = separated_nonempty_list(COMMA, inlined_typed_attr); RPAREN; PRODUCTION; rhss = separated_nonempty_list(OPTION, rhs); SEMICOLON;
+  { 
+    InlinedTypeProdRule (nt, typedparams, rhss, $startpos) 
   }
 
 rhs:

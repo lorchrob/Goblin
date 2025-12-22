@@ -384,6 +384,7 @@ let sample_from_percentile_range (pop : child list) (lower_percentile: float) (u
 let rec check_well_formed_rules (grammar : ast) : bool =
   match grammar with
   | [] -> true
+  | InlinedTypeProdRule _ :: _  -> assert false
   | ProdRule(nt, _, rhsList, _) :: xs -> (not (List.length rhsList = 1 && isNonTerminalPresent nt rhsList)) && check_well_formed_rules xs
   | TypeAnnotation(_, _, _, _) :: xs -> check_well_formed_rules xs
 

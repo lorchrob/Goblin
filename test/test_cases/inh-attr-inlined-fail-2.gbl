@@ -1,0 +1,14 @@
+<Repeat> ::= <v>(<Str>) <Str> <Val> <L>(<Str>) <Length> { <Length> = <L>.len; <Length> > 5; <Val> > 1; str.len(<Str>) = 2; };
+<L>(v::Int) ::= <E> <L>(v - 1) { <E> = v; len := 1 + <L>.len; } | <Nil> { len := 0; };
+<v>(v::String) ::= <S> { <S> = v; };
+
+<Val> :: Int;
+<E> :: Int;
+<Nil> :: Unit;
+<Length> :: Int;
+len :: Int;
+<Str> :: String;
+<S> :: String;
+
+// * lhs <Nt>(v::type) ::= ... is sugar for an extra type annotation for %_Nt_v
+// Two non-terminals can have attributes with the same name but different type

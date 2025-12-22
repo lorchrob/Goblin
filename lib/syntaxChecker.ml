@@ -33,6 +33,7 @@ type prod_rule_map = (Utils.StringSet.t) Utils.StringMap.t
 let build_prm: ast -> prod_rule_map
 = fun ast -> 
   let prm = List.fold_left (fun acc element -> match element with 
+  | InlinedTypeProdRule _ -> assert false
   | ProdRule (nt, _, rhss, p) -> 
     List.fold_left (fun acc rhss -> match rhss with 
     | Rhs (ges, _, _, _) -> 
@@ -62,6 +63,7 @@ let build_prm: ast -> prod_rule_map
 let build_nt_set: ast -> Utils.StringSet.t 
 = fun ast -> 
   List.fold_left (fun acc element -> match element with 
+  | InlinedTypeProdRule _ -> assert false
   | ProdRule (nt, _, _, _)
   | TypeAnnotation (nt, _, _, _) -> Utils.StringSet.add nt acc
   ) Utils.StringSet.empty ast
@@ -201,6 +203,7 @@ let rec check_for_ambiguous_derived_fields ast expr rhs =
       let element = Ast.find_element ast nt in 
       match element with 
       | Ast.TypeAnnotation _ -> Ok ()
+      | Ast.InlinedTypeProdRule _ -> assert false
       | Ast.ProdRule (_, _, rhss, _) -> 
         Res.seq_ (List.map (r (NTExpr ([], nts, p))) rhss)
     )
@@ -301,6 +304,7 @@ let remove_circular_deps: ast -> ast
 = fun ast -> 
   List.map (fun element -> match element with
     | TypeAnnotation _ -> element 
+    | InlinedTypeProdRule _ -> assert false
     | ProdRule (nt, inhs, rhss, p) -> let rhss = List.map (fun rhs -> match rhs with
         | StubbedRhs _ -> rhs 
         | Rhs (nt, scs, prob, p) -> 
@@ -368,6 +372,7 @@ let check_sygus_exprs_for_dep_terms: ast -> ast
     | StubbedRhs _ -> rhs
     ) rhss in 
     ProdRule (nt, inhs, rhss, p)
+  | InlinedTypeProdRule _ -> assert false
   ) ast
 
 (* The parser automatically parses all hardcoded string as string constants. 
@@ -415,6 +420,7 @@ let str_const_to_ph_const ast =
     TypeAnnotation (nt, ty, scs, p)
   | ProdRule (nt, inhs, rhss, p) -> 
     ProdRule (nt, inhs, rhss, p)
+  | InlinedTypeProdRule _ -> assert false
   ) ast
 
 
@@ -423,6 +429,7 @@ let language_emptiness_check ast start_symbol =
   let ast = TopologicalSort.dead_rule_removal_2 ast start_symbol in 
   (* Dead rule removal may change order -- put start symbol back *)
   let ast = start_element :: List.filter (fun element -> match element with 
+  | Ast.InlinedTypeProdRule _ -> assert false
   | Ast.ProdRule (nt, _, _, _) 
   | Ast.TypeAnnotation (nt, _, _, _) -> nt <> start_symbol 
   ) ast 
@@ -430,6 +437,7 @@ let language_emptiness_check ast start_symbol =
   let add_productive_nts ast productive_nts = 
     List.fold_left (fun acc element -> match element with 
     | TypeAnnotation (nt, _, _, _) -> Utils.StringSet.add nt acc 
+    | InlinedTypeProdRule _ -> assert false
     | ProdRule (nt, _, rhss, _) ->
       (* Does there exist some RHS for which all NTs are productive? *)
       if List.exists (fun rhs -> 
@@ -476,6 +484,7 @@ let check_syntax: prod_rule_map -> Utils.StringSet.t -> ast -> ast
 = fun prm nt_set ast -> 
   (*let ast = sort_ast ast in*) (*!! Maybe need this in non-dpll engines? *)
   let start_symbol = match ast with 
+  | Ast.InlinedTypeProdRule _ :: _ -> assert false
   | Ast.ProdRule (nt, _, _, _) :: _ 
   | Ast.TypeAnnotation (nt, _, _, _) :: _ -> nt
   | [] -> Utils.crash "empty grammar"
@@ -485,6 +494,7 @@ let check_syntax: prod_rule_map -> Utils.StringSet.t -> ast -> ast
   let ast = Utils.recurse_until_fixpoint ast (=) check_sygus_exprs_for_dep_terms in
   let ast = check_vacuity ast in
   let ast = List.map (fun element -> match element with 
+  | InlinedTypeProdRule _ -> assert false
   | ProdRule (nt, inhs, rhss, p) -> 
     let rhss = List.map (check_syntax_prod_rule ast prm nt_set) rhss in
     let rhss = check_probabilities nt rhss p in 

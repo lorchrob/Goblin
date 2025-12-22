@@ -49,6 +49,18 @@ let inh_attr_fail_2 () =
   | _ -> Alcotest.fail "Expected exception, but got success"
   | exception _ -> ()  
 
+let inh_attr_inlined_fail_1 () =
+  let input = "../../../test/test_cases/inh-attr-inlined-fail-1.gbl" in
+  match main_pipeline input with
+  | _ -> Alcotest.fail "Expected exception, but got success"
+  | exception _ -> ()  
+
+let inh_attr_inlined_fail_2 () =
+  let input = "../../../test/test_cases/inh-attr-inlined-fail-2.gbl" in
+  match main_pipeline input with
+  | _ -> Alcotest.fail "Expected exception, but got success"
+  | exception _ -> ()  
+
 let bug3 () =
   let input = "../../../test/test_cases/bug3.gbl" in
   match main_pipeline input with
@@ -462,6 +474,14 @@ let length_attr_fail_3 () =
 
 let inh_attr () =
   let input = "../../../test/test_cases/inh-attr.gbl" in
+  let solver_ast, _, ast = main_pipeline input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
+  match output with
+  | Ok _ -> ()  
+  | Error msg -> fail msg
+
+let inh_attr_inlined () =
+  let input = "../../../test/test_cases/inh-attr-inlined.gbl" in
   let solver_ast, _, ast = main_pipeline input in
   let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
@@ -1730,8 +1750,11 @@ let () =
     "length_attr_fail_2", [test_case "length_attr_fail_2" `Quick length_attr_fail_2]; 
     "length_attr_fail_3", [test_case "length_attr_fail_3" `Quick length_attr_fail_3]; 
     "inh_attr", [test_case "inh_attr" `Quick inh_attr]; 
+    "inh_attr_inlined", [test_case "inh_attr_inlined" `Quick inh_attr_inlined];
     "inh_attr_fail_1", [test_case "inh_attr_fail_1" `Quick inh_attr_fail_1]; 
     "inh_attr_fail_2", [test_case "inh_attr_fail_2" `Quick inh_attr_fail_2]; 
+    "inh_attr_inlined_fail_1", [test_case "inh_attr_inlined_fail_1" `Quick inh_attr_inlined_fail_1]; 
+    "inh_attr_inlined_fail_2", [test_case "inh_attr_inlined_fail_2" `Quick inh_attr_inlined_fail_2];
     "index", [test_case "index" `Quick index]; 
     (*"msg2", [test_case "msg2" `Quick msg2]; *)
     (*"dd_test_another_ambiguous_reference_2", [test_case "dd_test_another_ambiguous_reference_2" `Quick dd_test_another_ambiguous_reference_2]; 

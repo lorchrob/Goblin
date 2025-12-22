@@ -95,6 +95,7 @@ let simp_ast: TypeChecker.context -> ast -> (semantic_constraint Utils.StringMap
     ) (acc_dep_map, [], acc_ctx)  rhss in
     let dep_map = Utils.StringMap.merge Lib.union_keys dep_map Utils.StringMap.empty in
     dep_map, ProdRule (nt, ias, List.rev rhss, p) :: acc_elements, ctx 
+  | InlinedTypeProdRule _ -> assert false
   | TypeAnnotation (nt, ty, scs, p) -> 
     let scs = List.map (fun sc -> match sc with 
     | DerivedField (nt, expr, p) -> DerivedField (nt, calculate_casts expr, p)
