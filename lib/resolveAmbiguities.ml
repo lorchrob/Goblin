@@ -143,6 +143,7 @@ let process_sc_to_list: TC.context -> string list -> A.semantic_constraint -> A.
    case at a time, ignoring constraints that aren't applicable in that case. *)
 let resolve_ambiguities_dpll: TC.context -> A.ast -> A.ast 
 = fun ctx ast -> List.map (fun element -> match element with
+| A.InlinedTypeProdRule _ -> assert false
 | A.ProdRule (nt, ias, rhss, p) ->
   (*!! Need to assume universally unique IDs *)
   let nts = List.concat_map A.nts_of_rhs rhss in 
@@ -174,6 +175,7 @@ let resolve_ambiguities_dpll: TC.context -> A.ast -> A.ast
 
 let resolve_ambiguities: TC.context -> A.ast -> A.ast 
 = fun ctx ast -> List.map (fun element -> match element with
+| A.InlinedTypeProdRule _ -> assert false
 | A.ProdRule (nt, ias, rhss, p) ->
   let rhss = List.map (fun rhs -> match rhs with 
   | A.Rhs (ges, scs, prob, _) -> A.Rhs (ges, List.map (process_sc ctx (A.nts_of_rhs rhs)) scs, prob, p) 

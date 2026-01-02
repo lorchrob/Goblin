@@ -86,6 +86,7 @@ let rec create_field_extractors: A.ast -> string list -> clp_rule list
 | nt1 :: nt2 :: [] -> 
   let extractor = nt1 ^ "_" ^ nt2 ^ "s" in 
   let nt1_rhss = List.find_map (function 
+  | A.InlinedTypeProdRule _ -> assert false
   | A.ProdRule (nt, _, rhss, _) -> if nt1 = nt then Some rhss else None
   | TypeAnnotation _ -> None
   ) ast |> Option.get in
@@ -112,6 +113,7 @@ let rec create_field_extractors: A.ast -> string list -> clp_rule list
   let nt1_extractor = String.concat "_" (nt1 :: nt2 :: rest) ^ "s" in 
   let nt2_extractor = String.concat "_" (nt2 :: rest) ^ "s" in 
   let nt1_rhss = List.find_map (function 
+  | A.InlinedTypeProdRule _ -> assert false
   | A.ProdRule (nt, _, rhss, _) -> if nt1 = nt then Some rhss else None
   | TypeAnnotation _ -> None
   ) ast |> Option.get in
@@ -170,6 +172,7 @@ let extract_str input =
 
 let clp_program_of_ast: Ast.ast -> clp_program 
 = fun ast -> List.fold_left (fun acc element -> match element with 
+| A.InlinedTypeProdRule _ -> assert false
 | A.ProdRule (nt, _, rhss, _) -> 
   (* Create a CLP rule for each prod rule RHS *)
   let rules = List.mapi (fun i rhs -> match rhs with 

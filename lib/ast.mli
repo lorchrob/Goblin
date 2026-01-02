@@ -116,6 +116,7 @@ type element =
 (* NT LHS * inherited attributes * RHSs * position *)
 | ProdRule of string * string list * prod_rule_rhs list * Lexing.position
 | TypeAnnotation of string * il_type * semantic_constraint list * Lexing.position
+| InlinedTypeProdRule of string * (string * il_type) list * prod_rule_rhs list * Lexing.position
 
 type ast = element list
 

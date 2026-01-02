@@ -62,6 +62,7 @@ let rec mutation_add_s1 (g : ast) (nt : string) (pr : element option) : ast * bo
         | TypeAnnotation(x,y,z,pos) :: xs -> 
             let (gg, r) = mutation_add_s1 xs nt pr in 
                 ((TypeAnnotation(x,y,z,pos) :: gg), r)
+        | InlinedTypeProdRule _ :: _ -> assert false
             (* x :: mutation_add_s1 (xs nt pr) *)
     )
     | Some _ -> g, false
@@ -135,6 +136,7 @@ let rec apply_delete_to_rule nt production_options =
 let rec mutation_delete g nt =
     match g with
     | [] -> ([], false)
+    | InlinedTypeProdRule _ :: _ -> assert false
     | ProdRule(nonTerminal, _, production_options, pos) :: xs ->
         (* if (nonTerminal = "SAE_PACKET")
         then *)
@@ -186,6 +188,7 @@ let rec apply_update_to_rule nt production_options operation =
 let rec mutation_update g nt operation =
     match g with
     | [] -> ([], false)
+    | InlinedTypeProdRule _ :: _ -> assert false
     | ProdRule(nonTerminal, _, production_options, p) :: xs ->
         let found = isNonTerminalPresent nt production_options in
             if found then
@@ -238,6 +241,7 @@ let rec replace_geList b rhs1 rhs2 crossoverPRs =
 let rec grammarUpdateAfterCrossover (nt : string) (g : ast) (rhs1 : prod_rule_rhs) (rhs2 : prod_rule_rhs) (crossoverPRs : (prod_rule_rhs * prod_rule_rhs)) : ast = 
     match g with
     | [] -> []
+    | InlinedTypeProdRule _ :: _ -> assert false
     | ProdRule(a, ia, b, p) :: xs -> 
     if a = nt then  
         let newPR = replace_geList b rhs1 rhs2 crossoverPRs in

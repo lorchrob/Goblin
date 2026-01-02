@@ -15,6 +15,7 @@ let rec get_all_nt_from_rhs (rvalue : prod_rule_rhs list) : string list =
 
 let get_all_dependencies_from_one_element (ge : element) : (string * string) list = 
   match ge with 
+  | InlinedTypeProdRule _ -> assert false
   | ProdRule(lvalue, _, rhs, _) -> (List.map (fun x-> (lvalue, x))(get_all_nt_from_rhs rhs))  |> (List.filter (fun (x,y) ->  x <> y) )
   | TypeAnnotation(_, _, _, _) -> [] 
 
@@ -38,6 +39,7 @@ let rec get_nt_from_rhs rhs =
 let rec get_all_nt (g : ast) : string list =
   match g with
   | [] -> []
+  | InlinedTypeProdRule _ :: _ -> assert false
   | ProdRule (nt, _, rhs, _) :: xs -> nt :: (get_nt_from_rhs rhs)  @ (get_all_nt xs)
   | TypeAnnotation (_, _, _, _) :: xs -> get_all_nt xs
 
@@ -64,6 +66,7 @@ let rec get_edge_pairs (nts : (string * (string list)) list): (string * string) 
 let rec get_all_rules (nt : string) (g : ast) : prod_rule_rhs list =
   match g with
   | [] -> []
+  | InlinedTypeProdRule _ :: _ -> assert false
   | ProdRule (a, _, prod_rule_lst, _) :: xs ->
     if a = nt
       then prod_rule_lst @ (get_all_rules nt xs)
@@ -120,7 +123,8 @@ let rec collect_rules_for_nt (cnt : string) (ogrammar : ast) : ast =
     else collect_rules_for_nt cnt xs 
     | TypeAnnotation(x, y, z, pos)::xs -> 
       if x = cnt then TypeAnnotation(x, y, z, pos)  :: collect_rules_for_nt cnt xs
-      else collect_rules_for_nt cnt xs 
+    else collect_rules_for_nt cnt xs
+  | InlinedTypeProdRule _ :: _ -> assert false
 
 let rec collect_rules (non_term_list : string list ) (ogrammar : ast) (cgrammar : ast) : ast = 
   match non_term_list with 

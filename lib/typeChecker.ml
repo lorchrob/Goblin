@@ -14,6 +14,7 @@ let type_checker_error mode error_msg p = match mode with
 let build_context: ast -> ast * context
 = fun ast -> 
   let ctx = List.fold_left (fun acc element -> match element with 
+  | InlinedTypeProdRule _ -> assert false
   | ProdRule (nt, ias, rhss, _) -> 
     let options = List.map (fun rhs -> match rhs with
       | Rhs (ges, scs, _, _) -> 
@@ -422,6 +423,7 @@ let check_types: context -> ast -> ast
   | ProdRule (nt, ias, rhss, p) -> 
     let rhss = List.map (check_prod_rhs ctx) rhss in
     ProdRule (nt, ias, rhss, p)
+  | InlinedTypeProdRule _ -> assert false
   | TypeAnnotation (nt, ty, scs, p) -> 
     let scs = List.map (fun sc -> match sc with 
     | DerivedField (nt2, expr, p) ->

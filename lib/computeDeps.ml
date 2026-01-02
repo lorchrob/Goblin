@@ -101,6 +101,7 @@ let rec compute_dep: A.semantic_constraint Utils.StringMap.t -> SA.solver_ast ->
          *)
       let element' = List.find (fun element -> match element with 
       | A.TypeAnnotation _ -> false 
+      | A.InlinedTypeProdRule (_, _, _, _) -> assert false
       | A.ProdRule (_, _, rhss, _) ->
         List.exists (fun rhs -> match rhs with 
         | A.StubbedRhs _ -> false 
@@ -142,6 +143,7 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> bool -> SA.sol
 | NTExpr (_, (id, idx0) :: rest, p) ->
   let child_index, child_element = match element with 
   | A.TypeAnnotation _ -> 0, element
+  | A.InlinedTypeProdRule _ -> assert false
   | A.ProdRule (_, _, rhss, _) ->
     (* Find child_index within the rule, not across all rules *) 
       let ci = List.find_map (fun rhs -> match rhs with 
@@ -157,6 +159,7 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> bool -> SA.sol
       ) rhss in 
       Option.get ci, 
       List.find (fun element -> match element with 
+      | A.InlinedTypeProdRule _ -> assert false
       | A.TypeAnnotation (id2, _, _, _)
       | A.ProdRule (id2, _, _, _) -> Utils.str_eq_ci id id2
       ) ast 
@@ -483,6 +486,7 @@ and compute_deps: A.semantic_constraint Utils.StringMap.t -> A.ast -> SA.solver_
   List.map (fun subterm -> match subterm with 
   | SA.Node (_hd, [VarLeaf var]) -> 
     let element = List.find_opt (fun element -> match element with 
+    | A.InlinedTypeProdRule _ -> assert false
     | A.TypeAnnotation (nt, _, _, _)  
     | ProdRule (nt, _, _, _) -> 
       Utils.str_eq_ci nt (Utils.extract_base_name constructor)

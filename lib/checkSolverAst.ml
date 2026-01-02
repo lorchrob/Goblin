@@ -53,7 +53,7 @@ let handle_scs ast solver_ast constructor element scs =
   let scs = List.map (fun sc -> match sc with 
   | A.SmtConstraint (expr, p) -> 
     if is_sc_applicable expr solver_ast || (* type annotation constraints are always applicable *)
-       match element with | A.TypeAnnotation _ -> true | A.ProdRule _ -> false
+       match element with | A.TypeAnnotation _ -> true | A.InlinedTypeProdRule _ -> assert false | A.ProdRule _ -> false
     then (
       (if !Flags.debug then Format.fprintf Format.std_formatter "Constraint %a is applicable in %a"
         A.pp_print_expr expr
@@ -102,6 +102,7 @@ let rec check_syntax_semantics: Ast.ast -> SolverAst.solver_ast -> (unit, string
     let element = List.find_opt (fun element -> match element with
     | A.TypeAnnotation (nt, _, _, _) -> 
       Utils.str_eq_ci (Utils.extract_base_name constructor) nt 
+    | A.InlinedTypeProdRule _ -> assert false
     | A.ProdRule (nt, _, _, _) -> 
       Utils.str_eq_ci (Utils.extract_base_name constructor) nt 
     ) ast in (
@@ -109,6 +110,7 @@ let rec check_syntax_semantics: Ast.ast -> SolverAst.solver_ast -> (unit, string
     | None -> Error ("Dangling constructor identifier " ^ (Utils.extract_base_name constructor))
     | Some (TypeAnnotation (_, _, scs, _) as element) -> 
       handle_scs ast solver_ast constructor element scs
+    | Some (A.InlinedTypeProdRule _) -> assert false
     | Some (A.ProdRule (_, _, rhss, _) as element) ->
       (* Find the matching production rule from ast, if one exists *)
       let rhs = List.find_opt (fun rhs -> match rhs with 
