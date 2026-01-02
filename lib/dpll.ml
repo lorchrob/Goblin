@@ -561,7 +561,7 @@ let backtrack ctx ast assertion_level decision_stack solver backtrack_depth decl
     Smt.issue_solver_command "(push 1)" solver;
     (if not !backtrack_depth then raise (Failure "infeasible"));
     depth_limit := !depth_limit + 1;
-    Format.fprintf Format.std_formatter "Increasing depth limit to %d\n" !depth_limit;
+    if !Flags.debug then Format.fprintf Format.std_formatter "Increasing depth limit to %d\n" !depth_limit;
     initialize_globals ctx ast derivation_tree start_symbol constraints_to_assert 
                        decision_stack declared_variables backtrack_depth curr_st_node declared_variables solver
                        variable_stack blocking_clause_vars assertion_level; 
