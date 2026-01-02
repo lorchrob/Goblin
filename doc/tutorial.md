@@ -174,16 +174,18 @@ of integers), but we want to encode a **semantic** constraint which restricts th
 of the grammar. In Goblin, we encode this as follows: 
 
 ```
-<S> ::= <I> <I> { <I> + <I> = 100; } ;
+<S> ::= <I> <I> { <I>[0] + <I>[1] = 100; } ;
 <I> :: Int;
 ```
 
 The context-free portion of the grammar is exactly the same, 
-but we also added the semantic constraint `<I> + <I> = 100` 
+but we also added the semantic constraint `<I>[0] + <I>[1] = 100` 
 within curly braces on the corresponding production rule. 
 The semantics are that whenever the production rule `<S> ::= <I> <I>` 
 is taken in a derivation, 
-we must only generate terms such that `<I> + <I>` is equal to `100`. 
+we must only generate terms such that `<I>[0] + <I>[1]` is equal to `100`. 
+The indices in square brackets disambiguate the instance of `<I>` that is being referred to 
+in the semantic constraint.
 
 How about our earlier list example? How would we encode a context-sensitive grammar 
 describing lists of integers that sum to 100? 
@@ -222,7 +224,7 @@ simultaneously odd and even (notice that I updated the base case of the list rul
 
 Now, back to the harder problem -- encoding an (arbitrary-length) list of integers 
 that all sum to 100:  
-(NOTE -- if the following is too dense, it may be advisable to skip to the next section, **BitVectors**, on the first read.)
+(NOTE -- if the following is too dense, it may be advisable to skip to the next section, **Bit Vectors**, on the first read.)
 
 ```
 <S> ::= <L> { <L>.<_sum> = 100; };
@@ -262,7 +264,7 @@ Also, we can confirm that the `_sumN` variables indeed track the list sum "so fa
 Notice that when mapping Goblin's output to a concrete term, 
 I ignored the `_sumN` variables since they are ghost.
 
-#### BitVectors
+#### Bit Vectors
 
 One class of use cases for Goblin is network protocol input generation. 
 A unique aspect of network protocol fuzzing is that network packets often involve **bit-level**
@@ -270,12 +272,12 @@ syntax and constraints --- say, one may need to model network packet fields as 1
 rather than mathematical integers. 
 To model machine integers and support bitwise operators in constraints (eg, bit complement, 
 left and right shifts, bitwise xor, and so on), 
-Goblin uses bitvector types `BitVec(n)` for concrete, positive values of `n` 
+Goblin uses bit vector types `BitVec(n)` for concrete, positive values of `n` 
 (eg `BitVec(16)`, `BitVec(32)`).
 `BitVec` is a **dependent type** in the sense that the type is parametric with respect to 
-the length of the bitvector. 
+the length of the bit vector. 
 
-To illustrate example bitvector constraints, consider the following toy network packet in Goblin: 
+To illustrate example bit vector constraints, consider the following toy network packet in Goblin: 
 
 ```
 <Packet> ::= <Type> <Len> <Payload> 
@@ -294,13 +296,13 @@ To illustrate example bitvector constraints, consider the following toy network 
 
 There are three notable aspects of the above example.
 
-First, the example illustrates the use of a few bitvector-specific functions.
+First, the example illustrates the use of a few bit vector-specific functions.
 For example, the `int_to_bv(len, n)` function casts integer `n` to a 
-bitvector of length `len`.
+bit vector of length `len`.
 Goblin is **statically** and **strongly** typed, so performing the comparison 
 `<Type> = 0` without the cast would result in a type error, 
 as `<Type>` has type `BitVec(8)`, while `0` has type `Int`. 
-Also notice the bitwise operator `bvand` in line 6, as well as the bitvector constants 
+Also notice the bitwise operator `bvand` in line 6, as well as the bit vector constants 
 `0b11110000` and `0b101000001`.
 
 Second, `length(.)` (see line 2) is a special function in Goblin. 
@@ -308,7 +310,7 @@ In this example, it takes as input nonterminal `<Payload>`,
 which does not have a type annotation --- 
 instead, it is defined by a production rule. 
 `length(.)` will return the **total** length of its input nonterminal, 
-computed by summing the lengths of all the descendant bitvectors and bit lists.
+computed by summing the lengths of all the descendant bit vectors and bit lists.
 
 Third, the line `<Len> <- int_to_bv(8, 16 + length(<Payload>))` uses a special operator `<-`. 
 The arrow operator `<-` is semantically equivalent to equality --- 
@@ -325,7 +327,7 @@ functions unsupported by SMT solvers.
 
 #### Bit Lists
 
-To model bitvectors with arbitrary width (ie, may grow or shrink), 
+To model bit vectors with arbitrary width (ie, may grow or shrink), 
 Goblin supports the bit list type `List(Bool)`. 
 Here, `List` is a type constructor that takes one type as input 
 and returns an output type representing a list with the given element type.
@@ -460,6 +462,8 @@ See `evaluation` and `test/test_cases` for example `.gbl` files (Goblin input fi
 ### How does Goblin work?
 
 STUB
+
+
 
 
 
