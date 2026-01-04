@@ -304,7 +304,7 @@ let remove_circular_deps: ast -> ast
     | ProdRule (nt, inhs, rhss, p) -> let rhss = List.map (fun rhs -> match rhs with
         | StubbedRhs _ -> rhs 
         | Rhs (nt, scs, prob, p) -> 
-          let sygus_exprs = List.filter (fun sc -> match sc with
+          let smt_exprs = List.filter (fun sc -> match sc with
           | SmtConstraint _ -> true 
           | AttrDef _ -> true (* for now, handle attributes at the SMT level *)
           | DerivedField _ -> false
@@ -322,7 +322,7 @@ let remove_circular_deps: ast -> ast
             in
             Utils.error msg p
           in 
-          Rhs (nt, sygus_exprs @ dependencies, prob, p)
+          Rhs (nt, smt_exprs @ dependencies, prob, p)
       ) rhss in 
       ProdRule (nt, inhs, rhss, p)
   ) ast
@@ -356,7 +356,7 @@ let check_scs_for_dep_terms: semantic_constraint list -> semantic_constraint lis
   | SmtConstraint _ -> sc :: acc
   ) [] scs |> List.rev
 
-let check_sygus_exprs_for_dep_terms: ast -> ast 
+let check_smt_exprs_for_dep_terms: ast -> ast 
 = fun ast -> 
   List.map (fun element -> match element with 
   | TypeAnnotation (nt, ty, scs, p) -> 
@@ -482,7 +482,7 @@ let check_syntax: prod_rule_map -> Utils.StringSet.t -> ast -> ast
   in 
   let ast = str_const_to_ph_const ast in
   let ast = Utils.recurse_until_fixpoint ast (=) remove_circular_deps in
-  let ast = Utils.recurse_until_fixpoint ast (=) check_sygus_exprs_for_dep_terms in
+  let ast = Utils.recurse_until_fixpoint ast (=) check_smt_exprs_for_dep_terms in
   let ast = check_vacuity ast in
   let ast = List.map (fun element -> match element with 
   | ProdRule (nt, inhs, rhss, p) -> 

@@ -201,7 +201,7 @@ let declare_smt_variables: 'a -> Utils.StringSet.t ref -> A.il_type Utils.String
     if Utils.StringSet.mem var !declared_variables then 
       () 
     else 
-      let declaration_string = Format.asprintf "(declare-fun %s () %a)\n" var Sygus.pp_print_ty ty in
+      let declaration_string = Format.asprintf "(declare-fun %s () %a)\n" var SmtPrinter.pp_print_ty ty in
       declared_variables := Utils.StringSet.add var !declared_variables;
       (* Hacky -- if at the zeroth assertion level, we keep variables around by storing them in blocking_clause_vars,
          even if they aren't part of a blocking clause *)
@@ -270,7 +270,7 @@ match dt with
         | Some ty -> ty 
         | None -> Utils.crash ("couldn't find " ^ (List.rev nt |> List.hd |> fst))
         in
-        let str = Format.asprintf "%a" (Lib.pp_print_list Sygus.pp_print_nt_helper "_") nt in
+        let str = Format.asprintf "%a" (Lib.pp_print_list SmtPrinter.pp_print_nt_helper "_") nt in
         Utils.StringMap.add str ty acc
       ) Utils.StringMap.empty expr_variables in
       declare_smt_variables variable_stack declared_variables ty_ctx solver blocking_clause_vars assertion_level ;
@@ -1034,7 +1034,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.solver_ast
             let expr_variables = A.get_nts_from_expr2 expr in
             let ty_ctx = List.fold_left (fun acc nt -> 
               let ty = Utils.StringMap.find (List.rev nt |> List.hd |> fst) ctx in 
-              let str = Format.asprintf "%a" (Lib.pp_print_list Sygus.pp_print_nt_helper "_") nt in
+              let str = Format.asprintf "%a" (Lib.pp_print_list SmtPrinter.pp_print_nt_helper "_") nt in
               let str = path' ^ "_" ^ str in 
               Utils.StringMap.add str ty acc
             ) Utils.StringMap.empty expr_variables in

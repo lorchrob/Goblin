@@ -203,7 +203,7 @@ let sygusGrammarToPacket ast =
 
   if not !Flags.only_parse then (
     (* Call sygus engine *)
-    let sygus_outputs = List.map (Sygus.call_sygus ctx dep_map) asts in
+    let sygus_outputs = List.map (SmtPrinter.call_sygus ctx dep_map) asts in
 
     (* Parse SyGuS output. *)
     let solver_asts = List.map2 Parsing.parse_sygus sygus_outputs asts in

@@ -35,7 +35,7 @@ let sygus ppf ctx ast =
 
   (* Step 6.1: Translate to SyGuS problems *)
   Utils.debug_print Format.pp_print_string ppf "\nSyGuS translation:\n";
-  List.iter (fun ast -> Utils.debug_print Sygus.pp_print_ast ppf (ctx, dep_map, ast); Utils.debug_print Lib.pp_print_newline ppf ()) asts;
+  List.iter (fun ast -> Utils.debug_print SmtPrinter.pp_print_ast ppf (ctx, dep_map, ast); Utils.debug_print Lib.pp_print_newline ppf ()) asts;
   Utils.debug_print Lib.pp_print_newline ppf ();
 
   Format.pp_print_flush ppf ();
@@ -44,7 +44,7 @@ let sygus ppf ctx ast =
     (* Step 6.2: Call sygus engine *)
     Utils.debug_print Format.pp_print_string ppf "Calling SyGuS:";
     Utils.debug_print Lib.pp_print_newline ppf ();
-    let sygus_outputs = Parallelism.parallel_map  (Sygus.call_sygus ctx dep_map) asts in
+    let sygus_outputs = Parallelism.parallel_map  (SmtPrinter.call_sygus ctx dep_map) asts in
     List.iter (Utils.debug_print Format.pp_print_string ppf) sygus_outputs;
     
     (* Step 7: Parse SyGuS output *)

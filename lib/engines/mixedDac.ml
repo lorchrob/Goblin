@@ -40,7 +40,7 @@ let sygus_leaf: Format.formatter -> TypeChecker.context -> Ast.ast -> Ast.semant
     (* Call sygus engine *)
     Utils.debug_print Format.pp_print_string ppf "Calling SyGuS:";
     Utils.debug_print Lib.pp_print_newline ppf ();
-    let sygus_output = Sygus.call_sygus ctx dep_map ast in
+    let sygus_output = SmtPrinter.call_sygus ctx dep_map ast in
     Utils.debug_print Format.pp_print_string ppf sygus_output;
     
     (* Parse SyGuS output *)

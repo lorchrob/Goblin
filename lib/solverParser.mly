@@ -46,12 +46,12 @@ open SolverAst
 
 s: 
 | DOLLAR; children = separated_nonempty_list(DOLLAR, lisp_term); EOF { Node (("outputs", None), children) }
-| d = sygus_term; EOF { d } 
-| SAT; model = sygus_model; EOF { model } 
-| model = sygus_model; EOF { model } 
+| d = term; EOF { d } 
+| SAT; model = model; EOF { model } 
+| model = model; EOF { model } 
 | UNSAT; EOF { VarLeaf "infeasible" }
 
-sygus_model: 
+model: 
 | LPAREN; values = list(model_value); RPAREN; { Node (("smt_model", None), values) }
 
 model_value:
@@ -64,7 +64,7 @@ model_value:
  { let id, idx = Utils.parse_str_nat_suffix id in
    Node ((id, idx), [t]) }
 	
-sygus_term:
+term:
 | LPAREN; LPAREN; DEFINEFUN; TOP; LPAREN; RPAREN; top_type; t = lisp_term; RPAREN; RPAREN;
   { t }
 | INFEASIBLE;

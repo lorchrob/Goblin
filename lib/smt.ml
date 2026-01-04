@@ -58,7 +58,7 @@ let cleanup_solver (solver : solver_instance) : unit =
 let assert_smt_constraint: solver_instance -> Ast.expr -> unit 
 = fun solver expr ->
   let assert_cmd = 
-    Format.asprintf "(assert %a)\n" (Sygus.pp_print_expr Utils.StringMap.empty) expr 
+    Format.asprintf "(assert %a)\n" (SmtPrinter.pp_print_expr Utils.StringMap.empty) expr 
   in
   issue_solver_command assert_cmd solver; 
   ()
