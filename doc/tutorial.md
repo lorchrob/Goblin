@@ -31,7 +31,7 @@ Strictly speaking, arrow 7 is optional.)
 
 The above workflow illustrates how Goblin is an **input generation** tool to be used 
 within a **fuzzing workflow**. 
-The rest of the tutorial will focus on Goblin's input-output interface --- 
+The rest of the tutorial will focus on Goblin's input-output interface -- 
 namely, how to specify Goblin's input based on **context-sensitive** grammars (arrow 1), 
 and how to understand Goblin's outputs (arrow 2). 
 
@@ -94,7 +94,7 @@ Now, let's return to the Goblin input:
 <I> :: Int;
 ```
 
-Now is a good time to try to run Goblin --- copy the above text into a new file, 
+Now is a good time to try to run Goblin -- copy the above text into a new file, 
 and invoke `goblin --file <path_to_file>` (make sure you have built Goblin following the build instructions 
 [in the README](https://github.com/lorchrob/Goblin/blob/master/README.md)).
 
@@ -129,7 +129,7 @@ a list `(L0 (I0 0) (L0 (I0 1) (L0 (I0 2) (L0 (Nil0 ())))))` denoting the list `[
 and so on.
 
 Nil's type, `Unit`, is borrowed from functional programming 
-and represents that `Nil` does not carry any meaningful value --- 
+and represents that `Nil` does not carry any meaningful value -- 
 it is analogous to the empty string `""` in a standard CFG.
 
 Notice that we did not explicitly ascribe a type to `<L>`. 
@@ -137,7 +137,7 @@ The rule is that each nonterminal symbol either
 (i) produces a non-empty set of production rule options 
 (of the form `<NT> ::= option1 | option2 | ...`), (exclusive) or 
 (ii) has exactly one type annotation (of the form `<NT> :: Type`).
-Note that each production rule option from (i) must be comprised solely of nonterminals --- 
+Note that each production rule option from (i) must be comprised solely of nonterminals -- 
 again, Goblin does not process concrete syntax, only abstract syntax.
 
 Goblin is **nondeterministic**, meaning that multiple invocations of Goblin on the same 
@@ -187,9 +187,7 @@ we must only generate terms such that `<I>[0] + <I>[1]` is equal to `100`.
 The indices in square brackets disambiguate the instance of `<I>` that is being referred to 
 in the semantic constraint.
 
-How about our earlier list example? How would we encode a context-sensitive grammar 
-describing lists of integers that sum to 100? 
-We will start with an easier problem --- encoding lists of integers that are all odd: 
+Next, we consider a grammar that generates lists of integers that are all odd: 
 
 ```
 <L> ::= <I> <L> | <Nil>; 
@@ -222,53 +220,51 @@ the language of the grammar that satisfy the constraints):
 On the above example, Goblin reports `infeasible` since it is not possible for an integer to be 
 simultaneously odd and even (notice that I updated the base case of the list rule to rule out empty lists).
 
-Now, back to the harder problem -- encoding an (arbitrary-length) list of integers 
-that all sum to 100:  
-(NOTE -- if the following is too dense, it may be advisable to skip to the next section, **Bit Vectors**, on the first read.)
+### Synthesized attributes
+
+Now, we consider a harder problem -- a grammar encoding (arbitrary-length) lists of integers that sum to 100:  
 
 ```
-<S> ::= <L> { <L>.<_sum> = 100; };
-<L> ::= <_sum> <I> <L>
-      { <_sum> = <I> + <L>.<_sum>; } 
-      | <_sum> <Nil> { <_sum> = 0; }; 
+<S> ::= <L> { <L>.sum = 100; };
+<L> ::= <I> <L>
+      { sum := <I> + <L>.sum; } 
+      | <Nil> { sum := 0; }; 
 <I> :: Int; 
 <Nil> :: Unit;
 <_sum> :: Int;
 ```
 
-The above example is a lot to take in. 
-First, notice that we introduced a new nonterminal `<_sum>`. 
-It is prefixed by a space to (informally) denote that it is a **ghost variable**
---- it is used for specifying constraints, 
-but should not be interpreted as part of the generated term. 
-`<_sum>` tracks the sum of the list "so far", akin to accumulator arguments in recursive functions.
-More concretely, in line 4, `<_sum>` is set to `0` because the sum of the empty list is zero, 
+We introduced a new identifier, `sum`, that is not surrounded by angle brackets.
+That is because `sum` is not a nonterminal -- instead, it is an **attribute**. 
+Attributes are variables used to encode contextual information, 
+and are only used to compute constraints -- they are not present in the output terms.
+In particular, `sum` is a **synthesized attribute**--that is, it is computed bottom-up. 
+Here, `sum` is defined in the context of the `<L>` nonterminal, and can be accessed via dot notation.
+`sum` tracks the sum of the list "so far", akin to accumulator arguments in recursive functions.
+More concretely, in line 4, `sum` is set to `0` because the sum of the empty list is zero, 
 and in line `3`, it is set to the value of `<I>` plus the sum of the remaining list elements. 
 Then, we introduced a new start symbol `<S>` for the purposes of 
 constraining the top-level sum of the list to be 100 (on line 1).
 
-Notice the usage of the dot operator `<L>.<_sum>` -- this does not refer to the value of 
-`<_sum>` of the current instance of the production rule, 
-but rather the instance of `<_sum>` that is reached after expanding `<L>`
-(in other words, it refers to `<L>`'s child `<_sum>` in the derivation).
-The dot operator is deceivingly complex --- 
-eg, what happens if `<L>` does not have a child `<_sum>`? 
-What if there are multiple children called `<_sum>`? 
-What if one expansion option for `<L>` has a child `<_sum>`, but another does not? 
-The semantics of the dot operator will be discussed in more detail in a later section.
+Notice the usage of the dot operator `<L>.sum` in the constraint `sum := <I> + <L>.sum` -- 
+here, `<L>.<sum>` does not refer to the value of 
+`sum` of the current instance of the production rule, 
+but rather the instance of child `<L>`'s `sum` .
+Synthesized attributes have a **totality requirement**, 
+that is, for a nonterminal `<nt>`, all of `<nt>`'s synthesized attributes must be given definitions 
+in every production rule option for `<nt>`. (Above, `sum` is defined for both options for `<L>`.)
 
 When running Goblin on the above grammar, a possible output is 
-`(S0 (L0 (_sum0 100) (I0 101) (L0 (_sum0 (- 1)) (I0 (- 1)) (L0 (_sum1 0) (Nil0 ())))))`. 
+`(S0 (L0 (I0 101) (L0 (I0 (- 1)) (L0 (Nil0 ())))))`. 
 This is verbose and a bit hard for humans to read, but it denotes the list `[101, -1]`. 
-Also, we can confirm that the `_sumN` variables indeed track the list sum "so far".
-Notice that when mapping Goblin's output to a concrete term, 
-I ignored the `_sumN` variables since they are ghost.
+Notice that `sum` values are absent from the output term -- as mentioned earlier, 
+attributes are solely used for calculating constraints.
 
 #### Bit Vectors
 
 One class of use cases for Goblin is network protocol input generation. 
 A unique aspect of network protocol fuzzing is that network packets often involve **bit-level**
-syntax and constraints --- say, one may need to model network packet fields as 16-bit machine integers 
+syntax and constraints -- say, one may need to model network packet fields as 16-bit machine integers 
 rather than mathematical integers. 
 To model machine integers and support bitwise operators in constraints (eg, bit complement, 
 left and right shifts, bitwise xor, and so on), 
@@ -307,13 +303,13 @@ Also notice the bitwise operator `bvand` in line 6, as well as the bit vector co
 
 Second, `length(.)` (see line 2) is a special function in Goblin. 
 In this example, it takes as input nonterminal `<Payload>`, 
-which does not have a type annotation --- 
+which does not have a type annotation -- 
 instead, it is defined by a production rule. 
 `length(.)` will return the **total** length of its input nonterminal, 
 computed by summing the lengths of all the descendant bit vectors and bit lists.
 
 Third, the line `<Len> <- int_to_bv(8, 16 + length(<Payload>))` uses a special operator `<-`. 
-The arrow operator `<-` is semantically equivalent to equality --- 
+The arrow operator `<-` is semantically equivalent to equality -- 
 every occurrence of `<-` can be replaced with `=` without changing the language of the input grammar. 
 However, `<-` can only be used in constraints of the form `<nt> <- ...`, 
 ie, with a single nonterminal symbol on the left-hand side, and any arbitrary expression on the right-hand side. 
@@ -347,7 +343,7 @@ The output is presented as the concatenation (`seq.++`) of three singleton lists
 each containing a single element `false`.
 The supported operators are those from the SMT-LIB theory of sequences. 
 Here, the length function `seq.len(.)` differs from the length function `length(.)` 
-in the previous example --- `seq.len(.)` only works with expressions with `List(.)` types, 
+in the previous example -- `seq.len(.)` only works with expressions with `List(.)` types, 
 while `length(.)` is polymorphic. 
 For now, due to the polymorphism associated with `length(.)`, it is only supported 
 on the right-hand side of an arrow operator `<-`, 
@@ -369,7 +365,7 @@ so we will provide some intuition with a few examples.
 Above, the **nonterminal expression** `<B>.<D>` intuitively could refer to 
 either the first or second child `<D>` of either the first or second occurrence 
 of `<B>`. The system treats all ambiguous references of this form 
-as **implicitly universally quantified** over the structure of generated terms --- that is, 
+as **implicitly universally quantified** over the structure of generated terms -- that is, 
 one can view the above constraint as internally desugaring to 
 `<B>[0].<D>[0] > <C>[0]; <B>[0].<D>[1] > <C>[0]; <B>[1].<D>[0] > <C>[0]; <B>[1].<D>[1] > <C>[0]`,
 where the bracket notation `[i]` of a nonterminal symbol uniquely indicates which occurrence of the nonterminal 
@@ -462,6 +458,7 @@ See `evaluation` and `test/test_cases` for example `.gbl` files (Goblin input fi
 ### How does Goblin work?
 
 STUB
+
 
 
 
