@@ -220,7 +220,7 @@ the language of the grammar that satisfy the constraints):
 On the above example, Goblin reports `infeasible` since it is not possible for an integer to be 
 simultaneously odd and even (notice that I updated the base case of the list rule to rule out empty lists).
 
-### Synthesized attributes
+##### Synthesized attributes
 
 Now, we consider a harder problem -- a grammar encoding (arbitrary-length) lists of integers that sum to 100:  
 
@@ -231,34 +231,77 @@ Now, we consider a harder problem -- a grammar encoding (arbitrary-length) lists
       | <Nil> { sum := 0; }; 
 <I> :: Int; 
 <Nil> :: Unit;
-<_sum> :: Int;
+sum :: Int;
 ```
 
 We introduced a new identifier, `sum`, that is not surrounded by angle brackets.
 That is because `sum` is not a nonterminal -- instead, it is an **attribute**. 
 Attributes are variables used to encode contextual information, 
 and are only used to compute constraints -- they are not present in the output terms.
-In particular, `sum` is a **synthesized attribute**--that is, it is computed bottom-up. 
+In particular, `sum` is a **synthesized attribute** -- that is, it is computed bottom-up. 
 Here, `sum` is defined in the context of the `<L>` nonterminal, and can be accessed via dot notation.
 `sum` tracks the sum of the list "so far", akin to accumulator arguments in recursive functions.
 More concretely, in line 4, `sum` is set to `0` because the sum of the empty list is zero, 
 and in line `3`, it is set to the value of `<I>` plus the sum of the remaining list elements. 
 Then, we introduced a new start symbol `<S>` for the purposes of 
 constraining the top-level sum of the list to be 100 (on line 1).
+To distinguish inherited attribute definitions from standard equality constraints, 
+Goblin uses the assignment syntax `inherited_attr := <expression>` (with colon equals `:=`).
 
 Notice the usage of the dot operator `<L>.sum` in the constraint `sum := <I> + <L>.sum` -- 
-here, `<L>.<sum>` does not refer to the value of 
+here, `<L>.sum` does not refer to the value of 
 `sum` of the current instance of the production rule, 
-but rather the instance of child `<L>`'s `sum` .
+but rather the instance of child `<L>`'s synthesized attribute `sum` .
+(In this sense, `sum` is computed bottom-up.)
 Synthesized attributes have a **totality requirement**, 
 that is, for a nonterminal `<nt>`, all of `<nt>`'s synthesized attributes must be given definitions 
-in every production rule option for `<nt>`. (Above, `sum` is defined for both options for `<L>`.)
+in every production rule option for `<nt>`. 
+(Above, `sum` is defined for both options for `<L>`.)
 
 When running Goblin on the above grammar, a possible output is 
 `(S0 (L0 (I0 101) (L0 (I0 (- 1)) (L0 (Nil0 ())))))`. 
 This is verbose and a bit hard for humans to read, but it denotes the list `[101, -1]`. 
 Notice that `sum` values are absent from the output term -- as mentioned earlier, 
-attributes are solely used for calculating constraints.
+attributes are solely used for calculating constraints and are not present in the output.
+
+##### Inherited attributes
+
+In addition to synthesized attributes, there is another class of attributes called **inherited attributes**. 
+Inherited attributes are computed *top down* rather than *bottom up*.
+Below is a grammar computing a triple `(Val, Length, L)`, 
+where `L` is a list such that
+there are exactly `Length` number of elements in `L`, and 
+each element of `L` is equal to `Val`. 
+
+```
+<Repeat> ::= <Val> <Length> <L>(<Val>)  { <Length> = <L>.len; <Length> > 0; };
+<L>(v :: Int) ::= <E> <L>(v) { <E> = v; len := 1 + <L>.len; } | <Nil> { len := 0; };
+
+<Val> :: Int;
+<E> :: Int;
+<Nil> :: Unit;
+<Length> :: Int;
+len :: Int;
+```
+
+Above, the length constraint is enforced by `<Length> = <L>.len`, where `len` is a synthesized 
+attribute of the `<L>` nonterminal.
+
+However, to capture the second requirement (that every list element of `<L>` is equal to `<Val>`),
+we use an inherited attribute `v`. 
+Inherited attributes are declared on the right-hand side of production rule options,
+and they are somewhat analogous to function arguments. 
+On line 2, `(v :: Int)` denotes that the production rules for `<L>` take some inherited attribute `v`, 
+which is allowed to be referenced in the constraints. 
+Here, we constrain that list element `<E>` is equal to `v`. 
+Inherited attributes have a **call site requirement** -- 
+every time a nonterminal with inherited attributes is referenced, 
+it must be passed arity-correct and type-correct arguments.
+In this case, the reference to `<L>` in line 1 passes `<Val>` as the inherited attribute.
+The reference to `<L>` on line 2 passes forward the same `v`. 
+From this, every list element `<E>` will be constrained to be equal to `<Val>`.
+Intuitively, inherited attributes allow one to specify constraints that require information 
+passed from the parent nonterminal in the derivation.
 
 #### Bit Vectors
 
@@ -458,6 +501,7 @@ See `evaluation` and `test/test_cases` for example `.gbl` files (Goblin input fi
 ### How does Goblin work?
 
 STUB
+
 
 
 
