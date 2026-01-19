@@ -72,6 +72,5 @@ to SMT-LIB.
 ### Supporting new features
 
 Adding support in Goblin for additional SMT-LIB (or cvc5-specific) types, operators, and function symbols is straightforward. Additionally, adding support for function symbols only compatible within derived fields (but not SMT expressions) is straightforward. 
-To request a new feature, please open a GitHub issue or email `robert-lorch@uiowa.edu`.
 
 *To request a new feature, either open a GitHub issue or email robert-lorch@uiowa.edu.*
