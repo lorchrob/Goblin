@@ -622,8 +622,8 @@ let rec add_index_to_expr: int -> expr -> expr
   | CompOp (expr1, op, expr2, pos) -> CompOp (r expr1, op, r expr2, pos) 
   | Singleton (expr, pos) -> Singleton (r expr, pos)
   | BuiltInFunc (func, exprs, pos) -> BuiltInFunc (func, List.map r exprs, pos) 
-  | Match _ -> Utils.crash "Unexpected case 1 in prepend_nt_to_dot_exprs"
-  | NTExpr _ -> Utils.crash "Unexpected case 2 in prepend_nt_to_dot_exprs" 
+  | Match _ -> Utils.crash "Unexpected case 1 in add_index_to_expr"
+  | NTExpr _ -> Utils.crash "Unexpected case 2 in add_index_to_expr" 
   | BVConst _ 
   | BLConst _ 
   | BConst _ 
