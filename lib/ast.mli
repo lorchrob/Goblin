@@ -143,3 +143,4 @@ val find_element: ast -> string -> element
 val pos_of_expr: expr -> Lexing.position
 val pp_print_builtin_func: Format.formatter -> builtin_func -> unit
 val eq_il_type: il_type -> il_type -> bool
+val add_index_to_expr: int -> expr -> expr

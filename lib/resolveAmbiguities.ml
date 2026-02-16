@@ -16,7 +16,7 @@ let cartesian_product lst1 lst2 =
    <A>.<B0>.<C0> > 1 and <A>.<B0>.<C1> > 1 and <A>.<B1>.<C0> > 1 and <A>.<B1>.<C1> > 1,
    assuming there are ambiguous references for <A>.<B> and <B>.<C>.   *)
 let rec generate_all_possible_exprs: TC.context -> string list -> A.expr -> A.expr list
-(* nts represents the list of nonterminals that could be referenced in the expression *)
+(* `nts` represents the list of nonterminals that could be referenced in the expression *)
 = fun ctx nts expr -> 
   let r = generate_all_possible_exprs ctx nts in
   match expr with 
@@ -32,7 +32,6 @@ let rec generate_all_possible_exprs: TC.context -> string list -> A.expr -> A.ex
           List.filter (fun nt'' -> String.equal nt' nt'') |>
           List.mapi (fun i rhs_nt -> (rhs_nt, Some i)) 
         in 
-        (* let nt_options  *)
         List.map (fun nt_option -> [nt_option]) nt_options
       | (nt', Some idx) :: nt_expr' -> 
         let nt_options = [(nt', Some idx)] in 
@@ -151,6 +150,7 @@ let resolve_ambiguities_dpll: TC.context -> A.ast -> A.ast
     let scs = List.concat_map (process_sc_to_list ctx nts) scs in
     (* Filter out scs with dot notation expressions of the form <nt1>[n], where 
        [n] does not apply to this production rule *)
+    (*!! The above should generalize to the tail of NTExprs... *)
     let scs = List.filter (function 
     | A.AttrDef _ -> assert false
     | A.SmtConstraint (expr, _)  
