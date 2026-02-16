@@ -1,0 +1,102 @@
+// ============================================================================
+// FTP Grammar: Path-Argument Commands
+// ============================================================================
+
+<START> ::= <PATH_CMD> ;
+
+<PATH_CMD> ::= <RETR_FULL> | <STOR_FULL> | <APPE_FULL> | <DELE_FULL>
+             | <CWD_FULL>  | <MKD_FULL>  | <RMD_FULL>
+             | <LIST_FULL> | <NLST_FULL> | <MLSD_FULL>
+             | <SIZE_FULL> | <MDTM_FULL>
+             | <RENAME_FULL> ;
+
+// --- Single-path commands --------------------------------------------------
+
+<RETR_FULL> ::= <RETR_VERB> <SP> <PATH_ARG> <CRLF> ;
+<STOR_FULL> ::= <STOR_VERB> <SP> <PATH_ARG> <CRLF> ;
+<APPE_FULL> ::= <APPE_VERB> <SP> <PATH_ARG> <CRLF> ;
+<DELE_FULL> ::= <DELE_VERB> <SP> <PATH_ARG> <CRLF> ;
+<CWD_FULL>  ::= <CWD_VERB>  <SP> <PATH_ARG> <CRLF> ;
+<MKD_FULL>  ::= <MKD_VERB>  <SP> <PATH_ARG> <CRLF> ;
+<RMD_FULL>  ::= <RMD_VERB>  <SP> <PATH_ARG> <CRLF> ;
+<SIZE_FULL> ::= <SIZE_VERB> <SP> <PATH_ARG> <CRLF> ;
+<MDTM_FULL> ::= <MDTM_VERB> <SP> <PATH_ARG> <CRLF> ;
+
+<RETR_VERB> :: String { <RETR_VERB> <- "RETR"; };
+<STOR_VERB> :: String { <STOR_VERB> <- "STOR"; };
+<APPE_VERB> :: String { <APPE_VERB> <- "APPE"; };
+<DELE_VERB> :: String { <DELE_VERB> <- "DELE"; };
+<CWD_VERB>  :: String { <CWD_VERB>  <- "CWD"; };
+<MKD_VERB>  :: String { <MKD_VERB>  <- "MKD"; };
+<RMD_VERB>  :: String { <RMD_VERB>  <- "RMD"; };
+<SIZE_VERB> :: String { <SIZE_VERB> <- "SIZE"; };
+<MDTM_VERB> :: String { <MDTM_VERB> <- "MDTM"; };
+
+// --- LIST with optional flags and path ------------------------------------
+
+<LIST_FULL> ::= <LIST_VERB> <LIST_TAIL> <CRLF> ;
+<LIST_VERB> :: String { <LIST_VERB> <- "LIST"; };
+
+<LIST_TAIL> ::= <EMPTY>
+              | <SP> <PATH_ARG>
+              | <SP> <LIST_FLAGS>
+              | <SP> <LIST_FLAGS> <SP> <PATH_ARG> ;
+
+<LIST_FLAGS> ::= <DASH> <FLAG_CHARS> ;
+<DASH> :: String { <DASH> <- "-"; };
+
+<FLAG_CHARS> ::= <FLAG_CHAR> | <FLAG_CHAR> <FLAG_CHARS> ;
+
+<FLAG_CHAR> :: BitVec(8)
+{
+    <FLAG_CHAR> = int_to_bv(8, 0x6C) or         // 'l'
+    <FLAG_CHAR> = int_to_bv(8, 0x61) or         // 'a'
+    <FLAG_CHAR> = int_to_bv(8, 0x52) or         // 'R'
+    <FLAG_CHAR> = int_to_bv(8, 0x74) or         // 't'
+    <FLAG_CHAR> = int_to_bv(8, 0x68);           // 'h'
+};
+
+// --- NLST, MLSD with optional path ----------------------------------------
+
+<NLST_FULL> ::= <NLST_VERB> <CRLF> | <NLST_VERB> <SP> <PATH_ARG> <CRLF> ;
+<NLST_VERB> :: String { <NLST_VERB> <- "NLST"; };
+
+<MLSD_FULL> ::= <MLSD_VERB> <CRLF> | <MLSD_VERB> <SP> <PATH_ARG> <CRLF> ;
+<MLSD_VERB> :: String { <MLSD_VERB> <- "MLSD"; };
+
+// --- RNFR + RNTO (two-path rename) ----------------------------------------
+
+<RENAME_FULL> ::= <RNFR_VERB> <SP> <PATH_ARG> <CRLF> <RNTO_VERB> <SP> <PATH_ARG> <CRLF> ;
+<RNFR_VERB> :: String { <RNFR_VERB> <- "RNFR"; };
+<RNTO_VERB> :: String { <RNTO_VERB> <- "RNTO"; };
+
+
+// =========================================================================
+//  PATH ARGUMENT STRUCTURE
+// =========================================================================
+
+<PATH_ARG> ::= <PATH_BODY> | <SLASH> <PATH_BODY> ;
+
+<PATH_BODY> ::= <PATH_SEGMENT> | <PATH_SEGMENT> <SLASH> <PATH_BODY> ;
+
+<PATH_SEGMENT> ::= <NORMAL_SEGMENT> | <DOTDOT> | <SINGLEDOT> ;
+
+<NORMAL_SEGMENT> ::= <PATH_CHAR> | <PATH_CHAR> <NORMAL_SEGMENT> ;
+
+<DOTDOT>    :: String { <DOTDOT> <- ".."; };
+<SINGLEDOT> :: String { <SINGLEDOT> <- "."; };
+
+<PATH_CHAR> :: BitVec(8)
+{
+    int_to_bv(8, 0x21) bvulte <PATH_CHAR> and <PATH_CHAR> bvulte int_to_bv(8, 0x7E);
+    not (<PATH_CHAR> = int_to_bv(8, 0x2F));
+    not (<PATH_CHAR> = int_to_bv(8, 0x5C));
+    not (<PATH_CHAR> = int_to_bv(8, 0x20));
+};
+
+<SLASH> :: String { <SLASH> <- "/"; };
+
+// Shared terminals
+<SP>    :: String { <SP> <- " "; };
+<CRLF>  :: String { <CRLF> <- "\r\n"; };
+<EMPTY> :: String { <EMPTY> <- ""; };

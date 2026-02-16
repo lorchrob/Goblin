@@ -29,6 +29,11 @@ type queue = population list
 
 type trace = packet list
 
+type fuzzing_mode = 
+  | Mode1   (* Append all mutated children to respective state queues (original) *)
+  | Mode2   (* Append to state queues only if trace is marked interesting *)
+  | Mode3   (* Single queue, append only if trace is marked interesting *)
+
 let sygus_success_execution_time = ref 0.0
 let sygus_fail_execution_time = ref 0.0
 
@@ -624,8 +629,7 @@ let callDriver_new packets packet =
     (* print_endline "oracle result success" ; *)
     let driver_start_time = Unix.gettimeofday () in
     let driver_result = wait_for_python_response response_file in
-    (* let driver_score = wait_for_score "sync/score.txt" in *)
-    let driver_score = (false, 0.0) in
+    let driver_score = wait_for_score "sync/score.txt" in
     driver_call_time := ((Unix.gettimeofday ()) -. driver_start_time) ;
     driver_calls := !driver_calls + 1 ;
     (driver_result, oracle_result, driver_score)
@@ -905,24 +909,27 @@ let run_sequence (_flag : bool) (c : child) : (provenance * output) * state * (b
     (* | None -> ((ValidPacket NOTHING, EXPECTED_OUTPUT), IGNORE_) *)
   end *)
 
-let executeMutatedPopulation (mutatedPopulation : child list) (old_states : state list) (flag : bool) : (((provenance list list) * (child list)) * (state list)) * (state list) =
+let executeMutatedPopulation (mutatedPopulation : child list) (old_states : state list) (flag : bool) : ((((provenance list list) * (child list)) * (state list)) * (state list)) * (bool list) =
   print_endline "EXECUTING MUTATED POPULATION.." ;
 
   let _outputList = List.map (run_sequence flag) mutatedPopulation in
-  (* print_endline "List.map2 first try"; *)
-  let cat_mutated_population = List.map2 (fun ((a, b), _) (d, e, (tf, f)) -> if tf then (((a, b), f), (d, e)) else 
-    (((a, b), f) ,((ValidPacket Config.num_packets, EXPECTED_OUTPUT), -1)))
-    mutatedPopulation _outputList in
-  (* print_endline "List.map2 first try SUCCESS"; *)
-  let old_new_states = List.map2 (fun x y -> (x, y)) cat_mutated_population old_states in
-  (* print_endline "List.map2 second one SUCCESS"; *)
-  let removed_sygus_errors = List.filter (fun x -> (fst x |> snd |> fst |> fst) <> (ValidPacket Config.num_packets)) old_new_states in
-  let filtered_mutated_population = List.map (fun x -> fst x |> fst) removed_sygus_errors in
-  let old_states_ = List.map (fun x -> snd x) removed_sygus_errors in
-  let outputList = List.map (fun x -> fst x |> snd |> fst) removed_sygus_errors in
-  let expected_states = List.map (fun x -> fst x |> snd |> snd) removed_sygus_errors in
+  (* Combine each child with its run output.
+     Score f replaces old score. is_interesting (tf) is tracked separately.
+     Execution errors are identified by state = -1 from run_sequence,
+     NOT by tf — tf only indicates coverage-interestingness. *)
+  let combined = List.map2 (fun ((a, b), _old_score) (pkt_out, new_state, (is_int, f)) ->
+    (((a, b), f), (pkt_out, new_state), is_int)
+  ) mutatedPopulation _outputList in
+  let with_old_states = List.map2 (fun entry old_s -> (entry, old_s)) combined old_states in
+  (* Filter out execution errors (state = -1) — these are pipeline/sygus failures *)
+  let successful = List.filter (fun ((_, (_, st), _), _) -> st <> -1) with_old_states in
+  let filtered_population = List.map (fun ((c, _, _), _) -> c) successful in
+  let old_states_ = List.map snd successful in
+  let pkt_outputs = List.map (fun ((_, (po, _), _), _) -> po) successful in
+  let expected_states = List.map (fun ((_, (_, ns), _), _) -> ns) successful in
+  let interesting_flags = List.map (fun ((_, _, tf), _) -> tf) successful in
   print_endline "EXECUTED.. SENDING FOR SCORING.." ;
-    (((scoreFunction outputList filtered_mutated_population), expected_states), old_states_)
+    ((((scoreFunction pkt_outputs filtered_population), expected_states), old_states_), interesting_flags)
 
 (* Filter population based on standard deviation *)
 let getScores (p: child list) : score list = List.map snd p
@@ -1147,6 +1154,45 @@ let save_iteration_time (iteration : int) (iteration_timer : float) : unit =
   append_to_file "temporal-info/iteration-times.txt" time_string ;
   ()
 
+(* Filter parallel lists by interesting flags — keeps only children flagged interesting *)
+let filter_by_interesting (children : child list) (states : state list) (flags : bool list) : (child list * state list) =
+  let combined = List.combine (List.combine children states) flags in
+  let filtered = List.filter snd combined in
+  let children' = List.map (fun ((c, _), _) -> c) filtered in
+  let states' = List.map (fun ((_, s), _) -> s) filtered in
+  (children', states')
+
+let filter_children_by_interesting (children : child list) (flags : bool list) : child list =
+  List.map fst (List.filter snd (List.combine children flags))
+
+(* Queue update strategy dispatched by fuzzing mode *)
+let update_queue_by_mode 
+  (mode : fuzzing_mode) 
+  (currentQueue : queue) 
+  (newPopulation : child list) 
+  (old_states : state list) 
+  (new_states : state list) 
+  (interesting_flags : bool list) : queue =
+  match mode with
+  | Mode1 ->
+    (* Original: append ALL children to their state-assigned queues *)
+    print_endline "MODE 1: appending all children to state queues" ;
+    normalize_scores (bucket_oracle currentQueue newPopulation old_states new_states)
+  | Mode2 ->
+    (* Only append children flagged as interesting to their state-assigned queues *)
+    let (int_children, int_states) = filter_by_interesting newPopulation new_states interesting_flags in
+    let n = List.length int_children in
+    Printf.printf "MODE 2: %d/%d children interesting, appending to state queues\n" n (List.length newPopulation) ;
+    if int_children = [] then normalize_scores currentQueue
+    else normalize_scores (bucket_oracle currentQueue int_children old_states int_states)
+  | Mode3 ->
+    (* Single queue: only append interesting children, ignoring state assignments *)
+    let int_children = filter_children_by_interesting newPopulation interesting_flags in
+    let n = List.length int_children in
+    Printf.printf "MODE 3: %d/%d children interesting, appending to single queue\n" n (List.length newPopulation) ;
+    let current_flat = List.flatten currentQueue in
+    normalize_scores [current_flat @ int_children]
+
 
 let rec fuzzingAlgorithm 
 (maxCurrentPopulation : int) 
@@ -1159,14 +1205,15 @@ let rec fuzzingAlgorithm
 (newChildThreshold : int) 
 (mutationOperations : mutationOperations)
 (seed : queue)
-(flag : bool) =
+(flag : bool)
+(mode : fuzzing_mode) =
   let total_population_size = population_size_across_queues 0 currentQueue in
   if currentIteration >= terminationIteration then iTraces
   else
     if currentIteration mod cleanupIteration = 0 then
-      fuzzingAlgorithm maxCurrentPopulation seed iTraces tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations seed flag
+      fuzzingAlgorithm maxCurrentPopulation seed iTraces tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations seed flag mode
     else if total_population_size >= maxCurrentPopulation then
-      fuzzingAlgorithm maxCurrentPopulation (cleanup currentQueue) iTraces tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations seed flag 
+      fuzzingAlgorithm maxCurrentPopulation (cleanup currentQueue) iTraces tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations seed flag mode
     else
       let start_time = Unix.gettimeofday () in
       let currentQueue = List.map (fun y -> List.filter (fun x -> List.length (fst x |> fst) <= 10) y) currentQueue in
@@ -1175,19 +1222,20 @@ let rec fuzzingAlgorithm
       let old_states_ = snd sampled_pop in
       let selectedMutations = mutationList random_element mutationOperations (List.length newPopulation) in
       let mutatedPopulation = newMutatedSet newPopulation selectedMutations (List.length newPopulation) in
-      let score_and_oracle_old_states = executeMutatedPopulation mutatedPopulation old_states_ flag in
+      let (score_and_oracle_old_states, interesting_flags) = executeMutatedPopulation mutatedPopulation old_states_ flag in
       let old_states = snd score_and_oracle_old_states in
       let score_and_oracle = fst score_and_oracle_old_states in
       let (iT, newPopulation_) = fst score_and_oracle in
+      let new_states = snd score_and_oracle in
       dump_all_traces iT ;
-      let newQueue = normalize_scores (bucket_oracle currentQueue newPopulation_ old_states (snd score_and_oracle)) in
+      let newQueue = update_queue_by_mode mode currentQueue newPopulation_ old_states new_states interesting_flags in
       let old_queue_size = population_size_across_queues 0 currentQueue in
       let new_queue_size = population_size_across_queues 0 newQueue in
       save_updated_queue_sizes old_queue_size new_queue_size ;
       (* save_queue_info newQueue ; *)
       let iteration_timer = Unix.gettimeofday () -. start_time in
       save_iteration_time (currentIteration + 1) iteration_timer ;
-      fuzzingAlgorithm maxCurrentPopulation newQueue (List.append iTraces iT) tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations seed flag
+      fuzzingAlgorithm maxCurrentPopulation newQueue (List.append iTraces iT) tlenBound (currentIteration + 1) terminationIteration cleanupIteration newChildThreshold mutationOperations seed flag mode
 
 let rec clear_state_files (i : int) : unit =
   if i = Config.num_queues then ()
@@ -1208,9 +1256,10 @@ let initialize_files () =
   (* initialize_clear_file "sync/placeholders-replace.pkt"; *)
   initialize_clear_file "sync/message.txt";
   initialize_clear_file "sync/response.txt";
+  initialize_clear_file "sync/score.txt";
   ()
 
-let runFuzzer grammar_list = 
+(* let runFuzzer grammar_list (mode : fuzzing_mode) = 
   Random.self_init ();
   initialize_files ();
   let commit_grammar = List.nth grammar_list 0 in
@@ -1228,9 +1277,60 @@ let runFuzzer grammar_list =
   let accepted_queue = [([ValidPacket 0; ValidPacket 1], commit_grammar), 0.0; ([ValidPacket 0; ValidPacket 1], confirm_grammar), 0.0; ([ValidPacket 0; ValidPacket 1], commit_confirm_grammar), 0.0;([ValidPacket 0; ValidPacket 1], eapol_1_grammar), 0.0; ([ValidPacket 0; ValidPacket 1], eapol_2_grammar), 0.0; ([ValidPacket 0; ValidPacket 1], eapol_3_grammar), 0.0;([ValidPacket 0; ValidPacket 1], eapol_4_grammar), 0.0] in
   let _eapol_1_queue = [([ValidPacket 0; ValidPacket 1;ValidPacket 2], commit_grammar), 0.0; ([ValidPacket 0; ValidPacket 1;ValidPacket 2], confirm_grammar), 0.0; ([ValidPacket 0; ValidPacket 1;ValidPacket 2], commit_confirm_grammar), 0.0;([ValidPacket 0; ValidPacket 1;ValidPacket 2], eapol_1_grammar), 0.0; ([ValidPacket 0; ValidPacket 1;ValidPacket 2], eapol_2_grammar), 0.0; ([ValidPacket 0; ValidPacket 1;ValidPacket 2], eapol_3_grammar), 0.0;([ValidPacket 0; ValidPacket 1;ValidPacket 2], eapol_4_grammar), 0.0] in
   let _eapol_2_queue = [([ValidPacket 0; ValidPacket 1;ValidPacket 2;ValidPacket 3;], commit_grammar), 0.0; ([ValidPacket 0; ValidPacket 1;ValidPacket 2;ValidPacket 3;], confirm_grammar), 0.0; ([ValidPacket 0; ValidPacket 1;ValidPacket 2;ValidPacket 3;], commit_confirm_grammar), 0.0;([ValidPacket 0; ValidPacket 1;ValidPacket 2;ValidPacket 3;], eapol_1_grammar), 0.0; ([ValidPacket 0; ValidPacket 1;ValidPacket 2;ValidPacket 3;], eapol_2_grammar), 0.0; ([ValidPacket 0; ValidPacket 1;ValidPacket 2;ValidPacket 3;], eapol_3_grammar), 0.0;([ValidPacket 0; ValidPacket 1;ValidPacket 2;ValidPacket 3;], eapol_4_grammar), 0.0] in
-  (* let _ = fuzzingAlgorithm 10000 [nothing_queue;] [] 100 0 1150 100 100 [CorrectPacket;] [nothing_queue;] in *)
-  (* () *)
-  let _ = fuzzingAlgorithm 10000 [nothing_queue; confirmed_queue; accepted_queue;_eapol_1_queue;_eapol_2_queue] [] 100 0 1150 100 100 [Add;Delete;Modify;CrossOver;CorrectPacket;] [nothing_queue; confirmed_queue; accepted_queue;_eapol_1_queue;_eapol_2_queue] true in
-  ()
-  (* let _ = fuzzingAlgorithm 10000 [nothing_queue; confirmed_queue; accepted_queue] [] 100 0 1150 100 100 [CorrectPacket;] [nothing_queue; confirmed_queue; accepted_queue] in
+  let multi_queue = [nothing_queue; confirmed_queue; accepted_queue;_eapol_1_queue;_eapol_2_queue] in
+  let (initial_queue, initial_seed) = match mode with
+    | Mode1 | Mode2 ->
+      (* Multiple state queues *)
+      (multi_queue, multi_queue)
+    | Mode3 ->
+      (* Single flattened queue — all seeds merged into one population *)
+      let flat = [List.flatten multi_queue] in
+      (flat, flat)
+  in
+  Printf.printf "=== Fuzzer starting in %s ===\n"
+    (match mode with Mode1 -> "Mode1 (all->state queues)" | Mode2 -> "Mode2 (interesting->state queues)" | Mode3 -> "Mode3 (interesting->single queue)") ;
+  let _ = fuzzingAlgorithm 10000 initial_queue [] 100 0 1150 100 100 [Add;Delete;Modify;CrossOver;CorrectPacket;] initial_seed true mode in
   () *)
+
+
+let runFuzzer (grammars : grammar list) (mode : fuzzing_mode) = 
+  Random.self_init ();
+  initialize_files ();
+
+  (* Helper: build one population from a provenance prefix *)
+  let make_pop (prov : provenance list) : population =
+    List.map (fun g -> ((prov, g), 0.0)) grammars
+  in
+
+  let connected_queue     = make_pop [] in
+  let user_sent_queue     = make_pop [ValidPacket 0] in
+  let authenticated_queue = make_pop [ValidPacket 0; ValidPacket 1] in
+  let pasv_ready_queue    = make_pop [ValidPacket 0; ValidPacket 1; ValidPacket 5] in
+  let type_pasv_queue     = make_pop [ValidPacket 0; ValidPacket 1; ValidPacket 4; ValidPacket 5] in
+
+  let multi_queue = [
+    connected_queue;
+    user_sent_queue;
+    authenticated_queue;
+    pasv_ready_queue;
+    type_pasv_queue;
+  ] in
+
+  let (initial_queue, initial_seed) = match mode with
+    | Mode1 | Mode2 ->
+      (multi_queue, multi_queue)
+    | Mode3 ->
+      let flat = [List.flatten multi_queue] in
+      (flat, flat)
+  in
+  Printf.printf "=== Fuzzer starting in %s ===\n"
+    (match mode with 
+     | Mode1 -> "Mode1 (all->state queues)" 
+     | Mode2 -> "Mode2 (interesting->state queues)" 
+     | Mode3 -> "Mode3 (interesting->single queue)") ;
+  Printf.printf "  %d queues, %d grammars per queue\n"
+    (List.length initial_queue)
+    (List.length (List.hd initial_queue)) ;
+  let _ = fuzzingAlgorithm 10000 initial_queue [] 100 0 1150 100 100 
+    [Add;Delete;Modify;CrossOver;CorrectPacket;] initial_seed true mode in
+  ()

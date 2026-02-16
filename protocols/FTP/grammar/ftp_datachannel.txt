@@ -1,0 +1,83 @@
+// ============================================================================
+// FTP Grammar: Data Channel Setup (PORT / EPRT / PASV / EPSV)
+// ============================================================================
+
+<START> ::= <DATACHANNEL_CMD> ;
+
+<DATACHANNEL_CMD> ::= <PORT_CMD> | <EPRT_CMD> | <PASV_CMD> | <EPSV_CMD> ;
+
+// PORT h1,h2,h3,h4,p1,p2   (RFC 959)
+<PORT_CMD> ::= <PORT_VERB> <SP> <PORT_ARG> <CRLF> ;
+
+<PORT_VERB> :: String { <PORT_VERB> <- "PORT"; };
+
+<PORT_ARG> ::= <HOST_OCTET> <COMMA> <HOST_OCTET> <COMMA> <HOST_OCTET> <COMMA> <HOST_OCTET> <COMMA> <PORT_OCTET> <COMMA> <PORT_OCTET> ;
+
+<HOST_OCTET> :: BitVec(8)
+{
+    int_to_bv(8, 0) bvulte <HOST_OCTET> and <HOST_OCTET> bvulte int_to_bv(8, 255);
+};
+
+<PORT_OCTET> :: BitVec(8)
+{
+    int_to_bv(8, 0) bvulte <PORT_OCTET> and <PORT_OCTET> bvulte int_to_bv(8, 255);
+};
+
+<COMMA> :: String { <COMMA> <- ","; };
+
+// EPRT |<net-prt>|<net-addr>|<tcp-port>|   (RFC 2428)
+<EPRT_CMD> ::= <EPRT_VERB> <SP> <EPRT_ARG> <CRLF> ;
+
+<EPRT_VERB> :: String { <EPRT_VERB> <- "EPRT"; };
+
+<EPRT_ARG> ::= <PIPE> <NET_PRT> <PIPE> <NET_ADDR> <PIPE> <NET_PORT> <PIPE> ;
+
+<PIPE> :: String { <PIPE> <- "|"; };
+
+<NET_PRT> :: BitVec(8)
+{
+    <NET_PRT> = int_to_bv(8, 1) or
+    <NET_PRT> = int_to_bv(8, 2);
+};
+
+<NET_ADDR> ::= <ADDR_CHAR> | <ADDR_CHAR> <NET_ADDR> ;
+
+<ADDR_CHAR> :: BitVec(8)
+{
+    <ADDR_CHAR> = int_to_bv(8, 0x30) or <ADDR_CHAR> = int_to_bv(8, 0x31) or
+    <ADDR_CHAR> = int_to_bv(8, 0x32) or <ADDR_CHAR> = int_to_bv(8, 0x33) or
+    <ADDR_CHAR> = int_to_bv(8, 0x34) or <ADDR_CHAR> = int_to_bv(8, 0x35) or
+    <ADDR_CHAR> = int_to_bv(8, 0x36) or <ADDR_CHAR> = int_to_bv(8, 0x37) or
+    <ADDR_CHAR> = int_to_bv(8, 0x38) or <ADDR_CHAR> = int_to_bv(8, 0x39) or
+    <ADDR_CHAR> = int_to_bv(8, 0x2E) or
+    <ADDR_CHAR> = int_to_bv(8, 0x3A) or
+    <ADDR_CHAR> = int_to_bv(8, 0x61) or <ADDR_CHAR> = int_to_bv(8, 0x62) or
+    <ADDR_CHAR> = int_to_bv(8, 0x63) or <ADDR_CHAR> = int_to_bv(8, 0x64) or
+    <ADDR_CHAR> = int_to_bv(8, 0x65) or <ADDR_CHAR> = int_to_bv(8, 0x66);
+};
+
+<NET_PORT> ::= <DIGIT_CHAR> | <DIGIT_CHAR> <NET_PORT> ;
+
+// PASV   (RFC 959)
+<PASV_CMD> ::= <PASV_VERB> <CRLF> ;
+
+<PASV_VERB> :: String { <PASV_VERB> <- "PASV"; };
+
+// EPSV [<net-prt> | ALL]   (RFC 2428)
+<EPSV_CMD> ::= <EPSV_VERB> <EPSV_OPT> <CRLF> ;
+
+<EPSV_VERB> :: String { <EPSV_VERB> <- "EPSV"; };
+
+<EPSV_OPT> ::= <EMPTY> | <SP> <NET_PRT> | <SP> <EPSV_ALL> ;
+
+<EPSV_ALL> :: String { <EPSV_ALL> <- "ALL"; };
+
+// Shared terminals
+<SP>    :: String { <SP> <- " "; };
+<CRLF>  :: String { <CRLF> <- "\r\n"; };
+<EMPTY> :: String { <EMPTY> <- ""; };
+
+<DIGIT_CHAR> :: BitVec(8)
+{
+    int_to_bv(8, 0x30) bvulte <DIGIT_CHAR> and <DIGIT_CHAR> bvulte int_to_bv(8, 0x39);
+};

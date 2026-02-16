@@ -1,0 +1,197 @@
+// ============================================================================
+// FTP Grammar: Authentication & Protocol Negotiation
+// ============================================================================
+
+<START> ::= <NEGOTIATION_CMD> ;
+
+<NEGOTIATION_CMD> ::= <AUTH_FULL>
+                    | <PBSZ_FULL>
+                    | <PROT_FULL>
+                    | <TLS_SEQUENCE>
+                    | <LOGIN_SEQUENCE>
+                    | <USER_FULL>
+                    | <PASS_FULL>
+                    | <ACCT_FULL>
+                    | <TYPE_FULL>
+                    | <MODE_FULL>
+                    | <STRU_FULL>
+                    | <REST_FULL>
+                    | <OPTS_FULL>
+                    | <FEAT_FULL>
+                    | <SYST_FULL>
+                    | <NOOP_FULL>
+                    | <QUIT_FULL>
+                    | <HELP_FULL> ;
+
+
+// TLS negotiation sequence: AUTH → PBSZ → PROT
+<TLS_SEQUENCE> ::= <AUTH_FULL> <PBSZ_FULL> <PROT_FULL> ;
+
+// AUTH TLS | AUTH SSL
+<AUTH_FULL> ::= <AUTH_VERB> <SP> <AUTH_MECH> <CRLF> ;
+
+<AUTH_VERB> :: String { <AUTH_VERB> <- "AUTH"; };
+
+<AUTH_MECH> :: BitVec(24)
+{
+    <AUTH_MECH> = int_to_bv(24, 0x544C53) or     // "TLS"
+    <AUTH_MECH> = int_to_bv(24, 0x53534C);       // "SSL"
+};
+
+// PBSZ 0
+<PBSZ_FULL> ::= <PBSZ_VERB> <SP> <PBSZ_ARG> <CRLF>
+{
+    <PBSZ_ARG> <- int_to_bv(8, 0x30);            // '0'
+};
+
+<PBSZ_VERB> :: String { <PBSZ_VERB> <- "PBSZ"; };
+<PBSZ_ARG> :: BitVec(8);
+
+// PROT C|S|E|P
+<PROT_FULL> ::= <PROT_VERB> <SP> <PROT_LEVEL> <CRLF> ;
+
+<PROT_VERB> :: String { <PROT_VERB> <- "PROT"; };
+
+<PROT_LEVEL> :: BitVec(8)
+{
+    <PROT_LEVEL> = int_to_bv(8, 0x43) or         // 'C'
+    <PROT_LEVEL> = int_to_bv(8, 0x53) or         // 'S'
+    <PROT_LEVEL> = int_to_bv(8, 0x45) or         // 'E'
+    <PROT_LEVEL> = int_to_bv(8, 0x50);           // 'P'
+};
+
+
+// Login sequence: USER → PASS
+<LOGIN_SEQUENCE> ::= <USER_FULL> <PASS_FULL> ;
+
+<USER_FULL> ::= <USER_VERB> <SP> <USERNAME> <CRLF> ;
+<USER_VERB> :: String { <USER_VERB> <- "USER"; };
+
+<PASS_FULL> ::= <PASS_VERB> <SP> <PASSWORD> <CRLF> ;
+<PASS_VERB> :: String { <PASS_VERB> <- "PASS"; };
+
+<ACCT_FULL> ::= <ACCT_VERB> <SP> <ACCOUNT> <CRLF> ;
+<ACCT_VERB> :: String { <ACCT_VERB> <- "ACCT"; };
+
+<USERNAME> ::= <USER_CHAR> | <USER_CHAR> <USERNAME> ;
+
+<USER_CHAR> :: BitVec(8)
+{
+    <USER_CHAR> = int_to_bv(8, 0x2D) or
+    <USER_CHAR> = int_to_bv(8, 0x2E) or
+    <USER_CHAR> = int_to_bv(8, 0x40) or
+    <USER_CHAR> = int_to_bv(8, 0x5F) or
+    (int_to_bv(8, 0x30) bvulte <USER_CHAR> and <USER_CHAR> bvulte int_to_bv(8, 0x39)) or
+    (int_to_bv(8, 0x41) bvulte <USER_CHAR> and <USER_CHAR> bvulte int_to_bv(8, 0x5A)) or
+    (int_to_bv(8, 0x61) bvulte <USER_CHAR> and <USER_CHAR> bvulte int_to_bv(8, 0x7A));
+};
+
+<PASSWORD> ::= <PASS_CHAR> | <PASS_CHAR> <PASSWORD> ;
+
+<PASS_CHAR> :: BitVec(8)
+{
+    int_to_bv(8, 0x21) bvulte <PASS_CHAR> and <PASS_CHAR> bvulte int_to_bv(8, 0x7E);
+};
+
+<ACCOUNT> ::= <ACCT_CHAR> | <ACCT_CHAR> <ACCOUNT> ;
+
+<ACCT_CHAR> :: BitVec(8)
+{
+    int_to_bv(8, 0x21) bvulte <ACCT_CHAR> and <ACCT_CHAR> bvulte int_to_bv(8, 0x7E);
+};
+
+
+// TYPE A|E|I|L [N|T|C]
+<TYPE_FULL> ::= <TYPE_VERB> <SP> <TYPE_ARG> <CRLF> ;
+<TYPE_VERB> :: String { <TYPE_VERB> <- "TYPE"; };
+
+<TYPE_ARG> ::= <TYPE_CODE> | <TYPE_CODE> <SP> <TYPE_FORMAT> ;
+
+<TYPE_CODE> :: BitVec(8)
+{
+    <TYPE_CODE> = int_to_bv(8, 0x41) or
+    <TYPE_CODE> = int_to_bv(8, 0x45) or
+    <TYPE_CODE> = int_to_bv(8, 0x49) or
+    <TYPE_CODE> = int_to_bv(8, 0x4C);
+};
+
+<TYPE_FORMAT> :: BitVec(8)
+{
+    <TYPE_FORMAT> = int_to_bv(8, 0x4E) or
+    <TYPE_FORMAT> = int_to_bv(8, 0x54) or
+    <TYPE_FORMAT> = int_to_bv(8, 0x43);
+};
+
+// MODE S|B|C
+<MODE_FULL> ::= <MODE_VERB> <SP> <MODE_CODE> <CRLF> ;
+<MODE_VERB> :: String { <MODE_VERB> <- "MODE"; };
+
+<MODE_CODE> :: BitVec(8)
+{
+    <MODE_CODE> = int_to_bv(8, 0x53) or
+    <MODE_CODE> = int_to_bv(8, 0x42) or
+    <MODE_CODE> = int_to_bv(8, 0x43);
+};
+
+// STRU F|R|P
+<STRU_FULL> ::= <STRU_VERB> <SP> <STRU_CODE> <CRLF> ;
+<STRU_VERB> :: String { <STRU_VERB> <- "STRU"; };
+
+<STRU_CODE> :: BitVec(8)
+{
+    <STRU_CODE> = int_to_bv(8, 0x46) or
+    <STRU_CODE> = int_to_bv(8, 0x52) or
+    <STRU_CODE> = int_to_bv(8, 0x50);
+};
+
+// REST <offset>
+<REST_FULL> ::= <REST_VERB> <SP> <OFFSET> <CRLF> ;
+<REST_VERB> :: String { <REST_VERB> <- "REST"; };
+
+<OFFSET> ::= <DIGIT_CHAR> | <DIGIT_CHAR> <OFFSET> ;
+
+// OPTS <feature> [<value>]
+<OPTS_FULL> ::= <OPTS_VERB> <SP> <OPTS_ARG> <CRLF> ;
+<OPTS_VERB> :: String { <OPTS_VERB> <- "OPTS"; };
+
+<OPTS_ARG> ::= <OPTS_FEATURE> | <OPTS_FEATURE> <SP> <OPTS_VALUE> ;
+
+<OPTS_FEATURE> ::= <ALPHA_CHAR> | <ALPHA_CHAR> <OPTS_FEATURE> ;
+<OPTS_VALUE>   ::= <PRINTABLE_CHAR> | <PRINTABLE_CHAR> <OPTS_VALUE> ;
+
+// No-argument commands
+<FEAT_FULL> ::= <FEAT_VERB> <CRLF> ;
+<FEAT_VERB> :: String { <FEAT_VERB> <- "FEAT"; };
+
+<SYST_FULL> ::= <SYST_VERB> <CRLF> ;
+<SYST_VERB> :: String { <SYST_VERB> <- "SYST"; };
+
+<NOOP_FULL> ::= <NOOP_VERB> <CRLF> ;
+<NOOP_VERB> :: String { <NOOP_VERB> <- "NOOP"; };
+
+<QUIT_FULL> ::= <QUIT_VERB> <CRLF> ;
+<QUIT_VERB> :: String { <QUIT_VERB> <- "QUIT"; };
+
+<HELP_FULL> ::= <HELP_VERB> <CRLF> | <HELP_VERB> <SP> <ALPHA_CHARS> <CRLF> ;
+<HELP_VERB> :: String { <HELP_VERB> <- "HELP"; };
+<ALPHA_CHARS> ::= <ALPHA_CHAR> | <ALPHA_CHAR> <ALPHA_CHARS> ;
+
+// Shared character terminals
+<SP>    :: String { <SP> <- " "; };
+<CRLF>  :: String { <CRLF> <- "\r\n"; };
+
+<DIGIT_CHAR> :: BitVec(8)
+{
+    int_to_bv(8, 0x30) bvulte <DIGIT_CHAR> and <DIGIT_CHAR> bvulte int_to_bv(8, 0x39);
+};
+
+<ALPHA_CHAR> :: BitVec(8)
+{
+    (int_to_bv(8, 0x41) bvulte <ALPHA_CHAR> and <ALPHA_CHAR> bvulte int_to_bv(8, 0x5A)) or
+    (int_to_bv(8, 0x61) bvulte <ALPHA_CHAR> and <ALPHA_CHAR> bvulte int_to_bv(8, 0x7A));
+};
+
+<PRINTABLE_CHAR> :: BitVec(8)
+{
+    int_to_bv(8, 0x21) bvulte <PRINTABLE_CHAR> and <PRINTABLE_CHAR> bvulte int_to_bv(8, 0x7E);
+};
