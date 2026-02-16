@@ -611,6 +611,30 @@ let rec prepend_nt_to_dot_exprs: string -> expr -> expr
   | InhAttr _
   | SynthAttr _ -> assert false
 
+let rec add_index_to_expr: int -> expr -> expr 
+= fun i expr -> 
+  let r = add_index_to_expr i in
+  match expr with
+  | NTExpr ([], (nt, None) :: nts, pos) -> NTExpr ([], (nt, Some i) :: nts, pos)
+  | BVCast (len, expr, pos) -> BVCast (len, r expr, pos)
+  | BinOp (expr1, op, expr2, pos) -> BinOp (r expr1, op, r expr2, pos) 
+  | UnOp (op, expr, pos) -> UnOp (op, r expr, pos) 
+  | CompOp (expr1, op, expr2, pos) -> CompOp (r expr1, op, r expr2, pos) 
+  | Singleton (expr, pos) -> Singleton (r expr, pos)
+  | BuiltInFunc (func, exprs, pos) -> BuiltInFunc (func, List.map r exprs, pos) 
+  | Match _ -> Utils.crash "Unexpected case 1 in prepend_nt_to_dot_exprs"
+  | NTExpr _ -> Utils.crash "Unexpected case 2 in prepend_nt_to_dot_exprs" 
+  | BVConst _ 
+  | BLConst _ 
+  | BConst _ 
+  | IntConst _ 
+  | PhConst _ 
+  | StrConst _
+  | EmptySet _ 
+  | InhAttr _
+  | SynthAttr _ -> expr 
+
+
 let scs_of_element = function 
 | ProdRule (_, _, rhss, _) -> 
   List.concat_map (function 

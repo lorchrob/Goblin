@@ -19,18 +19,24 @@ let eliminate_ta_constraints full_ast =
       (* Maintain attribute definitions because we will detect and reject later *)
       if nt = nt2 then A.TypeAnnotation (nt2, ty, attrs, p) else element
     | A.ProdRule (nt3, ias, rhss, pos2) -> 
-      let rhss = List.map (function 
+      let rhss = List.mapi (fun i rhs -> match rhs with
         | A.StubbedRhs _ as rhs -> rhs 
         | Rhs (ges, scs2, prob, pos3) -> 
           let contains_nt = List.exists (fun ge -> match ge with 
           | A.StubbedNonterminal _ -> false 
           | A.Nonterminal (nt2, _, _, _) -> nt = nt2
           ) ges in 
-          if contains_nt then 
+          if contains_nt then (
             (* Push up the scs not containing attribute definitions because we will detect 
-               and reject type annotation attributes later *)
+               and reject type annotation attributes later. 
+               Also, save some work later by inserting the correct disambiguating index for these constraints. *)
+            let scs_no_attrs = List.map (fun sc -> match sc with 
+            | A.DerivedField _ 
+            | AttrDef _ -> sc 
+            | A.SmtConstraint (expr, pos) -> SmtConstraint (A.add_index_to_expr i expr, pos)
+            ) scs_no_attrs in
             Rhs (ges, scs2 @ scs_no_attrs, prob, pos3)
-          else Rhs (ges, scs2, prob, pos3)
+          ) else Rhs (ges, scs2, prob, pos3)
       ) rhss in 
       ProdRule (nt3, ias, rhss, pos2) 
     ) full_ast in 

@@ -77,6 +77,15 @@ let index () =
   | Ok _ -> ()  
   | Error msg -> fail msg
 
+let too_many_constraints () =
+  let input = "../../../test/test_cases/too_many_constraints.gbl" in
+  let solver_ast, _, ast = main_pipeline input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
+  match output with
+  | Ok _ -> ()  
+  | Error msg -> fail msg
+
+
 let test_check_solver_ast () =
   let filename = "../../../test/test_cases/test_check_solver_ast" in
   let input = Utils.read_file filename in 
@@ -1733,6 +1742,7 @@ let () =
     "inh_attr_fail_1", [test_case "inh_attr_fail_1" `Quick inh_attr_fail_1]; 
     "inh_attr_fail_2", [test_case "inh_attr_fail_2" `Quick inh_attr_fail_2]; 
     "index", [test_case "index" `Quick index]; 
+    "too_many_constraints", [test_case "too_many_constraints" `Quick too_many_constraints]; 
     (*"msg2", [test_case "msg2" `Quick msg2]; *)
     (*"dd_test_another_ambiguous_reference_2", [test_case "dd_test_another_ambiguous_reference_2" `Quick dd_test_another_ambiguous_reference_2]; 
     "md_test_another_ambiguous_reference_2", [test_case "md_test_another_ambiguous_reference_2" `Quick md_test_another_ambiguous_reference_2];  *)
