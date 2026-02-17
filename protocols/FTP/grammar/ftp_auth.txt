@@ -34,14 +34,14 @@
 
 <AUTH_MECH> :: BitVec(24)
 {
-    <AUTH_MECH> = int_to_bv(24, 0x544C53) or     // "TLS"
-    <AUTH_MECH> = int_to_bv(24, 0x53534C);       // "SSL"
+    <AUTH_MECH> = 0x544C53 or     // "TLS"
+    <AUTH_MECH> = 0x53534C;       // "SSL"
 };
 
 // PBSZ 0
 <PBSZ_FULL> ::= <PBSZ_VERB> <SP> <PBSZ_ARG> <CRLF>
 {
-    <PBSZ_ARG> <- int_to_bv(8, 0x30);            // '0'
+    <PBSZ_ARG> <- 0x30;            // '0'
 };
 
 <PBSZ_VERB> :: String { <PBSZ_VERB> <- "PBSZ"; };
@@ -54,10 +54,10 @@
 
 <PROT_LEVEL> :: BitVec(8)
 {
-    <PROT_LEVEL> = int_to_bv(8, 0x43) or         // 'C'
-    <PROT_LEVEL> = int_to_bv(8, 0x53) or         // 'S'
-    <PROT_LEVEL> = int_to_bv(8, 0x45) or         // 'E'
-    <PROT_LEVEL> = int_to_bv(8, 0x50);           // 'P'
+    <PROT_LEVEL> = 0x43 or         // 'C'
+    <PROT_LEVEL> = 0x53 or         // 'S'
+    <PROT_LEVEL> = 0x45 or         // 'E'
+    <PROT_LEVEL> = 0x50;           // 'P'
 };
 
 
@@ -77,27 +77,27 @@
 
 <USER_CHAR> :: BitVec(8)
 {
-    <USER_CHAR> = int_to_bv(8, 0x2D) or
-    <USER_CHAR> = int_to_bv(8, 0x2E) or
-    <USER_CHAR> = int_to_bv(8, 0x40) or
-    <USER_CHAR> = int_to_bv(8, 0x5F) or
-    (int_to_bv(8, 0x30) bvulte <USER_CHAR> and <USER_CHAR> bvulte int_to_bv(8, 0x39)) or
-    (int_to_bv(8, 0x41) bvulte <USER_CHAR> and <USER_CHAR> bvulte int_to_bv(8, 0x5A)) or
-    (int_to_bv(8, 0x61) bvulte <USER_CHAR> and <USER_CHAR> bvulte int_to_bv(8, 0x7A));
+    <USER_CHAR> = 0x2D or
+    <USER_CHAR> = 0x2E or
+    <USER_CHAR> = 0x40 or
+    <USER_CHAR> = 0x5F or
+    (0x30 bvulte <USER_CHAR> and <USER_CHAR> bvulte 0x39) or
+    (0x41 bvulte <USER_CHAR> and <USER_CHAR> bvulte 0x5A) or
+    (0x61 bvulte <USER_CHAR> and <USER_CHAR> bvulte 0x7A);
 };
 
 <PASSWORD> ::= <PASS_CHAR> | <PASS_CHAR> <PASSWORD> ;
 
 <PASS_CHAR> :: BitVec(8)
 {
-    int_to_bv(8, 0x21) bvulte <PASS_CHAR> and <PASS_CHAR> bvulte int_to_bv(8, 0x7E);
+    0x21 bvulte <PASS_CHAR> and <PASS_CHAR> bvulte 0x7E;
 };
 
 <ACCOUNT> ::= <ACCT_CHAR> | <ACCT_CHAR> <ACCOUNT> ;
 
 <ACCT_CHAR> :: BitVec(8)
 {
-    int_to_bv(8, 0x21) bvulte <ACCT_CHAR> and <ACCT_CHAR> bvulte int_to_bv(8, 0x7E);
+    0x21 bvulte <ACCT_CHAR> and <ACCT_CHAR> bvulte 0x7E;
 };
 
 
@@ -109,17 +109,17 @@
 
 <TYPE_CODE> :: BitVec(8)
 {
-    <TYPE_CODE> = int_to_bv(8, 0x41) or
-    <TYPE_CODE> = int_to_bv(8, 0x45) or
-    <TYPE_CODE> = int_to_bv(8, 0x49) or
-    <TYPE_CODE> = int_to_bv(8, 0x4C);
+    <TYPE_CODE> = 0x41 or
+    <TYPE_CODE> = 0x45 or
+    <TYPE_CODE> = 0x49 or
+    <TYPE_CODE> = 0x4C;
 };
 
 <TYPE_FORMAT> :: BitVec(8)
 {
-    <TYPE_FORMAT> = int_to_bv(8, 0x4E) or
-    <TYPE_FORMAT> = int_to_bv(8, 0x54) or
-    <TYPE_FORMAT> = int_to_bv(8, 0x43);
+    <TYPE_FORMAT> = 0x4E or
+    <TYPE_FORMAT> = 0x54 or
+    <TYPE_FORMAT> = 0x43;
 };
 
 // MODE S|B|C
@@ -128,9 +128,9 @@
 
 <MODE_CODE> :: BitVec(8)
 {
-    <MODE_CODE> = int_to_bv(8, 0x53) or
-    <MODE_CODE> = int_to_bv(8, 0x42) or
-    <MODE_CODE> = int_to_bv(8, 0x43);
+    <MODE_CODE> = 0x53 or
+    <MODE_CODE> = 0x42 or
+    <MODE_CODE> = 0x43;
 };
 
 // STRU F|R|P
@@ -139,9 +139,9 @@
 
 <STRU_CODE> :: BitVec(8)
 {
-    <STRU_CODE> = int_to_bv(8, 0x46) or
-    <STRU_CODE> = int_to_bv(8, 0x52) or
-    <STRU_CODE> = int_to_bv(8, 0x50);
+    <STRU_CODE> = 0x46 or
+    <STRU_CODE> = 0x52 or
+    <STRU_CODE> = 0x50;
 };
 
 // REST <offset>
@@ -178,20 +178,20 @@
 
 // Shared character terminals
 <SP>    :: String { <SP> <- " "; };
-<CRLF>  :: String { <CRLF> <- "\r\n"; };
+<CRLF>  :: BitVec(16) { <CRLF> = 0x0A0D; };
 
 <DIGIT_CHAR> :: BitVec(8)
 {
-    int_to_bv(8, 0x30) bvulte <DIGIT_CHAR> and <DIGIT_CHAR> bvulte int_to_bv(8, 0x39);
+    0x30 bvulte <DIGIT_CHAR> and <DIGIT_CHAR> bvulte 0x39;
 };
 
 <ALPHA_CHAR> :: BitVec(8)
 {
-    (int_to_bv(8, 0x41) bvulte <ALPHA_CHAR> and <ALPHA_CHAR> bvulte int_to_bv(8, 0x5A)) or
-    (int_to_bv(8, 0x61) bvulte <ALPHA_CHAR> and <ALPHA_CHAR> bvulte int_to_bv(8, 0x7A));
+    (0x41 bvulte <ALPHA_CHAR> and <ALPHA_CHAR> bvulte 0x5A) or
+    (0x61 bvulte <ALPHA_CHAR> and <ALPHA_CHAR> bvulte 0x7A);
 };
 
 <PRINTABLE_CHAR> :: BitVec(8)
 {
-    int_to_bv(8, 0x21) bvulte <PRINTABLE_CHAR> and <PRINTABLE_CHAR> bvulte int_to_bv(8, 0x7E);
+    0x21 bvulte <PRINTABLE_CHAR> and <PRINTABLE_CHAR> bvulte 0x7E;
 };

@@ -47,15 +47,15 @@ from ftp_monitor import FTPMonitor, SessionResult
 class FTPTargetConfig:
     host: str = "127.0.0.1"
     port: int = 21
-    timeout: float = 5.0
+    timeout: float = 2.0
     use_tls: bool = False
     username: str = "anonymous"
     password: str = "fuzz@fuzz.com"
     max_trace_len: int = 20
     reconnect_delay: float = 0.5
     poll_interval: float = 0.05
-    crash_detect_retries: int = 3
-    crash_detect_delay: float = 1.0
+    crash_detect_retries: int = 1
+    crash_detect_delay: float = 0.3
 
 
 @dataclass
@@ -133,6 +133,10 @@ class FTPProcessManager:
                 f"fftp-{self.run_count:06d}-%p-%m.profraw",
             )
             env["LLVM_PROFILE_FILE"] = profile_pattern
+            if self.run_count == 1:
+                self.logger.info("LLVM_PROFILE_FILE=%s", profile_pattern)
+        elif self.run_count == 1:
+            self.logger.warning("No profraw_dir configured — coverage data will NOT be collected")
 
         try:
             self.proc = subprocess.Popen(
@@ -277,19 +281,54 @@ class FTPSession:
         self.state = FTPState.DISCONNECTED
 
     def _recv(self, bufsize: int = 4096) -> Optional[str]:
+        """Read a complete FTP response, handling multi-line responses.
+
+        FTP multi-line format (RFC 959):
+          First line:  NNN-text\\r\\n     (dash after code)
+          Middle:      anything\\r\\n
+          Last line:   NNN text\\r\\n     (space after SAME code)
+
+        Single-line:   NNN text\\r\\n     (space after code)
+        """
         if self.sock is None:
             return None
         try:
-            chunks = []
+            buf = b""
+            multiline_code = None
+
             while True:
                 data = self.sock.recv(bufsize)
                 if not data:
                     return None
-                chunks.append(data)
-                combined = b"".join(chunks)
-                if combined.endswith(b"\r\n"):
-                    break
-            resp = combined.decode("utf-8", errors="replace")
+                buf += data
+
+                if not buf.endswith(b"\r\n"):
+                    continue
+
+                # Split into complete lines (last element empty after \r\n)
+                lines = [l for l in buf.split(b"\r\n") if l]
+                if not lines:
+                    continue
+
+                # Detect multi-line start on first line: "NNN-..."
+                if (multiline_code is None
+                        and len(lines[0]) >= 4
+                        and lines[0][:3].isdigit()
+                        and lines[0][3:4] == b"-"):
+                    multiline_code = lines[0][:3]
+
+                if multiline_code is not None:
+                    # Multi-line: done when last line is "NNN ..."
+                    last = lines[-1]
+                    if (len(last) >= 4
+                            and last[:3] == multiline_code
+                            and last[3:4] == b" "):
+                        break
+                    continue  # keep reading
+                else:
+                    break  # single-line, done
+
+            resp = buf.decode("utf-8", errors="replace")
             self.last_response = resp
             try:
                 self.last_code = int(resp[:3])
@@ -653,6 +692,10 @@ class FTPFuzzDriver:
                 self.logger.warning("Crash detected at trace step %d", i)
                 break
 
+            if last_output == DriverOutput.TIMEOUT:
+                self.logger.debug("Timeout at trace step %d — aborting trace", i)
+                break
+
         # End the monitor session and collect results
         oracle_state = compute_oracle_state(self.session)
         session_result = None
@@ -682,9 +725,10 @@ class FTPFuzzDriver:
                 self.logger.error("Failed to start FTP server — aborting")
                 return
             self.logger.info(
-                "Managed server: %s (restart every %d traces)",
+                "Managed server: %s (restart every %d traces, profraw=%s)",
                 self.server.config.binary,
                 self.server.config.restart_every,
+                self.server.config.profraw_dir or "DISABLED",
             )
 
         if self.monitor:
@@ -745,12 +789,27 @@ class FTPFuzzDriver:
                 # Extract coverage score
                 coverage_score = 0.0
                 is_interesting = False
+                violated = False
                 if session_result is not None:
                     coverage_score = session_result.coverage_score
                     is_interesting = session_result.is_interesting
-                    if is_interesting:
-                        self.stats["interesting_traces"] += 1
-                    self.stats["total_coverage_score"] += coverage_score
+                    violated = session_result.violated
+
+                # Timeouts and crashes suppress coverage-only interest,
+                # BUT a trace that triggered a real violation is always
+                # interesting — the violation happened before the timeout.
+                if output in (DriverOutput.TIMEOUT, DriverOutput.CRASH):
+                    if not violated:
+                        is_interesting = False
+                        coverage_score = 0.0
+                    else:
+                        self.logger.info(
+                            "Violation preserved despite %s", output,
+                        )
+
+                if is_interesting:
+                    self.stats["interesting_traces"] += 1
+                self.stats["total_coverage_score"] += coverage_score
 
                 # Write all results for the OCaml fuzzer
                 self.sync.write_oracle(oracle_state)

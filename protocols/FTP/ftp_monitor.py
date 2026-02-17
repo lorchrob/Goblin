@@ -150,8 +150,19 @@ def _is_cmd_malformed(buf: bytes) -> bool:
 
 
 def _is_resp_malformed(buf: bytes) -> bool:
+    """Check if an FTP response is malformed.
+
+    RFC 959 multi-line format:
+      First line:  NNN-text\\r\\n   (dash after 3-digit code)
+      Middle:      anything\\r\\n   (no code prefix required)
+      Last line:   NNN text\\r\\n   (space after SAME 3-digit code)
+
+    Single-line:   NNN text\\r\\n   (space or dash-less after code)
+    """
     if len(buf) == 0:
         return True
+
+    lines = []
     start = 0
     while start < len(buf):
         end = buf.find(b'\n', start)
@@ -160,13 +171,39 @@ def _is_resp_malformed(buf: bytes) -> bool:
         line = buf[start:end]
         if line.endswith(b'\r'):
             line = line[:-1]
-        if len(line) == 0:
-            return True
-        if len(line) < 4:
-            return True
-        if not (line[0:1].isdigit() and line[1:2].isdigit() and line[2:3].isdigit()):
-            return True
+        if len(line) > 0:
+            lines.append(line)
         start = end + 1 if end < len(buf) else len(buf)
+
+    if not lines:
+        return True
+
+    # First line must start with 3 digits
+    first = lines[0]
+    if len(first) < 3:
+        return True
+    if not (first[0:1].isdigit() and first[1:2].isdigit() and first[2:3].isdigit()):
+        return True
+
+    code = first[:3]
+
+    if len(lines) == 1:
+        # Single-line: "NNN ..." or "NNN-..." — just need the 3 digits
+        return False
+
+    # Multi-line: first line must be "NNN-..."
+    if len(first) < 4 or first[3:4] != b"-":
+        # Multiple lines but first doesn't indicate multi-line → malformed
+        return True
+
+    # Last line must be "NNN ..." with the SAME code
+    last = lines[-1]
+    if len(last) < 4:
+        return True
+    if last[:3] != code or last[3:4] != b" ":
+        return True
+
+    # Middle lines: no format requirement per RFC 959
     return False
 
 

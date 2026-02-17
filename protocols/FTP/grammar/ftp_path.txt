@@ -49,11 +49,11 @@
 
 <FLAG_CHAR> :: BitVec(8)
 {
-    <FLAG_CHAR> = int_to_bv(8, 0x6C) or         // 'l'
-    <FLAG_CHAR> = int_to_bv(8, 0x61) or         // 'a'
-    <FLAG_CHAR> = int_to_bv(8, 0x52) or         // 'R'
-    <FLAG_CHAR> = int_to_bv(8, 0x74) or         // 't'
-    <FLAG_CHAR> = int_to_bv(8, 0x68);           // 'h'
+    <FLAG_CHAR> = 0x6C or         // 'l'
+    <FLAG_CHAR> = 0x61 or         // 'a'
+    <FLAG_CHAR> = 0x52 or         // 'R'
+    <FLAG_CHAR> = 0x74 or         // 't'
+    <FLAG_CHAR> = 0x68;           // 'h'
 };
 
 // --- NLST, MLSD with optional path ----------------------------------------
@@ -88,15 +88,15 @@
 
 <PATH_CHAR> :: BitVec(8)
 {
-    int_to_bv(8, 0x21) bvulte <PATH_CHAR> and <PATH_CHAR> bvulte int_to_bv(8, 0x7E);
-    not (<PATH_CHAR> = int_to_bv(8, 0x2F));
-    not (<PATH_CHAR> = int_to_bv(8, 0x5C));
-    not (<PATH_CHAR> = int_to_bv(8, 0x20));
+    0x21 bvulte <PATH_CHAR> and <PATH_CHAR> bvulte 0x7E;
+    not (<PATH_CHAR> = 0x2F);
+    not (<PATH_CHAR> = 0x5C);
+    not (<PATH_CHAR> = 0x20);
 };
 
 <SLASH> :: String { <SLASH> <- "/"; };
 
 // Shared terminals
 <SP>    :: String { <SP> <- " "; };
-<CRLF>  :: String { <CRLF> <- "\r\n"; };
+<CRLF>  :: BitVec(16) { <CRLF> = 0x0A0D; };
 <EMPTY> :: String { <EMPTY> <- ""; };

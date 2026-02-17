@@ -25,7 +25,7 @@
 
 <OCTAL_DIGIT> :: BitVec(8)
 {
-    int_to_bv(8, 0x30) bvulte <OCTAL_DIGIT> and <OCTAL_DIGIT> bvulte int_to_bv(8, 0x37);
+    0x30 bvulte <OCTAL_DIGIT> and <OCTAL_DIGIT> bvulte 0x37;
 };
 
 
@@ -46,7 +46,7 @@
 
 <EXEC_CHAR> :: BitVec(8)
 {
-    int_to_bv(8, 0x21) bvulte <EXEC_CHAR> and <EXEC_CHAR> bvulte int_to_bv(8, 0x7E);
+    0x21 bvulte <EXEC_CHAR> and <EXEC_CHAR> bvulte 0x7E;
 };
 
 
@@ -62,25 +62,25 @@
 <TS_MONTH> ::= <MONTH_HI> <DIGIT_CHAR> ;
 <MONTH_HI> :: BitVec(8)
 {
-    <MONTH_HI> = int_to_bv(8, 0x30) or
-    <MONTH_HI> = int_to_bv(8, 0x31);
+    <MONTH_HI> = 0x30 or
+    <MONTH_HI> = 0x31;
 };
 
 <TS_DAY> ::= <DAY_HI> <DIGIT_CHAR> ;
 <DAY_HI> :: BitVec(8)
 {
-    <DAY_HI> = int_to_bv(8, 0x30) or
-    <DAY_HI> = int_to_bv(8, 0x31) or
-    <DAY_HI> = int_to_bv(8, 0x32) or
-    <DAY_HI> = int_to_bv(8, 0x33);
+    <DAY_HI> = 0x30 or
+    <DAY_HI> = 0x31 or
+    <DAY_HI> = 0x32 or
+    <DAY_HI> = 0x33;
 };
 
 <TS_HOUR> ::= <HOUR_HI> <DIGIT_CHAR> ;
 <HOUR_HI> :: BitVec(8)
 {
-    <HOUR_HI> = int_to_bv(8, 0x30) or
-    <HOUR_HI> = int_to_bv(8, 0x31) or
-    <HOUR_HI> = int_to_bv(8, 0x32);
+    <HOUR_HI> = 0x30 or
+    <HOUR_HI> = 0x31 or
+    <HOUR_HI> = 0x32;
 };
 
 <TS_MIN> ::= <MINSEC_HI> <DIGIT_CHAR> ;
@@ -88,7 +88,7 @@
 
 <MINSEC_HI> :: BitVec(8)
 {
-    int_to_bv(8, 0x30) bvulte <MINSEC_HI> and <MINSEC_HI> bvulte int_to_bv(8, 0x35);
+    0x30 bvulte <MINSEC_HI> and <MINSEC_HI> bvulte 0x35;
 };
 
 
@@ -99,18 +99,18 @@
 
 <PATH_CHAR> :: BitVec(8)
 {
-    int_to_bv(8, 0x21) bvulte <PATH_CHAR> and <PATH_CHAR> bvulte int_to_bv(8, 0x7E);
-    not (<PATH_CHAR> = int_to_bv(8, 0x2F));
-    not (<PATH_CHAR> = int_to_bv(8, 0x20));
+    0x21 bvulte <PATH_CHAR> and <PATH_CHAR> bvulte 0x7E;
+    not (<PATH_CHAR> = 0x2F);
+    not (<PATH_CHAR> = 0x20);
 };
 
 <SLASH> :: String { <SLASH> <- "/"; };
 
 // Shared terminals
 <SP>    :: String { <SP> <- " "; };
-<CRLF>  :: String { <CRLF> <- "\r\n"; };
+<CRLF>  :: BitVec(16) { <CRLF> = 0x0A0D; };
 
 <DIGIT_CHAR> :: BitVec(8)
 {
-    int_to_bv(8, 0x30) bvulte <DIGIT_CHAR> and <DIGIT_CHAR> bvulte int_to_bv(8, 0x39);
+    0x30 bvulte <DIGIT_CHAR> and <DIGIT_CHAR> bvulte 0x39;
 };
