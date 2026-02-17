@@ -2,7 +2,7 @@
 *.log
 *.err
 
-*profraw-dir/*
+*.profraw
 *output-dir/*
 *__pycache__
 *runtime_monitor.txt
