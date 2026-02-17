@@ -2,6 +2,13 @@
 *.log
 *.err
 
+*profraw-dir/*
+*output-dir/*
+*__pycache__
+*runtime_monitor.txt
+*monitor_violations.txt
+*monitor.log
+
 # macOs generated files.
 .DS_Store
 

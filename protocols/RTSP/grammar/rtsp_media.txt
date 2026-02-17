@@ -1,0 +1,216 @@
+// ============================================================================
+// RTSP Grammar: Media Control (PLAY, PAUSE, RECORD, TEARDOWN)
+// ============================================================================
+//
+// These methods control media stream state transitions.
+// All require Session header (except TEARDOWN which should but may not).
+
+<START> ::= <MEDIA_CMD> ;
+
+<MEDIA_CMD> ::= <PLAY_REQ>
+              | <PAUSE_REQ>
+              | <RECORD_REQ>
+              | <TEARDOWN_REQ>
+              | <GET_PARAM_REQ> ;
+
+
+// ---- PLAY ----
+// PLAY rtsp://host/path RTSP/1.0\r\n
+// CSeq: N\r\nSession: SID\r\nRange: npt=0.000-\r\n\r\n
+
+<PLAY_REQ> ::= <PLAY_VERB> <SP> <URI> <SP> <VERSION> <CRLF>
+               <CSEQ_HDR> <CRLF>
+               <SESSION_HDR> <CRLF>
+               <RANGE_HDR_OPT>
+               <SCALE_HDR_OPT>
+               <SPEED_HDR_OPT>
+               <CRLF> ;
+
+<PLAY_VERB> :: String { <PLAY_VERB> <- "PLAY"; };
+
+
+// ---- PAUSE ----
+<PAUSE_REQ> ::= <PAUSE_VERB> <SP> <URI> <SP> <VERSION> <CRLF>
+                <CSEQ_HDR> <CRLF>
+                <SESSION_HDR> <CRLF>
+                <CRLF> ;
+
+<PAUSE_VERB> :: String { <PAUSE_VERB> <- "PAUSE"; };
+
+
+// ---- RECORD ----
+<RECORD_REQ> ::= <RECORD_VERB> <SP> <URI> <SP> <VERSION> <CRLF>
+                 <CSEQ_HDR> <CRLF>
+                 <SESSION_HDR> <CRLF>
+                 <RANGE_HDR_OPT>
+                 <CRLF> ;
+
+<RECORD_VERB> :: String { <RECORD_VERB> <- "RECORD"; };
+
+
+// ---- TEARDOWN ----
+<TEARDOWN_REQ> ::= <TEARDOWN_VERB> <SP> <URI> <SP> <VERSION> <CRLF>
+                   <CSEQ_HDR> <CRLF>
+                   <SESSION_HDR_OPT>
+                   <CRLF> ;
+
+<TEARDOWN_VERB> :: String { <TEARDOWN_VERB> <- "TEARDOWN"; };
+
+
+// ---- GET_PARAMETER ----
+// Commonly used as a keep-alive mechanism
+
+<GET_PARAM_REQ> ::= <GET_PARAM_VERB> <SP> <URI> <SP> <VERSION> <CRLF>
+                    <CSEQ_HDR> <CRLF>
+                    <SESSION_HDR> <CRLF>
+                    <CRLF> ;
+
+<GET_PARAM_VERB> :: String { <GET_PARAM_VERB> <- "GET_PARAMETER"; };
+
+
+// ---- Session header ----
+
+<SESSION_HDR> ::= <SESSION_KEY> <COLON> <SP> <SESSION_ID> ;
+<SESSION_KEY> :: String { <SESSION_KEY> <- "Session"; };
+
+<SESSION_ID> ::= <SESSION_VALID>
+               | <SESSION_FUZZ> ;
+
+// Valid session ID: hex string (what live555 typically generates)
+<SESSION_VALID> ::= <HEX_CHARS> ;
+
+// Fuzzable session ID: any printable chars (trigger session mismatch)
+<SESSION_FUZZ> ::= <PRINTABLE_CHARS> ;
+
+<SESSION_HDR_OPT> ::= <EMPTY>
+                    | <SESSION_HDR> <CRLF> ;
+
+
+// ---- Range header ----
+// Range: npt=START-END | npt=START- | clock=... | smpte=...
+
+<RANGE_HDR_OPT> ::= <EMPTY>
+                   | <RANGE_HDR> <CRLF> ;
+
+<RANGE_HDR> ::= <RANGE_KEY> <COLON> <SP> <RANGE_VAL> ;
+<RANGE_KEY> :: String { <RANGE_KEY> <- "Range"; };
+
+<RANGE_VAL> ::= <NPT_RANGE>
+              | <CLOCK_RANGE>
+              | <RANGE_FUZZ> ;
+
+// npt=0.000- or npt=0.000-10.000
+<NPT_RANGE> ::= <NPT_PREFIX> <NPT_START> <DASH>
+              | <NPT_PREFIX> <NPT_START> <DASH> <NPT_END> ;
+
+<NPT_PREFIX> :: String { <NPT_PREFIX> <- "npt="; };
+
+<NPT_START> ::= <NPT_TIME> ;
+<NPT_END>   ::= <NPT_TIME> ;
+
+// npt time: seconds.fraction  (e.g., "0.000", "123.456")
+<NPT_TIME> ::= <DIGIT_CHARS> <DOT> <DIGIT_CHARS>
+             | <DIGIT_CHARS> ;
+
+// clock=20260217T192800Z-
+<CLOCK_RANGE> ::= <CLOCK_PREFIX> <PRINTABLE_CHARS> ;
+<CLOCK_PREFIX> :: String { <CLOCK_PREFIX> <- "clock="; };
+
+// Raw fuzz (arbitrary range spec)
+<RANGE_FUZZ> ::= <PRINTABLE_CHARS> ;
+
+
+// ---- Scale header (playback speed) ----
+
+<SCALE_HDR_OPT> ::= <EMPTY>
+                   | <SCALE_HDR> <CRLF> ;
+
+<SCALE_HDR> ::= <SCALE_KEY> <COLON> <SP> <SCALE_VAL> ;
+<SCALE_KEY> :: String { <SCALE_KEY> <- "Scale"; };
+
+<SCALE_VAL> ::= <SCALE_NORMAL>
+              | <SCALE_DOUBLE>
+              | <SCALE_REVERSE>
+              | <SCALE_FUZZ> ;
+
+<SCALE_NORMAL>  :: String { <SCALE_NORMAL> <- "1.0"; };
+<SCALE_DOUBLE>  :: String { <SCALE_DOUBLE> <- "2.0"; };
+<SCALE_REVERSE> :: String { <SCALE_REVERSE> <- "-1.0"; };
+<SCALE_FUZZ>    ::= <PRINTABLE_CHARS> ;
+
+
+// ---- Speed header ----
+
+<SPEED_HDR_OPT> ::= <EMPTY>
+                   | <SPEED_HDR> <CRLF> ;
+
+<SPEED_HDR> ::= <SPEED_KEY> <COLON> <SP> <SPEED_VAL> ;
+<SPEED_KEY> :: String { <SPEED_KEY> <- "Speed"; };
+<SPEED_VAL> ::= <DIGIT_CHARS> <DOT> <DIGIT_CHARS>
+              | <DIGIT_CHARS> ;
+
+
+// ---- Shared terminals ----
+
+<URI> ::= <URI_SCHEME> <URI_HOST> <URI_PORT_OPT> <URI_PATH_OPT> ;
+<URI_SCHEME>   :: String { <URI_SCHEME> <- "rtsp://"; };
+<URI_HOST>     ::= <HOST_LITERAL> | <HOST_FUZZ> ;
+<HOST_LITERAL> :: String { <HOST_LITERAL> <- "127.0.0.1"; };
+<HOST_FUZZ>    ::= <PRINTABLE_CHARS> ;
+<URI_PORT_OPT> ::= <EMPTY> | <COLON> <PORT_NUM> ;
+<PORT_NUM>     ::= <DIGIT_CHARS> ;
+<URI_PATH_OPT> ::= <EMPTY> | <URI_PATH> ;
+<URI_PATH>     ::= <SLASH> <PATH_SEGMENT>
+                 | <SLASH> <PATH_SEGMENT> <URI_PATH> ;
+<PATH_SEGMENT> ::= <PATH_CHARS> ;
+<PATH_CHARS>   ::= <PATH_CHAR> | <PATH_CHAR> <PATH_CHARS> ;
+
+<PATH_CHAR> :: BitVec(8)
+{
+    (int_to_bv(8, 0x2D) bvulte <PATH_CHAR> and <PATH_CHAR> bvulte int_to_bv(8, 0x39)) or
+    (int_to_bv(8, 0x41) bvulte <PATH_CHAR> and <PATH_CHAR> bvulte int_to_bv(8, 0x5A)) or
+    <PATH_CHAR> = int_to_bv(8, 0x5F) or
+    (int_to_bv(8, 0x61) bvulte <PATH_CHAR> and <PATH_CHAR> bvulte int_to_bv(8, 0x7A));
+};
+
+<CSEQ_HDR> ::= <CSEQ_KEY> <COLON> <SP> <CSEQ_VAL> ;
+<CSEQ_KEY> :: String { <CSEQ_KEY> <- "CSeq"; };
+<CSEQ_VAL> ::= <DIGIT_CHARS> ;
+
+<VERSION> :: String { <VERSION> <- "RTSP/1.0"; };
+
+<HEX_CHARS> ::= <HEX_CHAR> | <HEX_CHAR> <HEX_CHARS> ;
+<HEX_CHAR> :: BitVec(8)
+{
+    (int_to_bv(8, 0x30) bvulte <HEX_CHAR> and <HEX_CHAR> bvulte int_to_bv(8, 0x39)) or
+    (int_to_bv(8, 0x41) bvulte <HEX_CHAR> and <HEX_CHAR> bvulte int_to_bv(8, 0x46)) or
+    (int_to_bv(8, 0x61) bvulte <HEX_CHAR> and <HEX_CHAR> bvulte int_to_bv(8, 0x66));
+};
+
+<SP>    :: String { <SP> <- " "; };
+<CRLF>  :: BitVector { <CRLF> = 0x0A0D; };
+<COLON> :: String { <COLON> <- ":"; };
+<SLASH> :: String { <SLASH> <- "/"; };
+<DASH>  :: String { <DASH> <- "-"; };
+<DOT>   :: String { <DOT> <- "."; };
+<EMPTY> :: String { <EMPTY> <- ""; };
+
+<DIGIT_CHARS> ::= <DIGIT_CHAR> | <DIGIT_CHAR> <DIGIT_CHARS> ;
+<DIGIT_CHAR> :: BitVec(8)
+{
+    int_to_bv(8, 0x30) bvulte <DIGIT_CHAR> and <DIGIT_CHAR> bvulte int_to_bv(8, 0x39);
+};
+
+<ALPHA_CHARS> ::= <ALPHA_CHAR> | <ALPHA_CHAR> <ALPHA_CHARS> ;
+<ALPHA_CHAR> :: BitVec(8)
+{
+    (int_to_bv(8, 0x41) bvulte <ALPHA_CHAR> and <ALPHA_CHAR> bvulte int_to_bv(8, 0x5A)) or
+    (int_to_bv(8, 0x61) bvulte <ALPHA_CHAR> and <ALPHA_CHAR> bvulte int_to_bv(8, 0x7A)) or
+    <ALPHA_CHAR> = int_to_bv(8, 0x2D);
+};
+
+<PRINTABLE_CHARS> ::= <PRINTABLE_CHAR> | <PRINTABLE_CHAR> <PRINTABLE_CHARS> ;
+<PRINTABLE_CHAR> :: BitVec(8)
+{
+    int_to_bv(8, 0x20) bvulte <PRINTABLE_CHAR> and <PRINTABLE_CHAR> bvulte int_to_bv(8, 0x7E);
+};

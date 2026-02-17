@@ -1,0 +1,151 @@
+// ============================================================================
+// RTSP Grammar: Session Discovery (OPTIONS, DESCRIBE)
+// ============================================================================
+//
+// Covers initial session negotiation methods.
+// OPTIONS discovers server capabilities, DESCRIBE retrieves SDP.
+
+<START> ::= <SESSION_CMD> ;
+
+<SESSION_CMD> ::= <OPTIONS_REQ>
+               | <DESCRIBE_REQ> ;
+
+
+// OPTIONS rtsp://host:port/path RTSP/1.0\r\nCSeq: N\r\n\r\n
+<OPTIONS_REQ> ::= <OPTIONS_VERB> <SP> <URI> <SP> <VERSION> <CRLF>
+                  <CSEQ_HDR> <CRLF>
+                  <OPT_HEADERS>
+                  <CRLF> ;
+
+<OPTIONS_VERB> :: String { <OPTIONS_VERB> <- "OPTIONS"; };
+
+
+// DESCRIBE rtsp://host:port/path RTSP/1.0\r\nCSeq: N\r\nAccept: application/sdp\r\n\r\n
+<DESCRIBE_REQ> ::= <DESCRIBE_VERB> <SP> <URI> <SP> <VERSION> <CRLF>
+                   <CSEQ_HDR> <CRLF>
+                   <ACCEPT_HDR> <CRLF>
+                   <OPT_HEADERS>
+                   <CRLF> ;
+
+<DESCRIBE_VERB> :: String { <DESCRIBE_VERB> <- "DESCRIBE"; };
+
+<ACCEPT_HDR> ::= <ACCEPT_KEY> <COLON> <SP> <ACCEPT_VAL> ;
+
+<ACCEPT_KEY> :: String { <ACCEPT_KEY> <- "Accept"; };
+
+<ACCEPT_VAL> ::= <ACCEPT_SDP>
+               | <ACCEPT_ANY> ;
+
+<ACCEPT_SDP> :: String { <ACCEPT_SDP> <- "application/sdp"; };
+<ACCEPT_ANY> :: String { <ACCEPT_ANY> <- "*/*"; };
+
+
+// ---- Optional extra headers (fuzzer can inject arbitrary headers) ----
+
+<OPT_HEADERS> ::= <EMPTY>
+                | <EXTRA_HDR> <CRLF> <OPT_HEADERS> ;
+
+<EXTRA_HDR> ::= <USER_AGENT_HDR>
+              | <REQUIRE_HDR>
+              | <PROXY_REQUIRE_HDR>
+              | <RAW_HEADER> ;
+
+<USER_AGENT_HDR> ::= <UA_KEY> <COLON> <SP> <UA_VAL> ;
+<UA_KEY> :: String { <UA_KEY> <- "User-Agent"; };
+<UA_VAL> ::= <PRINTABLE_CHARS> ;
+
+<REQUIRE_HDR> ::= <REQUIRE_KEY> <COLON> <SP> <FEATURE_TAG> ;
+<REQUIRE_KEY> :: String { <REQUIRE_KEY> <- "Require"; };
+<FEATURE_TAG> ::= <PRINTABLE_CHARS> ;
+
+<PROXY_REQUIRE_HDR> ::= <PROXY_REQ_KEY> <COLON> <SP> <FEATURE_TAG> ;
+<PROXY_REQ_KEY> :: String { <PROXY_REQ_KEY> <- "Proxy-Require"; };
+
+<RAW_HEADER> ::= <HEADER_NAME> <COLON> <SP> <HEADER_VALUE> ;
+<HEADER_NAME> ::= <ALPHA_CHARS> ;
+<HEADER_VALUE> ::= <PRINTABLE_CHARS> ;
+
+
+// ---- URI ----
+//  rtsp://host:port/path
+//  Fuzzable components: host, port, path segments
+
+<URI> ::= <URI_SCHEME> <URI_HOST> <URI_PORT_OPT> <URI_PATH> ;
+
+<URI_SCHEME> :: String { <URI_SCHEME> <- "rtsp://"; };
+
+<URI_HOST> ::= <HOST_LITERAL>
+             | <HOST_FUZZ> ;
+
+<HOST_LITERAL> :: String { <HOST_LITERAL> <- "127.0.0.1"; };
+<HOST_FUZZ> ::= <PRINTABLE_CHARS> ;
+
+<URI_PORT_OPT> ::= <EMPTY>
+                 | <COLON> <PORT_NUM> ;
+
+<PORT_NUM> ::= <DIGIT_CHARS> ;
+
+<URI_PATH> ::= <SLASH> <PATH_SEGMENT>
+             | <SLASH> <PATH_SEGMENT> <URI_PATH> ;
+
+<PATH_SEGMENT> ::= <PATH_CHARS> ;
+
+<PATH_CHARS> ::= <PATH_CHAR> | <PATH_CHAR> <PATH_CHARS> ;
+
+<PATH_CHAR> :: BitVec(8)
+{
+    (int_to_bv(8, 0x2D) bvulte <PATH_CHAR> and <PATH_CHAR> bvulte int_to_bv(8, 0x39)) or  // - . / 0-9
+    (int_to_bv(8, 0x41) bvulte <PATH_CHAR> and <PATH_CHAR> bvulte int_to_bv(8, 0x5A)) or  // A-Z
+    <PATH_CHAR> = int_to_bv(8, 0x5F) or                                                    // _
+    (int_to_bv(8, 0x61) bvulte <PATH_CHAR> and <PATH_CHAR> bvulte int_to_bv(8, 0x7A));     // a-z
+};
+
+
+// ---- CSeq header ----
+
+<CSEQ_HDR> ::= <CSEQ_KEY> <COLON> <SP> <CSEQ_VAL> ;
+<CSEQ_KEY> :: String { <CSEQ_KEY> <- "CSeq"; };
+<CSEQ_VAL> ::= <DIGIT_CHARS> ;
+
+
+// ---- RTSP version ----
+
+<VERSION> ::= <VERSION_STANDARD>
+            | <VERSION_FUZZ> ;
+
+<VERSION_STANDARD> :: String { <VERSION_STANDARD> <- "RTSP/1.0"; };
+<VERSION_FUZZ> ::= <VERSION_PREFIX> <VERSION_NUM> ;
+<VERSION_PREFIX> :: String { <VERSION_PREFIX> <- "RTSP/"; };
+<VERSION_NUM> ::= <PRINTABLE_CHARS> ;
+
+
+// ---- Shared terminals ----
+
+<SP>    :: String { <SP> <- " "; };
+<CRLF>  :: BitVector { <CRLF> = 0x0A0D; };
+<COLON> :: String { <COLON> <- ":"; };
+<SLASH> :: String { <SLASH> <- "/"; };
+<EMPTY> :: String { <EMPTY> <- ""; };
+
+<DIGIT_CHARS> ::= <DIGIT_CHAR> | <DIGIT_CHAR> <DIGIT_CHARS> ;
+
+<DIGIT_CHAR> :: BitVec(8)
+{
+    int_to_bv(8, 0x30) bvulte <DIGIT_CHAR> and <DIGIT_CHAR> bvulte int_to_bv(8, 0x39);
+};
+
+<ALPHA_CHARS> ::= <ALPHA_CHAR> | <ALPHA_CHAR> <ALPHA_CHARS> ;
+
+<ALPHA_CHAR> :: BitVec(8)
+{
+    (int_to_bv(8, 0x41) bvulte <ALPHA_CHAR> and <ALPHA_CHAR> bvulte int_to_bv(8, 0x5A)) or
+    (int_to_bv(8, 0x61) bvulte <ALPHA_CHAR> and <ALPHA_CHAR> bvulte int_to_bv(8, 0x7A)) or
+    <ALPHA_CHAR> = int_to_bv(8, 0x2D);     // allow hyphen in header names
+};
+
+<PRINTABLE_CHARS> ::= <PRINTABLE_CHAR> | <PRINTABLE_CHAR> <PRINTABLE_CHARS> ;
+
+<PRINTABLE_CHAR> :: BitVec(8)
+{
+    int_to_bv(8, 0x20) bvulte <PRINTABLE_CHAR> and <PRINTABLE_CHAR> bvulte int_to_bv(8, 0x7E);
+};

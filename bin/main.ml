@@ -10,19 +10,51 @@ let () =
 
   try 
     if !Flags.saecred then 
-      (* let commit_grammar = Parsing.parse (GrammarFuzzing.read_grammar "bin/commit.txt") in
-      let confirm_grammar = Parsing.parse (GrammarFuzzing.read_grammar "bin/confirm.txt") in
-      let commit_confirm_grammar = Parsing.parse (GrammarFuzzing.read_grammar "bin/commit-confirm.txt") in
-      let eapol_1_grammar = Parsing.parse (GrammarFuzzing.read_grammar "bin/eapol_1.txt") in
-      let eapol_2_grammar = Parsing.parse (GrammarFuzzing.read_grammar "bin/eapol_2.txt") in
-      let eapol_3_grammar = Parsing.parse (GrammarFuzzing.read_grammar "bin/eapol_3.txt") in
-      let eapol_4_grammar = Parsing.parse (GrammarFuzzing.read_grammar "bin/eapol_4.txt") in *)
-      (* GrammarFuzzing.runFuzzer [commit_grammar; confirm_grammar; commit_confirm_grammar;eapol_1_grammar;eapol_2_grammar;eapol_3_grammar;eapol_4_grammar;] *)
-      let ftp_auth = Parsing.parse (GrammarFuzzing.read_grammar "protocols/FTP/grammar/ftp_auth.txt") in
-      let ftp_datachannel = Parsing.parse (GrammarFuzzing.read_grammar "protocols/FTP/grammar/ftp_datachannel.txt") in
-      let ftp_path = Parsing.parse (GrammarFuzzing.read_grammar "protocols/FTP/grammar/ftp_path.txt") in
-      let ftp_site = Parsing.parse (GrammarFuzzing.read_grammar "protocols/FTP/grammar/ftp_site.txt") in
-      GrammarFuzzing.runFuzzer [ftp_auth; ftp_datachannel; ftp_path; ftp_site;] Mode3
+      let protocol = !Flags.protocol in
+      let mode_str = !Flags.mode in
+      let instance = !Flags.instance in
+      let mode = match mode_str with
+        | "mode1" | "Mode1" | "1" -> GrammarFuzzing.Mode1
+        | "mode2" | "Mode2" | "2" -> GrammarFuzzing.Mode2
+        | "mode3" | "Mode3" | "3" -> GrammarFuzzing.Mode3
+        | s -> Format.eprintf "Unknown mode: %s (supported: 1, 2, 3)@." s; exit 1
+      in
+      Config.configure protocol;
+      Config.configure_base_port protocol;
+      Config.set_instance ~protocol ~mode:mode_str ~instance;
+      Config.print_instance_info instance;
+      if protocol = "ftp" then begin
+        (* FTP grammars *)
+        let ftp_auth = Parsing.parse (GrammarFuzzing.read_grammar "protocols/FTP/grammar/ftp_auth.txt") in
+        let ftp_datachannel = Parsing.parse (GrammarFuzzing.read_grammar "protocols/FTP/grammar/ftp_datachannel.txt") in
+        let ftp_path = Parsing.parse (GrammarFuzzing.read_grammar "protocols/FTP/grammar/ftp_path.txt") in
+        let ftp_site = Parsing.parse (GrammarFuzzing.read_grammar "protocols/FTP/grammar/ftp_site.txt") in
+        GrammarFuzzing.runFuzzer [ftp_auth; ftp_datachannel; ftp_path; ftp_site;] mode
+      end
+      else if protocol = "rtsp" then begin
+        (* RTSP grammars *)
+        let rtsp_session = Parsing.parse (GrammarFuzzing.read_grammar "protocols/RTSP/grammar/rtsp_session.txt") in
+        let rtsp_setup = Parsing.parse (GrammarFuzzing.read_grammar "protocols/RTSP/grammar/rtsp_setup.txt") in
+        let rtsp_media = Parsing.parse (GrammarFuzzing.read_grammar "protocols/RTSP/grammar/rtsp_media.txt") in
+        let rtsp_announce = Parsing.parse (GrammarFuzzing.read_grammar "protocols/RTSP/grammar/rtsp_announce.txt") in
+        let rtsp_adversarial = Parsing.parse (GrammarFuzzing.read_grammar "protocols/RTSP/grammar/rtsp_adversarial.txt") in
+        GrammarFuzzing.runFuzzer [rtsp_session; rtsp_setup; rtsp_media; rtsp_announce; rtsp_adversarial;] mode
+      end
+      else if protocol = "wpa" then begin
+        (* WPA/EAPOL grammars (original) *)
+        let commit_grammar = Parsing.parse (GrammarFuzzing.read_grammar "bin/commit.txt") in
+        let confirm_grammar = Parsing.parse (GrammarFuzzing.read_grammar "bin/confirm.txt") in
+        let commit_confirm_grammar = Parsing.parse (GrammarFuzzing.read_grammar "bin/commit-confirm.txt") in
+        let eapol_1_grammar = Parsing.parse (GrammarFuzzing.read_grammar "bin/eapol_1.txt") in
+        let eapol_2_grammar = Parsing.parse (GrammarFuzzing.read_grammar "bin/eapol_2.txt") in
+        let eapol_3_grammar = Parsing.parse (GrammarFuzzing.read_grammar "bin/eapol_3.txt") in
+        let eapol_4_grammar = Parsing.parse (GrammarFuzzing.read_grammar "bin/eapol_4.txt") in
+        GrammarFuzzing.runFuzzer [commit_grammar; confirm_grammar; commit_confirm_grammar; eapol_1_grammar; eapol_2_grammar; eapol_3_grammar; eapol_4_grammar;] mode
+      end
+      else begin
+        Format.eprintf "Unknown protocol: %s (supported: ftp, rtsp, wpa)@." protocol;
+        exit 1
+      end
      else if !Flags.analysis <> "" then 
       AnalyzeGoblinOutput.evaluate () 
     else 

@@ -32,6 +32,9 @@ let starting_depth_limit = ref 5
 let restart_rate = ref 10000 
 let sols_per_iter = ref 10 
 let seed = ref None
+let protocol = ref "ftp"
+let mode = ref "3"
+let instance = ref 0
 
 let parse_args () = 
   let open Cmdliner in
@@ -152,9 +155,25 @@ let parse_args () =
     Arg.(value & opt (some int) None & info ["seed"] ~doc) 
   in
 
+  let protocol_flag =
+    let doc = "Protocol to fuzz (ftp, rtsp, wpa)" in
+    Arg.(value & opt string "ftp" & info ["protocol"] ~doc)
+  in
+
+  let mode_flag =
+    let doc = "Fuzzing mode (1, 2, 3)" in
+    Arg.(value & opt string "3" & info ["mode"] ~doc)
+  in
+
+  let instance_flag =
+    let doc = "Parallel instance ID (0, 1, 2, ...)" in
+    Arg.(value & opt int 0 & info ["instance"] ~doc)
+  in
+
   let set_flags new_debug new_no_warnings new_only_parse new_show_winner 
                 new_dump_clp new_multiple_solutions new_saecred new_analysis new_filename new_engine new_output_format 
-                new_num_solutions new_starting_depth_limit new_restart_rate new_sols_per_iter new_seed =
+                new_num_solutions new_starting_depth_limit new_restart_rate new_sols_per_iter new_seed
+                new_protocol new_mode new_instance =
     Format.pp_print_flush Format.std_formatter ();
     debug := new_debug;
     no_warnings := new_no_warnings;
@@ -172,6 +191,9 @@ let parse_args () =
     restart_rate := new_restart_rate; 
     sols_per_iter := new_sols_per_iter;
     seed := new_seed;
+    protocol := new_protocol;
+    mode := new_mode;
+    instance := new_instance;
   in
 
   let term =
@@ -191,7 +213,10 @@ let parse_args () =
           $ starting_depth_limit_flag 
           $ restart_rate_flag 
           $ sols_per_iter_flag
-          $ seed_flag)
+          $ seed_flag
+          $ protocol_flag
+          $ mode_flag
+          $ instance_flag)
   in
 
   let info = Cmd.info "goblin" in

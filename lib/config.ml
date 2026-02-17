@@ -1,259 +1,192 @@
-(* let num_packets = 5
-let num_queues = 5
+(* config.ml — Protocol-parametric fuzzer configuration.
+   
+   All values are mutable refs so they can be set per-protocol
+   before runFuzzer is called. The rest of grammarFuzzing.ml
+   reads Config.num_packets etc. unchanged.
 
-type packet_type = int *)
+   Usage in main.ml:
+     Config.configure "rtsp";
+     Config.set_instance ~protocol:"rtsp" ~mode:"3" ~instance:0;
+     GrammarFuzzing.runFuzzer grammars mode
+*)
 
-
-let num_packets = 10
-let num_queues = 5
+(* ================================================================
+   Types
+   ================================================================ *)
 
 type packet_type = int
 
-(* let nonterminals = ["AC_TOKEN" ; "RG_ID"; "RG_ID_LIST"; "REJECTED_GROUPS"; "RG_ID_LENGTH"; "PASSWD_ELEMENT_ID_EXTENSION"; "AC_ID_LENGTH"; "STATUS_CODE"; "RG_ELEMENT_ID_EXTENSION" ;"PASSWD_ID_LENGTH";"PASSWORD_IDENTIFIER"; "PASSWD_ELEMENT_ID" ; "RG_ELEMENT_ID"; "PASSWD_ID"; "AC_ELEMENT_ID"; "AC_TOKEN_ELEMENT"; "AC_TOKEN"; "COMMIT"; "CONFIRM"; "AUTH_SEQ_CONFIRM"; "AC_TOKEN_CONTAINER"; "CONFIRM_HASH"; "AUTH_ALGO"; "AUTH_SEQ_COMMIT"; "CONFIRM_HASH"; "SCALAR"; "GROUP_ID"; "ELEMENT"; "SEND_CONFIRM_COUNTER";] *)
+(* type fuzzing_mode = Mode1 | Mode2 | Mode3 *)
 
-(* let nonterminals = [
-  (* SAE Nonterminals *)
-  "AC_TOKEN"; "RG_ID"; "RG_ID_LIST"; "REJECTED_GROUPS"; "RG_ID_LENGTH"; 
-  "PASSWD_ELEMENT_ID_EXTENSION"; "AC_ID_LENGTH"; "STATUS_CODE"; 
-  "RG_ELEMENT_ID_EXTENSION"; "PASSWD_ID_LENGTH"; "PASSWORD_IDENTIFIER"; 
-  "PASSWD_ELEMENT_ID"; "RG_ELEMENT_ID"; "PASSWD_ID"; "AC_ELEMENT_ID"; 
-  "AC_TOKEN_ELEMENT"; "AC_TOKEN"; "COMMIT"; "CONFIRM"; "AUTH_SEQ_CONFIRM"; 
-  "AC_TOKEN_CONTAINER"; "CONFIRM_HASH"; "AUTH_ALGO"; "AUTH_SEQ_COMMIT"; 
-  "SCALAR"; "GROUP_ID"; "ELEMENT"; "SEND_CONFIRM_COUNTER";
-  
-  (* WPA3 4-Way Handshake Core *)
-  "WPA3_4WAY_HANDSHAKE"; "MESSAGE_1"; "MESSAGE_2"; "MESSAGE_3"; "MESSAGE_4";
-  "EAPOL_HEADER"; "VERSION"; "PACKET_TYPE"; "PACKET_BODY_LENGTH";
-  "KEY_DESCRIPTOR_TYPE"; "KEY_INFORMATION_1"; "KEY_INFORMATION_2"; 
-  "KEY_INFORMATION_3"; "KEY_INFORMATION_4"; "KEY_LENGTH"; "REPLAY_COUNTER";
-  "KEY_NONCE"; "KEY_IV"; "KEY_RSC"; "KEY_ID"; "KEY_MIC"; "KEY_DATA_LENGTH";
-  "KEY_DATA_1"; "KEY_DATA_2"; "KEY_DATA_3"; "KEY_DATA_4";
-  "KDE_LIST_1"; "KDE_LIST_2"; "KDE_LIST_3"; "KDE_LIST_4"; "KDE_ELEMENT";
-  
-  (* RSN IE *)
-  "RSN_IE"; "ELEMENT_ID_RSN"; "LENGTH_RSN"; "VERSION_RSN"; 
-  "GROUP_CIPHER_SUITE"; "PAIRWISE_CIPHER_COUNT"; "PAIRWISE_CIPHER_LIST";
-  "PAIRWISE_CIPHER"; "AKM_COUNT"; "AKM_LIST"; "AKM_SUITE"; 
-  "RSN_CAPABILITIES"; "PMKID_COUNT"; "PMKID_LIST"; "PMKID";
-  "GROUP_MGMT_CIPHER_SUITE";
-  
-  (* Standard KDEs *)
-  "PMKID_KDE"; "KDE_TYPE_PMKID"; "KDE_LENGTH_PMKID"; "PMKID_DATA";
-  "GTK_KDE"; "KDE_TYPE_GTK"; "KDE_LENGTH_GTK"; "GTK_KDE_DATA";
-  "KEY_ID_GTK"; "KEY_FLAG_GTK"; "GTK_VALUE";
-  "MAC_ADDR_KDE"; "KDE_TYPE_MAC"; "KDE_LENGTH_MAC"; "MAC_ADDRESS";
-  "IGTK_KDE"; "KDE_TYPE_IGTK"; "KDE_LENGTH_IGTK"; "IGTK_KDE_DATA";
-  "KEY_ID_IGTK"; "IPN"; "IGTK_VALUE";
-  "BIGTK_KDE"; "KDE_TYPE_BIGTK"; "KDE_LENGTH_BIGTK"; "BIGTK_KDE_DATA";
-  "KEY_ID_BIGTK"; "BIPN"; "BIGTK_VALUE";
-  "OCI_KDE"; "KDE_TYPE_OCI"; "KDE_LENGTH_OCI"; "OCI_DATA";
-  "PRIMARY_CHANNEL"; "SECONDARY_CHANNEL"; "BANDWIDTH"; "SEGMENT_INFO";
-  "MULTIBAND_KDE"; "KDE_TYPE_MULTIBAND"; "KDE_LENGTH_MULTIBAND"; "MULTIBAND_DATA";
-  "FTE_KDE"; "KDE_TYPE_FTE"; "KDE_LENGTH_FTE"; "FTE_DATA";
-  "MIC_CONTROL"; "MIC_FTE"; "ANONCE_FTE"; "SNONCE_FTE"; "SUBELEMENTS";
-  "TIMEOUT_INTERVAL_KDE"; "KDE_TYPE_TIMEOUT"; "KDE_LENGTH_TIMEOUT"; 
-  "TIMEOUT_TYPE"; "TIMEOUT_VALUE";
-  "HT_CAPS_KDE"; "KDE_TYPE_HT"; "KDE_LENGTH_HT"; "HT_CAPABILITIES";
-  "VHT_CAPS_KDE"; "KDE_TYPE_VHT"; "KDE_LENGTH_VHT"; "VHT_CAPABILITIES";
-  "HE_CAPS_KDE"; "KDE_TYPE_HE"; "KDE_LENGTH_HE"; "HE_CAPABILITIES";
-  "EHT_CAPS_KDE"; "KDE_TYPE_EHT"; "KDE_LENGTH_EHT"; "EHT_CAPABILITIES";
-  
-  (* Vendor KDE Framework *)
-  "VENDOR_SPECIFIC_KDE"; "KDE_TYPE_VENDOR";
-  "OUI_MICROSOFT"; "OUI_BROADCOM"; "OUI_ATHEROS"; "OUI_INTEL"; "OUI_CISCO";
-  "OUI_QUALCOMM"; "OUI_MEDIATEK"; "OUI_REALTEK"; "OUI_MARVELL"; "OUI_RALINK";
-  "OUI_UBIQUITI"; "OUI_ARUBA";
-  
-  (* Microsoft Vendor *)
-  "MICROSOFT_KDE"; "KDE_LENGTH_MS"; "MS_VENDOR_TYPE"; "MS_VENDOR_DATA";
-  "MS_WPA_DATA"; "WPA_VERSION"; "WPA_MULTICAST_CIPHER"; "WPA_UNICAST_CIPHER_COUNT";
-  "WPA_UNICAST_CIPHER_LIST"; "WPA_CIPHER_SUITE"; "WPA_AUTH_COUNT"; "WPA_AUTH_LIST";
-  "WPA_AUTH_SUITE"; "MS_WMM_DATA"; "WMM_SUBTYPE"; "WMM_VERSION"; "WMM_QOS_INFO";
-  "WMM_AC_PARAMS"; "MS_WPS_DATA"; "WPS_ATTR_LIST"; "WPS_ATTRIBUTE"; "WPS_ATTR_TYPE";
-  "WPS_ATTR_LENGTH"; "WPS_ATTR_DATA"; "MS_P2P_DATA"; "P2P_ATTR_LIST"; "P2P_ATTRIBUTE";
-  "P2P_ATTR_ID"; "P2P_ATTR_LEN"; "P2P_ATTR_BODY"; "MS_WFD_DATA"; "WFD_ATTR_LIST";
-  "WFD_ATTRIBUTE"; "WFD_ATTR_ID"; "WFD_ATTR_LEN"; "WFD_ATTR_BODY"; "MS_HS20_DATA";
-  "HS20_ATTR_LIST"; "HS20_ATTRIBUTE"; "HS20_ATTR_ID"; "HS20_ATTR_LEN"; "HS20_ATTR_BODY";
-  "MS_MBO_DATA"; "MBO_ATTR_LIST"; "MBO_ATTRIBUTE"; "MBO_ATTR_ID"; "MBO_ATTR_LEN";
-  "MBO_ATTR_BODY";
-  
-  (* Broadcom Vendor *)
-  "BROADCOM_KDE"; "KDE_LENGTH_BCM"; "BCM_VENDOR_TYPE"; "BCM_VENDOR_DATA";
-  "BCM_PROPRIETARY_RATES"; "BCM_RATE_COUNT"; "BCM_RATE_LIST"; "BCM_RATE";
-  "BCM_FBT_DATA"; "BCM_FBT_CAPABILITY"; "BCM_FBT_KEY_HOLDER"; "BCM_FBT_R1KH_ID";
-  "BCM_FBT_GTK_LEN"; "BCM_FBT_GTK"; "BCM_FAST_ROAM_DATA"; "BCM_ROAM_TRIGGER";
-  "BCM_ROAM_DELTA"; "BCM_ROAM_SCAN_PERIOD"; "BCM_CCX_DATA"; "BCM_CCX_VERSION";
-  "BCM_CCX_CAPABILITY"; "BCM_CCX_ROAM_INFO"; "BCM_LEGACY_DATA"; "BCM_LEGACY_VERSION";
-  "BCM_LEGACY_FLAGS"; "BCM_LEGACY_DATA_BODY"; "BCM_WET_DATA"; "BCM_WET_FLAGS";
-  "BCM_WET_MAC_COUNT"; "BCM_WET_MAC_LIST"; "BCM_WET_MAC"; "BCM_TDLS_DATA";
-  "BCM_TDLS_CAPABILITY"; "BCM_TDLS_STATUS"; "BCM_PKTFWD_DATA"; "BCM_PKTFWD_FLAGS";
-  "BCM_PKTFWD_CONFIG"; "BCM_SPECT_DATA"; "BCM_SPECT_FLAGS"; "BCM_SPECT_CHANNELS";
-  "BCM_FBT_ODS_DATA"; "BCM_FBT_ODS_FLAGS"; "BCM_FBT_ODS_INFO"; "BCM_HS20_EXT_DATA";
-  "BCM_HS20_VERSION"; "BCM_HS20_CAPABILITY"; "BCM_HS20_CONFIG"; "BCM_WAPI_DATA";
-  "BCM_WAPI_VERSION"; "BCM_WAPI_AKM_COUNT"; "BCM_WAPI_AKM_LIST"; "BCM_WAPI_AKM";
-  "BCM_WAPI_UNICAST_COUNT"; "BCM_WAPI_UNICAST_LIST"; "BCM_WAPI_UNICAST";
-  "BCM_NAN_DATA"; "BCM_NAN_VERSION"; "BCM_NAN_MASTER_PREFERENCE"; "BCM_NAN_CONFIG";
-  "BCM_NAN_SERVICE_ID"; "BCM_OCE_DATA"; "BCM_OCE_VERSION"; "BCM_OCE_CAPABILITY";
-  "BCM_OCE_CONFIG";
-  
-  (* Atheros Vendor *)
-  "ATHEROS_KDE"; "KDE_LENGTH_ATH"; "ATH_VENDOR_TYPE"; "ATH_VENDOR_DATA";
-  "ATH_ADV_CAP_DATA"; "ATH_CAP_FLAGS"; "ATH_CAP_FEATURES"; "ATH_XR_DATA";
-  "ATH_XR_FLAGS"; "ATH_XR_PARAMS"; "ATH_FF_DATA"; "ATH_FF_FLAGS"; "ATH_FF_THRESHOLD";
-  "ATH_TURBO_DATA"; "ATH_TURBO_FLAGS"; "ATH_TURBO_MODE"; "ATH_COMP_DATA";
-  "ATH_COMP_FLAGS"; "ATH_COMP_ALGORITHM"; "ATH_FFE_DATA"; "ATH_FFE_FLAGS";
-  "ATH_FFE_CONFIG"; "ATH_ECSA_DATA"; "ATH_ECSA_MODE"; "ATH_ECSA_NEW_CHANNEL";
-  "ATH_ECSA_COUNT"; "ATH_DEVICE_DATA"; "ATH_DEVICE_TYPE"; "ATH_DEVICE_SUBTYPE";
-  "ATH_DEVICE_VERSION"; "ATH_ONESTREAM_DATA"; "ATH_ONESTREAM_FLAGS"; "ATH_WOW_DATA";
-  "ATH_WOW_FLAGS"; "ATH_WOW_PATTERN_COUNT"; "ATH_WOW_PATTERNS"; "ATH_BEAMFORM_DATA";
-  "ATH_BF_VERSION"; "ATH_BF_CAPABILITY"; "ATH_BF_CONFIG"; "ATH_MUMIMO_DATA";
-  "ATH_MU_VERSION"; "ATH_MU_CAPABILITY"; "ATH_MU_CONFIG"; "ATH_MESH_DATA";
-  "ATH_MESH_VERSION"; "ATH_MESH_TYPE"; "ATH_MESH_CONFIG"; "ATH_DFS_DATA";
-  "ATH_DFS_VERSION"; "ATH_DFS_CAPABILITY"; "ATH_DFS_REGION";
-  
-  (* Intel Vendor *)
-  "INTEL_KDE"; "KDE_LENGTH_INTEL"; "INTEL_VENDOR_TYPE"; "INTEL_VENDOR_DATA";
-  "INTEL_CONN_PARAMS"; "INTEL_CONN_FLAGS"; "INTEL_CONN_INTERVAL"; "INTEL_CONN_LATENCY";
-  "INTEL_CONN_TIMEOUT"; "INTEL_PM_DATA"; "INTEL_PM_MODE"; "INTEL_PM_INTERVAL";
-  "INTEL_PM_FLAGS"; "INTEL_QOS_DATA"; "INTEL_QOS_FLAGS"; "INTEL_QOS_PARAMS";
-  "INTEL_SEC_DATA"; "INTEL_SEC_FLAGS"; "INTEL_SEC_FEATURES"; "INTEL_RADIO_DATA";
-  "INTEL_RADIO_FLAGS"; "INTEL_RADIO_CONFIG"; "INTEL_BAND_STEER_DATA"; "INTEL_BS_FLAGS";
-  "INTEL_BS_THRESHOLD"; "INTEL_BS_CONFIG"; "INTEL_LB_DATA"; "INTEL_LB_FLAGS";
-  "INTEL_LB_ALGORITHM"; "INTEL_LB_PARAMS"; "INTEL_FAST_ROAM_DATA"; "INTEL_FR_FLAGS";
-  "INTEL_FR_THRESHOLD"; "INTEL_FR_CONFIG"; "INTEL_MESH_DATA"; "INTEL_MESH_FLAGS";
-  "INTEL_MESH_ID"; "INTEL_MESH_CONFIG"; "INTEL_ADV_FEATURES"; "INTEL_ADV_FLAGS";
-  "INTEL_ADV_CONFIG"; "INTEL_WIFI6_DATA"; "INTEL_W6_VERSION"; "INTEL_W6_FEATURES";
-  "INTEL_W6_CONFIG"; "INTEL_AI_NET_DATA"; "INTEL_AI_VERSION"; "INTEL_AI_CAPABILITY";
-  "INTEL_AI_CONFIG"; "INTEL_SENSING_DATA"; "INTEL_SENS_FLAGS"; "INTEL_SENS_CAPABILITY";
-  "INTEL_SENS_CONFIG"; "INTEL_MLO_DATA"; "INTEL_MLO_VERSION"; "INTEL_MLO_CAPABILITY";
-  "INTEL_MLO_CONFIG";
-  
-  (* Cisco Vendor *)
-  "CISCO_KDE"; "KDE_LENGTH_CISCO"; "CISCO_VENDOR_TYPE"; "CISCO_VENDOR_DATA";
-  "CISCO_CCX_DATA"; "CCX_VERSION"; "CCX_CAPABILITY"; "CCX_FEATURES"; "CCX_ROAM_INFO";
-  "CISCO_CKIP_DATA"; "CKIP_VERSION"; "CKIP_FLAGS"; "CKIP_KEY_PERMISSIONS";
-  "CISCO_NAME_DATA"; "CISCO_NAME_LENGTH"; "CISCO_DEVICE_NAME"; "CISCO_POWER_DATA";
-  "CISCO_POWER_CAPABILITY"; "CISCO_POWER_CONSTRAINT"; "CISCO_POWER_INFO";
-  "CISCO_QBSS_DATA"; "QBSS_VERSION"; "QBSS_LOAD_ELEMENT"; "QBSS_AAC";
-  "CISCO_RM_DATA"; "RM_CAPABILITY"; "RM_ENABLED_CAPS"; "RM_REQUEST_INFO";
-  "CISCO_LOC_DATA"; "LOC_VERSION"; "LOC_CAPABILITY"; "LOC_CONFIG";
-  "CISCO_ROGUE_DATA"; "ROGUE_VERSION"; "ROGUE_FLAGS"; "ROGUE_THRESHOLD";
-  "CISCO_BAND_DATA"; "BAND_SELECT_FLAGS"; "BAND_PREFER_5GHZ"; "BAND_THRESHOLDS";
-  "CISCO_FSR_DATA"; "FSR_VERSION"; "FSR_CAPABILITY"; "FSR_NEIGHBOR_INFO";
-  "CISCO_CATALYST_DATA"; "CATALYST_VERSION"; "CATALYST_FEATURES"; "CATALYST_CONFIG";
-  "CISCO_MERAKI_DATA"; "MERAKI_VERSION"; "MERAKI_CLOUD_ID"; "MERAKI_CONFIG";
-  "CISCO_DNA_DATA"; "DNA_VERSION"; "DNA_CAPABILITY"; "DNA_CONFIG";
-  "CISCO_WIFI6E_DATA"; "CISCO_6E_VERSION"; "CISCO_6E_FEATURES"; "CISCO_6E_CONFIG";
-  
-  (* Qualcomm Vendor *)
-  "QUALCOMM_KDE"; "KDE_LENGTH_QCOM"; "QCOM_VENDOR_TYPE"; "QCOM_VENDOR_DATA";
-  "QCOM_MUMIMO_DATA"; "QCOM_MU_VERSION"; "QCOM_MU_CAPABILITY"; "QCOM_MU_CONFIG";
-  "QCOM_MU_BEAMFORM_CAP"; "QCOM_SON_DATA"; "QCOM_SON_VERSION"; "QCOM_SON_FLAGS";
-  "QCOM_SON_CONFIG"; "QCOM_SON_NEIGHBOR_COUNT"; "QCOM_SON_NEIGHBOR_INFO";
-  "QCOM_BS2_DATA"; "QCOM_BS2_FLAGS"; "QCOM_BS2_ALGO"; "QCOM_BS2_THRESHOLDS";
-  "QCOM_BS2_POLICY"; "QCOM_EXT_CAP_DATA"; "QCOM_EXT_CAP_FLAGS"; "QCOM_EXT_CAP_FEATURES";
-  "QCOM_EXT_CAP_CONFIG"; "QCOM_PS_DATA"; "QCOM_PS_VERSION"; "QCOM_PS_MODE";
-  "QCOM_PS_PARAMS"; "QCOM_PS_SCHEDULE"; "QCOM_ADV_QOS_DATA"; "QCOM_QOS_VERSION";
-  "QCOM_QOS_FLAGS"; "QCOM_QOS_AC_PARAMS"; "QCOM_QOS_CLASSIFIER"; "QCOM_MESH_DATA";
-  "QCOM_MESH_VERSION"; 
-  "QCOM_SEC_EXT_DATA"; "QCOM_SEC_VERSION"; "QCOM_SEC_FEATURES"; "QCOM_SEC_POLICIES";
-  "QCOM_PERF_DATA"; "QCOM_PERF_FLAGS"; "QCOM_PERF_METRICS"; "QCOM_PERF_TUNING";
-  "QCOM_ML_DATA"; "QCOM_ML_VERSION"; "QCOM_ML_FEATURES"; "QCOM_ML_CONFIG";
-  "QCOM_ML_MODEL_COUNT"; "QCOM_ML_MODELS"; "QCOM_WIFI7_DATA"; "QCOM_W7_VERSION";
-  "QCOM_W7_FEATURES"; "QCOM_W7_CONFIG"; "QCOM_6GHZ_DATA"; "QCOM_6G_FLAGS";
-  "QCOM_6G_CHANNELS"; "QCOM_6G_CONFIG"; "QCOM_FASTCONNECT_DATA"; "QCOM_FC_VERSION";
-  "QCOM_FC_CAPABILITY"; "QCOM_FC_CONFIG"; "QCOM_SENSING_DATA"; "QCOM_SENS_VERSION";
-  "QCOM_SENS_CAPABILITY"; "QCOM_SENS_CONFIG";
-  
-  (* MediaTek Vendor *)
-  "MEDIATEK_KDE"; "KDE_LENGTH_MTK"; "MTK_VENDOR_TYPE"; "MTK_VENDOR_DATA";
-  "MTK_SMART_CONNECT"; "MTK_SC_VERSION"; "MTK_SC_FLAGS"; "MTK_SC_ALGO"; "MTK_SC_PARAMS";
-  "MTK_AIRTIME_FAIR"; "MTK_ATF_FLAGS"; "MTK_ATF_WEIGHT"; "MTK_ATF_QUOTA";
-  "MTK_BAND_STEER"; "MTK_BS_FLAGS"; "MTK_BS_RSSI_THRESH"; "MTK_BS_CU_THRESH";
-  "MTK_LOAD_BAL"; "MTK_LB_FLAGS"; "MTK_LB_ALGO"; "MTK_LB_METRICS"; "MTK_REPEATER";
-  "MTK_RPT_MODE"; "MTK_RPT_CONFIG"; "MTK_RPT_BACKHAUL"; "MTK_BEAMFORM_PLUS";
-  "MTK_BF_VERSION"; "MTK_BF_CAPABILITY"; "MTK_BF_CONFIG"; "MTK_MU_ENHANCE";
-  "MTK_MU_FLAGS"; "MTK_MU_GROUPING"; "MTK_MU_SCHEDULING"; "MTK_OFDMA_OPT";
-  "MTK_OFDMA_FLAGS"; "MTK_OFDMA_RU_CONFIG"; "MTK_OFDMA_TRIGGER"; "MTK_WIFI6E";
-  "MTK_6E_FLAGS"; "MTK_6E_6GHZ_CONFIG"; "MTK_6E_REGULATORY"; "MTK_AI_OPT";
-  "MTK_AI_VERSION"; "MTK_AI_FEATURES"; "MTK_AI_CONFIG"; "MTK_AI_MODEL_COUNT";
-  "MTK_AI_MODELS"; "MTK_WIFI7"; "MTK_W7_VERSION"; "MTK_W7_FEATURES"; "MTK_W7_CONFIG";
-  "MTK_MLO"; "MTK_MLO_VERSION"; "MTK_MLO_CAPABILITY"; "MTK_MLO_CONFIG";
-  
-  (* Realtek Vendor *)
-  "REALTEK_KDE"; "KDE_LENGTH_RTK"; "RTK_VENDOR_TYPE"; "RTK_VENDOR_DATA";
-  "RTK_PS_ENHANCE"; "RTK_PS_VERSION"; "RTK_PS_MODE"; "RTK_PS_PARAMS"; "RTK_PS_SCHEDULE";
-  "RTK_PROP_AGG"; "RTK_AGG_FLAGS"; "RTK_AGG_SIZE"; "RTK_AGG_TIMEOUT"; "RTK_DFS_DATA";
-  "RTK_DFS_VERSION"; "RTK_DFS_FLAGS"; "RTK_DFS_CHANNEL_COUNT"; "RTK_DFS_CHANNELS";
-  "RTK_TURBO"; "RTK_TURBO_FLAGS"; "RTK_TURBO_MODE"; "RTK_TURBO_RATE"; "RTK_SMART_ANT";
-  "RTK_ANT_CONFIG"; "RTK_ANT_PATTERN"; "RTK_ANT_SWITCHING"; "RTK_INTFER_MIT";
-  "RTK_IM_FLAGS"; "RTK_IM_THRESHOLD"; "RTK_IM_ALGORITHM"; "RTK_CH_BOND";
-  "RTK_CB_FLAGS"; "RTK_CB_WIDTH"; "RTK_CB_CHANNELS"; "RTK_ADV_MIMO"; "RTK_MIMO_FLAGS";
-  "RTK_MIMO_STREAMS"; "RTK_MIMO_CONFIG"; "RTK_LOW_LAT"; "RTK_LL_FLAGS"; "RTK_LL_TARGET";
-  "RTK_LL_QOS"; "RTK_GAMING"; "RTK_GAME_FLAGS"; "RTK_GAME_PROFILE"; "RTK_GAME_QOS";
-  "RTK_GAME_PRIORITY"; "RTK_MESH"; "RTK_MESH_VERSION"; "RTK_MESH_ROLE"; "RTK_MESH_CONFIG";
-  "RTK_WIFI6"; "RTK_W6_VERSION"; "RTK_W6_FEATURES"; "RTK_W6_CONFIG";
-  
-  (* Marvell Vendor *)
-  "MARVELL_KDE"; "KDE_LENGTH_MRVL"; "MRVL_VENDOR_TYPE"; "MRVL_VENDOR_DATA";
-  "MRVL_ENTERPRISE"; "MRVL_ENT_VERSION"; "MRVL_ENT_FEATURES"; "MRVL_ENT_POLICY";
-  "MRVL_ENT_CONFIG"; "MRVL_MESH"; "MRVL_MESH_VERSION"; "MRVL_MESH_ROLE";
-  "MRVL_MESH_CONFIG"; "MRVL_MESH_NEIGHBOR_COUNT"; "MRVL_MESH_NEIGHBORS"; "MRVL_CLOUD";
-  "MRVL_CLOUD_VERSION"; "MRVL_CLOUD_FLAGS"; "MRVL_CLOUD_ENDPOINT"; "MRVL_CLOUD_AUTH";
-  "MRVL_RF_OPT"; "MRVL_RF_FLAGS"; "MRVL_RF_PARAMS"; "MRVL_RF_CALIBRATION";
-  "MRVL_SEC_ENH"; "MRVL_SEC_VERSION"; "MRVL_SEC_FEATURES"; "MRVL_SEC_POLICIES";
-  "MRVL_QOS"; "MRVL_QOS_VERSION"; "MRVL_QOS_FLAGS"; "MRVL_QOS_CLASSES";
-  "MRVL_QOS_MAPPING"; "MRVL_LOCATION"; "MRVL_LOC_VERSION"; "MRVL_LOC_CAPABILITY";
-  "MRVL_LOC_CONFIG"; "MRVL_ANALYTICS"; "MRVL_ANALYTICS_FLAGS"; "MRVL_ANALYTICS_CONFIG";
-  "MRVL_ANALYTICS_METRICS"; "MRVL_POWER"; "MRVL_POWER_VERSION"; "MRVL_POWER_MODE";
-  "MRVL_POWER_SCHEDULE"; "MRVL_VIRT"; "MRVL_VIRT_VERSION"; "MRVL_VIRT_TYPE";
-  "MRVL_VIRT_CONFIG"; "MRVL_VIRT_MAPPING"; "MRVL_SDWAN"; "MRVL_SDWAN_VERSION";
-  "MRVL_SDWAN_FLAGS"; "MRVL_SDWAN_CONFIG"; "MRVL_AI"; "MRVL_AI_VERSION";
-  "MRVL_AI_FEATURES"; "MRVL_AI_CONFIG";
-  
-  (* Ralink Vendor *)
-  "RALINK_KDE"; "KDE_LENGTH_RALINK"; "RALINK_VENDOR_TYPE"; "RALINK_VENDOR_DATA";
-  "RALINK_WSC_DATA"; "RALINK_WSC_VERSION"; "RALINK_WSC_STATE"; "RALINK_WSC_METHODS";
-  "RALINK_WSC_UUID"; "RALINK_AGG_FLAGS"; "RALINK_AGG_SIZE";
-  "RALINK_AGG_DENSITY"; "RALINK_PB_DATA"; "RALINK_PB_FLAGS"; "RALINK_RDG_DATA";
-  "RALINK_RDG_FLAGS"; "RALINK_RDG_DURATION"; "RALINK_HT_DATA"; "RALINK_HT_FLAGS";
-  "RALINK_HT_CAPABILITY"; "RALINK_HT_INFO"; "RALINK_CD_DATA"; "RALINK_CD_FLAGS";
-  "RALINK_CD_THRESHOLD"; "RALINK_DLS_DATA"; "RALINK_DLS_FLAGS"; "RALINK_DLS_TIMEOUT";
-  "RALINK_MESH_DATA"; "RALINK_MESH_ID"; "RALINK_MESH_CONFIG"; "RALINK_MESH_FORMATION";
-  "RALINK_PC_DATA"; "RALINK_PC_LOCAL"; "RALINK_PC_REGULATORY"; "RALINK_STREAM_DATA";
-  "RALINK_STREAM_MODE"; "RALINK_STREAM_CONFIG";
-  
-  (* Ubiquiti Vendor *)
-  "UBIQUITI_KDE"; "KDE_LENGTH_UBNT"; "UBNT_VENDOR_TYPE"; "UBNT_VENDOR_DATA";
-  "UBNT_CONTROLLER_DATA"; "UBNT_CTRL_VERSION"; "UBNT_CTRL_ID"; "UBNT_CTRL_CONFIG";
-  "UBNT_AIRMAX_DATA"; "UBNT_AM_VERSION"; "UBNT_AM_PROTOCOL"; "UBNT_AM_CONFIG";
-  "UBNT_WDS_DATA"; "UBNT_WDS_FLAGS"; "UBNT_WDS_PEERS"; "UBNT_WDS_CONFIG";
-  "UBNT_UPLINK_DATA"; "UBNT_UL_FLAGS"; "UBNT_UL_PRIORITY"; "UBNT_UL_CONFIG";
-  "UBNT_GUEST_DATA"; "UBNT_GUEST_FLAGS"; "UBNT_GUEST_VLAN"; "UBNT_GUEST_CONFIG";
-  "UBNT_BS_DATA"; "UBNT_BS_FLAGS"; "UBNT_BS_THRESHOLD"; "UBNT_BS_CONFIG";
-  "UBNT_FR_DATA"; "UBNT_FR_FLAGS"; "UBNT_FR_THRESHOLD"; "UBNT_FR_CONFIG";
-  "UBNT_LB_DATA"; "UBNT_LB_FLAGS"; "UBNT_LB_ALGORITHM"; "UBNT_LB_CONFIG";
-  "UBNT_PORTAL_DATA"; "UBNT_PORTAL_FLAGS"; "UBNT_PORTAL_URL"; "UBNT_PORTAL_CONFIG";
-  "UBNT_UISP_DATA"; "UBNT_UISP_VERSION"; "UBNT_UISP_FLAGS"; "UBNT_UISP_CONFIG";
-  
-  (* Aruba Vendor *)
-  "ARUBA_KDE"; "KDE_LENGTH_ARUBA"; "ARUBA_VENDOR_TYPE"; "ARUBA_VENDOR_DATA";
-  "ARUBA_MC_DATA"; "ARUBA_MC_VERSION"; "ARUBA_MC_ID"; "ARUBA_MC_CONFIG";
-  "ARUBA_IAP_DATA"; "ARUBA_IAP_VERSION"; "ARUBA_IAP_CLUSTER_ID"; "ARUBA_IAP_CONFIG";
-  "ARUBA_VC_DATA"; "ARUBA_VC_VERSION"; "ARUBA_VC_FLAGS"; "ARUBA_VC_CONFIG";
-  "ARUBA_ARM_DATA"; "ARUBA_ARM_VERSION"; "ARUBA_ARM_FLAGS"; "ARUBA_ARM_CONFIG";
-  "ARUBA_AM_DATA"; "ARUBA_AM_VERSION"; "ARUBA_AM_CAPABILITY"; "ARUBA_AM_CONFIG";
-  "ARUBA_CM_DATA"; "ARUBA_CM_VERSION"; "ARUBA_CM_CAPABILITY"; "ARUBA_CM_CONFIG";
-  "ARUBA_APPRF_DATA"; "ARUBA_APPRF_VERSION"; "ARUBA_APPRF_FLAGS"; "ARUBA_APPRF_CONFIG";
-  "ARUBA_WIPS_DATA"; "ARUBA_WIPS_VERSION"; "ARUBA_WIPS_CAPABILITY"; "ARUBA_WIPS_CONFIG";
-  "ARUBA_CP_DATA"; "ARUBA_CP_VERSION"; "ARUBA_CP_FLAGS";"ARUBA_CP_CONFIG";
-  "ARUBA_CENTRAL_DATA"; "ARUBA_CENTRAL_VERSION"; "ARUBA_CENTRAL_FLAGS"; "ARUBA_CENTRAL_CONFIG";
-  "ARUBA_WIFI6E_DATA"; "ARUBA_6E_VERSION"; "ARUBA_6E_FEATURES"; "ARUBA_6E_CONFIG";
-  "ARUBA_ESP_DATA"; "ARUBA_ESP_VERSION"; "ARUBA_ESP_CAPABILITY"; "ARUBA_ESP_CONFIG";
-] *)
 
-let start_symbol = "START"
-(* let packet_types = List.init num_packets (fun x -> x) *)
+(* ================================================================
+   Mutable configuration values
+   ================================================================ *)
 
-(* let queue_handle = List.init num_queues (fun x -> x) *)
+(* Number of valid packet types (0 .. num_packets-1).
+   num_packets itself is the sentinel "no packet" value. *)
+let num_packets = ref 10
 
+(* Number of state queues *)
+let num_queues = ref 5
+
+(* Grammar start symbol *)
+let start_symbol = ref "START"
+
+(* State queue prefixes: list of (queue_name, valid_packet_prefix) *)
+let queue_prefixes : (string * int list) list ref = ref []
+
+
+(* ================================================================
+   Instance-scoped directories for parallel runs
+   
+   Directory layout for a run:
+     runs/<protocol>/<mode>/instance_<N>/
+       sync/           ← IPC with driver
+       temporal-info/  ← timing diagnostics  
+       results/        ← interesting traces
+       profraw-dir/    ← coverage data
+   ================================================================ *)
+
+(* Root directory for this instance — all paths derived from this *)
+let run_dir = ref "."
+
+(* Derived paths *)
+let sync_dir = ref "sync"
+let temporal_dir = ref "temporal-info"
+let results_dir = ref "results"
+let profraw_dir = ref "profraw-dir"
+let grammar_hex_log = ref "grammar_hex_log.txt"
+
+(* Helper: join path components *)
+let ( // ) a b = a ^ "/" ^ b
+
+(* Build a path relative to sync_dir *)
+let sync_path filename = !sync_dir // filename
+
+(* Build a path relative to temporal_dir *)  
+let temporal_path filename = !temporal_dir // filename
+
+(* Build a path relative to results_dir *)
+let results_path filename = !results_dir // filename
+
+
+(* ================================================================
+   Per-protocol configurations
+   ================================================================ *)
+
+let configure_ftp () =
+  num_packets := 10;
+  num_queues := 5;
+  start_symbol := "START";
+  queue_prefixes := [
+    ("connected",     []);
+    ("user_sent",     [0]);
+    ("authenticated", [0; 1]);
+    ("pasv_ready",    [0; 1; 5]);
+    ("type_pasv",     [0; 1; 4; 5]);
+  ]
+
+let configure_rtsp () =
+  num_packets := 10;
+  num_queues := 7;
+  start_symbol := "START";
+  queue_prefixes := [
+    ("connected",     []);
+    ("options_done",  [0]);
+    ("described",     [0; 1]);
+    ("ready",         [0; 1; 2]);
+    ("playing",       [0; 1; 2; 3]);
+    ("no_options",    [1; 2]);
+    ("direct_setup",  [2]);
+  ]
+
+let configure_wpa () =
+  num_packets := 5;
+  num_queues := 5;
+  start_symbol := "START";
+  queue_prefixes := [
+    ("nothing",    []);
+    ("confirmed",  [0]);
+    ("accepted",   [0; 1]);
+    ("eapol_1",    [0; 1; 2]);
+    ("eapol_2",    [0; 1; 2; 3]);
+  ]
+
+
+(* ================================================================
+   Top-level configure dispatch
+   ================================================================ *)
+
+let configure (protocol : string) =
+  match protocol with
+  | "ftp"  -> configure_ftp ()
+  | "rtsp" -> configure_rtsp ()
+  | "wpa"  -> configure_wpa ()
+  | s      -> failwith (Printf.sprintf "Unknown protocol: %s (supported: ftp, rtsp, wpa)" s)
+
+
+(* ================================================================
+   Instance setup — call after configure, before runFuzzer.
+   
+   Sets run_dir and derived paths, creates directories.
+   
+   Config.set_instance ~protocol:"rtsp" ~mode:"3" ~instance:0
+   
+   Creates:
+     runs/rtsp/mode3/instance_0/sync/
+     runs/rtsp/mode3/instance_0/temporal-info/
+     runs/rtsp/mode3/instance_0/results/
+     runs/rtsp/mode3/instance_0/profraw-dir/
+   ================================================================ *)
+
+let set_instance ~protocol ~mode ~instance =
+  let root = Printf.sprintf "runs/%s/mode%s/instance_%d" protocol mode instance in
+  run_dir := root;
+  sync_dir := root // "sync";
+  temporal_dir := root // "temporal-info";
+  results_dir := root // "results";
+  profraw_dir := root // "profraw-dir";
+  grammar_hex_log := root // "grammar_hex_log.txt";
+  (* Create all directories *)
+  List.iter (fun d ->
+    let _ = Sys.command (Printf.sprintf "mkdir -p %s" d) in ()
+  ) [!sync_dir; !temporal_dir; !results_dir; !profraw_dir]
+
+(* Compute a unique port for this instance to avoid collisions.
+   Base port per protocol, offset by instance number.
+   Usage: driver --port $(Config.instance_port) *)
+let base_port = ref 2121
+
+let configure_base_port (protocol : string) =
+  match protocol with
+  | "ftp"  -> base_port := 2121
+  | "rtsp" -> base_port := 8554
+  | "wpa"  -> base_port := 0     (* WPA doesn't use TCP *)
+  | _      -> base_port := 9000
+
+let instance_port (instance : int) =
+  !base_port + instance
+
+(* Print full config for logging / launch scripts *)
+let print_instance_info (instance : int) =
+  Printf.printf "=== Fuzzer Instance ===\n";
+  Printf.printf "  run_dir:      %s\n" !run_dir;
+  Printf.printf "  sync_dir:     %s\n" !sync_dir;
+  Printf.printf "  temporal_dir: %s\n" !temporal_dir;
+  Printf.printf "  results_dir:  %s\n" !results_dir;
+  Printf.printf "  profraw_dir:  %s\n" !profraw_dir;
+  Printf.printf "  port:         %d\n" (instance_port instance);
+  Printf.printf "  num_packets:  %d\n" !num_packets;
+  Printf.printf "  num_queues:   %d\n" !num_queues;
+  Printf.printf "=======================\n%!"
+
+
+(* ================================================================
+   Helper: build initial queues from queue_prefixes × grammars
+   ================================================================ *)
+
+let build_initial_queues (grammars : 'a list) : ((int list * 'a) * float) list list =
+  List.map (fun (_name, prefix) ->
+    List.map (fun g -> ((prefix, g), 0.0)) grammars
+  ) !queue_prefixes

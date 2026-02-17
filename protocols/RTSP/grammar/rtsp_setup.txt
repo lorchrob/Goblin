@@ -1,0 +1,204 @@
+// ============================================================================
+// RTSP Grammar: SETUP — Transport Negotiation
+// ============================================================================
+//
+// SETUP establishes the transport mechanism for a media stream.
+// Context-sensitive: client_port range PORT2 = PORT1 + 1
+//
+// SETUP rtsp://host/path/trackN RTSP/1.0\r\n
+// CSeq: N\r\n
+// Transport: RTP/AVP;unicast;client_port=PORT1-PORT2\r\n
+// \r\n
+
+<START> ::= <SETUP_REQ> ;
+
+<SETUP_REQ> ::= <SETUP_VERB> <SP> <TRACK_URI> <SP> <VERSION> <CRLF>
+                <CSEQ_HDR> <CRLF>
+                <TRANSPORT_HDR> <CRLF>
+                <SESSION_HDR_OPT>
+                <OPT_HEADERS>
+                <CRLF> ;
+
+<SETUP_VERB> :: String { <SETUP_VERB> <- "SETUP"; };
+
+
+// ---- Track URI ----
+// SETUP targets a specific track: rtsp://host/path/track1
+
+<TRACK_URI> ::= <URI_SCHEME> <URI_HOST> <URI_PORT_OPT> <BASE_PATH> <SLASH> <TRACK_ID> ;
+
+<TRACK_ID> ::= <TRACK_NAMED>
+             | <TRACK_NUMERIC>
+             | <TRACK_FUZZ> ;
+
+<TRACK_NAMED> :: String { <TRACK_NAMED> <- "track1"; };
+
+<TRACK_NUMERIC> ::= <TRACK_PREFIX> <DIGIT_CHARS> ;
+<TRACK_PREFIX> :: String { <TRACK_PREFIX> <- "track"; };
+
+<TRACK_FUZZ> ::= <PATH_CHARS> ;
+
+<BASE_PATH> ::= <SLASH> <PATH_SEGMENT>
+              | <SLASH> <PATH_SEGMENT> <BASE_PATH> ;
+
+
+// ---- Transport header (context-sensitive port range) ----
+//
+// Transport: RTP/AVP;unicast;client_port=8000-8001
+//
+// Constraint: <PORT_END> = <PORT_START> + 1
+// This captures the RFC requirement that RTP uses consecutive ports
+// (RTP on even port, RTCP on odd port = RTP+1).
+
+<TRANSPORT_HDR> ::= <TRANSPORT_KEY> <COLON> <SP> <TRANSPORT_VAL> ;
+
+<TRANSPORT_KEY> :: String { <TRANSPORT_KEY> <- "Transport"; };
+
+<TRANSPORT_VAL> ::= <TRANSPORT_UDP>
+                  | <TRANSPORT_TCP>
+                  | <TRANSPORT_RAW> ;
+
+// RTP/AVP;unicast;client_port=PORT1-PORT2  (UDP, standard)
+<TRANSPORT_UDP> ::= <PROTO_UDP> <SEMI> <CAST_MODE> <SEMI> <CLIENT_PORT_SPEC>
+{
+    <PORT_END> = <PORT_START> + 1;            // RTP/RTCP consecutive port constraint
+    <PORT_START> > 1023;                      // unprivileged ports only
+};
+
+<PROTO_UDP> ::= <RTP_AVP_STR>
+              | <RTP_AVP_UDP_STR> ;
+
+<RTP_AVP_STR>     :: String { <RTP_AVP_STR> <- "RTP/AVP"; };
+<RTP_AVP_UDP_STR> :: String { <RTP_AVP_UDP_STR> <- "RTP/AVP/UDP"; };
+
+// RTP/AVP/TCP;unicast;interleaved=0-1  (TCP interleaved)
+<TRANSPORT_TCP> ::= <PROTO_TCP> <SEMI> <CAST_TCP> <SEMI> <INTERLEAVED_SPEC> ;
+
+<PROTO_TCP> :: String { <PROTO_TCP> <- "RTP/AVP/TCP"; };
+
+<CAST_TCP> ::= <UNICAST_STR> ;
+
+<INTERLEAVED_SPEC> ::= <INTERLEAVED_KEY> <EQUALS> <INTERLEAVE_CHAN_START> <DASH> <INTERLEAVE_CHAN_END>
+{
+    <INTERLEAVE_CHAN_END> = <INTERLEAVE_CHAN_START> + 1;     // data/control channel pair
+    <INTERLEAVE_CHAN_START> >= 0;
+    <INTERLEAVE_CHAN_START> < 256;
+};
+
+<INTERLEAVED_KEY> :: String { <INTERLEAVED_KEY> <- "interleaved"; };
+
+<INTERLEAVE_CHAN_START> :: Int;
+<INTERLEAVE_CHAN_END>   :: Int;
+
+// Raw transport string (for fuzzing arbitrary transport specs)
+<TRANSPORT_RAW> ::= <PRINTABLE_CHARS> ;
+
+
+// Cast mode
+<CAST_MODE> ::= <UNICAST_STR>
+              | <MULTICAST_STR> ;
+
+<UNICAST_STR>   :: String { <UNICAST_STR> <- "unicast"; };
+<MULTICAST_STR> :: String { <MULTICAST_STR> <- "multicast"; };
+
+
+// client_port=PORT1-PORT2
+<CLIENT_PORT_SPEC> ::= <CLIENT_PORT_KEY> <EQUALS> <PORT_START> <DASH> <PORT_END> ;
+
+<CLIENT_PORT_KEY> :: String { <CLIENT_PORT_KEY> <- "client_port"; };
+
+<PORT_START> :: Int;
+<PORT_END>   :: Int;
+
+
+// ---- Optional Session header (for re-SETUP on existing session) ----
+
+<SESSION_HDR_OPT> ::= <EMPTY>
+                    | <SESSION_HDR> <CRLF> ;
+
+<SESSION_HDR> ::= <SESSION_KEY> <COLON> <SP> <SESSION_ID> ;
+<SESSION_KEY> :: String { <SESSION_KEY> <- "Session"; };
+<SESSION_ID>  ::= <HEX_CHARS> ;
+
+<HEX_CHARS> ::= <HEX_CHAR> | <HEX_CHAR> <HEX_CHARS> ;
+
+<HEX_CHAR> :: BitVec(8)
+{
+    (int_to_bv(8, 0x30) bvulte <HEX_CHAR> and <HEX_CHAR> bvulte int_to_bv(8, 0x39)) or   // 0-9
+    (int_to_bv(8, 0x41) bvulte <HEX_CHAR> and <HEX_CHAR> bvulte int_to_bv(8, 0x46)) or   // A-F
+    (int_to_bv(8, 0x61) bvulte <HEX_CHAR> and <HEX_CHAR> bvulte int_to_bv(8, 0x66));     // a-f
+};
+
+
+// ---- Optional extra headers ----
+
+<OPT_HEADERS> ::= <EMPTY>
+                | <EXTRA_HDR> <CRLF> <OPT_HEADERS> ;
+
+<EXTRA_HDR> ::= <BLOCKSIZE_HDR>
+              | <RAW_HEADER> ;
+
+<BLOCKSIZE_HDR> ::= <BLOCKSIZE_KEY> <COLON> <SP> <DIGIT_CHARS> ;
+<BLOCKSIZE_KEY> :: String { <BLOCKSIZE_KEY> <- "Blocksize"; };
+
+<RAW_HEADER> ::= <HEADER_NAME> <COLON> <SP> <HEADER_VALUE> ;
+<HEADER_NAME>  ::= <ALPHA_CHARS> ;
+<HEADER_VALUE> ::= <PRINTABLE_CHARS> ;
+
+
+// ---- Shared (same as rtsp_session.txt) ----
+
+<URI_SCHEME> :: String { <URI_SCHEME> <- "rtsp://"; };
+
+<URI_HOST> ::= <HOST_LITERAL> | <HOST_FUZZ> ;
+<HOST_LITERAL> :: String { <HOST_LITERAL> <- "127.0.0.1"; };
+<HOST_FUZZ> ::= <PRINTABLE_CHARS> ;
+
+<URI_PORT_OPT> ::= <EMPTY> | <COLON> <PORT_NUM> ;
+<PORT_NUM> ::= <DIGIT_CHARS> ;
+
+<PATH_SEGMENT> ::= <PATH_CHARS> ;
+<PATH_CHARS>   ::= <PATH_CHAR> | <PATH_CHAR> <PATH_CHARS> ;
+
+<PATH_CHAR> :: BitVec(8)
+{
+    (int_to_bv(8, 0x2D) bvulte <PATH_CHAR> and <PATH_CHAR> bvulte int_to_bv(8, 0x39)) or
+    (int_to_bv(8, 0x41) bvulte <PATH_CHAR> and <PATH_CHAR> bvulte int_to_bv(8, 0x5A)) or
+    <PATH_CHAR> = int_to_bv(8, 0x5F) or
+    (int_to_bv(8, 0x61) bvulte <PATH_CHAR> and <PATH_CHAR> bvulte int_to_bv(8, 0x7A));
+};
+
+<CSEQ_HDR> ::= <CSEQ_KEY> <COLON> <SP> <CSEQ_VAL> ;
+<CSEQ_KEY> :: String { <CSEQ_KEY> <- "CSeq"; };
+<CSEQ_VAL> ::= <DIGIT_CHARS> ;
+
+<VERSION> :: String { <VERSION> <- "RTSP/1.0"; };
+
+<SP>     :: String { <SP> <- " "; };
+<CRLF>   :: BitVector { <CRLF> = 0x0A0D; };
+<COLON>  :: String { <COLON> <- ":"; };
+<SLASH>  :: String { <SLASH> <- "/"; };
+<SEMI>   :: String { <SEMI> <- ";"; };
+<DASH>   :: String { <DASH> <- "-"; };
+<EQUALS> :: String { <EQUALS> <- "="; };
+<EMPTY>  :: String { <EMPTY> <- ""; };
+
+<DIGIT_CHARS> ::= <DIGIT_CHAR> | <DIGIT_CHAR> <DIGIT_CHARS> ;
+<DIGIT_CHAR> :: BitVec(8)
+{
+    int_to_bv(8, 0x30) bvulte <DIGIT_CHAR> and <DIGIT_CHAR> bvulte int_to_bv(8, 0x39);
+};
+
+<ALPHA_CHARS> ::= <ALPHA_CHAR> | <ALPHA_CHAR> <ALPHA_CHARS> ;
+<ALPHA_CHAR> :: BitVec(8)
+{
+    (int_to_bv(8, 0x41) bvulte <ALPHA_CHAR> and <ALPHA_CHAR> bvulte int_to_bv(8, 0x5A)) or
+    (int_to_bv(8, 0x61) bvulte <ALPHA_CHAR> and <ALPHA_CHAR> bvulte int_to_bv(8, 0x7A)) or
+    <ALPHA_CHAR> = int_to_bv(8, 0x2D);
+};
+
+<PRINTABLE_CHARS> ::= <PRINTABLE_CHAR> | <PRINTABLE_CHAR> <PRINTABLE_CHARS> ;
+<PRINTABLE_CHAR> :: BitVec(8)
+{
+    int_to_bv(8, 0x20) bvulte <PRINTABLE_CHAR> and <PRINTABLE_CHAR> bvulte int_to_bv(8, 0x7E);
+};

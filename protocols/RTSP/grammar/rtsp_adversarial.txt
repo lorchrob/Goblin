@@ -1,0 +1,200 @@
+// ============================================================================
+// RTSP Grammar: Adversarial — Parser Robustness Testing
+// ============================================================================
+//
+// Generates structurally valid but semantically questionable requests
+// to test server parser robustness:
+//   - Oversized headers
+//   - Path traversal in URIs
+//   - Invalid methods
+//   - Header injection (\r\n in values)
+//   - Duplicate/conflicting headers
+//   - Malformed version strings
+//   - Extreme CSeq values
+
+<START> ::= <ADVERSARIAL_CMD> ;
+
+<ADVERSARIAL_CMD> ::= <BAD_METHOD_REQ>
+                    | <TRAVERSAL_REQ>
+                    | <DOUBLE_CSEQ_REQ>
+                    | <HUGE_URI_REQ>
+                    | <BAD_VERSION_REQ>
+                    | <INTERLEAVED_DATA> ;
+
+
+// ---- Unknown / invalid method names ----
+// Server should reply 501 Not Implemented
+
+<BAD_METHOD_REQ> ::= <BAD_METHOD> <SP> <URI> <SP> <VERSION> <CRLF>
+                     <CSEQ_HDR> <CRLF>
+                     <CRLF> ;
+
+<BAD_METHOD> ::= <ALPHA_CHARS> ;
+
+
+// ---- Path traversal in URI ----
+// Tests directory traversal protection: rtsp://host/../../etc/passwd
+
+<TRAVERSAL_REQ> ::= <METHOD> <SP> <TRAVERSAL_URI> <SP> <VERSION> <CRLF>
+                    <CSEQ_HDR> <CRLF>
+                    <CRLF> ;
+
+<METHOD> ::= <DESCRIBE_STR>
+           | <SETUP_STR>
+           | <PLAY_STR> ;
+
+<DESCRIBE_STR> :: String { <DESCRIBE_STR> <- "DESCRIBE"; };
+<SETUP_STR>    :: String { <SETUP_STR> <- "SETUP"; };
+<PLAY_STR>     :: String { <PLAY_STR> <- "PLAY"; };
+
+<TRAVERSAL_URI> ::= <URI_SCHEME> <URI_HOST> <TRAVERSAL_PATH> ;
+
+<TRAVERSAL_PATH> ::= <DOTDOT_SEG> <TRAVERSAL_PATH>
+                   | <DOTDOT_SEG> <SLASH> <TARGET_FILE> ;
+
+<DOTDOT_SEG> ::= <SLASH> <DOTDOT> ;
+
+<DOTDOT> :: String { <DOTDOT> <- ".."; };
+
+<TARGET_FILE> ::= <PASSWD_FILE>
+                | <ETC_SHADOW>
+                | <PATH_CHARS> ;
+
+<PASSWD_FILE> :: String { <PASSWD_FILE> <- "etc/passwd"; };
+<ETC_SHADOW>  :: String { <ETC_SHADOW> <- "etc/shadow"; };
+
+
+// ---- Duplicate CSeq headers ----
+// Tests how server handles conflicting CSeq values
+
+<DOUBLE_CSEQ_REQ> ::= <METHOD> <SP> <URI> <SP> <VERSION> <CRLF>
+                      <CSEQ_HDR> <CRLF>
+                      <CSEQ_HDR_2> <CRLF>
+                      <CRLF> ;
+
+<CSEQ_HDR_2> ::= <CSEQ_KEY> <COLON> <SP> <CSEQ_VAL_2> ;
+<CSEQ_VAL_2> ::= <DIGIT_CHARS> ;
+
+
+// ---- Oversized URI (buffer overflow probing) ----
+
+<HUGE_URI_REQ> ::= <METHOD> <SP> <HUGE_URI> <SP> <VERSION> <CRLF>
+                   <CSEQ_HDR> <CRLF>
+                   <CRLF> ;
+
+<HUGE_URI> ::= <URI_SCHEME> <URI_HOST> <LONG_PATH> ;
+
+// Long path: repeated segments
+// Using inherited attribute to control repetition depth
+<LONG_PATH> ::= <SLASH> <LONG_SEGMENT> <LONG_PATH>
+              | <SLASH> <LONG_SEGMENT> ;
+
+<LONG_SEGMENT> ::= <PATH_CHARS> ;
+
+
+// ---- Malformed RTSP version ----
+// RTSP/2.0, RTSP/0.9, HTTP/1.1, garbage
+
+<BAD_VERSION_REQ> ::= <METHOD> <SP> <URI> <SP> <BAD_VERSION> <CRLF>
+                      <CSEQ_HDR> <CRLF>
+                      <CRLF> ;
+
+<BAD_VERSION> ::= <HTTP_VERSION>
+                | <RTSP_20>
+                | <RTSP_09>
+                | <VERSION_GARBAGE> ;
+
+<HTTP_VERSION>    :: String { <HTTP_VERSION> <- "HTTP/1.1"; };
+<RTSP_20>         :: String { <RTSP_20> <- "RTSP/2.0"; };
+<RTSP_09>         :: String { <RTSP_09> <- "RTSP/0.9"; };
+<VERSION_GARBAGE> ::= <PRINTABLE_CHARS> ;
+
+
+// ---- Interleaved binary data frame ----
+// $ (0x24) + channel + length + data
+// Tests interleaved data handling outside of PLAY state
+//
+// Context-sensitive: DATA_LEN = <INTERLEAVED_PAYLOAD>.len
+
+<INTERLEAVED_DATA> ::= <DOLLAR_SIGN> <CHANNEL_BYTE> <DATA_LEN_HI> <DATA_LEN_LO> <INTERLEAVED_PAYLOAD>
+{
+    <DATA_LEN_COMBINED> = <INTERLEAVED_PAYLOAD>.len;
+    <DATA_LEN_COMBINED> > 0;
+    <DATA_LEN_COMBINED> < 65536;
+    <DATA_LEN_HI> = <DATA_LEN_COMBINED> / 256;
+    <DATA_LEN_LO> = <DATA_LEN_COMBINED> - (<DATA_LEN_HI> * 256);
+};
+
+<DOLLAR_SIGN> :: BitVec(8) { <DOLLAR_SIGN> = int_to_bv(8, 0x24); };
+
+<CHANNEL_BYTE> :: BitVec(8)
+{
+    int_to_bv(8, 0x00) bvulte <CHANNEL_BYTE> and <CHANNEL_BYTE> bvulte int_to_bv(8, 0x0F);
+};
+
+<DATA_LEN_HI>       :: Int;
+<DATA_LEN_LO>       :: Int;
+<DATA_LEN_COMBINED> :: Int;
+
+<INTERLEAVED_PAYLOAD> ::= <PAYLOAD_BYTE> <INTERLEAVED_PAYLOAD> { len := 1 + <INTERLEAVED_PAYLOAD>.len; }
+                        | <PAYLOAD_BYTE>                        { len := 1; } ;
+
+<PAYLOAD_BYTE> :: BitVec(8)
+{
+    int_to_bv(8, 0x00) bvulte <PAYLOAD_BYTE> and <PAYLOAD_BYTE> bvulte int_to_bv(8, 0xFF);
+};
+
+
+// ---- Shared terminals ----
+
+<URI> ::= <URI_SCHEME> <URI_HOST> <URI_PORT_OPT> <URI_PATH_OPT> ;
+<URI_SCHEME>   :: String { <URI_SCHEME> <- "rtsp://"; };
+<URI_HOST>     ::= <HOST_LITERAL> | <HOST_FUZZ> ;
+<HOST_LITERAL> :: String { <HOST_LITERAL> <- "127.0.0.1"; };
+<HOST_FUZZ>    ::= <PRINTABLE_CHARS> ;
+<URI_PORT_OPT> ::= <EMPTY> | <COLON> <PORT_NUM> ;
+<PORT_NUM>     ::= <DIGIT_CHARS> ;
+<URI_PATH_OPT> ::= <EMPTY> | <URI_PATH> ;
+<URI_PATH>     ::= <SLASH> <PATH_SEGMENT>
+                 | <SLASH> <PATH_SEGMENT> <URI_PATH> ;
+<PATH_SEGMENT> ::= <PATH_CHARS> ;
+<PATH_CHARS>   ::= <PATH_CHAR> | <PATH_CHAR> <PATH_CHARS> ;
+
+<PATH_CHAR> :: BitVec(8)
+{
+    (int_to_bv(8, 0x2D) bvulte <PATH_CHAR> and <PATH_CHAR> bvulte int_to_bv(8, 0x39)) or
+    (int_to_bv(8, 0x41) bvulte <PATH_CHAR> and <PATH_CHAR> bvulte int_to_bv(8, 0x5A)) or
+    <PATH_CHAR> = int_to_bv(8, 0x5F) or
+    (int_to_bv(8, 0x61) bvulte <PATH_CHAR> and <PATH_CHAR> bvulte int_to_bv(8, 0x7A));
+};
+
+<CSEQ_HDR> ::= <CSEQ_KEY> <COLON> <SP> <CSEQ_VAL> ;
+<CSEQ_KEY> :: String { <CSEQ_KEY> <- "CSeq"; };
+<CSEQ_VAL> ::= <DIGIT_CHARS> ;
+
+<VERSION> :: String { <VERSION> <- "RTSP/1.0"; };
+
+<SP>    :: String { <SP> <- " "; };
+<CRLF>  :: BitVector { <CRLF> = 0x0A0D; };
+<COLON> :: String { <COLON> <- ":"; };
+<SLASH> :: String { <SLASH> <- "/"; };
+<EMPTY> :: String { <EMPTY> <- ""; };
+
+<DIGIT_CHARS> ::= <DIGIT_CHAR> | <DIGIT_CHAR> <DIGIT_CHARS> ;
+<DIGIT_CHAR> :: BitVec(8)
+{
+    int_to_bv(8, 0x30) bvulte <DIGIT_CHAR> and <DIGIT_CHAR> bvulte int_to_bv(8, 0x39);
+};
+
+<ALPHA_CHARS> ::= <ALPHA_CHAR> | <ALPHA_CHAR> <ALPHA_CHARS> ;
+<ALPHA_CHAR> :: BitVec(8)
+{
+    (int_to_bv(8, 0x41) bvulte <ALPHA_CHAR> and <ALPHA_CHAR> bvulte int_to_bv(8, 0x5A)) or
+    (int_to_bv(8, 0x61) bvulte <ALPHA_CHAR> and <ALPHA_CHAR> bvulte int_to_bv(8, 0x7A));
+};
+
+<PRINTABLE_CHARS> ::= <PRINTABLE_CHAR> | <PRINTABLE_CHAR> <PRINTABLE_CHARS> ;
+<PRINTABLE_CHAR> :: BitVec(8)
+{
+    int_to_bv(8, 0x20) bvulte <PRINTABLE_CHAR> and <PRINTABLE_CHAR> bvulte int_to_bv(8, 0x7E);
+};

@@ -24,9 +24,11 @@ import json
 import logging
 import os
 import re
+import select
 import signal
 import socket
 import ssl
+import struct
 import subprocess
 import sys
 import time
@@ -67,6 +69,9 @@ class ServerConfig:
     restart_every: int = 1     # Restart process every N traces (1 = every trace)
     startup_wait: float = 1.0  # Seconds to wait after starting server
     stop_timeout: float = 5.0  # Seconds to wait for SIGTERM before SIGKILL
+    use_forkserver: bool = False  # Use forkserver mode (much faster restarts)
+    child_wait: float = 0.05   # Seconds to wait after fork for child to bind
+    port: int = 2121           # FTP port (for forkserver port-ready probe)
 
 
 class FTPState(IntEnum):
@@ -204,6 +209,265 @@ class FTPProcessManager:
         """Stop then start. Returns True if the new instance started."""
         self.stop()
         return self.start()
+
+
+# ---------------------------------------------------------------------------
+# Forkserver-based process manager (fast restarts via fork)
+# ---------------------------------------------------------------------------
+
+class ForkserverManager:
+    """
+    Manages LightFTP via an AFL-style forkserver.
+
+    The parent process initializes once (config, TLS, etc.) then enters a
+    fork loop.  For each trace the driver asks for a fork — the child
+    inherits fully-initialized state, creates the server thread, handles
+    the trace, and gets SIGTERM'd when done.  exit(0) flushes profraw.
+
+    Fork cost is ~microseconds vs ~1 second for full process restart.
+
+    Protocol (4-byte messages over pipes):
+      Driver  →  ctl pipe  →  Parent:  "go" (fork now)
+      Parent  →  st pipe   →  Driver:  child PID
+      Driver kills child with SIGTERM after trace
+      Parent  →  st pipe   →  Driver:  child exit status
+    """
+
+    FORKSERVER_FD = 198  # Control pipe read end in child
+
+    def __init__(self, config: ServerConfig):
+        self.config = config
+        self.proc: Optional[subprocess.Popen] = None
+        self.child_pid: Optional[int] = None
+        self.run_count = 0
+        self.logger = logging.getLogger("forkserver")
+
+        # Pipe file descriptors (set during start)
+        self._ctl_w: Optional[int] = None   # Driver writes "go"
+        self._st_r: Optional[int] = None    # Driver reads PID / status
+
+        if self.config.profraw_dir:
+            os.makedirs(self.config.profraw_dir, exist_ok=True)
+
+    @property
+    def managed(self) -> bool:
+        return bool(self.config.binary)
+
+    @property
+    def alive(self) -> bool:
+        """True if the parent forkserver process is running."""
+        return self.proc is not None and self.proc.poll() is None
+
+    def start(self) -> bool:
+        """Launch the parent forkserver process and wait for handshake."""
+        if not self.managed:
+            return True
+
+        if self.alive:
+            self.logger.debug("Forkserver already running (PID %d)", self.proc.pid)
+            return True
+
+        # Create pipe pairs:
+        #   ctl_r/ctl_w: driver writes, parent reads  (parent gets fd 198)
+        #   st_r/st_w:   parent writes, driver reads   (parent gets fd 199)
+        ctl_r, ctl_w = os.pipe()
+        st_r, st_w = os.pipe()
+
+        env = os.environ.copy()
+        env["FORKSERVER_FD"] = str(self.FORKSERVER_FD)
+
+        if self.config.profraw_dir:
+            # Each child will inherit this; %p expands to child PID
+            profile_pattern = os.path.join(
+                self.config.profraw_dir,
+                "fftp-%p-%m.profraw",
+            )
+            env["LLVM_PROFILE_FILE"] = profile_pattern
+            self.logger.info("LLVM_PROFILE_FILE=%s", profile_pattern)
+
+        # Map our pipe FDs to the expected FDs in the child:
+        #   ctl_r → fd 198 (FORKSERVER_FD)
+        #   st_w  → fd 199 (FORKSERVER_FD + 1)
+        # We use pass_fds and then dup2 via a preexec_fn
+        target_ctl = self.FORKSERVER_FD
+        target_st = self.FORKSERVER_FD + 1
+
+        def _setup_child_fds():
+            # dup pipe ends to the expected FDs
+            if ctl_r != target_ctl:
+                os.dup2(ctl_r, target_ctl)
+                os.close(ctl_r)
+            if st_w != target_st:
+                os.dup2(st_w, target_st)
+                os.close(st_w)
+            # Close the driver-side ends in the child
+            os.close(ctl_w)
+            os.close(st_r)
+
+        try:
+            self.proc = subprocess.Popen(
+                [self.config.binary, self.config.server_config],
+                env=env,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+                preexec_fn=_setup_child_fds,
+                pass_fds=(ctl_r, st_w),
+            )
+        except OSError as e:
+            self.logger.error("Failed to start forkserver: %s", e)
+            os.close(ctl_r)
+            os.close(ctl_w)
+            os.close(st_r)
+            os.close(st_w)
+            return False
+
+        # Close the child-side ends in the driver
+        os.close(ctl_r)
+        os.close(st_w)
+
+        self._ctl_w = ctl_w
+        self._st_r = st_r
+
+        # Wait for handshake: parent writes 4 bytes when ready
+        try:
+            handshake = self._read_st(timeout=self.config.startup_wait + 5.0)
+            if handshake is None:
+                self.logger.error("Forkserver handshake timed out")
+                self._cleanup()
+                return False
+        except Exception as e:
+            self.logger.error("Forkserver handshake failed: %s", e)
+            self._cleanup()
+            return False
+
+        self.logger.info(
+            "Forkserver ready — PID %d (init done, waiting for forks)",
+            self.proc.pid,
+        )
+        return True
+
+    def fork_child(self) -> bool:
+        """Tell the forkserver to fork a new child. Returns True on success."""
+        if not self.alive:
+            self.logger.error("Forkserver not running")
+            return False
+
+        self.run_count += 1
+
+        # Send "go" signal (4 bytes)
+        try:
+            os.write(self._ctl_w, b"\x00\x00\x00\x00")
+        except OSError as e:
+            self.logger.error("Failed to signal fork: %s", e)
+            return False
+
+        # Read child PID (4 bytes, native int)
+        pid_bytes = self._read_st(timeout=5.0)
+        if pid_bytes is None:
+            self.logger.error("No child PID received")
+            return False
+
+        self.child_pid = struct.unpack("I", pid_bytes)[0]
+        if self.child_pid == 0:
+            self.logger.error("Fork failed in forkserver")
+            return False
+
+        # Wait briefly for child to bind the listening socket
+        self._wait_for_port()
+
+        self.logger.debug(
+            "Child forked — PID %d (run #%d)", self.child_pid, self.run_count,
+        )
+        return True
+
+    def kill_child(self) -> bool:
+        """Kill the current child with SIGTERM (flushes profraw), read exit status."""
+        if self.child_pid is None:
+            return True
+
+        try:
+            os.kill(self.child_pid, signal.SIGTERM)
+        except ProcessLookupError:
+            self.logger.debug("Child %d already exited", self.child_pid)
+        except OSError as e:
+            self.logger.warning("Failed to kill child %d: %s", self.child_pid, e)
+
+        # Parent waitpid's the child, then writes exit status
+        status_bytes = self._read_st(timeout=self.config.stop_timeout)
+        if status_bytes is None:
+            self.logger.warning("No exit status for child %d", self.child_pid)
+        else:
+            status = struct.unpack("i", status_bytes)[0]
+            self.logger.debug(
+                "Child %d exited (status 0x%x)", self.child_pid, status,
+            )
+
+        self.child_pid = None
+        return True
+
+    def restart(self) -> bool:
+        """Kill current child, fork a new one."""
+        self.kill_child()
+        return self.fork_child()
+
+    def stop(self) -> bool:
+        """Shut down the forkserver entirely."""
+        self.kill_child()
+        self._cleanup()
+        return True
+
+    def _read_st(self, timeout: float = 5.0) -> Optional[bytes]:
+        """Read exactly 4 bytes from the status pipe with timeout."""
+        if self._st_r is None:
+            return None
+        ready, _, _ = select.select([self._st_r], [], [], timeout)
+        if not ready:
+            return None
+        try:
+            data = os.read(self._st_r, 4)
+            return data if len(data) == 4 else None
+        except OSError:
+            return None
+
+    def _wait_for_port(self):
+        """Wait for the child to bind the listening port."""
+        deadline = time.time() + 2.0
+        while time.time() < deadline:
+            try:
+                probe = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                probe.settimeout(0.1)
+                probe.connect(("127.0.0.1", self.config.port))
+                probe.close()
+                return
+            except (socket.error, OSError):
+                time.sleep(self.config.child_wait)
+        self.logger.warning("Port not ready after 2s — proceeding anyway")
+
+    def _cleanup(self):
+        """Close pipes and kill the parent forkserver process."""
+        if self._ctl_w is not None:
+            try:
+                os.close(self._ctl_w)
+            except OSError:
+                pass
+            self._ctl_w = None
+        if self._st_r is not None:
+            try:
+                os.close(self._st_r)
+            except OSError:
+                pass
+            self._st_r = None
+        if self.proc is not None:
+            try:
+                self.proc.terminate()
+                self.proc.wait(timeout=3.0)
+            except Exception:
+                try:
+                    self.proc.kill()
+                    self.proc.wait(timeout=1.0)
+                except Exception:
+                    pass
+            self.proc = None
 
 
 # ---------------------------------------------------------------------------
@@ -519,7 +783,12 @@ class FTPFuzzDriver:
         self.sync = SyncFiles(sync_dir)
         self.session = FTPSession(config)
         self.monitor = monitor
-        self.server = FTPProcessManager(server_config or ServerConfig())
+        srv = server_config or ServerConfig()
+        if srv.use_forkserver and srv.binary:
+            srv.port = config.port  # For port-ready probing
+            self.server = ForkserverManager(srv)
+        else:
+            self.server = FTPProcessManager(srv)
         self.logger = logging.getLogger("driver")
         self.running = True
         self._traces_since_restart = 0
@@ -724,12 +993,24 @@ class FTPFuzzDriver:
             if not self.server.start():
                 self.logger.error("Failed to start FTP server — aborting")
                 return
-            self.logger.info(
-                "Managed server: %s (restart every %d traces, profraw=%s)",
-                self.server.config.binary,
-                self.server.config.restart_every,
-                self.server.config.profraw_dir or "DISABLED",
-            )
+
+            # Forkserver: start() only launches the parent — fork first child
+            if isinstance(self.server, ForkserverManager):
+                if not self.server.fork_child():
+                    self.logger.error("Failed to fork first child — aborting")
+                    return
+                self.logger.info(
+                    "Forkserver: %s (profraw=%s)",
+                    self.server.config.binary,
+                    self.server.config.profraw_dir or "DISABLED",
+                )
+            else:
+                self.logger.info(
+                    "Managed server: %s (restart every %d traces, profraw=%s)",
+                    self.server.config.binary,
+                    self.server.config.restart_every,
+                    self.server.config.profraw_dir or "DISABLED",
+                )
 
         if self.monitor:
             self.monitor.start()
@@ -911,6 +1192,8 @@ def main():
                         help="Restart FTP server every N traces (default: 1 = every trace)")
     parser.add_argument("--startup-wait", type=float, default=1.0,
                         help="Seconds to wait after starting FTP server (default: 1.0)")
+    parser.add_argument("--forkserver", action="store_true",
+                        help="Use forkserver mode for fast restarts (requires patched fftp)")
 
     args = parser.parse_args()
 
@@ -955,6 +1238,8 @@ def main():
             profraw_dir=str(Path(args.profraw_dir).resolve()) if args.profraw_dir else "",
             restart_every=args.restart_every,
             startup_wait=args.startup_wait,
+            use_forkserver=args.forkserver,
+            port=args.port,
         )
 
     monitor = None

@@ -1,0 +1,27 @@
+{
+  "goblin": "./goblin",
+  "hours": 24,
+  "interval": 3600,
+  "jobs": [
+    {
+      "protocol": "ftp",
+      "mode": "3",
+      "instances": 2,
+      "server": "./lightftp/src/Release/fftp",
+      "server_dir": "",
+      "monitor": "./formula_parser",
+      "spec": "protocols/FTP/ftp.txt",
+      "extra_driver_args": "--server-config ./lightftp/src/Release/fftp.conf"
+    },
+    {
+      "protocol": "rtsp",
+      "mode": "3",
+      "instances": 3,
+      "server": "./live555/mediaServer/live555MediaServer",
+      "server_dir": "./live555/mediaServer/media",
+      "monitor": "./formula_parser",
+      "spec": "protocols/RTSP/rtsp.txt",
+      "extra_driver_args": "--stream-path /test.264"
+    }
+  ]
+}

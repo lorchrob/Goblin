@@ -1,0 +1,17 @@
+{
+  "hour": 3,
+  "timestamp": "2026-02-17T13:20:14.827550",
+  "success": true,
+  "num_profraw_files": 6165,
+  "elapsed_seconds": 10800.3,
+  "coverage": {
+    "lines_covered": 837,
+    "lines_total": 1942,
+    "functions_covered": 50,
+    "functions_total": 81,
+    "regions_covered": 633,
+    "regions_total": 1427,
+    "branches_covered": 300,
+    "branches_total": 806
+  }
+}

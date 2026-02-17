@@ -1,0 +1,229 @@
+// ============================================================================
+// RTSP Grammar: ANNOUNCE & SET_PARAMETER — Body-bearing Methods
+// ============================================================================
+//
+// These methods carry a message body. The Content-Length header must match
+// the actual body length. This grammar captures that constraint using
+// synthesized attributes.
+//
+// Context-sensitive relationship:
+//   <CONTENT_LENGTH_VAL> = <BODY>.len
+//
+// The body is modeled as a list of bytes with a synthesized `len` attribute
+// that counts elements. The Content-Length header value is constrained to
+// equal this length.
+
+<START> ::= <BODY_CMD> ;
+
+<BODY_CMD> ::= <ANNOUNCE_REQ>
+             | <SET_PARAM_REQ> ;
+
+
+// ============================================================================
+// ANNOUNCE with SDP body
+// ============================================================================
+//
+// ANNOUNCE rtsp://host/path RTSP/1.0\r\n
+// CSeq: N\r\n
+// Content-Type: application/sdp\r\n
+// Content-Length: LEN\r\n
+// \r\n
+// <SDP body of exactly LEN bytes>
+
+<ANNOUNCE_REQ> ::= <ANNOUNCE_VERB> <SP> <URI> <SP> <VERSION> <CRLF>
+                   <CSEQ_HDR> <CRLF>
+                   <SESSION_HDR_OPT>
+                   <CONTENT_TYPE_SDP_HDR> <CRLF>
+                   <CONTENT_LENGTH_HDR> <CRLF>
+                   <CRLF>
+                   <SDP_BODY>
+{
+    <CONTENT_LENGTH_VAL> = <SDP_BODY>.len;      // body length must match header
+    <CONTENT_LENGTH_VAL> > 0;
+};
+
+<ANNOUNCE_VERB> :: String { <ANNOUNCE_VERB> <- "ANNOUNCE"; };
+
+<CONTENT_TYPE_SDP_HDR> ::= <CONTENT_TYPE_KEY> <COLON> <SP> <SDP_MIME> ;
+<SDP_MIME> :: String { <SDP_MIME> <- "application/sdp"; };
+
+
+// ---- SDP Body ----
+// Modeled as a list of SDP lines, each contributing to synthesized `len`.
+// Each line is "type=value\r\n" — the len counts the total bytes.
+//
+// Minimal valid SDP:
+//   v=0\r\n
+//   o=- 0 0 IN IP4 127.0.0.1\r\n
+//   s=Session\r\n
+//   m=video 0 RTP/AVP 96\r\n
+
+<SDP_BODY> ::= <SDP_LINE> <SDP_BODY> { len := <SDP_LINE>.len + <SDP_BODY>.len; }
+             | <SDP_LINE>             { len := <SDP_LINE>.len; } ;
+
+
+// Each SDP line: type_char = value \r\n
+// len synthesized = 1 (type) + 1 (=) + value_len + 2 (CRLF)
+<SDP_LINE> ::= <SDP_TYPE> <EQUALS> <SDP_VALUE> <CRLF>
+{
+    len := 1 + 1 + <SDP_VALUE>.len + 2;
+};
+
+<SDP_TYPE> :: BitVec(8)
+{
+    <SDP_TYPE> = int_to_bv(8, 0x76) or           // v  (version)
+    <SDP_TYPE> = int_to_bv(8, 0x6F) or           // o  (origin)
+    <SDP_TYPE> = int_to_bv(8, 0x73) or           // s  (session name)
+    <SDP_TYPE> = int_to_bv(8, 0x69) or           // i  (info)
+    <SDP_TYPE> = int_to_bv(8, 0x75) or           // u  (URI)
+    <SDP_TYPE> = int_to_bv(8, 0x65) or           // e  (email)
+    <SDP_TYPE> = int_to_bv(8, 0x70) or           // p  (phone)
+    <SDP_TYPE> = int_to_bv(8, 0x63) or           // c  (connection)
+    <SDP_TYPE> = int_to_bv(8, 0x62) or           // b  (bandwidth)
+    <SDP_TYPE> = int_to_bv(8, 0x74) or           // t  (timing)
+    <SDP_TYPE> = int_to_bv(8, 0x6D) or           // m  (media)
+    <SDP_TYPE> = int_to_bv(8, 0x61);             // a  (attribute)
+};
+
+<SDP_VALUE> ::= <SDP_CHAR> <SDP_VALUE> { len := 1 + <SDP_VALUE>.len; }
+              | <SDP_CHAR>              { len := 1; } ;
+
+<SDP_CHAR> :: BitVec(8)
+{
+    // Printable ASCII excluding \r \n (those are the line terminator)
+    int_to_bv(8, 0x20) bvulte <SDP_CHAR> and <SDP_CHAR> bvulte int_to_bv(8, 0x7E);
+};
+
+
+// ============================================================================
+// SET_PARAMETER with arbitrary body
+// ============================================================================
+//
+// SET_PARAMETER rtsp://host/path RTSP/1.0\r\n
+// CSeq: N\r\n
+// Content-Type: text/parameters\r\n
+// Content-Length: LEN\r\n
+// \r\n
+// <body of exactly LEN bytes>
+
+<SET_PARAM_REQ> ::= <SET_PARAM_VERB> <SP> <URI> <SP> <VERSION> <CRLF>
+                    <CSEQ_HDR> <CRLF>
+                    <SESSION_HDR_OPT>
+                    <CONTENT_TYPE_PARAM_HDR> <CRLF>
+                    <CONTENT_LENGTH_HDR> <CRLF>
+                    <CRLF>
+                    <PARAM_BODY>
+{
+    <CONTENT_LENGTH_VAL> = <PARAM_BODY>.len;    // body length must match header
+    <CONTENT_LENGTH_VAL> > 0;
+};
+
+<SET_PARAM_VERB> :: String { <SET_PARAM_VERB> <- "SET_PARAMETER"; };
+
+<CONTENT_TYPE_PARAM_HDR> ::= <CONTENT_TYPE_KEY> <COLON> <SP> <PARAM_MIME> ;
+
+<PARAM_MIME> ::= <PARAM_MIME_TEXT>
+               | <PARAM_MIME_FUZZ> ;
+
+<PARAM_MIME_TEXT> :: String { <PARAM_MIME_TEXT> <- "text/parameters"; };
+<PARAM_MIME_FUZZ> ::= <PRINTABLE_CHARS> ;
+
+
+// Parameter body: key=value pairs separated by CRLF
+<PARAM_BODY> ::= <PARAM_LINE> <PARAM_BODY> { len := <PARAM_LINE>.len + <PARAM_BODY>.len; }
+               | <PARAM_LINE>              { len := <PARAM_LINE>.len; } ;
+
+<PARAM_LINE> ::= <PARAM_KEY> <COLON> <SP> <PARAM_VAL> <CRLF>
+{
+    len := <PARAM_KEY>.len + 1 + 1 + <PARAM_VAL>.len + 2;
+};
+
+<PARAM_KEY> ::= <ALPHA_CHAR> <PARAM_KEY> { len := 1 + <PARAM_KEY>.len; }
+              | <ALPHA_CHAR>              { len := 1; } ;
+
+<PARAM_VAL> ::= <PRINTABLE_CHAR> <PARAM_VAL> { len := 1 + <PARAM_VAL>.len; }
+              | <PRINTABLE_CHAR>              { len := 1; } ;
+
+
+// ---- Shared: Content-Length / Content-Type headers ----
+
+<CONTENT_LENGTH_HDR> ::= <CONTENT_LENGTH_KEY> <COLON> <SP> <CONTENT_LENGTH_VAL> ;
+<CONTENT_LENGTH_KEY> :: String { <CONTENT_LENGTH_KEY> <- "Content-Length"; };
+<CONTENT_LENGTH_VAL> :: Int;
+
+<CONTENT_TYPE_KEY> :: String { <CONTENT_TYPE_KEY> <- "Content-Type"; };
+
+
+// ---- Session header (optional) ----
+
+<SESSION_HDR_OPT> ::= <EMPTY>
+                    | <SESSION_HDR> <CRLF> ;
+
+<SESSION_HDR> ::= <SESSION_KEY> <COLON> <SP> <SESSION_ID> ;
+<SESSION_KEY> :: String { <SESSION_KEY> <- "Session"; };
+<SESSION_ID>  ::= <HEX_CHARS> ;
+
+<HEX_CHARS> ::= <HEX_CHAR> | <HEX_CHAR> <HEX_CHARS> ;
+<HEX_CHAR> :: BitVec(8)
+{
+    (int_to_bv(8, 0x30) bvulte <HEX_CHAR> and <HEX_CHAR> bvulte int_to_bv(8, 0x39)) or
+    (int_to_bv(8, 0x41) bvulte <HEX_CHAR> and <HEX_CHAR> bvulte int_to_bv(8, 0x46)) or
+    (int_to_bv(8, 0x61) bvulte <HEX_CHAR> and <HEX_CHAR> bvulte int_to_bv(8, 0x66));
+};
+
+
+// ---- Shared terminals ----
+
+<URI> ::= <URI_SCHEME> <URI_HOST> <URI_PORT_OPT> <URI_PATH_OPT> ;
+<URI_SCHEME>   :: String { <URI_SCHEME> <- "rtsp://"; };
+<URI_HOST>     ::= <HOST_LITERAL> | <HOST_FUZZ> ;
+<HOST_LITERAL> :: String { <HOST_LITERAL> <- "127.0.0.1"; };
+<HOST_FUZZ>    ::= <PRINTABLE_CHARS> ;
+<URI_PORT_OPT> ::= <EMPTY> | <COLON> <PORT_NUM> ;
+<PORT_NUM>     ::= <DIGIT_CHARS> ;
+<URI_PATH_OPT> ::= <EMPTY> | <URI_PATH> ;
+<URI_PATH>     ::= <SLASH> <PATH_SEGMENT>
+                 | <SLASH> <PATH_SEGMENT> <URI_PATH> ;
+<PATH_SEGMENT> ::= <PATH_CHARS> ;
+<PATH_CHARS>   ::= <PATH_CHAR> | <PATH_CHAR> <PATH_CHARS> ;
+
+<PATH_CHAR> :: BitVec(8)
+{
+    (int_to_bv(8, 0x2D) bvulte <PATH_CHAR> and <PATH_CHAR> bvulte int_to_bv(8, 0x39)) or
+    (int_to_bv(8, 0x41) bvulte <PATH_CHAR> and <PATH_CHAR> bvulte int_to_bv(8, 0x5A)) or
+    <PATH_CHAR> = int_to_bv(8, 0x5F) or
+    (int_to_bv(8, 0x61) bvulte <PATH_CHAR> and <PATH_CHAR> bvulte int_to_bv(8, 0x7A));
+};
+
+<CSEQ_HDR> ::= <CSEQ_KEY> <COLON> <SP> <CSEQ_VAL> ;
+<CSEQ_KEY> :: String { <CSEQ_KEY> <- "CSeq"; };
+<CSEQ_VAL> ::= <DIGIT_CHARS> ;
+
+<VERSION> :: String { <VERSION> <- "RTSP/1.0"; };
+
+<SP>      :: String { <SP> <- " "; };
+<CRLF>    :: BitVector { <CRLF> = 0x0A0D; };
+<COLON>   :: String { <COLON> <- ":"; };
+<SLASH>   :: String { <SLASH> <- "/"; };
+<EQUALS>  :: String { <EQUALS> <- "="; };
+<EMPTY>   :: String { <EMPTY> <- ""; };
+
+<DIGIT_CHARS> ::= <DIGIT_CHAR> | <DIGIT_CHAR> <DIGIT_CHARS> ;
+<DIGIT_CHAR> :: BitVec(8)
+{
+    int_to_bv(8, 0x30) bvulte <DIGIT_CHAR> and <DIGIT_CHAR> bvulte int_to_bv(8, 0x39);
+};
+
+<ALPHA_CHARS> ::= <ALPHA_CHAR> | <ALPHA_CHAR> <ALPHA_CHARS> ;
+<ALPHA_CHAR> :: BitVec(8)
+{
+    (int_to_bv(8, 0x41) bvulte <ALPHA_CHAR> and <ALPHA_CHAR> bvulte int_to_bv(8, 0x5A)) or
+    (int_to_bv(8, 0x61) bvulte <ALPHA_CHAR> and <ALPHA_CHAR> bvulte int_to_bv(8, 0x7A)) or
+    <ALPHA_CHAR> = int_to_bv(8, 0x2D);
+};
+
+<PRINTABLE_CHARS> ::= <PRINTABLE_CHAR> | <PRINTABLE_CHAR> <PRINTABLE_CHARS> ;
+<PRINTABLE_CHAR> :: BitVec(8)
+{
+    int_to_bv(8, 0x20) bvulte <PRINTABLE_CHAR> and <PRINTABLE_CHAR> bvulte int_to_bv(8, 0x7E);
+};

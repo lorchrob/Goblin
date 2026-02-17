@@ -1,0 +1,77 @@
+// RTSP Protocol Specification — LTL Properties for Runtime Monitoring
+// Targets: live555, other RTSP servers
+//
+// Guards: connection_closed=false & teardown_sent=false ensure we only
+// flag events on ACTIVE sessions, preventing stale-state false positives.
+
+enum rtsp_method {
+    methNotSet, methOPTIONS, methDESCRIBE, methANNOUNCE, methSETUP,
+    methPLAY, methPAUSE, methTEARDOWN, methGET_PARAMETER,
+    methSET_PARAMETER, methRECORD, methREDIRECT
+};
+
+enum rtsp_status_class {
+    scNotSet, scInformational, scSuccess, scRedirection,
+    scClientError, scServerError
+};
+
+enum rtsp_state {
+    stateInit, stateReady, statePlaying, stateRecording
+};
+
+enum transport_proto {
+    tpNotSet, tpRTP_AVP, tpRTP_AVP_TCP, tpRAW
+};
+
+int resp_code;
+int sequence_number;
+int cseq_sent;
+int cseq_received;
+int client_port;
+int server_port;
+int content_length;
+
+bool cmd_malformed;
+bool resp_malformed;
+bool timeout;
+bool connection_closed;
+bool session_active;
+bool session_id_set;
+bool session_id_mismatch;
+bool describe_sent;
+bool describe_succeeded;
+bool setup_sent;
+bool setup_succeeded;
+bool play_sent;
+bool play_succeeded;
+bool pause_sent;
+bool record_sent;
+bool teardown_sent;
+bool options_sent;
+bool transport_set;
+bool cseq_present;
+bool cseq_match;
+bool media_playing;
+bool media_recording;
+bool sdp_received;
+bool interleaved_mode;
+
+// ========== CRITICAL VIOLATIONS ==========
+
+// RULE 1: PLAY without SETUP — playing media without establishing transport
+H(!(timeout=false & resp_malformed=false & connection_closed=false & teardown_sent=false & rtsp_method=methPLAY & rtsp_status_class=scSuccess & setup_succeeded=false));
+
+// RULE 2: Session ID mismatch — server accepted a request with wrong session ID
+H(!(timeout=false & resp_malformed=false & connection_closed=false & teardown_sent=false & session_id_mismatch=true & rtsp_status_class=scSuccess));
+
+// RULE 3: RECORD without SETUP — recording without transport
+H(!(timeout=false & resp_malformed=false & connection_closed=false & teardown_sent=false & rtsp_method=methRECORD & rtsp_status_class=scSuccess & setup_succeeded=false));
+
+// RULE 4: Malformed response invariant
+H(resp_malformed=false);
+
+// RULE 5: Successful SETUP must set transport
+H((timeout=false & resp_malformed=false & connection_closed=false & rtsp_method=methSETUP & rtsp_status_class=scSuccess) -> transport_set=true);
+
+// RULE 6: CSeq in response must match request
+H((timeout=false & resp_malformed=false & connection_closed=false & cseq_present=true & rtsp_status_class=scSuccess) -> cseq_match=true);
