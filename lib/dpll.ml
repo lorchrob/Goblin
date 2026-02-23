@@ -360,23 +360,26 @@ let rec nt_will_be_reached derivation_tree ast nt =
   in
   match nt with 
   | [] -> true 
-  | str :: nts -> match derivation_tree with 
+  | (str, idx) :: nts -> match derivation_tree with 
     | Node (head, _, children) -> 
       if children = [] then nt_will_be_reached_ast nt head
       else (
         match List.find_opt (fun child -> match child with 
-        | Node (nt2, _, _) -> str = nt2
-        | SymbolicLeaf (_, path) -> str = (Utils.last path)
+        | Node ((nt2, idx'), _, _) -> 
+          str = nt2 && (idx = idx' || idx = None)
+        | SymbolicLeaf (_, path) -> 
+          str = (Utils.last path |> fst) && (idx = None || idx = (Utils.last path |> snd))
         | ConcreteIntLeaf (path, _) | ConcreteBoolLeaf (path, _) 
         | ConcreteUnitLeaf path | ConcreteBitListLeaf (path, _) 
         | ConcreteBitVectorLeaf (path, _, _) | ConcretePlaceholderLeaf (path, _) 
-        | ConcreteStringLeaf (path, _) | ConcreteSetLeaf (path, _) -> str = (Utils.last path)
-        | DependentTermLeaf nt2 -> (fst str) = nt2
+        | ConcreteStringLeaf (path, _) | ConcreteSetLeaf (path, _) -> 
+          str = (Utils.last path |> fst) && (idx = None || idx = (Utils.last path |> snd))
+        | DependentTermLeaf nt2 -> str = nt2
         ) children with 
         | Some child -> nt_will_be_reached child ast nts
         | None -> 
           if !Flags.debug then Format.fprintf Format.std_formatter "Could not find child %s from node %s\n"
-            (fst str) (fst head);
+            str (fst head);
           false)
     | _ -> true
 

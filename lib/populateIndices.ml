@@ -7,11 +7,12 @@ let disambiguate_nonterminals (rhss : A.prod_rule_rhs list) : A.prod_rule_rhs li
     | A.Nonterminal (name, _, ias, pos) ->
       let idx = Hashtbl.find_opt running_indices name |> Option.value ~default:0 in
       Hashtbl.replace running_indices name (idx + 1);
-      A.Nonterminal (name, Some idx, ias, pos)
+      let idx = if name.[0] = '%' then None else Some idx in
+      A.Nonterminal (name, idx, ias, pos)
     | other -> other
   in
 
-  let disambiguate_rhs = function
+  let disambiguate_rhs rhs = match rhs with 
     | A.StubbedRhs _ as stub -> stub
     | Rhs (elems, constraints, prob, pos) ->
       let new_elems = List.map disambiguate_elem elems in

@@ -12,7 +12,7 @@ let sygus ppf ctx ast =
   Utils.debug_print Ast.pp_print_ast ppf ast;
 
   (* Step 2: Resolve ambiguities in constraints *)
-  let ast = ResolveAmbiguities.resolve_ambiguities ctx ast in
+  let ast = DetectAmbiguities.detect_ambiguities ctx ast in
   Utils.debug_print Format.pp_print_string ppf "\nResolving grammar ambiguities complete:\n";
   Utils.debug_print Ast.pp_print_ast ppf ast;
 

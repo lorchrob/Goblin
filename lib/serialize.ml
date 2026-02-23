@@ -150,9 +150,9 @@ let serialize_bytes: endianness -> string list -> SA.solver_ast -> bytes * bytes
       let bit_bytes = bools_to_bytes endianness bits in
       (bit_bytes, acc_metadata, offset + Bytes.length bit_bytes)
 
-    | IntLeaf _ -> Utils.crash "serializing final packet, unhandled case 2"
-    | SetLeaf _ -> Utils.crash "serializing final packet, unhandled case 3" 
-    | UnitLeaf  -> Utils.crash "serializing final packet, unhandled case 4"
+    | IntLeaf _ -> Utils.crash "Trying to serialize a mathematical integer to bytes"
+    | SetLeaf _ -> Utils.crash "Trying to serialize a set to bytes" 
+    | UnitLeaf  -> Utils.crash "Trying to serialize the unit element to bytes"
   in
   let initial_metadata = {
     var_leaf_count = 0;

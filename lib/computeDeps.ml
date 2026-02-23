@@ -150,7 +150,7 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> bool -> SA.sol
         Utils.find_index_opt (fun ge -> match ge with 
         | A.Nonterminal (nt, idx, _, _) -> 
           Utils.str_eq_ci id nt && 
-          idx0 = idx 
+          (idx0 = idx) 
         | StubbedNonterminal (nt, _) -> 
           Utils.str_eq_ci id nt 
         ) ges
@@ -439,17 +439,17 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> bool -> SA.sol
 | BVCast (len, expr, p) -> (
   match call expr with 
   | [IntConst (i, _)] -> [A.il_int_to_bv len i p]
-  | _ -> eval_fail 27
+  | e -> Format.printf "e: %a\n" A.pp_print_expr (List.hd (List.tl e)); eval_fail 27
  )
 | BuiltInFunc (UbvToInt, [expr], p) -> (
   match call expr with 
   | [BVConst (_, i, _) ] -> [bool_list_to_il_int false i p]
-  | _ -> eval_fail 27
+  | _ -> eval_fail 28
 ) 
 | BuiltInFunc (SbvToInt, [expr], p) -> (
   match call expr with 
   | [BVConst (_, i, _)] -> [bool_list_to_il_int true i p]
-  | _ -> eval_fail 27
+  | _ -> eval_fail 29
 )
 | BuiltInFunc (Repeat, [expr1; expr2], p) -> (
   match call expr1, call expr2 with 
@@ -459,7 +459,7 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> bool -> SA.sol
       A.pp_print_expr expr2 
       (Lib.pp_print_list Format.pp_print_bool "; ") (Utils.replicate b i);
       [A.BLConst (Utils.replicate b i, p)]
-  | _ -> eval_fail 27
+  | _ -> eval_fail 30 
 )
 | BVConst _ | BLConst _ | IntConst _ | BConst _ | PhConst _ | StrConst _ | EmptySet _ -> [expr]
 | Match (_, _, _, p) -> Utils.error "Match not yet supported in derived fields" p

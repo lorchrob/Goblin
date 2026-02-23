@@ -82,9 +82,7 @@ let main_pipeline ?(engine: Flags.engine option = None) ?(grammar: Ast.ast optio
   Utils.debug_print Ast.pp_print_ast ppf ast;
 
   (*!! To properly test non-DPLL engines, this should be set within the engine below and not outside *)
-  let ast_to_return = ResolveAmbiguities.resolve_ambiguities_dpll ctx ast in
-
-  (*let ast_to_return = ResolveAmbiguities.resolve_ambiguities_dpll ctx ast in*)
+  let ast_to_return = DetectAmbiguities.detect_ambiguities ctx ast in
 
   (*Format.printf "ast_to_return: %a\n"
     Ast.pp_print_ast ast_to_return;*)
@@ -190,7 +188,7 @@ let sygusGrammarToPacket ast =
   (* let ast = MergeOverlappingConstraints.merge_overlapping_constraints ast in *)
 
   (* Resolve ambiguities in constraints *)
-  let ast = ResolveAmbiguities.resolve_ambiguities ctx ast in
+  let ast = DetectAmbiguities.detect_ambiguities ctx ast in
 
   (* Convert NTExprs to Match expressions *)
   let ast = NtExprToMatch.convert_nt_exprs_to_matches ctx ast in

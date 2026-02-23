@@ -1,8 +1,8 @@
-<S> ::= <supported-ta-list-length> <SupportedTAList> { <supported-ta-list-length> <- int_to_bv(8, <SupportedTAList>.<_length>); } ;
+<S> ::= <supported-ta-list-length> <SupportedTAList> { <supported-ta-list-length> <- int_to_bv(8, <SupportedTAList>.len); } ;
 
-<SupportedTAList>                   ::= <_length> <SupportedTAItem> { <_length> = 1 ; }
-                                    | <_length> <SupportedTAItem> <SupportedTAList> { <_length> = <SupportedTAList>.<_length> + 1 ; };
+<SupportedTAList>                   ::= <SupportedTAItem> { len := 1 ; }
+                                    | <SupportedTAItem> <SupportedTAList> { len := <SupportedTAList>.len + 1 ; };
 
-<_length> :: Int; 
+len :: Int; 
 <SupportedTAItem> :: Int;
 <supported-ta-list-length> :: BitVec(8);

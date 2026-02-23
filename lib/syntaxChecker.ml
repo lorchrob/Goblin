@@ -77,7 +77,7 @@ let rec check_dangling_identifiers: Utils.StringSet.t -> Lexing.position -> expr
   in
   let check_d_ids_attribute attr = 
     match Utils.StringSet.find_opt ("%_" ^ attr) nt_set with 
-    | None -> Utils.error (Format.asprintf "Dangling identifier %s (you are trying to access an attribute that was never defined)" attr) p
+    | None -> Utils.error (Format.asprintf "Dangling identifier %s (you are trying to access an attribute that was never defined, or does not have a type annotation)" attr) p
     | Some _ -> ()
   in
   match expr with 
@@ -177,6 +177,7 @@ let rec check_type_annot_nt_exprs: prod_rule_map -> Utils.StringSet.t -> expr ->
   | SynthAttr _
   | InhAttr _
   | StrConst _ -> expr
+
 
 (* Every SMT constraint must contain some nonterminal. Everything else is trivial, ie, reduces to either 
    a constant True or False. This alone is not a problem, but these constraints mess up the check 

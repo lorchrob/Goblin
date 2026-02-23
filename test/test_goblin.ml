@@ -400,10 +400,9 @@ let bug5 () =
 
 let bug6 () =
   let input = "../../../test/test_cases/bug6.gbl" in
-  try 
-    let _ = main_pipeline input in
-    fail "should fail"
-  with _ -> ()
+  match main_pipeline input with
+  | exception _ -> () 
+  | _ -> fail "should fail"
 
 let dm_test_another_ambiguous_reference () =
   let input = "../../../test/test_cases/test_another_ambiguous_reference" in
@@ -1225,17 +1224,15 @@ let md_test18 () =
 
 let dm_test2 () = 
   let input = "../../../test/test_cases/test2" in
-  try 
-    let _ = main_pipeline ~engine:(Some DpllMono) input in
-    fail "should fail"
-  with _ -> ()
+  match main_pipeline ~engine:(Some DpllMono) input with
+  | exception _ -> () 
+  | _ -> fail "should fail"
 
 let reset_bug4 () = 
   let input = "../../../test/test_cases/ngap-ngsetup-bug4.gbl" in
-  try 
-    let _ = main_pipeline input in
-    fail "should fail"
-  with _ -> ()
+  match main_pipeline input with
+  | exception _ -> () 
+  | _ -> fail "should fail"
 
 let dm_test3 () = 
   let input = "../../../test/test_cases/test3" in
@@ -1495,10 +1492,9 @@ let sd_test16 () =
 
 let example_fail () = 
   let input = "../../../test/test_cases/example-fail.gbl" in
-  try 
-    let _ = main_pipeline input in
-    fail "should fail"
-  with _ -> ()
+  match main_pipeline input with 
+  | exception _ -> () 
+  | _ -> fail "should fail"
 
 let dm_test16 () = 
   let input = "../../../test/test_cases/test16" in

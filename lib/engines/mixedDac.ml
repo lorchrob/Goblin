@@ -1,6 +1,6 @@
 let dpll_leaf ppf ctx ast = 
   (* Resolve ambiguities in constraints *)
-  let ast = ResolveAmbiguities.resolve_ambiguities_dpll ctx ast in
+  let ast = DetectAmbiguities.detect_ambiguities ctx ast in
   Utils.debug_print Format.pp_print_string ppf "\nResolving grammar ambiguities complete:\n";
   Utils.debug_print Ast.pp_print_ast ppf ast;
 
@@ -23,7 +23,7 @@ let sygus_leaf: Format.formatter -> TypeChecker.context -> Ast.ast -> Ast.semant
 = fun ppf ctx ast ->
   if not !Flags.only_parse then (
     (* Resolve ambiguities in constraints *)
-    let ast = ResolveAmbiguities.resolve_ambiguities ctx ast in
+    let ast = DetectAmbiguities.detect_ambiguities ctx ast in
     Utils.debug_print Format.pp_print_string ppf "\nResolving grammar ambiguities complete:\n";
     Utils.debug_print Ast.pp_print_ast ppf ast;
 

@@ -54,7 +54,7 @@ let pp_print_solver_ast: Format.formatter -> solver_ast -> unit
   let rec pp_print_solver_ast' ppf solver_ast = match solver_ast with 
   | Node ((constructor, Some idx), subterms) -> 
     (* Don't include attributes in output *)
-    let subterms = List.filter (fun st -> match st with 
+    let subterms = if !Flags.debug then subterms else List.filter (fun st -> match st with 
     | Node ((constructor, _), _) -> not (constructor.[0] = '%')
     | _ -> true 
     ) subterms in
