@@ -11,10 +11,10 @@ let came_from_attribute id = id.[0] = '%'
 
 let rec check_nt_expr_refs ctx nts p = match nts with 
 | (nt1, idx1) :: (nt2, idx2) :: tl ->
-  if came_from_attribute nt2 then 
+  if came_from_attribute nt2 then (
     let tl = check_nt_expr_refs ctx ((nt2, idx2) :: tl) p in
     (nt1, idx1) :: (nt2, idx2) :: List.tl tl 
-  else 
+  ) else 
 
   let ty = Utils.StringMap.find nt1 ctx in 
   let idx2 = (match ty with 
