@@ -21,7 +21,7 @@ let dpll ppf ctx ast =
   if not !Flags.only_parse then (
     (* Step 3: DPLL engine *)
     Utils.debug_print Format.pp_print_string ppf "\nStarting DPLL engine:\n";
-    let solver_ast = Dpll.dpll ctx ast in 
+    let solver_ast = Dpll.dpll ctx dep_map ast in 
     Utils.debug_print SolverAst.pp_print_solver_ast ppf solver_ast;
     
     (* Step 4: Compute dependent terms *)

@@ -279,7 +279,6 @@ match dt with
         | A.Nonterminal (nt, idx_opt, _, _) ->
           Node ((nt, idx_opt), path @ [nt, idx_opt], [])  
         | StubbedNonterminal (_id, stub_id) -> 
-          (*DependentTermLeaf stub_id*)
           Node ((_id, None), path @ [_id, None], [DependentTermLeaf stub_id])
         ) ges in
        Some children 
@@ -538,7 +537,8 @@ let find_new_expansion ast derivation_tree curr_st_node =
         let children = List.map (fun ge -> match ge with 
         | A.Nonterminal (nt, idx_opt, _, _) ->
           Node ((nt, idx_opt), path @ [nt, idx_opt], [])  
-        | StubbedNonterminal (_, stub_id) -> DependentTermLeaf stub_id
+        | StubbedNonterminal (nt_id, stub_id) -> 
+          Node ((nt_id, None), path @ [nt_id, None], [DependentTermLeaf stub_id])
         ) ges in 
         let expanded_node = Node ((nt, idx), path, children) in 
         expanded_node, expanded_node 
@@ -715,7 +715,7 @@ let rec fill_unconstrained_nonterminals: derivation_tree -> derivation_tree
     ConcreteSetLeaf (path, (ConcreteStringSetLeaf set)) 
   | SymbolicLeaf (ADT _, _) -> Utils.crash "Unexpected case in fill_unconstrained_nonterminals"
   | DependentTermLeaf _ -> derivation_tree
-  | Node (nt, path, children) -> 
+  | Node (nt, path, children) ->  
     let children = List.map r children in
     Node (nt, path, children)
 
@@ -841,8 +841,8 @@ let rec generate_n_solutions n ast model r derivation_tree declared_variables so
       * Remove the constraints from the constraint set associated with nodes no longer in DT
 
 *)
-let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.solver_ast
-= fun ctx ast -> 
+let dpll: A.il_type Utils.StringMap.t -> A.semantic_constraint Utils.StringMap.t -> A.ast -> SA.solver_ast
+= fun ctx dep_map ast ->  
   let _ = match !Flags.seed with 
   | None -> 
     Random.self_init ()
@@ -1007,12 +1007,13 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.solver_ast
         | A.AttrDef _ -> assert false
         ) scs;
       | A.ProdRule (_, _, rhss, _) -> 
-        (*Format.fprintf Format.std_formatter "Finding the chosen rule for %a\n" 
+        (*Format.printf "Finding the chosen rule for %a\n%!" 
           pp_print_derivation_tree expanded_node; *)
         let chosen_rule = List.find (fun rhs -> match rhs with 
         | A.StubbedRhs str1 -> (
           match children with 
-          | [DependentTermLeaf str2] -> Utils.str_eq_ci str1 str2 
+          | [Node ((_, None), _, [DependentTermLeaf str2])] ->
+            Utils.str_eq_ci str1 str2
           | _ -> false 
           )
         | A.Rhs (ges, _, _, _) -> 
@@ -1020,7 +1021,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.solver_ast
             List.for_all2 (fun child ge -> match child, ge with 
             | Node ((nt, idx), _, _), A.Nonterminal (nt2, idx2, _, _) -> 
               Utils.str_eq_ci nt nt2 && idx = idx2
-            | DependentTermLeaf stub_id1, A.StubbedNonterminal (_, stub_id2) -> 
+            | Node ((_, None), _, [DependentTermLeaf stub_id1]), A.StubbedNonterminal (_, stub_id2) ->
               Utils.str_eq_ci stub_id1 stub_id2
             | _ -> false 
             ) children ges 
@@ -1107,9 +1108,13 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.solver_ast
     let models, rs = generate_n_solutions sols_per_iter ast model r derivation_tree declared_variables 
                 solver blocking_clause_vars !variable_stack assertion_level |> List.split in 
 
-    List.iter (fun r -> Format.fprintf Format.std_formatter "$\n%a" 
-      SA.pp_print_solver_ast r;
-    ) rs; 
+    (* Compute dependencies and output *)
+    Format.pp_print_flush Format.std_formatter ();
+    let () = List.iter (fun r -> 
+      let r = ComputeDeps.compute_deps dep_map ast r in
+      Format.fprintf Format.std_formatter "$\n%a" 
+        SA.pp_print_solver_ast r;
+    ) rs in
     Format.pp_print_flush Format.std_formatter ();
 
     (* Need to pop all the way back to zeroth level so we can assert persisting blocking clause *)
