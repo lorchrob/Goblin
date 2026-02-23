@@ -125,7 +125,6 @@ and bool_list_to_il_int (signed : bool) (bits : bool list) p : A.expr =
   else
     A.IntConst (unsigned_val, p)
 
-(* Input boolean denotes whether we are in the context of computing a length(.) expression *)
 and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.solver_ast -> A.ast -> A.element -> A.expr -> A.expr list
 = fun ?(dep_map=Utils.StringMap.empty) solver_ast ast element expr -> 
   if !Flags.debug then 
