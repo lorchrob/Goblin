@@ -838,8 +838,8 @@ let rec generate_n_solutions n ast model r derivation_tree declared_variables so
       * Remove the constraints from the constraint set associated with nodes no longer in DT
 
 *)
-let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.solver_ast
-= fun ctx ast -> 
+let dpll: A.il_type Utils.StringMap.t -> A.semantic_constraint Utils.StringMap.t -> A.ast -> SA.solver_ast
+= fun ctx dep_map ast ->  
   let _ = match !Flags.seed with 
   | None -> 
     Random.self_init ()
@@ -1105,9 +1105,13 @@ let dpll: A.il_type Utils.StringMap.t -> A.ast -> SA.solver_ast
     let models, rs = generate_n_solutions sols_per_iter ast model r derivation_tree declared_variables 
                 solver blocking_clause_vars !variable_stack assertion_level |> List.split in 
 
-    List.iter (fun r -> Format.fprintf Format.std_formatter "$\n%a" 
-      SA.pp_print_solver_ast r;
-    ) rs; 
+    (* Compute dependencies and output *)
+    Format.pp_print_flush Format.std_formatter ();
+    let () = List.iter (fun r -> 
+      let r = ComputeDeps.compute_deps dep_map ast r in
+      Format.fprintf Format.std_formatter "$\n%a" 
+        SA.pp_print_solver_ast r;
+    ) rs in
     Format.pp_print_flush Format.std_formatter ();
 
     (* Need to pop all the way back to zeroth level so we can assert persisting blocking clause *)

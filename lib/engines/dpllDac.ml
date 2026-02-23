@@ -22,7 +22,7 @@ let dpll ppf ctx ast =
     if not !Flags.only_parse then (
       (* Step 3: DPLL engine *)
       Utils.debug_print Format.pp_print_string ppf "\nStarting DPLL engine:\n";
-      let solver_asts = Parallelism.parallel_map (Dpll.dpll ctx) asts in 
+      let solver_asts = Parallelism.parallel_map (Dpll.dpll ctx dep_map) asts in 
       let solver_asts = 
       if List.mem (SolverAst.VarLeaf "infeasible") solver_asts 
         then [SolverAst.VarLeaf "infeasible"]
