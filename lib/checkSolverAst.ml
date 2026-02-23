@@ -59,7 +59,7 @@ let handle_scs ast solver_ast constructor element scs =
         A.pp_print_expr expr
         SA.pp_print_solver_ast solver_ast
         );
-      ComputeDeps.evaluate false solver_ast ast element expr)
+      ComputeDeps.evaluate solver_ast ast element expr)
     else (
       (if !Flags.debug then Format.fprintf Format.std_formatter "Constraint %a is not applicable in %a"
         A.pp_print_expr expr
@@ -72,7 +72,7 @@ let handle_scs ast solver_ast constructor element scs =
       A.pp_print_expr expr
       SA.pp_print_solver_ast solver_ast
       );
-    ComputeDeps.evaluate false solver_ast ast element expr
+    ComputeDeps.evaluate solver_ast ast element expr
   | AttrDef _ -> assert false
   ) scs in
   let b = List.exists (fun sc -> match sc with 

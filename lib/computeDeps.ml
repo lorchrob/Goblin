@@ -57,8 +57,8 @@ let expr_to_solver_ast: A.expr -> SA.solver_ast
   | BConst (b, _) -> BoolLeaf b
 | _ -> A.pp_print_expr Format.std_formatter expr; eval_fail 1
 
-let rec solver_ast_to_expr: bool -> SA.solver_ast -> A.expr list
-= fun computing_length solver_ast -> 
+let rec solver_ast_to_expr: SA.solver_ast -> A.expr list
+= fun solver_ast -> 
   match solver_ast with 
 | IntLeaf i -> [IntConst (i, Lexing.dummy_pos)]
   | BVLeaf (len, bits) -> [BVConst (len, bits, Lexing.dummy_pos)]
@@ -68,11 +68,8 @@ let rec solver_ast_to_expr: bool -> SA.solver_ast -> A.expr list
   | BoolLeaf b -> [BConst (b, Lexing.dummy_pos)]
 | SetLeaf _ -> Utils.error_no_pos "Sets are not yet supported in derived fields"
 | UnitLeaf -> Utils.crash "Unexpected case"
-| Node ((id, _), solver_asts) -> 
-  if computing_length && id.[0] = '_' then 
-    []  
-  else 
-    (List.map (solver_ast_to_expr computing_length) solver_asts |> List.flatten)
+| Node (_, solver_asts) -> 
+    (List.map solver_ast_to_expr solver_asts |> List.flatten)
 
 let rec compute_dep: A.semantic_constraint Utils.StringMap.t -> SA.solver_ast -> A.ast -> A.element -> string -> SA.solver_ast
 = fun dep_map solver_ast ast _element var -> 
@@ -111,7 +108,7 @@ let rec compute_dep: A.semantic_constraint Utils.StringMap.t -> SA.solver_ast ->
       if !Flags.debug then 
         Format.printf "The dependency computation is under element %a\n\n" 
           A.pp_print_element element';
-      evaluate ~dep_map false solver_ast ast element' expr |> List.hd |> expr_to_solver_ast
+      evaluate ~dep_map solver_ast ast element' expr |> List.hd |> expr_to_solver_ast
   )
 
 and bool_list_to_il_int (signed : bool) (bits : bool list) p : A.expr =
@@ -129,14 +126,14 @@ and bool_list_to_il_int (signed : bool) (bits : bool list) p : A.expr =
     A.IntConst (unsigned_val, p)
 
 (* Input boolean denotes whether we are in the context of computing a length(.) expression *)
-and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> bool -> SA.solver_ast -> A.ast -> A.element -> A.expr -> A.expr list
-= fun ?(dep_map=Utils.StringMap.empty) computing_length solver_ast ast element expr -> 
+and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.solver_ast -> A.ast -> A.element -> A.expr -> A.expr list
+= fun ?(dep_map=Utils.StringMap.empty) solver_ast ast element expr -> 
   if !Flags.debug then 
     Format.printf "Evaluating expression %a under element %a and solver_ast %a\n\n"
       A.pp_print_expr expr 
       A.pp_print_element element
       SA.pp_print_solver_ast solver_ast;
-  let call = evaluate ~dep_map computing_length solver_ast ast element in
+  let call = evaluate ~dep_map solver_ast ast element in
   match expr with 
 | NTExpr (_, [], _) -> Utils.crash "Unexpected case in evaluate 1"
 | NTExpr (_, (id, idx0) :: rest, p) ->
@@ -165,7 +162,7 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> bool -> SA.sol
   match solver_ast with  
   | VarLeaf _ | BVLeaf _ | IntLeaf _ | BLLeaf _ | BoolLeaf _ | StrLeaf _ | SetLeaf _ | UnitLeaf 
   | SA.Node (_, ([BVLeaf _] | [BLLeaf _] | [IntLeaf _] | [BoolLeaf _] | [StrLeaf _] | [SetLeaf _])) ->
-    solver_ast_to_expr computing_length solver_ast
+    solver_ast_to_expr solver_ast
   | Node ((_id, _), subterms) ->
     if !Flags.debug then 
       Format.printf "nth: Looking for child_index %d in solver_ast %a\n" 
@@ -179,12 +176,12 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> bool -> SA.sol
       if Utils.StringMap.mem (remove_suffix var |> String.uppercase_ascii) dep_map 
       then 
         let solver_ast = compute_dep dep_map solver_ast ast child_element var in 
-        compute_deps dep_map ast solver_ast |> solver_ast_to_expr computing_length 
-      else child_solver_ast |> solver_ast_to_expr computing_length 
+        compute_deps dep_map ast solver_ast |> solver_ast_to_expr 
+      else child_solver_ast |> solver_ast_to_expr 
     | Node _ when rest <> [] -> 
-      evaluate ~dep_map computing_length child_solver_ast ast child_element (NTExpr ([], rest, p))
+      evaluate ~dep_map child_solver_ast ast child_element (NTExpr ([], rest, p))
     | _ ->
-      compute_deps dep_map ast child_solver_ast |> solver_ast_to_expr computing_length
+      compute_deps dep_map ast child_solver_ast |> solver_ast_to_expr 
   )
 | UnOp (UPlus, expr, _) -> (
   match call expr with 
@@ -409,7 +406,7 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> bool -> SA.sol
   | _ -> eval_fail 12
   )
 | BuiltInFunc (Length, [expr], p) -> (
-  let exprs = evaluate ~dep_map true solver_ast ast element expr in
+  let exprs = evaluate ~dep_map solver_ast ast element expr in
   let r = 
   List.fold_left (fun acc expr ->
     match acc, expr with 
