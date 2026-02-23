@@ -472,7 +472,7 @@ and compute_deps: A.semantic_constraint Utils.StringMap.t -> A.ast -> SA.solver_
       (*A.pp_print_ast ast *)
       SA.pp_print_solver_ast solver_ast;
   match solver_ast with
-| VarLeaf _ -> eval_fail 28
+| VarLeaf _ -> eval_fail  28
 | UnitLeaf -> Utils.crash "Unexpected case"
 | Node ((constructor, idx), subterms) -> 
   let subterms = 
