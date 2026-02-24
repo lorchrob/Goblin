@@ -7,8 +7,7 @@ let disambiguate_nonterminals (rhss : A.prod_rule_rhs list) : A.prod_rule_rhs li
     | A.Nonterminal (name, _, ias, pos) ->
       let idx = Hashtbl.find_opt running_indices name |> Option.value ~default:0 in
       Hashtbl.replace running_indices name (idx + 1);
-      let idx = if name.[0] = '%' then None else Some idx in
-      A.Nonterminal (name, idx, ias, pos)
+      A.Nonterminal (name, Some idx, ias, pos)
     | other -> other
   in
 

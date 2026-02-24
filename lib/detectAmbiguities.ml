@@ -7,15 +7,8 @@ module TC = TypeChecker
 
    Trying that now. *)
 
-let came_from_attribute id = id.[0] = '%'
-
 let rec check_nt_expr_refs ctx nts p = match nts with 
 | (nt1, idx1) :: (nt2, idx2) :: tl ->
-  if came_from_attribute nt2 then (
-    let tl = check_nt_expr_refs ctx ((nt2, idx2) :: tl) p in
-    (nt1, idx1) :: (nt2, idx2) :: List.tl tl 
-  ) else 
-
   let ty = Utils.StringMap.find nt1 ctx in 
   let idx2 = (match ty with 
   | A.ADT nts -> 
@@ -51,7 +44,7 @@ let rec check_unambiguous_references
   match expr with 
   | A.NTExpr (nt_context, (nt, idx) :: nts, p) -> 
     (* Head nt should be unambiguous and in *this* RHS *)
-    let idx = if came_from_attribute nt then None else match idx with (* Set this index *)
+    let idx = match idx with (* Set this index *)
     | Some _ -> idx
     | None -> match List.filter (function 
       | A.StubbedNonterminal _ -> false
