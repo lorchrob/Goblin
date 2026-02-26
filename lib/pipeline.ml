@@ -155,7 +155,7 @@ let main_pipeline ?(engine: Flags.engine option = None) ?(grammar: Ast.ast optio
     if !Flags.output_format = Flags.SExpression then 
       SolverAst.pp_print_solver_ast Format.std_formatter solver_ast
     else if !Flags.output_format = Flags.Hex then 
-      let ast_bytes, _ = Serialize.serialize_bytes Big [] solver_ast in
+      let ast_bytes = Serialize.serialize_bytes Big [] solver_ast in
       Utils.print_bytes_as_hex ast_bytes 
     else if !Flags.output_format = Flags.HexPacked then 
       let ast_bytes = Serialize.serialize_bytes_packed solver_ast in
@@ -234,5 +234,5 @@ let sygusGrammarToPacket ast =
       let output = Serialize.serialize_bytes Serialize.Big [] solver_ast in 
       Ok output) 
     else 
-      let dummy_output = Bytes.empty, Bytes.empty in
+      let dummy_output = Bytes.empty in
       Ok dummy_output
