@@ -447,7 +447,11 @@ let language_emptiness_check ast start_symbol =
   (*if Utils.StringSet.mem start_symbol productive_nt_set then   *)
     () 
   else 
-    Utils.error_no_pos "CFG has empty language"
+    let unproductive = Utils.StringSet.diff (Ast.nts_of_ast ast) productive_nt_set |> Utils.StringSet.to_list in
+    Utils.error_no_pos 
+      (Format.asprintf "CFG has empty language. Unproductive nonterminals: %a (check for an infinite recursion in the grammar)" 
+        (Lib.pp_print_list (fun ppf str -> Format.fprintf ppf "<%s>" str) ", ") unproductive)
+      
 
 let check_probabilities nt rhss p = 
   (* Omitting probabilities is legal (assumed uniform distribution) *)
