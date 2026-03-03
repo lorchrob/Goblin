@@ -73,8 +73,9 @@ type builtin_func =
 type case = 
 (* A case is a list of <context, nonterminal> pairs (denoting a pattern) and the corresponding expression *)
 (* The int option eases dealing with horizontal ambiguous references *)
-| Case of ((string * int option) list * (string * int option)) list * expr 
-| CaseStub of ((string * int option) list * (string * int option)) list
+| Case of ((string * int option * int option) list * 
+           (string * int option * int option)) list * expr 
+| CaseStub of ((string * int option) list * (string * int option * int option)) list
 and
 expr = 
 | InhAttr of string * Lexing.position 
@@ -87,7 +88,8 @@ expr =
 | BVCast of int * expr * Lexing.position
 (* First string list track the context of the nonterminal being matched 
    Int options are for clarifying ambiguous dot notation references, as in NTExpr *)
-| Match of (string * int option) list * (string * int option) * case list * Lexing.position
+| Match of (string * int option * int option) list * (string * int option * int option) * 
+            case list * Lexing.position
 (* First string list tracks the context of a nonterminal after desugaring to match expression
    Second int list is for dot notation input e.g. <A>.<B>.<C> 
    Int option is for disambiguating references. 
@@ -101,7 +103,7 @@ expr =
    The int options are initially None, but may be populated by the tool as a  
    structured form of renaming to clarify ambiguous dot notation references.
    *)
-| NTExpr of (string * int option) list * (string * int option) list * Lexing.position
+| NTExpr of (string * int option * int option) list * (string * int option * int option) list * Lexing.position
 | BVConst of int * bool list * Lexing.position
 | BLConst of bool list * Lexing.position
 | BConst of bool * Lexing.position
@@ -116,8 +118,9 @@ type semantic_constraint =
 | AttrDef of string * expr * Lexing.position (* attribute := <expression> *)
 
 type grammar_element = 
-(* Nonterminal name * optional index * inherited attributes * position *)
-| Nonterminal of string * int option * expr list * Lexing.position
+(* Nonterminal name * optional RHS index * optional NT index * 
+   inherited attributes * position *)
+| Nonterminal of string * int option * int option * expr list * Lexing.position
 | StubbedNonterminal of string * string (* Ignore *)
 
 type prod_rule_rhs =
@@ -139,7 +142,7 @@ let rec get_nts_from_expr: expr -> string list
 = fun expr -> 
   let r = get_nts_from_expr in
   match expr with 
-  | NTExpr (_, nts, _) -> List.map fst nts 
+  | NTExpr (_, nts, _) -> List.map (fun (a, _, _) -> a) nts 
   | SynthAttr (nt, _, _) -> [nt] 
   | Match (_, (nt, _), cases, _) -> nt :: (List.map (fun case -> match case with 
     | CaseStub _ -> []
@@ -165,7 +168,7 @@ let rec get_nts_from_expr: expr -> string list
   | EmptySet _  -> [] 
 
 (* This function is used before desugaring dot expressions *)
-let rec get_nts_from_expr2: expr -> (string * int option) list list
+let rec get_nts_from_expr2: expr -> (string * int option * int option) list list
 = fun expr -> 
   let r = get_nts_from_expr2 in
   match expr with 
@@ -193,7 +196,7 @@ let rec get_nts_from_expr2: expr -> (string * int option) list list
   | EmptySet _ -> []
 
 (* For when you want to process simple NTs after translation of dot to match expressions *)
-let rec get_nts_from_expr_after_desugaring_dot_notation: expr -> (string * int option) list list 
+let rec get_nts_from_expr_after_desugaring_dot_notation: expr -> (string * int option * int option) list list 
 = fun expr -> 
   let r = get_nts_from_expr_after_desugaring_dot_notation in
   match expr with 
@@ -226,7 +229,7 @@ let rec get_nts_from_expr_after_desugaring_dot_notation: expr -> (string * int o
   | InhAttr _
   | SynthAttr _ -> assert false
 
-let pp_print_nt_helper_dots: Format.formatter -> string * int option -> unit 
+let pp_print_nt_helper_dots: Format.formatter -> string * int option * int option -> unit 
 = fun ppf (nt, idx) -> 
   Format.fprintf ppf "<%s%s>" 
     nt
@@ -234,7 +237,8 @@ let pp_print_nt_helper_dots: Format.formatter -> string * int option -> unit
     | None -> ""
     | Some i -> string_of_int i)
 
-let pp_print_nt_helper_underscores: Format.formatter -> string * int option -> unit 
+let pp_print_nt_helper_underscores: 
+  Format.formatter -> string * int option * int option -> unit 
 = fun ppf (nt, idx) -> 
   Format.fprintf ppf "%s%s" 
     nt
@@ -242,12 +246,13 @@ let pp_print_nt_helper_underscores: Format.formatter -> string * int option -> u
     | None -> ""
     | Some i -> string_of_int i)
 
-let pp_print_nt_with_dots: Format.formatter -> (string * int option) list -> unit
+let pp_print_nt_with_dots: Format.formatter -> (string * int option * int option) list -> unit
 = fun ppf nt_expr -> 
   Format.fprintf ppf "%a"
   (Lib.pp_print_list pp_print_nt_helper_dots ".") nt_expr 
 
-let pp_print_nt_with_underscores: Format.formatter -> (string * int option) list -> unit
+let pp_print_nt_with_underscores: 
+  Format.formatter -> (string * int option * int option) list -> unit
 = fun ppf nt_expr -> 
   Format.fprintf ppf "<%a>"
   (Lib.pp_print_list pp_print_nt_helper_underscores "_") nt_expr 
@@ -294,7 +299,9 @@ let pp_print_comp_op: Format.formatter -> comp_operator -> unit
 
 (* let pp_print_bit: Format.formatter -> bool ->  *)
 
-let pp_print_pattern: Format.formatter -> ((string * int option) list * (string * int option)) -> unit
+let pp_print_pattern: 
+  Format.formatter -> ((string * int option * int option) list * 
+  (string * int option * int option)) -> unit
 = fun ppf (nt_ctx, (nt, idx)) -> 
     pp_print_nt_with_underscores ppf (nt_ctx @ [nt, idx])
 

@@ -21,7 +21,7 @@ let build_context: ast -> ast * context
            that will exist after we desugar attributes in desugarAttributes.ml *)
         (* User ges *)
         let options1 = List.fold_left (fun acc ge -> match ge with 
-        | Nonterminal (nt, _, _, _) 
+        | Nonterminal (nt, _, _, _, _) 
         | StubbedNonterminal (nt, _) -> nt :: acc
         ) [] ges |> List.rev in 
         (* Generated attribute ges *)
@@ -44,9 +44,9 @@ let last lst = lst |> List.rev |> List.hd
 let rec infer_type_expr: context -> mode -> expr -> il_type option
 = fun ctx mode expr -> match expr with 
 | NTExpr (_, nt_expr, p) -> (
-  match Utils.StringMap.find (fst (last nt_expr)) ctx with 
+  match Utils.StringMap.find (Utils.tr_fst (last nt_expr)) ctx with 
   | ADT _ -> 
-    let msg = "Type checking error: Nonterminal '" ^ (fst (last nt_expr)) ^ "' has a composite type, but is used in some operation that requires a primitive type" in
+    let msg = "Type checking error: Nonterminal '" ^ (Utils.tr_fst (last nt_expr)) ^ "' has a composite type, but is used in some operation that requires a primitive type" in
     type_checker_error mode msg p;
     None
   | ty -> Some ty

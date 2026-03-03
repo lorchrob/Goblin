@@ -61,8 +61,8 @@ type builtin_func =
 type case = 
 (* A case is a list of <context, nonterminal> pairs (denoting a pattern) and the corresponding expression *)
 (* The int option eases dealing with horizontal ambiguous references *)
-| Case of ((string * int option) list * (string * int option)) list * expr 
-| CaseStub of ((string * int option) list * (string * int option)) list
+| Case of ((string * int option * int option) list * (string * int option * int option)) list * expr 
+| CaseStub of ((string * int option * int option) list * (string * int option * int option)) list
 and 
 expr = 
 | InhAttr of string * Lexing.position
@@ -75,7 +75,7 @@ expr =
 | BVCast of int * expr * Lexing.position
 (* First string list track the context of the nonterminal being matched 
    Int options are for clarifying ambiguous dot notation references, as in NTExpr *)
-| Match of (string * int option) list * (string * int option) * case list * Lexing.position
+| Match of (string * int option * int option) list * (string * int option * int option) * case list * Lexing.position
 (* First string list tracks the context of a nonterminal after desugaring to match expression
    Second int list is for dot notation input e.g. <A>.<B>.<C> 
    Int option is for disambiguating references. 
@@ -89,7 +89,7 @@ expr =
    The int options are initially None, but may be populated by the tool as a  
    structured form of renaming to clarify ambiguous dot notation references.
    *)
-| NTExpr of (string * int option) list * (string * int option) list * Lexing.position
+| NTExpr of (string * int option * int option) list * (string * int option * int option) list * Lexing.position
 | BVConst of int * bool list * Lexing.position
 | BLConst of bool list * Lexing.position
 | BConst of bool * Lexing.position
@@ -104,7 +104,7 @@ type semantic_constraint =
 | AttrDef of string * expr * Lexing.position (* attribute := <expression> *)
 
 type grammar_element =
-| Nonterminal of string * int option * expr list * Lexing.position
+| Nonterminal of string * int option * int option * expr list * Lexing.position
 | StubbedNonterminal of string * string
 
 type prod_rule_rhs = 
@@ -121,11 +121,11 @@ type ast = element list
 
 val get_nts_from_expr : expr -> string list
 val get_nts_from_sc: semantic_constraint -> string list 
-val get_nts_from_expr_after_desugaring_dot_notation : expr -> (string * int option) list list 
+val get_nts_from_expr_after_desugaring_dot_notation : expr -> (string * int option * int option) list list 
 val pp_print_element: Format.formatter -> element ->  unit 
 val pp_print_ast : Format.formatter -> ast -> unit
-val pp_print_nt_with_dots : Format.formatter -> (string * int option) list -> unit
-val pp_print_nt_with_underscores : Format.formatter -> (string * int option) list -> unit
+val pp_print_nt_with_dots : Format.formatter -> (string * int option * int option) list -> unit
+val pp_print_nt_with_underscores : Format.formatter -> (string * int option * int option) list -> unit
 val pp_print_expr : Format.formatter -> expr -> unit
 val pp_print_ty : Format.formatter -> il_type -> unit
 val pp_print_semantic_constraint: Format.formatter -> semantic_constraint -> unit
@@ -136,7 +136,7 @@ val nts_of_rhs: prod_rule_rhs -> string list
 val expr_contains_dangling_nt: Utils.SILSet.t -> expr -> bool 
 val ast_constrains_nt: ast -> string -> bool
 val prepend_nt_to_dot_exprs: string -> expr -> expr
-val get_nts_from_expr2: expr -> (string * int option) list list
+val get_nts_from_expr2: expr -> (string * int option * int option) list list
 val scs_of_element: element -> semantic_constraint list
 val nts_of_ast: ast -> Utils.StringSet.t 
 val find_element: ast -> string -> element

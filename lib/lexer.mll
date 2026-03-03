@@ -92,6 +92,7 @@ rule read =
   | "-" { MINUS }
   | "*" { TIMES }
   | "div" { DIV }
+  | "@" { AT }
   | "(" { LPAREN }
   | ")" { RPAREN }
   | "," { COMMA }

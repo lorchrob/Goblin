@@ -36,7 +36,7 @@ let rec pp_print_ty: Format.formatter -> A.il_type -> unit
 
 let pp_print_constructor: TC.context -> Ast.semantic_constraint Utils.StringMap.t -> Ast.ast ->  Format.formatter -> A.grammar_element -> unit 
 = fun ctx dep_map ast ppf ge -> match ge with 
-| A.Nonterminal (nt, _, _, _) ->
+| A.Nonterminal (nt, _, _, _, _) ->
   let d_str = fresh_destructor () in 
   let ty_str = 
   match Utils.StringMap.find_opt nt dep_map,
@@ -148,8 +148,8 @@ Utils.StringMap.iter (fun stub_id dep -> match dep with
   | AttrDef _ -> assert false
 ) dep_map
 
-let rec pp_print_match: Format.formatter -> TC.context -> (string * int option) list -> string * int option -> A.case list -> unit 
-= fun ppf ctx nt_ctx (nt, idx) cases -> 
+let rec pp_print_match: Format.formatter -> TC.context -> (string * int option * int option) list -> string * int option * int option -> A.case list -> unit 
+= fun ppf ctx nt_ctx (nt, idx1, idx2) cases -> 
   let adt_cases = match StringMap.find nt ctx with 
   | ADT rules -> rules
   | _ -> Utils.crash "sygus.ml (pp_print_match)" 
@@ -159,7 +159,7 @@ let rec pp_print_match: Format.formatter -> TC.context -> (string * int option) 
   | CaseStub nts -> nts, BConst (true, Lexing.dummy_pos) 
   ) cases in 
   let match_rules = List.map (fun (pattern, expr) -> 
-    let original_nts = List.map (fun (_, (b, _)) -> b) pattern in
+    let original_nts = List.map (fun (_, (b, _, _)) -> b) pattern in
     let rule_index = Lib.find_index original_nts adt_cases in 
     ((rule_index, pattern), expr)
   ) match_rules in
@@ -167,12 +167,12 @@ let rec pp_print_match: Format.formatter -> TC.context -> (string * int option) 
   Format.fprintf ppf "(match %a (
     %a
   ))"
-    (Lib.pp_print_list pp_print_nt_helper "_") (nt_ctx @ [nt, idx])
+    (Lib.pp_print_list pp_print_nt_helper "_") (nt_ctx @ [nt, idx1, idx2])
     (Lib.pp_print_list (fun ppf -> Format.fprintf ppf "(%a)" (pp_print_option ctx nt)) " ") match_rules
 
-and pp_print_option: TC.context -> string -> Format.formatter -> ((int * (((string * int option) list * (string * int option)) list)) * A.expr) -> unit 
+and pp_print_option: TC.context -> string -> Format.formatter -> ((int * (((string * int option * int option) list * (string * int option * int option)) list)) * A.expr) -> unit 
 = fun ctx nt ppf ((i, pattern), expr) -> 
-  let pattern = List.map (fun (nt_ctx, (nt, idx)) -> nt_ctx @ [nt, idx]) pattern in
+  let pattern = List.map (fun (nt_ctx, (nt, idx1, idx2)) -> nt_ctx @ [nt, idx1, idx2]) pattern in
     Format.fprintf ppf "(%s_con%d %a) %a"
     (String.lowercase_ascii nt)
     i
@@ -180,12 +180,13 @@ and pp_print_option: TC.context -> string -> Format.formatter -> ((int * (((stri
     (pp_print_expr ctx) expr 
 
 and pp_print_nt_helper 
-= fun ppf (str, idx) -> 
+= fun ppf (str, idx1, idx2) -> 
   Format.fprintf ppf "%s%s"
     (String.lowercase_ascii str) 
-    (match idx with 
-    | None -> ""
-    | Some i -> string_of_int i)
+    (match idx1, idx2 with 
+    | None, None -> ""
+    | Some i, None | None, Some i -> string_of_int i
+    | Some i, Some j -> string_of_int i ^ string_of_int j)
 
 (* The NT prefix is only used in the dpll.ml module *)
 and pp_print_expr: ?nt_prefix:string -> TC.context -> Format.formatter -> A.expr -> unit 
@@ -194,7 +195,9 @@ and pp_print_expr: ?nt_prefix:string -> TC.context -> Format.formatter -> A.expr
   match expr with 
   | NTExpr (nt_ctx, [nt], _) ->
     (* TODO: Use a representation that prevents name clashes with user names *)
-    let nts = List.map (fun (str, idx) -> String.lowercase_ascii str, idx) (nt_ctx @ [nt]) in
+    let nts = List.map (fun (str, idx1, idx2) -> 
+      String.lowercase_ascii str, idx1, idx2
+    ) (nt_ctx @ [nt]) in
     (if not (String.equal nt_prefix "") then
       Format.pp_print_string ppf (nt_prefix ^ "_"));
     Lib.pp_print_list pp_print_nt_helper "_" ppf nts
@@ -333,7 +336,8 @@ let find_indices lst =
   List.map (fun s ->
     let index = (Hashtbl.find_opt counts s |> Option.value ~default:0) + 1 in
     Hashtbl.replace counts s index;
-    (s, Some (index - 1))
+    (* TODO: Remove sygus-specific code (not sure if these updates still work anyway) *)
+    (s, None, Some (index - 1))
   ) lst
 
 let pp_print_ges_pattern: Format.formatter -> string list -> unit 

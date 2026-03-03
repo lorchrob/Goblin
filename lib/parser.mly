@@ -2,6 +2,7 @@
 open Ast
 %}
 
+%token AT
 %token UNIT
 %token BOOL
 %token INT
@@ -153,10 +154,10 @@ semantic_constraint_list:
 
 grammar_element:
 | nt = nonterminal { 
-    Nonterminal(nt, None, [], $startpos) 
+    Nonterminal(nt, None, None, [], $startpos) 
   }
 | nt = nonterminal; LPAREN; args = separated_nonempty_list(COMMA, expr); RPAREN; { 
-    Nonterminal(nt, None, args, $startpos) 
+    Nonterminal(nt, None, None, args, $startpos) 
   }
 
 semantic_constraint:
@@ -345,7 +346,7 @@ expr:
     NTExpr ([], e, $startpos) 
   }
 | nt = indexed_nonterminal; DOT; attr = ID; { 
-    SynthAttr (fst nt, attr, $startpos) 
+    SynthAttr ((fun (a, _, _) -> a) nt, attr, $startpos) 
   }
 | LPAREN; e = expr; RPAREN; { e }
 
@@ -357,7 +358,11 @@ nonterminal:
 | LT; str = ID; GT; { str }
 
 indexed_nonterminal:
-| LT; str = ID; GT; i = option(index); { str, i }
+| LT; str = ID; GT; i = option (rhs_index); j = option(index); { str, i, j }
 
 index:
 | LSQBRACKET; i = INTEGER; RSQBRACKET { i }
+
+
+rhs_index:
+| AT; i = INTEGER; { i }

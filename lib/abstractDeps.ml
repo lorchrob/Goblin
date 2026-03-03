@@ -32,7 +32,7 @@ let rec calculate_casts: expr -> expr
 let stub_grammar_element: TypeChecker.context -> semantic_constraint list -> grammar_element -> semantic_constraint option * grammar_element * TypeChecker.context
 = fun ctx scs ge -> match ge with 
 | StubbedNonterminal _ -> None, ge, ctx 
-| Nonterminal (nt, _, _, _) -> (
+| Nonterminal (nt, _, _, _, _) -> (
   match List.find_opt (fun sc -> match sc with
   | SmtConstraint _ -> false 
   | DerivedField (nt2, _, _) -> nt = nt2

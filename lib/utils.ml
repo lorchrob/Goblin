@@ -249,3 +249,5 @@ let has_duplicate eq lst =
         else aux xs
   in
   aux lst
+
+let tr_fst = fun (a, _, _) -> a
