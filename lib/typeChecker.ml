@@ -43,7 +43,7 @@ let last lst = lst |> List.rev |> List.hd
 
 let rec infer_type_expr: context -> mode -> expr -> il_type option
 = fun ctx mode expr -> match expr with 
-| NTExpr (_, nt_expr, p) -> (
+| NTExpr (nt_expr, p) -> (
   match Utils.StringMap.find (Utils.tr_fst (last nt_expr)) ctx with 
   | ADT _ -> 
     let msg = "Type checking error: Nonterminal '" ^ (Utils.tr_fst (last nt_expr)) ^ "' has a composite type, but is used in some operation that requires a primitive type" in
@@ -233,23 +233,6 @@ let rec infer_type_expr: context -> mode -> expr -> il_type option
     else Some Bool
   | _ -> None
   )
-| Match _ -> assert false
-  (* let inf_ty = Utils.StringMap.find (last nt_expr) ctx in  
-  if not (inf_ty = Bool) 
-    then
-      let expr_str = Utils.capture_output Ast.pp_print_expr expr in
-      let inf_ty_str1 = Utils.capture_output Ast.pp_print_ty inf_ty in
-      let exp_ty_str = Utils.capture_output Ast.pp_print_ty Bool in 
-      let error_message = "Type checking error: expression " ^ expr_str ^ " has one operand of type " ^ inf_ty_str1 ^ " and another operand of type " ^ exp_ty_str in
-      Utils.error error_message
-  else 
-    let inf_tys = List.map (fun (_, expr) -> infer_type_expr ctx mode expr) cases in 
-    if not (Lib.all_equal inf_tys) 
-    then 
-      let expr_str = Utils.capture_output Ast.pp_print_expr expr in
-      let error_message = "Type checking error: case expression " ^ expr_str ^ " has cases of differing types" in
-      Utils.error error_message
-    else List.hd inf_tys *)
 | BuiltInFunc (Length, _, p) -> 
   if mode = SyGuS then 
     Utils.error "The length(.) function cannot be used in a (non-derived) SMT constraint" p 

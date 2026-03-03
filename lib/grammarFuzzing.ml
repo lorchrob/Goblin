@@ -654,7 +654,7 @@ let run_sequence (_flag : bool) (c : child) : (provenance * output) * state * (b
         other_success_calls := !other_success_calls + 1 ;
         let solver_ast = BitFlips.flip_bits solver_ast in
         (* grammar_byte_map := !grammar_byte_map ^ (Utils.capture_output Ast.pp_print_ast grammar); *)
-        let byte_serial, metadata = Serialize.serialize_bytes Serialize.Big ["PACKET_BODY_LENGTH";"KEY_LENGTH";"KEY_DATA_LENGTH";"KEY_INFORMATION_1";"KEY_INFORMATION_2";"KEY_INFORMATION_3";"KEY_INFORMATION_4"] solver_ast in
+        let byte_serial = Serialize.serialize_bytes Serialize.Big ["PACKET_BODY_LENGTH";"KEY_LENGTH";"KEY_DATA_LENGTH";"KEY_INFORMATION_1";"KEY_INFORMATION_2";"KEY_INFORMATION_3";"KEY_INFORMATION_4"] solver_ast in
         (* Print hex to stdout and append to file *)
         Format.printf "%s\n" (bytes_to_hex byte_serial);
         let hex_str = "=== HEX RESULT [" ^ timestamp ^ "] ===\n" ^ (bytes_to_hex byte_serial) ^ "\n\n" in
@@ -662,7 +662,7 @@ let run_sequence (_flag : bool) (c : child) : (provenance * output) * state * (b
         output_string oc hex_str;
         close_out oc;
         Format.pp_print_flush Format.std_formatter ();
-        Ok (byte_serial, metadata)
+        Ok byte_serial
       with exn -> 
         other_fail_calls := !other_fail_calls + 1;
         other_fail_execution_time := ((Unix.gettimeofday ()) -. other_start_time);
@@ -740,7 +740,7 @@ let run_sequence (_flag : bool) (c : child) : (provenance * output) * state * (b
         (* in *)
         let packetToSend_ = packetToSend_1 in
         match packetToSend_ with
-        | Ok (packetToSend, _metadata) ->
+        | Ok packetToSend ->
           (* grammar_byte_map := !grammar_byte_map ^ "\n HEX: " ^ bytes_to_hex packetToSend ^ "\n------------------------------\n"; *)
           Format.printf "\n";
           Format.pp_print_flush Format.std_formatter ();
@@ -881,7 +881,7 @@ let run_sequence (_flag : bool) (c : child) : (provenance * output) * state * (b
         in
         let packetToSend_ = (fun x -> match x with | true -> packetToSend_1 | false -> packetToSend_2) flag in
         match packetToSend_ with
-        | Ok (packetToSend, _metadata) ->
+        | Ok packetToSend ->
           (* grammar_byte_map := !grammar_byte_map ^ "\n HEX: " ^ bytes_to_hex packetToSend ^ "\n------------------------------\n"; *)
           Format.printf "\n";
           Format.pp_print_flush Format.std_formatter ();

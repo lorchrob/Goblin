@@ -11,12 +11,6 @@ let rec calculate_casts: expr -> expr
 | UnOp (op, expr, p) -> UnOp (op, calculate_casts expr, p) 
 | Singleton (expr, p) -> Singleton (calculate_casts expr, p)
 | CompOp (expr1, op, expr2, p) -> CompOp (calculate_casts expr1, op, calculate_casts expr2, p) 
-| Match (nt_ctx, nt, cases, p) -> 
-  let cases = List.map (fun case -> match case with 
-  | CaseStub _ -> case 
-  | Case (nts, e) -> Case (nts, calculate_casts e)
-  ) cases in
-  Match (nt_ctx, nt, cases, p)
 | BuiltInFunc (func, exprs, p) -> BuiltInFunc (func, List.map calculate_casts exprs, p)
 | NTExpr _ 
 | BVConst _ 

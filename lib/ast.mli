@@ -73,23 +73,11 @@ expr =
 | UnOp of unary_operator * expr * Lexing.position
 | CompOp of expr * comp_operator * expr * Lexing.position
 | BVCast of int * expr * Lexing.position
-(* First string list track the context of the nonterminal being matched 
-   Int options are for clarifying ambiguous dot notation references, as in NTExpr *)
-| Match of (string * int option * int option) list * (string * int option * int option) * case list * Lexing.position
-(* First string list tracks the context of a nonterminal after desugaring to match expression
-   Second int list is for dot notation input e.g. <A>.<B>.<C> 
-   Int option is for disambiguating references. 
-   
-   More detail:
-   First string list is initially empty. When we desugar, e.g., dot expression 
-   <A>.<B> to a match expression match <A> with | ... <B> ... -> <expr containing <B>>
-   the expression containing <B> needs to remember it came from <A>, in case of name 
-   clashes. So, this dot notation context is stored in the first string list.
-
+(* 
    The int options are initially None, but may be populated by the tool as a  
    structured form of renaming to clarify ambiguous dot notation references.
    *)
-| NTExpr of (string * int option * int option) list * (string * int option * int option) list * Lexing.position
+| NTExpr of (string * int option * int option) list * Lexing.position
 | BVConst of int * bool list * Lexing.position
 | BLConst of bool list * Lexing.position
 | BConst of bool * Lexing.position
@@ -121,7 +109,6 @@ type ast = element list
 
 val get_nts_from_expr : expr -> string list
 val get_nts_from_sc: semantic_constraint -> string list 
-val get_nts_from_expr_after_desugaring_dot_notation : expr -> (string * int option * int option) list list 
 val pp_print_element: Format.formatter -> element ->  unit 
 val pp_print_ast : Format.formatter -> ast -> unit
 val pp_print_nt_with_dots : Format.formatter -> (string * int option * int option) list -> unit

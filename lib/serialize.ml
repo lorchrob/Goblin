@@ -112,7 +112,7 @@ let flip_endianness e = match e with
   `exception_list` denotes the list of fields to flip the default endianness (eg if default endianness is Big,
   `serialize_bytes` will encode fields from `exception_list` as little endian.
 *)
-let serialize_bytes: endianness -> string list -> SA.solver_ast -> bytes * bytes 
+let serialize_bytes: endianness -> string list -> SA.solver_ast -> bytes 
 = fun default_endianness exception_list solver_ast -> 
   let rec serialize_aux endianness exception_list solver_ast offset acc_metadata =
     match solver_ast with
@@ -158,9 +158,9 @@ let serialize_bytes: endianness -> string list -> SA.solver_ast -> bytes * bytes
     var_leaf_count = 0;
     var_leaf_info = []
   } in
-  let serialized_bytes, final_metadata, _ = serialize_aux default_endianness exception_list solver_ast 0 initial_metadata in
-  let metadata_bytes = encode_metadata final_metadata in
-  serialized_bytes, metadata_bytes
+  let serialized_bytes, _, _ = serialize_aux default_endianness exception_list solver_ast 0 initial_metadata in
+  (*let metadata_bytes = encode_metadata final_metadata in*)
+  serialized_bytes
 
 let bytes_to_bools_be (bs : bytes) : bool list =
   let n = Bytes.length bs in
@@ -266,4 +266,4 @@ let serialize_bytes_packed: SA.solver_ast -> bytes
     Utils.crash msg
   in 
   let bits = SA.BLLeaf (bits_of_sa 0 solver_ast |> snd) in 
-  serialize_bytes Little [] bits |> fst
+  serialize_bytes Little [] bits 

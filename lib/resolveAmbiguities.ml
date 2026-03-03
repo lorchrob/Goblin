@@ -1,12 +1,6 @@
 module A = Ast
 module TC = TypeChecker
 
-(* To help with attributes -- 
-   if no index given, still not ambiguous if every option has exactly one occurrence. 
-   Then synthesize all the possible constraints. Or maybe... treat attributes specially? 
-
-   Trying that now. *)
-
 let rec check_nt_expr_refs ctx nts p = match nts with 
 | (nt1, idx1) :: (nt2, idx2) :: tl ->
   let ty = Utils.StringMap.find nt1 ctx in 
@@ -42,13 +36,13 @@ let rec check_unambiguous_references
 = fun ctx ges expr -> 
   let call = check_unambiguous_references ctx ges in
   match expr with 
-  | A.NTExpr (nt_context, (nt, idx) :: nts, p) -> 
+  | A.NTExpr ((nt, idx) :: nts, p) -> 
     (* Head nt should be unambiguous and in *this* RHS *)
     let idx = match idx with (* Set this index *)
     | Some _ -> idx
     | None -> match List.filter (function 
       | A.StubbedNonterminal _ -> false
-      | A.Nonterminal (id, _, _, _) -> nt = id
+      | A.Nonterminal (id, _, _, _, _) -> nt = id
       ) ges with 
       | [A.Nonterminal (_, Some idx, _, _)] -> Some idx 
       | [A.Nonterminal (_, None, _, _)] -> assert false
@@ -68,14 +62,13 @@ let rec check_unambiguous_references
     in 
     (* Subsequent nt references should all work for *some* RHS *)
     let nts = check_nt_expr_refs ctx ((nt, idx) :: nts) p in 
-    A.NTExpr (nt_context, nts, p)
-  | A.NTExpr (_, [], _) -> assert false
+    A.NTExpr (nts, p)
+  | A.NTExpr _ -> assert false
   | EmptySet (ty, p) -> EmptySet (ty, p)
   | Singleton (expr, p) -> Singleton (call expr, p)
   | BinOp (expr1, op, expr2, p) -> BinOp (call expr1, op, call expr2, p) 
   | UnOp (op, expr, p) -> UnOp (op, call expr, p) 
   | CompOp (expr1, op, expr2, p) -> CompOp (call expr1, op, call expr2, p) 
-  | Match _ -> assert false(* -> Match (check_nt_expr_refs prm nt_expr, cases) *)
   | BuiltInFunc (func, exprs, p) -> BuiltInFunc (func, List.map call exprs, p) 
   | BVCast (width, expr, p) -> BVCast (width, call expr, p)
   | BVConst _ 

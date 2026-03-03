@@ -81,10 +81,10 @@ let rec check_dangling_identifiers: Utils.StringSet.t -> Lexing.position -> expr
     | Some _ -> ()
   in
   match expr with 
-  | NTExpr (nt_ctx, nt_expr, p) -> 
+  | NTExpr (nt_expr, p) -> 
     let nt_expr' = List.map fst nt_expr in
     let _ = check_d_ids_nt_expr nt_expr' in 
-    NTExpr (nt_ctx, nt_expr, p)
+    NTExpr (nt_expr, p)
   | SynthAttr (nt, attr, p) -> 
     let _ = check_d_ids_nt_expr [nt] in 
     let _ = check_d_ids_attribute attr in 
@@ -94,7 +94,6 @@ let rec check_dangling_identifiers: Utils.StringSet.t -> Lexing.position -> expr
   | BinOp (expr1, op, expr2, p) -> BinOp (call expr1, op, call expr2, p) 
   | UnOp (op, expr, p) -> UnOp (op, call expr, p) 
   | CompOp (expr1, op, expr2, p) -> CompOp (call expr1, op, call expr2, p) 
-  | Match _ -> assert false (* -> Match (check_d_ids_nt_expr nt_expr, cases) *)
   | BuiltInFunc (func, exprs, p) -> BuiltInFunc (func, List.map call exprs, p) 
   | BVCast (width, expr, p) -> BVCast (width, call expr, p)
   | BVConst _ 
@@ -121,13 +120,13 @@ let rec check_prod_rule_nt_exprs: prod_rule_map -> Utils.StringSet.t -> expr -> 
 = fun prm nts expr -> 
   let call = check_prod_rule_nt_exprs prm nts in
   match expr with 
-  | NTExpr (nt_context, nt_expr, p) -> 
+  | NTExpr (nt_expr, p) -> 
     if (not (Utils.StringSet.mem (List.hd nt_expr |> fst) nts)) 
     then 
       Utils.error ("Nonterminal " ^  (List.hd nt_expr |> fst) ^ " not found in current production rule RHS or type annotation") p
     else
       let nt_expr = check_nt_expr_refs prm nt_expr p in 
-      NTExpr (nt_context, nt_expr, p) 
+      NTExpr (nt_expr, p) 
   | SynthAttr (nt, attr, p) -> 
     if (not (Utils.StringSet.mem nt nts)) 
     then 
@@ -140,7 +139,6 @@ let rec check_prod_rule_nt_exprs: prod_rule_map -> Utils.StringSet.t -> expr -> 
   | CompOp (expr1, op, expr2, p) -> CompOp (call expr1, op, call expr2, p) 
   | BuiltInFunc (func, exprs, p) -> BuiltInFunc (func, List.map call exprs, p) 
   | BVCast (width, expr, p) -> BVCast (width, call expr, p)
-  | Match _ -> assert false (* -> Match (check_nt_expr_refs prm nt_expr, cases) *)
   | BVConst _ 
   | BLConst _ 
   | BConst _ 
@@ -155,18 +153,17 @@ let rec check_type_annot_nt_exprs: prod_rule_map -> Utils.StringSet.t -> expr ->
 = fun prm nts expr -> 
   let call = check_type_annot_nt_exprs prm nts in
   match expr with 
-  | NTExpr (nt_context, nt_expr, p) -> 
+  | NTExpr (nt_expr, p) -> 
     if (not (Utils.StringSet.mem (List.hd nt_expr |> fst) nts)) 
     then Utils.error ("Nonterminal " ^  (List.hd nt_expr |> fst) ^ " not found in current production rule RHS or type annotation") p
     else
       let nt_expr = check_nt_expr_refs prm nt_expr p in 
-      NTExpr (nt_context, nt_expr, p) 
+      NTExpr (nt_expr, p) 
   | EmptySet (ty, p) -> EmptySet (ty, p)
   | Singleton (expr, p) -> Singleton (call expr, p)
   | BinOp (expr1, op, expr2, p) -> BinOp (call expr1, op, call expr2, p) 
   | UnOp (op, expr, p) -> UnOp (op, call expr, p) 
   | CompOp (expr1, op, expr2, p) -> CompOp (call expr1, op, call expr2, p) 
-  | Match _ -> assert false(* -> Match (check_nt_expr_refs prm nt_expr, cases) *)
   | BuiltInFunc (func, exprs, p) -> BuiltInFunc (func, List.map call exprs, p) 
   | BVCast (width, expr, p) -> BVCast (width, call expr, p)
   | BVConst _ 
@@ -193,7 +190,7 @@ let check_for_nonterminals expr p =
 let rec check_for_ambiguous_derived_fields ast expr rhs = 
   let r = check_for_ambiguous_derived_fields ast in 
   match expr with 
-  | NTExpr (_, (nt, _) :: nts, p) -> 
+  | NTExpr ((nt, _) :: nts, p) -> 
     let rhs_nts = Ast.nts_of_rhs rhs in 
     let matching_rhs_nts = List.filter (fun nt' -> String.equal nt nt') rhs_nts in 
     if List.length matching_rhs_nts > 1 then 
@@ -203,10 +200,9 @@ let rec check_for_ambiguous_derived_fields ast expr rhs =
       match element with 
       | Ast.TypeAnnotation _ -> Ok ()
       | Ast.ProdRule (_, _, rhss, _) -> 
-        Res.seq_ (List.map (r (NTExpr ([], nts, p))) rhss)
+        Res.seq_ (List.map (r (NTExpr (nts, p))) rhss)
     )
-  | NTExpr (_, [], _) -> Ok ()
-  | Match _ -> assert false 
+  | NTExpr ([], _) -> Ok ()
   | BinOp (expr1, _, expr2, _) -> 
     let* _ = r expr1 rhs in 
     r expr2 rhs
@@ -383,12 +379,6 @@ let str_const_to_ph_const ast =
   | BinOp (expr1, op, expr2, p) -> BinOp (handle_expr expr1, op, handle_expr expr2, p) 
   | UnOp (op, expr, p) -> UnOp (op, handle_expr expr, p) 
   | CompOp (expr1, op, expr2, p) -> CompOp (handle_expr expr1, op, handle_expr expr2, p) 
-  | Match (nt_ctx, nt, cases, p) -> 
-    let cases = List.map (fun case -> match case with 
-    | CaseStub _ -> case 
-    | Case (nts, e) -> Case (nts, handle_expr e)
-    ) cases in
-    Match (nt_ctx, nt, cases, p) 
   | BuiltInFunc (func, exprs, p) -> BuiltInFunc (func, List.map handle_expr exprs, p) 
   | NTExpr _ 
   | BVConst _ 
@@ -448,7 +438,11 @@ let language_emptiness_check ast start_symbol =
   (*if Utils.StringSet.mem start_symbol productive_nt_set then   *)
     () 
   else 
-    Utils.error_no_pos "CFG has empty language"
+    let unproductive = Utils.StringSet.diff (Ast.nts_of_ast ast) productive_nt_set |> Utils.StringSet.to_list in
+    Utils.error_no_pos 
+      (Format.asprintf "CFG has empty language. Unproductive nonterminals: %a (check for an infinite recursion in the grammar)" 
+        (Lib.pp_print_list (fun ppf str -> Format.fprintf ppf "<%s>" str) ", ") unproductive)
+      
 
 let check_probabilities nt rhss p = 
   (* Omitting probabilities is legal (assumed uniform distribution) *)

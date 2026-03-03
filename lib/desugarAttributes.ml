@@ -32,9 +32,9 @@ let rec attr_to_nt_expr
   | A.SynthAttr (nt, attr, p) ->
     let nt1 = nt, None in 
     let nt2 = "%_" ^ attr, None in 
-    A.NTExpr ([], [nt1; nt2], p)
+    A.NTExpr ([nt1; nt2], p)
   | InhAttr (attr, p) -> 
-    A.NTExpr ([], ["%_" ^ attr, None], p) 
+    A.NTExpr (["%_" ^ attr, None], p) 
   | A.BVCast (len, expr, pos) -> A.BVCast (len, r expr, pos)
   | BinOp (expr1, op, expr2, pos) -> BinOp (r expr1, op, r expr2, pos) 
   | UnOp (op, expr, pos) -> UnOp (op, r expr, pos) 
@@ -49,7 +49,6 @@ let rec attr_to_nt_expr
   | NTExpr _
   | StrConst _
   | EmptySet _ -> expr
-  | Match _ -> assert false
 
 (* Convert synthesized and inherited attributes to their corresponding bare NTExprs 
    (using the generated nonterminals). 
@@ -63,7 +62,7 @@ let handle_sc _ctx sc = match sc with
   A.SmtConstraint (expr, p), None
 | A.AttrDef (attr, expr, p) ->
   let expr = attr_to_nt_expr expr in 
-  let c = A.CompOp (NTExpr ([], ["%_" ^ attr, None], p), A.Eq, expr, p) in 
+  let c = A.CompOp (NTExpr (["%_" ^ attr, None], p), A.Eq, expr, p) in 
   A.SmtConstraint (c, p), Some ("%_" ^ attr)
 
 (* Inherited attribute constraints. For each inherited attribute "call" <nt>(<expr_1>, ..., <expr_n>), 
@@ -80,7 +79,7 @@ let gen_constraints_from_ge ast ge = match ge with
       let attr_param = List.nth attr_params i in
       (*!!! TODO: If at a stage of the pipeline where `idx` is still None (and we haven't updated it here), 
             it is too course-grained *)
-      let c = A.CompOp (A.NTExpr ([], [nt, idx; "%_" ^ attr_param, None], p), 
+      let c = A.CompOp (A.NTExpr ([nt, idx; "%_" ^ attr_param, None], p), 
                         A.Eq, 
                         attr, p) in 
       A.SmtConstraint (c, p)

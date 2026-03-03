@@ -343,7 +343,7 @@ expr:
     BuiltInFunc (Repeat, [e1; e2], $startpos) 
   } 
 | e = nt_expr; (* _ = option(index); *) { 
-    NTExpr ([], e, $startpos) 
+    NTExpr (e, $startpos) 
   }
 | nt = indexed_nonterminal; DOT; attr = ID; { 
     SynthAttr ((fun (a, _, _) -> a) nt, attr, $startpos) 

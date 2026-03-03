@@ -102,8 +102,7 @@ and isPresentInExpr (nt:string) (e:expr) : bool =
         acc || isPresentInExpr nt e
       ) false es
     | BVCast (_, e, _) -> (isPresentInExpr nt e)
-    | NTExpr (_, n, _) -> (List.mem nt (List.map fst n))
-    | Match (_, (nt2, _, _), caselist, _) -> (nt = nt2) || isPresentInCaseList nt caselist
+    | NTExpr (n, _) -> (List.mem nt (List.map fst n))
     | _ -> false 
     
 let rec remove_constraints (nt : string) (clist : semantic_constraint list) : semantic_constraint list = 
