@@ -73,7 +73,7 @@ let rec pp_print_expr: ?nt_prefix:string -> TC.context -> Format.formatter -> A.
   match expr with 
   | NTExpr (nts, _) ->
     (* TODO: Use a representation that prevents name clashes with user names *)
-    let nts = List.map (fun (str, idx) -> String.lowercase_ascii str, idx) nts in
+    let nts = List.map (fun (str, idx1, idx2) -> String.lowercase_ascii str, idx1, idx2) nts in
     (if not (String.equal nt_prefix "") then
       Format.pp_print_string ppf (nt_prefix ^ "_"));
     Lib.pp_print_list pp_print_nt_helper "_" ppf nts

@@ -82,7 +82,7 @@ let rec check_dangling_identifiers: Utils.StringSet.t -> Lexing.position -> expr
   in
   match expr with 
   | NTExpr (nt_expr, p) -> 
-    let nt_expr' = List.map fst nt_expr in
+    let nt_expr' = List.map Utils.tr_fst nt_expr in
     let _ = check_d_ids_nt_expr nt_expr' in 
     NTExpr (nt_expr, p)
   | SynthAttr (nt, attr, p) -> 
@@ -104,14 +104,17 @@ let rec check_dangling_identifiers: Utils.StringSet.t -> Lexing.position -> expr
   | PhConst _ 
   | StrConst _ -> expr
 
-let rec check_nt_expr_refs: prod_rule_map -> (string * int option) list -> Lexing.position -> (string * int option) list 
+let rec check_nt_expr_refs: 
+  prod_rule_map -> (string * int option * int option) list -> 
+  Lexing.position -> (string * int option * int option) list 
 = fun prm nt_expr p -> match nt_expr with 
-| (nt1, idx1) :: (nt2, idx2) :: tl ->
+| (nt1, idx1, idx2) :: (nt2, idx3, idx4) :: tl ->
   if (not (Utils.StringSet.mem nt2 (Utils.StringMap.find nt1 prm))) 
   then 
-    let sub_expr_str = Utils.capture_output Ast.pp_print_nt_with_dots [(nt1, idx1); (nt2, idx2)] in
+    let sub_expr_str = 
+      Utils.capture_output Ast.pp_print_nt_with_dots [(nt1, idx1, idx2); (nt2, idx3, idx4)] in
     Utils.error ("Dot notation " ^ sub_expr_str ^ " is an invalid reference" ) p
-  else (nt1, idx1) :: check_nt_expr_refs prm ((nt2, idx2) :: tl) p
+  else (nt1, idx1, idx2) :: check_nt_expr_refs prm ((nt2, idx3, idx4) :: tl) p
 | _ -> nt_expr
 
 (* Check each nonterminal expression begins with a valid nonterminal
@@ -121,9 +124,9 @@ let rec check_prod_rule_nt_exprs: prod_rule_map -> Utils.StringSet.t -> expr -> 
   let call = check_prod_rule_nt_exprs prm nts in
   match expr with 
   | NTExpr (nt_expr, p) -> 
-    if (not (Utils.StringSet.mem (List.hd nt_expr |> fst) nts)) 
+    if (not (Utils.StringSet.mem (List.hd nt_expr |> Utils.tr_fst) nts)) 
     then 
-      Utils.error ("Nonterminal " ^  (List.hd nt_expr |> fst) ^ " not found in current production rule RHS or type annotation") p
+      Utils.error ("Nonterminal " ^  (List.hd nt_expr |> Utils.tr_fst) ^ " not found in current production rule RHS or type annotation") p
     else
       let nt_expr = check_nt_expr_refs prm nt_expr p in 
       NTExpr (nt_expr, p) 
@@ -154,8 +157,8 @@ let rec check_type_annot_nt_exprs: prod_rule_map -> Utils.StringSet.t -> expr ->
   let call = check_type_annot_nt_exprs prm nts in
   match expr with 
   | NTExpr (nt_expr, p) -> 
-    if (not (Utils.StringSet.mem (List.hd nt_expr |> fst) nts)) 
-    then Utils.error ("Nonterminal " ^  (List.hd nt_expr |> fst) ^ " not found in current production rule RHS or type annotation") p
+    if (not (Utils.StringSet.mem (List.hd nt_expr |> Utils.tr_fst) nts)) 
+    then Utils.error ("Nonterminal " ^  (List.hd nt_expr |> Utils.tr_fst) ^ " not found in current production rule RHS or type annotation") p
     else
       let nt_expr = check_nt_expr_refs prm nt_expr p in 
       NTExpr (nt_expr, p) 
@@ -190,7 +193,7 @@ let check_for_nonterminals expr p =
 let rec check_for_ambiguous_derived_fields ast expr rhs = 
   let r = check_for_ambiguous_derived_fields ast in 
   match expr with 
-  | NTExpr ((nt, _) :: nts, p) -> 
+  | NTExpr ((nt, _, _) :: nts, p) -> 
     let rhs_nts = Ast.nts_of_rhs rhs in 
     let matching_rhs_nts = List.filter (fun nt' -> String.equal nt nt') rhs_nts in 
     if List.length matching_rhs_nts > 1 then 
@@ -263,7 +266,7 @@ let check_syntax_prod_rule: ast -> prod_rule_map -> Utils.StringSet.t -> prod_ru
 let rhss_contains_nt nt rhss = 
   List.exists (fun rhs -> match rhs with 
   | Rhs (ges, _, _, _) -> List.exists (fun ge -> match ge with 
-    | Nonterminal (nt2, _, _, _)
+    | Nonterminal (nt2, _, _, _, _)
     | StubbedNonterminal (nt2, _) -> 
       nt = nt2
   ) ges

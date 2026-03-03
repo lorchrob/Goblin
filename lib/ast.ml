@@ -70,14 +70,7 @@ type builtin_func =
 | UbvToInt 
 | SbvToInt 
 
-type case = 
-(* A case is a list of <context, nonterminal> pairs (denoting a pattern) and the corresponding expression *)
-(* The int option eases dealing with horizontal ambiguous references *)
-| Case of ((string * int option * int option) list * 
-           (string * int option * int option)) list * expr 
-| CaseStub of ((string * int option) list * (string * int option * int option)) list
-and
-expr = 
+type expr = 
 | InhAttr of string * Lexing.position 
 | SynthAttr of string * string * Lexing.position (* NT string * attribute name *)
 | EmptySet of il_type * Lexing.position
@@ -323,13 +316,13 @@ let rec pp_print_expr: Format.formatter -> expr -> unit
     pp_print_expr expr 
 | NTExpr ([nt_expr], _) -> 
   if !Flags.dump_clp then 
-    let s = nt_expr |> fst |> String.uppercase_ascii in
+    let s = nt_expr |> Utils.tr_fst |> String.uppercase_ascii in
     Format.pp_print_string ppf s
   else pp_print_nt_with_underscores ppf ([nt_expr]) 
 | NTExpr (nt_expr, _) -> 
   if !Flags.dump_clp then 
-    let s = Utils.last nt_expr |> fst |> (fun x -> x ^ "s") |> String.uppercase_ascii in
-    let init = Utils.init nt_expr |> List.map fst |> String.concat "_" in
+    let s = Utils.last nt_expr |> Utils.tr_fst |> (fun x -> x ^ "s") |> String.uppercase_ascii in
+    let init = Utils.init nt_expr |> List.map Utils.tr_fst |> String.concat "_" in
     Format.pp_print_string ppf (init ^ "_" ^ s)
   else pp_print_nt_with_dots ppf (nt_expr) 
 | BLConst (bits, _) -> 
@@ -361,12 +354,12 @@ let pp_print_semantic_constraint: Format.formatter -> semantic_constraint -> uni
 
 let pp_print_grammar_element: Format.formatter -> grammar_element ->  unit 
 = fun ppf g_el -> match g_el with 
-| Nonterminal (nt, idx, ias, _) -> (
+| Nonterminal (nt, idx1, idx2, ias, _) -> (
   match ias with 
-  | [] -> pp_print_nt_with_dots ppf [nt, idx]
+  | [] -> pp_print_nt_with_dots ppf [nt, idx1, idx2]
   | _ :: _ -> 
     Format.fprintf ppf "%a(%a)"
-      pp_print_nt_with_dots [nt, idx] 
+      pp_print_nt_with_dots [nt, idx1, idx2] 
       (Lib.pp_print_list pp_print_expr ", ") ias
   )
 | StubbedNonterminal (_, stub_id) -> Format.pp_print_string ppf stub_id
@@ -395,23 +388,23 @@ let pp_print_element: Format.formatter -> element ->  unit
 = fun ppf el -> match el with 
 | ProdRule (nt, [], rhss, _) -> 
   Format.fprintf ppf "%a ::= %a;"
-    pp_print_nt_with_dots [nt, None]
+    pp_print_nt_with_dots [nt, None, None]
     (Lib.pp_print_list pp_print_prod_rule_rhs " | ") rhss
 
 | ProdRule (nt, ias, rhss, _) -> 
   Format.fprintf ppf "%a(%a) ::= %a;"
-    pp_print_nt_with_dots [nt, None]
+    pp_print_nt_with_dots [nt, None, None]
     (Lib.pp_print_list Format.pp_print_string ", ") ias
     (Lib.pp_print_list pp_print_prod_rule_rhs " | ") rhss
 
 | TypeAnnotation (nt, ty, [], _) -> 
   Format.fprintf ppf "%a :: %a;"
-    pp_print_nt_with_dots [nt, None] 
+    pp_print_nt_with_dots [nt, None, None] 
     pp_print_ty ty
 
 | TypeAnnotation (nt, ty, scs, _) -> 
   Format.fprintf ppf "%a :: %a { %a };"
-    pp_print_nt_with_dots [nt, None] 
+    pp_print_nt_with_dots [nt, None, None] 
     pp_print_ty ty
     (Lib.pp_print_list pp_print_semantic_constraint " ") scs
 
@@ -437,7 +430,7 @@ let il_int_to_bv: int -> int -> Lexing.position -> expr
 
 let grammar_element_to_string: grammar_element -> string 
 = fun grammar_element -> match grammar_element with 
-  | Nonterminal (nt2, _, _, _) -> nt2
+  | Nonterminal (nt2, _, _, _, _) -> nt2
   | StubbedNonterminal (_, stub_id) -> stub_id
 
 (* Used before divide and conquer *)
@@ -445,7 +438,7 @@ let nts_of_rhs: prod_rule_rhs -> string list
 = fun rhs -> match rhs with 
 | Rhs (ges, _, _, _) -> 
   List.map (fun ge -> match ge with 
-  | Nonterminal (nt, _, _, _) -> nt 
+  | Nonterminal (nt, _, _, _, _) -> nt 
   | StubbedNonterminal (nt, _) -> nt (* TODO: Not sure which tuple element we want, first or second *)
   ) ges
 | StubbedRhs _ -> [] 
@@ -462,7 +455,7 @@ let rec expr_contains_dangling_nt: Utils.SILSet.t -> expr -> bool
       pp_print_nt_with_underscores nt_expr (Utils.SILSet.mem nt_expr ctx); *)
     res
   | SynthAttr (nt, _, p) -> 
-    r (NTExpr ([nt, None], p))
+    r (NTExpr ([nt, None, None], p))
   | BinOp (expr1, _, expr2, _) -> 
     r expr1 || r expr2
   | UnOp (_, expr, _) -> 
@@ -517,7 +510,7 @@ let rec prepend_nt_to_dot_exprs: string -> expr -> expr
 = fun nt expr -> 
   let r = prepend_nt_to_dot_exprs nt in
   match expr with
-  | NTExpr (nts, pos) -> NTExpr ((nt, None) :: nts, pos)
+  | NTExpr (nts, pos) -> NTExpr ((nt, None, None) :: nts, pos)
   | BVCast (len, expr, pos) -> BVCast (len, r expr, pos)
   | BinOp (expr1, op, expr2, pos) -> BinOp (r expr1, op, r expr2, pos) 
   | UnOp (op, expr, pos) -> UnOp (op, r expr, pos) 
@@ -533,29 +526,6 @@ let rec prepend_nt_to_dot_exprs: string -> expr -> expr
   | EmptySet _ -> expr
   | InhAttr _
   | SynthAttr _ -> assert false
-
-let rec add_index_to_expr: int -> expr -> expr 
-= fun i expr -> 
-  let r = add_index_to_expr i in
-  match expr with
-  | NTExpr ((nt, None) :: nts, pos) -> NTExpr ((nt, Some i) :: nts, pos)
-  | BVCast (len, expr, pos) -> BVCast (len, r expr, pos)
-  | BinOp (expr1, op, expr2, pos) -> BinOp (r expr1, op, r expr2, pos) 
-  | UnOp (op, expr, pos) -> UnOp (op, r expr, pos) 
-  | CompOp (expr1, op, expr2, pos) -> CompOp (r expr1, op, r expr2, pos) 
-  | Singleton (expr, pos) -> Singleton (r expr, pos)
-  | BuiltInFunc (func, exprs, pos) -> BuiltInFunc (func, List.map r exprs, pos) 
-  | NTExpr _ -> Utils.crash "Unexpected case 2 in add_index_to_expr" 
-  | BVConst _ 
-  | BLConst _ 
-  | BConst _ 
-  | IntConst _ 
-  | PhConst _ 
-  | StrConst _
-  | EmptySet _ 
-  | InhAttr _
-  | SynthAttr _ -> expr 
-
 
 let scs_of_element = function 
 | ProdRule (_, _, rhss, _) -> 

@@ -44,7 +44,7 @@ let rec get_all_nt (g : ast) : string list =
 let rec get_dependencies (nt : string) (geList : grammar_element list) : string list =
   match geList with
   | [] -> []
-  | Nonterminal(x, _, _, _) :: xs -> 
+  | Nonterminal(x, _, _, _, _) :: xs -> 
     if nt = x 
       then x :: (get_dependencies nt xs)
     else get_dependencies nt xs
@@ -137,7 +137,7 @@ let has_problematic_immediate_left_recursion (grammar : ast) : bool =
         let all_alternatives_left_recursive = 
           List.for_all (fun rhs ->
             match rhs with
-            | Rhs(Nonterminal(nt, _, _, _) :: _, _, _, _) -> nt = lhs
+            | Rhs(Nonterminal(nt, _, _, _, _) :: _, _, _, _) -> nt = lhs
             | _ -> false
           ) rhs_list
         in

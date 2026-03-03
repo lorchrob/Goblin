@@ -58,13 +58,7 @@ type builtin_func =
 | UbvToInt 
 | SbvToInt 
 
-type case = 
-(* A case is a list of <context, nonterminal> pairs (denoting a pattern) and the corresponding expression *)
-(* The int option eases dealing with horizontal ambiguous references *)
-| Case of ((string * int option * int option) list * (string * int option * int option)) list * expr 
-| CaseStub of ((string * int option * int option) list * (string * int option * int option)) list
-and 
-expr = 
+type expr = 
 | InhAttr of string * Lexing.position
 | SynthAttr of string * string * Lexing.position (* NT string * attribute name *)
 | EmptySet of il_type * Lexing.position
@@ -130,4 +124,3 @@ val find_element: ast -> string -> element
 val pos_of_expr: expr -> Lexing.position
 val pp_print_builtin_func: Format.formatter -> builtin_func -> unit
 val eq_il_type: il_type -> il_type -> bool
-val add_index_to_expr: int -> expr -> expr
