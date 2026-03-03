@@ -14,6 +14,7 @@ let disambiguate_nonterminals (rhss : A.prod_rule_rhs list) : A.prod_rule_rhs li
   let disambiguate_rhs rhs = match rhs with 
     | A.StubbedRhs _ as stub -> stub
     | Rhs (elems, constraints, prob, pos) ->
+      Hashtbl.clear running_indices;
       let new_elems = List.map disambiguate_elem elems in
       Rhs (new_elems, constraints, prob, pos)
   in
