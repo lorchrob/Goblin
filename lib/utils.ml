@@ -250,3 +250,5 @@ let has_duplicate eq lst =
   aux lst
 
 let tr_fst = fun (a, _, _) -> a
+let tr_snd = fun (_, b, _) -> b
+let tr_trd = fun (_, _, c) -> c
