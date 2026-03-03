@@ -134,8 +134,8 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.solver_ast 
       SA.pp_print_solver_ast solver_ast;
   let call = evaluate ~dep_map solver_ast ast element in
   match expr with 
-| NTExpr (_, [], _) -> Utils.crash "Unexpected case in evaluate 1"
-| NTExpr (_, (id, idx0) :: rest, p) ->
+| NTExpr ([], _) -> Utils.crash "Unexpected case in evaluate 1"
+| NTExpr ((id, idx0) :: rest, p) ->
   let child_index, child_element = match element with 
   | A.TypeAnnotation _ -> 0, element
   | A.ProdRule (_, _, rhss, _) ->
@@ -178,7 +178,7 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.solver_ast 
         compute_deps dep_map ast solver_ast |> solver_ast_to_expr 
       else child_solver_ast |> solver_ast_to_expr 
     | Node _ when rest <> [] -> 
-      evaluate ~dep_map child_solver_ast ast child_element (NTExpr ([], rest, p))
+      evaluate ~dep_map child_solver_ast ast child_element (NTExpr (rest, p))
     | _ ->
       compute_deps dep_map ast child_solver_ast |> solver_ast_to_expr 
   )
@@ -458,7 +458,6 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.solver_ast 
   | _ -> eval_fail 27
 )
 | BVConst _ | BLConst _ | IntConst _ | BConst _ | PhConst _ | StrConst _ | EmptySet _ -> [expr]
-| Match (_, _, _, p) -> Utils.error "Match not yet supported in derived fields" p
 | e -> 
   let msg = Format.asprintf "Expression %a not yet supported in the evaluator (try making this non-derived)" 
     A.pp_print_expr e in 

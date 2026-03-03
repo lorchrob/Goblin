@@ -218,17 +218,16 @@ let rec universalize_expr: bool -> (string * int option) list -> Ast.expr -> Ast
 = fun is_type_annotation prefix expr ->
   let r = universalize_expr is_type_annotation prefix in
   match expr with
-  | A.NTExpr (nts1, nts2, p) -> 
+  | A.NTExpr (nts, p) -> 
     (* In the derivation tree structure, type annotation NTs have a duplicate at the end of the path. 
        Remove it. *)
     let prefix = if is_type_annotation then Utils.init prefix else prefix in
-    A.NTExpr (nts1, prefix @ nts2, p)
+    A.NTExpr (prefix @ nts, p)
   | BVCast (len, expr, p) -> BVCast (len, r expr, p)
   | BinOp (expr1, op, expr2, p) -> BinOp (r expr1, op, r expr2, p) 
   | UnOp (op, expr, p) -> UnOp (op, r expr, p) 
   | CompOp (expr1, op, expr2, p) -> CompOp (r expr1, op, r expr2, p) 
   | Singleton (expr, p) -> Singleton (r expr, p)
-  | Match _ -> Utils.crash "Unexpected case in universalize_expr"
   | BuiltInFunc (func, exprs, p) -> BuiltInFunc (func, List.map r exprs, p) 
   | BVConst _ 
   | BLConst _ 
