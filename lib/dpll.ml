@@ -134,18 +134,18 @@ type concrete_set =
 | ConcreteStringSetLeaf of Utils.StringSet.t
 
 type derivation_tree = 
-| SymbolicLeaf of A.il_type * (string * int option) list (* path to this node *)
+| SymbolicLeaf of A.il_type * (string * int option * int option) list (* path to this node *)
 | DependentTermLeaf of string 
-| ConcreteBoolLeaf of (string * int option) list * bool (* path to this node, value of the leaf *)
-| ConcreteIntLeaf of (string * int option) list * int 
-| ConcreteUnitLeaf of (string * int option) list
-| ConcretePlaceholderLeaf of (string * int option) list * string 
-| ConcreteStringLeaf of (string * int option) list * string
-| ConcreteSetLeaf of (string * int option) list * concrete_set
-| ConcreteBitVectorLeaf of (string * int option) list * int * bool list 
-| ConcreteBitListLeaf of (string * int option) list * bool list
+| ConcreteBoolLeaf of (string * int option * int option) list * bool (* path to this node, value of the leaf *)
+| ConcreteIntLeaf of (string * int option * int option) list * int 
+| ConcreteUnitLeaf of (string * int option * int option) list
+| ConcretePlaceholderLeaf of (string * int option * int option) list * string 
+| ConcreteStringLeaf of (string * int option * int option) list * string
+| ConcreteSetLeaf of (string * int option * int option) list * concrete_set
+| ConcreteBitVectorLeaf of (string * int option * int option) list * int * bool list 
+| ConcreteBitListLeaf of (string * int option * int option) list * bool list
 (* label, path to this node, children *)
-| Node of (string * int option) * (string * int option) list * derivation_tree list
+| Node of (string * int option * int option) * (string * int option * int option) list * derivation_tree list
 
 type search_tree =
   (* DT at this node of the search tree, parent node, depth, and child nodes (if any). 

@@ -163,7 +163,7 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.solver_ast 
   | VarLeaf _ | BVLeaf _ | IntLeaf _ | BLLeaf _ | BoolLeaf _ | StrLeaf _ | SetLeaf _ | UnitLeaf 
   | SA.Node (_, ([BVLeaf _] | [BLLeaf _] | [IntLeaf _] | [BoolLeaf _] | [StrLeaf _] | [SetLeaf _])) ->
     solver_ast_to_expr solver_ast
-  | Node ((_id, _), subterms) ->
+  | Node ((_id, _, _), subterms) ->
     if !Flags.debug then 
       Format.printf "nth: Looking for child_index %d in solver_ast %a\n" 
         child_index 
@@ -474,7 +474,7 @@ and compute_deps: A.semantic_constraint Utils.StringMap.t -> A.ast -> SA.solver_
   match solver_ast with
 | VarLeaf _ -> eval_fail  28
 | UnitLeaf -> Utils.crash "Unexpected case"
-| Node ((constructor, idx), subterms) -> 
+| Node ((constructor, idx1, idx2), subterms) -> 
   let subterms = 
   List.map (fun subterm -> match subterm with 
   | SA.Node (_hd, [VarLeaf var]) -> 
@@ -496,5 +496,5 @@ and compute_deps: A.semantic_constraint Utils.StringMap.t -> A.ast -> SA.solver_
   | SA.Node _ -> compute_deps dep_map ast subterm
   | _ -> subterm
   ) subterms in 
-  Node ((constructor, idx), subterms)
+  Node ((constructor, idx1, idx2), subterms)
 | _ -> solver_ast
