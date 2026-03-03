@@ -41,7 +41,7 @@ let rec pp_print_clp_term: Format.formatter -> clp_term -> unit
 
 let expr_of_sc sc = match sc with 
 | A.SmtConstraint (expr, _) -> expr 
-| DerivedField (nt, expr, p) -> CompOp (NTExpr ([], [nt, None], p), Eq, expr, p)
+| DerivedField (nt, expr, p) -> CompOp (NTExpr ([nt, None], p), Eq, expr, p)
 | AttrDef _ -> assert false
 
 let pp_print_clp_element: Format.formatter -> clp_element -> unit 

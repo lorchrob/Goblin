@@ -20,7 +20,7 @@ let rec generate_all_possible_exprs: TC.context -> string list -> A.expr -> A.ex
 = fun ctx nts expr -> 
   let r = generate_all_possible_exprs ctx nts in
   match expr with 
-  | NTExpr ([], nt_expr, p) -> 
+  | NTExpr (nt_expr, p) -> 
     let rec helper nts nt_expr = match nt_expr with 
       | [] -> Utils.crash "Impossible case in generate_all_possible_exprs"
       (* If there is already an index, we eliminate the ambiguity. 
@@ -57,9 +57,7 @@ let rec generate_all_possible_exprs: TC.context -> string list -> A.expr -> A.ex
         List.map (fun (nt, nt_expr) -> nt :: nt_expr) all_combos
     in 
     let exprs = helper nts nt_expr in 
-    List.map (fun e -> A.NTExpr ([], e, p)) exprs
-  | NTExpr _ ->  Utils.crash "Impossible case in generate_all_possible_exprs: encountered NTExpr with context, but dot notation should not be desugared yet"
-  | A.Match _ -> Utils.crash "Impossible case in generate_all_possible_exprs: encountered Match, but dot notation should not be desugared yet"
+    List.map (fun e -> A.NTExpr (e, p)) exprs
   | BinOp (expr1, op, expr2, p) -> 
     let exprs1 = r expr1 in 
     let exprs2 = r expr2 in 

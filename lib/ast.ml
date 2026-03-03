@@ -85,23 +85,10 @@ expr =
 | UnOp of unary_operator * expr * Lexing.position
 | CompOp of expr * comp_operator * expr * Lexing.position
 | BVCast of int * expr * Lexing.position
-(* First string list track the context of the nonterminal being matched 
-   Int options are for clarifying ambiguous dot notation references, as in NTExpr *)
-| Match of (string * int option) list * (string * int option) * case list * Lexing.position
-(* First string list tracks the context of a nonterminal after desugaring to match expression
-   Second int list is for dot notation input e.g. <A>.<B>.<C> 
-   Int option is for disambiguating references. 
-   
-   More detail:
-   First string list is initially empty. When we desugar, e.g., dot expression 
-   <A>.<B> to a match expression match <A> with | ... <B> ... -> <expr containing <B>>
-   the expression containing <B> needs to remember it came from <A>, in case of name 
-   clashes. So, this dot notation context is stored in the first string list.
-
-   The int options are initially None, but may be populated by the tool as a  
+(* The int options are initially None, but may be populated by the tool as a  
    structured form of renaming to clarify ambiguous dot notation references.
    *)
-| NTExpr of (string * int option) list * (string * int option) list * Lexing.position
+| NTExpr of (string * int option) list * Lexing.position
 | BVConst of int * bool list * Lexing.position
 | BLConst of bool list * Lexing.position
 | BConst of bool * Lexing.position
@@ -139,12 +126,8 @@ let rec get_nts_from_expr: expr -> string list
 = fun expr -> 
   let r = get_nts_from_expr in
   match expr with 
-  | NTExpr (_, nts, _) -> List.map fst nts 
+  | NTExpr (nts, _) -> List.map fst nts 
   | SynthAttr (nt, _, _) -> [nt] 
-  | Match (_, (nt, _), cases, _) -> nt :: (List.map (fun case -> match case with 
-    | CaseStub _ -> []
-    | Case (_, expr) -> r expr
-    ) cases |> List.flatten)
   | BinOp (expr1, _, expr2, _) -> 
     r expr1 @ r expr2
   | BVCast (_, expr, _) 
@@ -169,10 +152,9 @@ let rec get_nts_from_expr2: expr -> (string * int option) list list
 = fun expr -> 
   let r = get_nts_from_expr2 in
   match expr with 
-  | NTExpr (nts1, nts2, _) -> [nts1 @ nts2]
+  | NTExpr (nts, _) -> [nts]
   | InhAttr _
   | SynthAttr _ -> assert false
-  | Match _ -> Utils.crash "Unexpected case in get_nts_from_expr2"
   | BinOp (expr1, _, expr2, _) -> 
     r expr1 @ r expr2
   | UnOp (_, expr, _) -> 
@@ -191,40 +173,6 @@ let rec get_nts_from_expr2: expr -> (string * int option) list list
   | IntConst _ 
   | StrConst _ 
   | EmptySet _ -> []
-
-(* For when you want to process simple NTs after translation of dot to match expressions *)
-let rec get_nts_from_expr_after_desugaring_dot_notation: expr -> (string * int option) list list 
-= fun expr -> 
-  let r = get_nts_from_expr_after_desugaring_dot_notation in
-  match expr with 
-  | NTExpr (nt_ctx, (nt, idx) :: _, _) -> [nt_ctx @ [nt, idx]] 
-  | NTExpr _ -> Utils.crash "Impossible case in get_nts_from_expr_after_desugaring_dot_notation"
-  | Match (nt_ctx, (nt, idx), cases, _) -> (nt_ctx @ [nt, idx]) :: 
-    (List.map (fun case -> match case with 
-    | CaseStub pattern -> List.map (fun (nt_ctx, (nt, idx)) -> nt_ctx @ [nt, idx]) pattern
-    | Case (pattern, expr) -> 
-      List.map (fun (nt_ctx, (nt, idx)) -> nt_ctx @ [nt, idx]) pattern @ r expr
-    ) cases |> List.flatten)
-  | BinOp (expr1, _, expr2, _) -> 
-    r expr1 @ r expr2
-  | UnOp (_, expr, _) -> 
-    r expr
-  | CompOp (expr1, _, expr2, _) -> 
-    r expr1 @ r expr2
-  | Singleton (expr, _) -> r expr
-  | BuiltInFunc (_, exprs, _) -> 
-    List.concat_map r exprs 
-  | BVCast (_, expr, _) ->
-    r expr
-  | BVConst _ 
-  | BLConst _ 
-  | BConst _ 
-  | PhConst _
-  | IntConst _ 
-  | StrConst _ 
-  | EmptySet _ -> []
-  | InhAttr _
-  | SynthAttr _ -> assert false
 
 let pp_print_nt_helper_dots: Format.formatter -> string * int option -> unit 
 = fun ppf (nt, idx) -> 
@@ -292,12 +240,6 @@ let pp_print_comp_op: Format.formatter -> comp_operator -> unit
 | StrPrefix -> Format.fprintf ppf "str.prefixof"
 | StrContains -> Format.fprintf ppf "str.contains"
 
-(* let pp_print_bit: Format.formatter -> bool ->  *)
-
-let pp_print_pattern: Format.formatter -> ((string * int option) list * (string * int option)) -> unit
-= fun ppf (nt_ctx, (nt, idx)) -> 
-    pp_print_nt_with_underscores ppf (nt_ctx @ [nt, idx])
-
 let rec pp_print_ty: Format.formatter -> il_type -> unit 
 = fun ppf ty -> match ty with 
 | Unit -> Format.printf "Unit"
@@ -327,18 +269,7 @@ let pp_print_builtin_func ppf func =
   | UbvToInt -> Format.fprintf ppf "ubv_to_int"
   | SbvToInt -> Format.fprintf ppf "sbv_to_int"
 
-let rec pp_print_case: Format.formatter -> case -> unit 
-= fun ppf case -> 
-  match case with 
-  | Case (pattern, expr) -> 
-    Format.fprintf ppf "| %a -> %a"
-      (Lib.pp_print_list pp_print_pattern " ") pattern 
-      pp_print_expr expr
-  | CaseStub (pattern) -> 
-    Format.fprintf ppf "| %a -> STUB"
-      (Lib.pp_print_list pp_print_pattern " ") pattern
-
-and pp_print_expr: Format.formatter -> expr -> unit 
+let rec pp_print_expr: Format.formatter -> expr -> unit 
 = fun ppf expr -> match expr with
 | SynthAttr (nt, attr, _) -> 
   Format.fprintf ppf "<%s>.%s"
@@ -384,25 +315,17 @@ and pp_print_expr: Format.formatter -> expr -> unit
   Format.fprintf ppf "int_to_bv(%d, %a)" 
     width 
     pp_print_expr expr 
-| Match (nts, nt, cases, _) -> 
-  Format.fprintf ppf "(match %a with %a)"
-    pp_print_nt_with_underscores (nts @ [nt])
-    (Lib.pp_print_list pp_print_case " ") cases 
-| NTExpr (nts, [nt_expr], _) -> 
+| NTExpr ([nt_expr], _) -> 
   if !Flags.dump_clp then 
     let s = nt_expr |> fst |> String.uppercase_ascii in
     Format.pp_print_string ppf s
-  else pp_print_nt_with_underscores ppf (nts @ [nt_expr]) 
-| NTExpr ([], nt_expr, _) -> 
+  else pp_print_nt_with_underscores ppf ([nt_expr]) 
+| NTExpr (nt_expr, _) -> 
   if !Flags.dump_clp then 
     let s = Utils.last nt_expr |> fst |> (fun x -> x ^ "s") |> String.uppercase_ascii in
     let init = Utils.init nt_expr |> List.map fst |> String.concat "_" in
     Format.pp_print_string ppf (init ^ "_" ^ s)
   else pp_print_nt_with_dots ppf (nt_expr) 
-| NTExpr (nt_ctx, nts, _) -> 
-  Format.fprintf ppf "%a:%a"
-    pp_print_nt_with_underscores nt_ctx 
-    pp_print_nt_with_dots nts
 | BLConst (bits, _) -> 
   let bits = List.map Bool.to_int bits in
   Format.fprintf ppf "(BitList 0b%a)"
@@ -525,8 +448,7 @@ let rec expr_contains_dangling_nt: Utils.SILSet.t -> expr -> bool
 = fun ctx expr -> 
   let r = expr_contains_dangling_nt ctx in
   match expr with 
-  | NTExpr (nt_ctx, nts, _) -> 
-    let nt_expr = nt_ctx @ nts in  
+  | NTExpr (nt_expr, _) -> 
     let res = (List.length nt_expr > 1) && 
     not (Utils.SILSet.mem nt_expr ctx) in 
     (* Format.fprintf Format.std_formatter "Set {%a}: Is %a a member?: %b\n"
@@ -534,7 +456,7 @@ let rec expr_contains_dangling_nt: Utils.SILSet.t -> expr -> bool
       pp_print_nt_with_underscores nt_expr (Utils.SILSet.mem nt_expr ctx); *)
     res
   | SynthAttr (nt, _, p) -> 
-    r (NTExpr ([], [nt, None], p))
+    r (NTExpr ([nt, None], p))
   | BinOp (expr1, _, expr2, _) -> 
     r expr1 || r expr2
   | UnOp (_, expr, _) -> 
@@ -552,9 +474,6 @@ let rec expr_contains_dangling_nt: Utils.SILSet.t -> expr -> bool
   | StrConst _ 
   | InhAttr _
   | EmptySet _ -> false
-  | Match _ -> 
-    Utils.crash "Encountered Match in expr_contains_dangling_nt. 
-    Shouldn't be possible, as this function should only process base expressions."
 
 let sc_constrains_nt: string -> semantic_constraint -> bool 
 = fun nt sc -> match sc with 
@@ -592,15 +511,13 @@ let rec prepend_nt_to_dot_exprs: string -> expr -> expr
 = fun nt expr -> 
   let r = prepend_nt_to_dot_exprs nt in
   match expr with
-  | NTExpr ([], nts, pos) -> NTExpr ([], (nt, None) :: nts, pos)
+  | NTExpr (nts, pos) -> NTExpr ((nt, None) :: nts, pos)
   | BVCast (len, expr, pos) -> BVCast (len, r expr, pos)
   | BinOp (expr1, op, expr2, pos) -> BinOp (r expr1, op, r expr2, pos) 
   | UnOp (op, expr, pos) -> UnOp (op, r expr, pos) 
   | CompOp (expr1, op, expr2, pos) -> CompOp (r expr1, op, r expr2, pos) 
   | Singleton (expr, pos) -> Singleton (r expr, pos)
   | BuiltInFunc (func, exprs, pos) -> BuiltInFunc (func, List.map r exprs, pos) 
-  | Match _ -> Utils.crash "Unexpected case 1 in prepend_nt_to_dot_exprs"
-  | NTExpr _ -> Utils.crash "Unexpected case 2 in prepend_nt_to_dot_exprs" 
   | BVConst _ 
   | BLConst _ 
   | BConst _ 
@@ -615,14 +532,13 @@ let rec add_index_to_expr: int -> expr -> expr
 = fun i expr -> 
   let r = add_index_to_expr i in
   match expr with
-  | NTExpr ([], (nt, None) :: nts, pos) -> NTExpr ([], (nt, Some i) :: nts, pos)
+  | NTExpr ((nt, None) :: nts, pos) -> NTExpr ((nt, Some i) :: nts, pos)
   | BVCast (len, expr, pos) -> BVCast (len, r expr, pos)
   | BinOp (expr1, op, expr2, pos) -> BinOp (r expr1, op, r expr2, pos) 
   | UnOp (op, expr, pos) -> UnOp (op, r expr, pos) 
   | CompOp (expr1, op, expr2, pos) -> CompOp (r expr1, op, r expr2, pos) 
   | Singleton (expr, pos) -> Singleton (r expr, pos)
   | BuiltInFunc (func, exprs, pos) -> BuiltInFunc (func, List.map r exprs, pos) 
-  | Match _ -> Utils.crash "Unexpected case 1 in add_index_to_expr"
   | NTExpr _ -> Utils.crash "Unexpected case 2 in add_index_to_expr" 
   | BVConst _ 
   | BLConst _ 
@@ -660,14 +576,13 @@ let find_element ast nt =
   ) ast 
 
 let pos_of_expr expr = match expr with 
-| NTExpr (_, _, pos) 
+| NTExpr (_, pos) 
 | BVCast (_, _, pos) 
 | BinOp (_, _, _, pos) 
 | UnOp (_, _, pos) 
 | CompOp (_, _, _, pos) 
 | Singleton (_, pos) 
 | BuiltInFunc (_, _, pos) 
-| Match (_, _, _, pos) 
 | BVConst (_, _, pos) 
 | BLConst (_, pos)
 | BConst (_, pos) 
