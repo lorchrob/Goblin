@@ -47,6 +47,6 @@ let parse_sygus: string -> Ast.ast -> (SolverAst.solver_ast, string) result
   (* Sygus files with top-level type annotations lose their constructor name *)
   | TypeAnnotation (nt, _, _, _) :: _, Ok solver_ast -> 
     let constructor = String.lowercase_ascii nt ^ "_con0" in
-    Ok (SolverAst.Node ((constructor, None), [solver_ast]))
+    Ok (SolverAst.Node ((constructor, None, None), [solver_ast]))
   | _, Error e -> print_endline e; solver_ast
   | _, Ok _ -> solver_ast

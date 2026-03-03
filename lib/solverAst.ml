@@ -8,7 +8,7 @@ type concrete_set =
 | StringSet of Utils.StringSet.t 
 
 type solver_ast = 
-| Node of (string * int option) * solver_ast list 
+| Node of (string * int option * int option) * solver_ast list 
 | BVLeaf of int * bool list 
 | IntLeaf of int
 | BLLeaf of bool list
@@ -52,23 +52,16 @@ let rec smtlib_of_stringset set =
 let pp_print_solver_ast: Format.formatter -> solver_ast -> unit 
 = fun ppf solver_ast -> 
   let rec pp_print_solver_ast' ppf solver_ast = match solver_ast with 
-  | Node ((constructor, Some idx), subterms) -> 
+  | Node ((constructor, idx1, idx2), subterms) -> 
     (* Don't include attributes in output *)
     let subterms = if !Flags.debug then subterms else List.filter (fun st -> match st with 
-    | Node ((constructor, _), _) -> not (constructor.[0] = '%')
+    | Node ((constructor, _, _), _) -> not (constructor.[0] = '%')
     | _ -> true 
     ) subterms in
-    Format.fprintf ppf "(%s%d %a)"
-    constructor idx
-    (Lib.pp_print_list pp_print_solver_ast' " ") subterms 
-  | Node ((constructor, None), subterms) -> 
-    (* Don't include attributes in output *)
-    let subterms = List.filter (fun st -> match st with 
-    | Node ((constructor, _), _) -> not (constructor.[0] = '%')
-    | _ -> true 
-    ) subterms in
-    Format.fprintf ppf "(%s %a)"
+    Format.fprintf ppf "(%s%a%a %a)"
     constructor 
+    (fun _ppf idx1 -> match idx1 with None -> () | Some idx1 -> Format.printf "@%d" idx1) idx1  
+    (fun _ppf idx2 -> match idx2 with None -> () | Some idx2 -> Format.printf "[%d]" idx2) idx2
     (Lib.pp_print_list pp_print_solver_ast' " ") subterms 
   | BVLeaf (_, bits) -> 
     let bits = List.map Bool.to_int bits in

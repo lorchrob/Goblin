@@ -175,8 +175,9 @@ let pp_print_nt_helper_dots: Format.formatter -> string * int option * int optio
     nt
     (match idx1, idx2 with 
     | None, None -> ""
-    | Some i, None | None, Some i -> string_of_int i
-    | Some i, Some j -> string_of_int i ^ string_of_int j)
+    | Some i, None -> string_of_int i ^ ":"
+    | None, Some i -> ":" ^ string_of_int i
+    | Some i, Some j -> string_of_int i ^ ":" ^ string_of_int j)
 
 let pp_print_nt_helper_underscores: 
   Format.formatter -> string * int option * int option -> unit 
@@ -185,8 +186,9 @@ let pp_print_nt_helper_underscores:
     nt
     (match idx1, idx2 with 
     | None, None -> ""
-    | Some i, None | None, Some i -> string_of_int i
-    | Some i, Some j -> string_of_int i ^ string_of_int j)
+    | Some i, None -> string_of_int i ^ ":"
+    | None, Some i -> ":" ^ string_of_int i
+    | Some i, Some j -> string_of_int i ^ ":" ^ string_of_int j)
 
 let pp_print_nt_with_dots: Format.formatter -> (string * int option * int option) list -> unit
 = fun ppf nt_expr -> 

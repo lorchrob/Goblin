@@ -116,7 +116,7 @@ let serialize_bytes: endianness -> string list -> SA.solver_ast -> bytes
 = fun default_endianness exception_list solver_ast -> 
   let rec serialize_aux endianness exception_list solver_ast offset acc_metadata =
     match solver_ast with
-  | SA.Node ((id, _), subterms) ->
+  | SA.Node ((id, _, _), subterms) ->
       if id.[0] = '_' then Bytes.empty, acc_metadata, offset else
       let is_match = List.exists (fun str -> 
         let regex = Str.regexp (String.lowercase_ascii str ^ "_con[0-9]+") in 
@@ -248,7 +248,7 @@ let serialize_bytes_packed: SA.solver_ast -> bytes
     let bytes = int_to_bytes_min Big i in 
     let bits = bytes_to_bools_be bytes in 
     (bit_count + List.length bits), bits
-  | Node ((id, _), children) -> 
+  | Node ((id, _, _), children) -> 
     if id.[0] = '_' then bit_count, [] else
     let r = List.fold_left (fun (acc_bit_count, acc_bits) child -> 
       let acc_bit_count', bits' = bits_of_sa acc_bit_count child in 

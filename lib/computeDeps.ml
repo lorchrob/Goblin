@@ -135,7 +135,7 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.solver_ast 
   let call = evaluate ~dep_map solver_ast ast element in
   match expr with 
 | NTExpr ([], _) -> Utils.crash "Unexpected case in evaluate 1"
-| NTExpr ((id, idx0) :: rest, p) ->
+| NTExpr ((id, idx0, idx1) :: rest, p) ->
   let child_index, child_element = match element with 
   | A.TypeAnnotation _ -> 0, element
   | A.ProdRule (_, _, rhss, _) ->
@@ -144,9 +144,10 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.solver_ast 
       | A.StubbedRhs _ -> None 
       | Rhs (ges, _, _, _) ->
         Utils.find_index_opt (fun ge -> match ge with 
-        | A.Nonterminal (nt, idx, _, _) -> 
+        | A.Nonterminal (nt, idx, idx', _, _) -> 
           Utils.str_eq_ci id nt && 
-          (idx0 = idx) 
+          (idx0 = idx) && 
+          (idx1 = idx')
         | StubbedNonterminal (nt, _) -> 
           Utils.str_eq_ci id nt 
         ) ges

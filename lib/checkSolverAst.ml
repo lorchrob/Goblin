@@ -30,7 +30,8 @@ let check_start_symbol: Ast.ast -> SolverAst.solver_ast -> (unit, string) result
 | A.TypeAnnotation _ :: _, _ -> Utils.crash "Unexpected case in check_start_symbol"
 | _ -> Error "Solver AST root node is a leaf node"
 
-let rec is_nt_applicable: SolverAst.solver_ast -> (string * int option) list -> bool 
+let rec is_nt_applicable: 
+  SolverAst.solver_ast -> (string * int option * int option) list -> bool 
 = fun solver_ast nt -> match solver_ast, nt with
   | Node (_, children), head :: tail -> 
     let child = List.find_opt (fun child -> match child with 
