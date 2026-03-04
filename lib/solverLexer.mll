@@ -40,7 +40,7 @@ let digit = ['0'-'9']
 let bit = ['0' '1']
 let int = digit+
 let letter = ['a'-'z' 'A'-'Z']
-let id = ['a'-'z' 'A'-'Z' '_' '%'] ['a'-'z' 'A'-'Z' '_' '-' '%' '0'-'9']*
+let id = ['a'-'z' 'A'-'Z' '_' '%'] ['a'-'z' 'A'-'Z' '_' '-' '%' '0'-'9' '.']*
 let comment = ';' [^ '\n' '\r']* 
 
 rule read = 
@@ -48,10 +48,16 @@ rule read =
   | white { read lexbuf }
   | newline { Lexing.new_line lexbuf ; read lexbuf }
   | comment   { read lexbuf }  
+  | id as p {
+    try (
+      Utils.debug_print Format.pp_print_string Format.std_formatter (p ^ " "); 
+      Hashtbl.find keyword_table p
+    ) with Not_found -> ID (p)
+  }
   | "-" { Utils.debug_print Format.pp_print_string Format.std_formatter "-"; HYPHEN }
   | "(" { Utils.debug_print Format.pp_print_string Format.std_formatter "("; LPAREN }
   | ")" { Utils.debug_print Format.pp_print_string Format.std_formatter ")"; RPAREN }
-  | "." { Utils.debug_print Format.pp_print_string Format.std_formatter "."; DOT } 
+  | "." { Utils.debug_print Format.pp_print_string Format.std_formatter ". (DOT)"; DOT } 
   | "_" { Utils.debug_print Format.pp_print_string Format.std_formatter "_"; UNDERSCORE } 
   | "++" { Utils.debug_print Format.pp_print_string Format.std_formatter "++"; PLUSPLUS }
   | "#b" { Utils.debug_print Format.pp_print_string Format.std_formatter "BITS"; read_bits lexbuf }
@@ -59,12 +65,6 @@ rule read =
   | "$" { Utils.debug_print Format.pp_print_string Format.std_formatter "$"; DOLLAR }
   | "@" { Utils.debug_print Format.pp_print_string Format.std_formatter "@"; AT }
   | int as p { INTEGER (int_of_string p) }
-  | id as p {
-    try (
-      Utils.debug_print Format.pp_print_string Format.std_formatter p; 
-      Hashtbl.find keyword_table p
-    ) with Not_found -> ID (p)
-  }
   | eof { EOF }
   | _ as c { Utils.crash (Printf.sprintf "Unexpected character: %c" c) }
 

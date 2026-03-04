@@ -45,6 +45,10 @@ open SolverAst
 %%
 
 s: 
+(* Throughout this parser, we abuse the solver_ast data type. We intentionally do not use the indices; 
+   we just need the constructor string to instantiate the term into a derivation tree. 
+   But, it ends up being converted from derivation tree back to a solver AST to output the final term, 
+   and in this (later) translation we get all the indices correct. *)
 | DOLLAR; children = separated_nonempty_list(DOLLAR, lisp_term); EOF { Node (("outputs", None, None), children) }
 | d = term; EOF { d } 
 | SAT; model = model; EOF { model } 
@@ -58,11 +62,9 @@ model_value:
 | LPAREN; DEFINEFUN; id = ID; LPAREN; RPAREN; UNIT_TYPE; 
     LPAREN; AS; AT; ID; UNIT_TYPE; RPAREN;
   RPAREN; 
- { let id, idx1, idx2 = Utils.parse_str_nat_suffix id in 
-   Node ((id, idx1, idx2), [UnitLeaf]) }
+ { Node ((id, None, None), [UnitLeaf]) }
 | LPAREN; DEFINEFUN; id = ID; LPAREN; RPAREN; il_ty; t = lisp_term; RPAREN;
- { let id, idx1, idx2 = Utils.parse_str_nat_suffix id in
-   Node ((id, idx1, idx2), [t]) }
+ { Node ((id, None, None), [t]) }
 	
 term:
 | LPAREN; LPAREN; DEFINEFUN; TOP; LPAREN; RPAREN; top_type; t = lisp_term; RPAREN; RPAREN;
@@ -84,8 +86,7 @@ il_ty:
 
 lisp_term: 
 | LPAREN; id = ID; ts = list(lisp_term); RPAREN; 
-  { let id, idx1, idx2 = Utils.parse_str_nat_suffix id in
-    Node ((id, idx1, idx2), ts) }
+  { Node ((id, None, None), ts) }
 | bits = BITS; 
   { BVLeaf (List.length bits, bits) }
 | id = ID; 

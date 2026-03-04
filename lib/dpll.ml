@@ -641,14 +641,14 @@ let get_smt_result: A.ast -> Smt.solver_instance -> bool -> (model_value Utils.S
     Smt.issue_solver_command "(get-model)\n" solver;
     let response = Smt.read_get_model_response solver in
     if !Flags.debug then Format.fprintf Format.std_formatter "Solver response: %s\n" response;
-    let result = match Parsing.parse_sygus response ast with 
+    let result = match Parsing.parse_solver response ast with 
     | Ok result -> result 
     | Error msg -> Format.fprintf Format.std_formatter "Error parsing: %s\n" msg; assert false 
     in
     Some (model_of_solver_ast result)
   ) else if response = "sat" then None  
   else
-    let result = match Parsing.parse_sygus response ast with 
+    let result = match Parsing.parse_solver response ast with 
     | Ok result -> result 
     | Error msg -> Format.fprintf Format.std_formatter "Error parsing: %s\n" msg; assert false 
     in

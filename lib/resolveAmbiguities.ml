@@ -5,11 +5,6 @@ let cartesian_product lst1 lst2 =
   List.map (fun x -> List.map (fun y -> (x, y)) lst2) lst1 |> List.flatten
 
 (*!! TODO *)
-(* Errors out of there is some NTExpr with an empty list of NTs. This 
-   occurs if the user NTExpr was ill-formed, leading to a vacuous implicit universal quantification. *)
-let check_for_empty_nt_exprs expr = expr
-
-(*!! TODO *)
 (* Returns true iff `expr` contains some pair of NTExprs making the constraint unfalsifiable 
    (ie, <nt>@0 = <nt>@1). If so, we can filter out the constraint. *)
 let impossible_nt_expr _expr = false
@@ -153,7 +148,6 @@ let process_sc
       let msg = Format.asprintf "Derived field %s contains some nonterminal reference that could not be evaluated. For example, if nonterminal <nt> has only one production rule, then `<nt>@1` cannot be evaluated (use <nt>@0 instead)." nt in 
       Utils.error msg p
     | [expr] -> 
-      let expr = check_for_empty_nt_exprs expr in 
       [A.DerivedField (nt, expr, p)]
     | _ -> 
       let msg = Format.asprintf "Derived field %s is defined ambiguously. More concretely, the definition of %s contains some nonterminal expression <nt_1>.<nt_2>...<nt_n> where some <nt_i> has multiple occurrences in its production rule (and hence the nonterminal expression could evaluate to more than one term, depending on which occurrence you pick)." 
@@ -166,7 +160,6 @@ let process_sc
       let msg = Format.asprintf "Semantic constraint contains some nonterminal reference that could not be evaluated. For example, if nonterminal <nt> has only one production rule, then `<nt>@1` cannot be evaluated (use <nt>@0 instead)." in 
       Utils.error msg p
     else 
-      let exprs = List.map check_for_empty_nt_exprs exprs in 
       let exprs = List.filter (fun expr -> not (impossible_nt_expr expr)) exprs in
       List.map (fun expr -> A.SmtConstraint (expr, p)) exprs
   | AttrDef _ -> assert false
