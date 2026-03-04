@@ -64,8 +64,8 @@ let pp_print_nt_helper
     (String.lowercase_ascii str) 
     (match idx1, idx2 with 
     | None, None -> ""
-    | Some i, None | None, Some i -> "." ^ string_of_int i
-    | Some i, Some j -> "." ^ string_of_int i ^ "." ^ string_of_int j)
+    | Some i, None | None, Some i -> "!" ^ string_of_int i
+    | Some i, Some j -> "!" ^ string_of_int i ^ "!" ^ string_of_int j)
 
 let rec pp_print_expr: ?nt_prefix:string -> TC.context -> Format.formatter -> A.expr -> unit 
 = fun ?(nt_prefix="") ctx ppf expr -> 

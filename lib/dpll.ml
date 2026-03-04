@@ -243,7 +243,7 @@ let rec universalize_expr: bool -> (string * int option * int option) list -> As
 let string_of_path path = 
   let path = List.map (fun (nt, idx1, idx2) -> match idx1, idx2 with 
   | None, None -> nt
-  | Some idx1, Some idx2 -> Format.asprintf "%s.%d.%d" nt idx1 idx2
+  | Some idx1, Some idx2 -> Format.asprintf "%s!%d!%d" nt idx1 idx2
   | _ -> assert false
   ) path in 
   String.concat "_" path
@@ -602,7 +602,7 @@ let backtrack ctx ast assertion_level decision_stack solver backtrack_depth decl
 
 let string_of_constructor (str, idx1, idx2) = match idx1, idx2 with 
 | None, None -> str 
-| Some idx1, Some idx2 -> str ^ "." ^ (string_of_int idx1) ^ "." ^ (string_of_int idx2)
+| Some idx1, Some idx2 -> str ^ "!" ^ (string_of_int idx1) ^ "!" ^ (string_of_int idx2)
 | _ -> assert false
 
 let rec model_of_solver_ast: SolverAst.solver_ast -> (model_value Utils.StringMap.t, unit) result

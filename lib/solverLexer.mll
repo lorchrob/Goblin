@@ -40,7 +40,7 @@ let digit = ['0'-'9']
 let bit = ['0' '1']
 let int = digit+
 let letter = ['a'-'z' 'A'-'Z']
-let id = ['a'-'z' 'A'-'Z' '_' '%'] ['a'-'z' 'A'-'Z' '_' '-' '%' '0'-'9' '.']*
+let id = ['a'-'z' 'A'-'Z' '_' '%'] ['a'-'z' 'A'-'Z' '_' '-' '%' '0'-'9' '!']*
 let comment = ';' [^ '\n' '\r']* 
 
 rule read = 
@@ -48,6 +48,7 @@ rule read =
   | white { read lexbuf }
   | newline { Lexing.new_line lexbuf ; read lexbuf }
   | comment   { read lexbuf }  
+  | "_" { Utils.debug_print Format.pp_print_string Format.std_formatter "_"; UNDERSCORE } 
   | id as p {
     try (
       Utils.debug_print Format.pp_print_string Format.std_formatter (p ^ " "); 
@@ -58,7 +59,6 @@ rule read =
   | "(" { Utils.debug_print Format.pp_print_string Format.std_formatter "("; LPAREN }
   | ")" { Utils.debug_print Format.pp_print_string Format.std_formatter ")"; RPAREN }
   | "." { Utils.debug_print Format.pp_print_string Format.std_formatter ". (DOT)"; DOT } 
-  | "_" { Utils.debug_print Format.pp_print_string Format.std_formatter "_"; UNDERSCORE } 
   | "++" { Utils.debug_print Format.pp_print_string Format.std_formatter "++"; PLUSPLUS }
   | "#b" { Utils.debug_print Format.pp_print_string Format.std_formatter "BITS"; read_bits lexbuf }
   |  '"' ([^ '"'] | "\"\"" )* '"' as s   { Utils.debug_print Format.pp_print_string Format.std_formatter (String.sub s 1 (String.length s - 2)); STRCONST (String.sub s 1 (String.length s - 2)) }
