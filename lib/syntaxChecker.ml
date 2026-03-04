@@ -18,7 +18,6 @@
 *)
 
 open Ast
-open Res 
 
 module StringSet = Set.Make(
   struct type t = string 
@@ -191,7 +190,7 @@ let check_for_nonterminals expr p =
   | _ -> expr
 
 let check_syntax_prod_rule: ast -> prod_rule_map -> Utils.StringSet.t -> prod_rule_rhs -> prod_rule_rhs
-= fun ast prm nt_set rhs -> match rhs with 
+= fun _ast prm nt_set rhs -> match rhs with 
 | Rhs (ges, scs, prob, p) ->
   let ges' = List.map Ast.grammar_element_to_string ges in
   let scs = List.map (fun sc -> match sc with 

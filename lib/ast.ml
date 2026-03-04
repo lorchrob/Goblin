@@ -175,9 +175,9 @@ let pp_print_nt_helper_dots: Format.formatter -> string * int option * int optio
     nt
     (match idx1, idx2 with 
     | None, None -> ""
-    | Some i, None -> string_of_int i ^ ":"
-    | None, Some i -> ":" ^ string_of_int i
-    | Some i, Some j -> string_of_int i ^ ":" ^ string_of_int j)
+    | Some i, None -> "." ^ string_of_int i ^ "."
+    | None, Some i -> "." ^ string_of_int i
+    | Some i, Some j -> "." ^ string_of_int i ^ "." ^ string_of_int j)
 
 let pp_print_nt_helper_underscores: 
   Format.formatter -> string * int option * int option -> unit 
@@ -186,9 +186,9 @@ let pp_print_nt_helper_underscores:
     nt
     (match idx1, idx2 with 
     | None, None -> ""
-    | Some i, None -> string_of_int i ^ ":"
-    | None, Some i -> ":" ^ string_of_int i
-    | Some i, Some j -> string_of_int i ^ ":" ^ string_of_int j)
+    | Some i, None -> "." ^ string_of_int i ^ "."
+    | None, Some i -> "." ^ string_of_int i
+    | Some i, Some j -> "." ^ string_of_int i ^ "." ^ string_of_int j)
 
 let pp_print_nt_with_dots: Format.formatter -> (string * int option * int option) list -> unit
 = fun ppf nt_expr -> 
@@ -586,3 +586,7 @@ let rec eq_il_type ty1 ty2 = match ty1, ty2 with
   ) s1 s2
 | Set ty1, Set ty2 -> eq_il_type ty1 ty2
 | _ -> false
+
+let ges_of_rhs rhs = match rhs with 
+| StubbedRhs _ -> assert false 
+| Rhs (ges, _, _, _) -> ges

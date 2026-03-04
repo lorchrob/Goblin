@@ -90,7 +90,7 @@ let test_check_solver_ast () =
   let filename = "../../../test/test_cases/test_check_solver_ast" in
   let input = Utils.read_file filename in 
   let ast = Parsing.parse input in
-  let solver_ast = SolverAst.Node (("A", None), [SolverAst.Node (("B", None), [SolverAst.VarLeaf ""]); SolverAst.Node (("C", None), [SolverAst.VarLeaf ""])]) in
+  let solver_ast = SolverAst.Node (("A", None, None), [SolverAst.Node (("B", None, None), [SolverAst.VarLeaf ""]); SolverAst.Node (("C", None, None), [SolverAst.VarLeaf ""])]) in
   let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
@@ -100,7 +100,7 @@ let test_check_solver_ast_2 () =
   let filename = "../../../test/test_cases/test_check_solver_ast" in
   let input = Utils.read_file filename in 
   let ast = Parsing.parse input in 
-  let solver_ast = SolverAst.Node (("A", None), [SolverAst.Node (("D", None), [SolverAst.VarLeaf ""]); SolverAst.Node (("C", None), [SolverAst.VarLeaf ""])]) in
+  let solver_ast = SolverAst.Node (("A", None, None), [SolverAst.Node (("D", None, None), [SolverAst.VarLeaf ""]); SolverAst.Node (("C", None, None), [SolverAst.VarLeaf ""])]) in
   let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> fail "Expected error"
@@ -110,7 +110,7 @@ let test_check_solver_ast_3 () =
   let filename = "../../../test/test_cases/test_check_solver_ast_2" in
   let input = Utils.read_file filename in 
   let ast = Parsing.parse input in 
-  let solver_ast = SolverAst.Node (("A", None), [SolverAst.Node (("B", None), [SolverAst.IntLeaf 3]); SolverAst.Node (("C", None), [SolverAst.IntLeaf 2])]) in
+  let solver_ast = SolverAst.Node (("A", None, None), [SolverAst.Node (("B", None, None), [SolverAst.IntLeaf 3]); SolverAst.Node (("C", None, None), [SolverAst.IntLeaf 2])]) in
   let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()
@@ -120,7 +120,7 @@ let test_check_solver_ast_4 () =
   let filename = "../../../test/test_cases/test_check_solver_ast_2" in
   let input = Utils.read_file filename in 
   let ast = Parsing.parse input in 
-  let solver_ast = SolverAst.Node (("A", None), [SolverAst.Node (("B", None), [SolverAst.Node (("G", None), [SolverAst.IntLeaf 1])]); SolverAst.Node (("C", None), [SolverAst.Node (("G", None), [SolverAst.IntLeaf (2)])])]) in
+  let solver_ast = SolverAst.Node (("A", None, None), [SolverAst.Node (("B", None, None), [SolverAst.Node (("G", None, None), [SolverAst.IntLeaf 1])]); SolverAst.Node (("C", None, None), [SolverAst.Node (("G", None, None), [SolverAst.IntLeaf (2)])])]) in
   let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> fail "Expected failure"
@@ -130,7 +130,7 @@ let test_check_solver_ast_5 () =
   let filename = "../../../test/test_cases/test_check_solver_ast_2" in
   let input = Utils.read_file filename in 
   let ast = Parsing.parse input in 
-  let solver_ast = SolverAst.Node (("C", None), [SolverAst.Node (("G", None), [SolverAst.IntLeaf 1])]) in
+  let solver_ast = SolverAst.Node (("C", None, None), [SolverAst.Node (("G", None, None), [SolverAst.IntLeaf 1])]) in
   let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> fail "Expected failure"
@@ -140,7 +140,7 @@ let test_check_solver_ast_6 () =
   let filename = "../../../test/test_cases/test_check_solver_ast_3" in
   let input = Utils.read_file filename in 
   let ast = Parsing.parse input in 
-  let solver_ast = SolverAst.Node (("A", None), [SolverAst.Node (("B", None), [SolverAst.IntLeaf (-1)]); SolverAst.Node (("C", None), [SolverAst.IntLeaf (-2)])]) in
+  let solver_ast = SolverAst.Node (("A", None, None), [SolverAst.Node (("B", None, None), [SolverAst.IntLeaf (-1)]); SolverAst.Node (("C", None, None), [SolverAst.IntLeaf (-2)])]) in
   let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()
@@ -150,7 +150,7 @@ let test_check_solver_ast_7 () =
   let filename = "../../../test/test_cases/test_check_solver_ast_3" in
   let input = Utils.read_file filename in 
   let ast = Parsing.parse input in 
-  let solver_ast = SolverAst.Node (("A", None), [SolverAst.Node (("B", None), [SolverAst.Node (("G", None), [SolverAst.IntLeaf (2)])]); SolverAst.Node (("C", None), [SolverAst.Node (("G", None), [SolverAst.IntLeaf (1)])])]) in
+  let solver_ast = SolverAst.Node (("A", None, None), [SolverAst.Node (("B", None, None), [SolverAst.Node (("G", None, None), [SolverAst.IntLeaf (2)])]); SolverAst.Node (("C", None, None), [SolverAst.Node (("G", None, None), [SolverAst.IntLeaf (1)])])]) in
   let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> fail "Expected failure"

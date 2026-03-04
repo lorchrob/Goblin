@@ -11,17 +11,17 @@ let disambiguate_nonterminals (rhss : A.prod_rule_rhs list) : A.prod_rule_rhs li
     | other -> other
   in
 
-  let disambiguate_rhs rhs = match rhs with 
+  let disambiguate_rhs idx1 rhs = match rhs with 
     | A.StubbedRhs _ as stub -> stub
     | Rhs (elems, constraints, prob, pos) ->
       Hashtbl.clear running_indices;
-      let new_elems = List.mapi disambiguate_elem elems in
+      let new_elems = List.map (disambiguate_elem idx1) elems in
       Rhs (new_elems, constraints, prob, pos)
   in
 
-  List.fold_left (fun acc rhs -> 
-    acc @ [disambiguate_rhs rhs]
-  ) [] rhss
+  List.fold_left (fun (acc, acc_i) rhs -> 
+    acc @ [disambiguate_rhs acc_i rhs], acc_i + 1
+  ) ([], 0) rhss |> fst
 
 let populate_indices ast = 
   List.map (fun element -> match element with 
