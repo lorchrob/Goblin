@@ -41,16 +41,18 @@ let gen_idx_options_from_head ges nt idx1 idx2 =
 let rec gen_all_exprs 
 = fun ctx ast ges expr -> 
   let r = gen_all_exprs ctx ast ges in
+    (*Format.printf "input ges: %a\n"
+      (Lib.pp_print_list A.pp_print_grammar_element ", ") ges;*)
   match expr with 
   | A.NTExpr ((nt, idx1, idx2) :: (nt2, idx3, idx4) :: nts, p) -> 
     (* Find all possible references for idx1 and idx2 in this RHS *)
     let idx1, idx2 = gen_idx_options_from_head ges nt idx1 idx2 in
-    let element = A.find_element ast nt2 in 
+    let element = A.find_element ast nt in 
     (* Find which RHSs could be referenced by (nt2, idx3, idx4) *)
     let new_gess = match element with  
     | ProdRule (_, _, rhss, _) -> 
       let rhss = List.filteri (fun i rhs -> 
-        (idx3 = Some i || idx3 = None) && 
+        (idx3 = None || idx3 = Some i) && 
         (idx4 = None || 
           List.exists (fun ge -> 
             match ge with | A.Nonterminal (_, _, Some idx4', _, _) -> idx4 = Some idx4' | _ -> false
@@ -58,7 +60,9 @@ let rec gen_all_exprs
       ) rhss in 
       List.map A.ges_of_rhs rhss
     | TypeAnnotation (nt, _, _, p) -> 
-      if idx3 = None || idx3 = Some 0 then [[A.Nonterminal (nt, Some 0, Some 0, [], p)]]
+      if (idx3 = None || idx3 = Some 0) || 
+         (idx4 = None || idx4 = Some 0) 
+      then [[A.Nonterminal (nt, Some 0, Some 0, [], p)]]
       else 
         let msg = Format.asprintf "Nonterminal reference %s@%d is not valid" 
           nt 
@@ -80,6 +84,10 @@ let rec gen_all_exprs
     ) ntss
     in
     let head_options = List.map2 (fun idx1 idx2 -> nt, idx1, idx2) idx1 idx2 in
+    (*Format.printf "head_options 1: %a\n"
+      (Lib.pp_print_list (fun _ppf (nt, idx1, idx2) -> Format.printf "(%s, %d, %d)" nt idx1 idx2) ", ") head_options;
+    Format.printf "ges: %a\n"
+      (Lib.pp_print_list A.pp_print_grammar_element ", ") ges;*)
     (* Combine every possible head with every possible tail *)
     let nt_exprs = cartesian_product head_options ntss in
     List.map (fun (nt_head, nt_tl) -> 
@@ -88,6 +96,11 @@ let rec gen_all_exprs
     ) nt_exprs 
   | A.NTExpr ((nt, idx1, idx2) :: [], p) -> 
     let idx1, idx2 = gen_idx_options_from_head ges nt idx1 idx2 in
+    (*let head_options = List.map2 (fun idx1 idx2 -> nt, idx1, idx2) idx1 idx2 in 
+    Format.printf "head_options 2: %a\n"
+      (Lib.pp_print_list (fun _ppf (nt, idx1, idx2) -> Format.printf "(%s, %d, %d)" nt idx1 idx2) ", ") head_options;
+    Format.printf "ges: %a\n"
+      (Lib.pp_print_list A.pp_print_grammar_element ", ") ges;*)
     List.map2 (fun idx1 idx2 -> A.NTExpr ((nt, Some idx1, Some idx2) :: [], p)) idx1 idx2
   | A.NTExpr _ -> assert false
   | BinOp (expr1, op, expr2, p) -> 
@@ -168,7 +181,5 @@ let resolve_ambiguities: TC.context -> A.ast -> A.ast
   | StubbedRhs _ -> rhs 
   ) rhss in 
   A.ProdRule (nt, ias, rhss, p)
-| TypeAnnotation (nt, ty, scs, p) -> 
-  let scs = List.map (process_sc ctx ast [A.Nonterminal (nt, Some 0, Some 0, [], p)]) scs in
-  TypeAnnotation (nt, ty, List.flatten scs, p)
+| TypeAnnotation _ -> element (* no constraints left here (inlined) *) 
 ) ast 
