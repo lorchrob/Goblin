@@ -909,32 +909,6 @@ let () =
     "test_check_solver_ast_4", [test_case "test_check_solver_ast_4" `Quick test_check_solver_ast_4];
     "test_check_solver_ast_5", [test_case "test_check_solver_ast_5" `Quick test_check_solver_ast_5];
 
-    (*"sd_test_sc", [test_case "Semantic constraint" `Quick sd_test_sc];
-    "sd_test_placeholder", [test_case "Placeholder" `Quick sd_test_placeholder];
-    "sd_test_dt", [test_case "Dependent term" `Quick sd_test_dt];
-    "sd_test_dt2", [test_case "Dependent term 2" `Quick sd_test_dt2];
-    "sd_test_dc", [test_case "Divide and conquer" `Quick sd_test_dc];
-    "sd_test_bl", [test_case "Bit list" `Quick sd_test_bl];
-    "sd_test_mult_prod_rules", [test_case "Test example with nonterminal with multiple prod rules, with semantic constraints" `Quick sd_test_mult_prod_rules];
-    "sd_test_ty_annot_sc2", [test_case "Top level type annotation with semantic constraint 2" `Quick sd_test_ty_annot_sc2];
-    "sd_test_bv_len", [test_case "Top length function on bitvector" `Quick sd_test_bv_len];
-    "sd_test_dt3", [test_case "Dependent term 3" `Quick sd_test_dt3];
-    "sd_test_dt4", [test_case "Dependent term 4" `Quick sd_test_dt4];
-    "sd_test_dt5", [test_case "Dependent term 5" `Quick sd_test_dt5];
-    "sd_test_dt6", [test_case "Dependent term 6" `Quick sd_test_dt6];
-    "sd_test_dynamic_typing", [test_case "Dynamic typing" `Quick sd_test_dynamic_typing];
-    "sd_test_dot_notation", [test_case "Test dot notation" `Quick sd_test_dot_notation];
-    "sd_test_vertical_ambiguous_reference_1", [test_case "test_vertical_ambiguous_reference_1" `Quick sd_test_vertical_ambiguous_reference_1];
-    "sd_test_vertical_ambiguous_reference_2", [test_case "test_vertical_ambiguous_reference_2" `Quick sd_test_vertical_ambiguous_reference_2];
-    "sd_test_horizontal_ambiguous_reference_1", [test_case "test_horizontal_ambiguous_reference_1" `Quick sd_test_horizontal_ambiguous_reference_1];
-    "sd_test_cyclic_dependencies", [test_case "test_cyclic_dependencies" `Quick sd_test_cyclic_dependencies];
-    "sd_test_dot_notation_2", [test_case "test_dot_notation_2" `Quick sd_test_dot_notation_2];
-    "sd_test_another_ambiguous_reference", [test_case "test_another_ambiguous_reference" `Quick sd_test_another_ambiguous_reference];
-    "sd_overlapping_constraints", [test_case "overlapping_constraints" `Quick sd_overlapping_constraints];
-    "sd_overlapping_constraints_2", [test_case "overlapping_constraints_2" `Quick sd_overlapping_constraints_2];
-    "sd_repeated_nt_dependency", [test_case "repeated_nt_dependency" `Quick sd_repeated_nt_dependency];
-    "sd_test_strings", [test_case "test_strings" `Quick sd_test_strings];*)
- 
     "dm_test_sc", [test_case "Semantic constraint" `Quick dm_test_sc];
     "dm_test_placeholder", [test_case "Placeholder" `Quick dm_test_placeholder];
     "dm_test_dt", [test_case "Dependent term" `Quick dm_test_dt];
@@ -987,42 +961,7 @@ let () =
     "dd_repeated_nt_dependency", [test_case "repeated_nt_dependency" `Quick dd_repeated_nt_dependency];
      "dd_test_strings", [test_case "test_strings" `Quick dd_test_strings]; 
 
-    "md_test_sc", [test_case "Semantic constraint" `Quick md_test_sc];
-    (* "md_test_placeholder", [test_case "Placeholder" `Quick md_test_placeholder]; *)
-    "md_test_dt", [test_case "Dependent term" `Quick md_test_dt];
-    (* "md_test_dt2", [test_case "Dependent term 2" `Quick md_test_dt2]; *)
-    "md_test_dc", [test_case "Divide and conquer" `Quick md_test_dc];
-    "md_test_bl", [test_case "Bit list" `Quick md_test_bl];
-    "md_test_mult_prod_rules", [test_case "Test example with nonterminal with multiple prod rules, with semantic constraints" `Quick md_test_mult_prod_rules];
-    "md_test_ty_annot_sc2", [test_case "Top level type annotation with semantic constraint 2" `Quick md_test_ty_annot_sc2];
-    "md_test_bv_len", [test_case "Top length function on bitvector" `Quick md_test_bv_len];
-    "md_test_dt3", [test_case "Dependent term 3" `Quick md_test_dt3]; 
-    "md_test_dt4", [test_case "Dependent term 4" `Quick md_test_dt4];
-    "md_test_dt5", [test_case "Dependent term 5" `Quick md_test_dt5];
-    (* "md_test_dt6", [test_case "Dependent term 6" `Quick md_test_dt6]; *)
-    "md_test_dynamic_typing", [test_case "Dynamic typing" `Quick md_test_dynamic_typing];
-    "md_test_dot_notation",   [test_case "Test dot notation" `Quick md_test_dot_notation]; 
-    "md_test_vertical_ambiguous_reference_1", [test_case "test_vertical_ambiguous_reference_1" `Quick md_test_vertical_ambiguous_reference_1];
-    "md_test_vertical_ambiguous_reference_2", [test_case "test_vertical_ambiguous_reference_2" `Quick md_test_vertical_ambiguous_reference_2];
-    "md_test_horizontal_ambiguous_reference_1", [test_case "test_horizontal_ambiguous_reference_1" `Quick md_test_horizontal_ambiguous_reference_1];
-    "md_test_cyclic_dependencies", [test_case "test_cyclic_dependencies" `Quick md_test_cyclic_dependencies];
-    "md_test_dot_notation_2", [test_case "test_dot_notation_2" `Quick md_test_dot_notation_2];
-    "md_test_another_ambiguous_reference", [test_case "test_another_ambiguous_reference" `Quick md_test_another_ambiguous_reference];
-    "md_overlapping_constraints", [test_case "overlapping_constraints" `Quick md_overlapping_constraints];
-    "md_overlapping_constraints_2", [test_case "overlapping_constraints_2" `Quick md_overlapping_constraints_2];
-    "md_repeated_nt_dependency", [test_case "repeated_nt_dependency" `Quick md_repeated_nt_dependency];
-    "md_test_strings", [test_case "test_strings" `Quick md_test_strings]; 
-
-    "sd_test2", [test_case "test2" `Quick sd_test2];
-    "sd_test3", [test_case "test3" `Quick sd_test3];
-    "sd_test4", [test_case "test4" `Quick sd_test4];
-    "sd_test5", [test_case "test5" `Quick sd_test5];
-    "sd_test6", [test_case "test6" `Quick sd_test6];
-    "sd_test7", [test_case "test7" `Quick sd_test7];
-    "sd_test8", [test_case "test8" `Quick sd_test8];
-    "sd_test9", [test_case "test9" `Quick sd_test9];
-    "sd_test14", [test_case "test14" `Quick sd_test14];
-    "sd_test11", [test_case "test11" `Quick sd_test11];*)
+    *)
 
     "dm_test2", [test_case "test2" `Quick dm_test2];
     "dm_test3", [test_case "test3" `Quick dm_test3];
@@ -1046,41 +985,19 @@ let () =
     "dd_test9", [test_case "test9" `Quick dd_test9];
     "dd_test14", [test_case "test14" `Quick dd_test14];
     "dd_test11", [test_case "test11" `Quick dd_test11];
-    "dd_test12", [test_case "test12" `Quick dd_test12]; 
+    "dd_test12", [test_case "test12" `Quick dd_test12]; *)
 
-   "md_test2", [test_case "test2" `Quick md_test2];
-    (* "md_test3", [test_case "test3" `Quick md_test3]; *)
-    "md_test4", [test_case "test4" `Quick md_test4];
-    "md_test5", [test_case "test5" `Quick md_test5];
-    "md_test6", [test_case "test6" `Quick md_test6];
-    "md_test7", [test_case "test7" `Quick md_test7];
-    "md_test8", [test_case "test8" `Quick md_test8];
-    "md_test9", [test_case "test9" `Quick md_test9];
-    "md_test14", [test_case "test14" `Quick md_test14];
-    "md_test11", [test_case "test11" `Quick md_test11];*)
-
-    (*"sd_test17", [test_case "test17" `Quick sd_test17];*)
     "dm_test17", [test_case "test17" `Quick dm_test17];
-    (*"dd_test17", [test_case "test17" `Quick dd_test17];
-    "md_test17", [test_case "test17" `Quick md_test17];
-
-    "sd_test16", [test_case "test16" `Quick sd_test16];*)
+    (*"dd_test17", [test_case "test17" `Quick dd_test17];*)
     "dm_test16", [test_case "test16" `Quick dm_test16];
-    (*"md_test16", [test_case "test16" `Quick md_test16];
-
-    "sd_test18", [test_case "test18" `Quick sd_test18];*)
     "dm_test18", [test_case "test18" `Quick dm_test18];
-    (*"dd_test18", [test_case "test18" `Quick dd_test18];
-    "md_test18", [test_case "test18" `Quick md_test18];*)
+    (*"dd_test18", [test_case "test18" `Quick dd_test18];*)
 
     "test_check_solver_ast_6", [test_case "test_check_solver_ast_6" `Quick test_check_solver_ast_6];
     "test_check_solver_ast_7", [test_case "test_check_solver_ast_7" `Quick test_check_solver_ast_7]; 
 
-    (*"sd_test_another_ambiguous_reference_1", [test_case "sd_test_another_ambiguous_reference_1" `Quick sd_test_another_ambiguous_reference_1]; *)
     "dm_test_another_ambiguous_reference_1", [test_case "dm_test_another_ambiguous_reference_1" `Quick dm_test_another_ambiguous_reference_1]; 
-    (*"dd_test_another_ambiguous_reference_1", [test_case "dd_test_another_ambiguous_reference_1" `Quick dd_test_another_ambiguous_reference_1]; 
-    "md_test_another_ambiguous_reference_1", [test_case "md_test_another_ambiguous_reference_1" `Quick md_test_another_ambiguous_reference_1]; *)
-    (*"sd_test_another_ambiguous_reference_2", [test_case "sd_test_another_ambiguous_reference_2" `Quick sd_test_another_ambiguous_reference_2];  *)
+    (*"dd_test_another_ambiguous_reference_1", [test_case "dd_test_another_ambiguous_reference_1" `Quick dd_test_another_ambiguous_reference_1]; *)
     "dm_test_another_ambiguous_reference_2", [test_case "dm_test_another_ambiguous_reference_2" `Quick dm_test_another_ambiguous_reference_2]; 
     "bug1", [test_case "bug1" `Quick bug1]; 
     "bug3", [test_case "bug3" `Quick bug3]; 
@@ -1106,8 +1023,7 @@ let () =
     "index", [test_case "index" `Quick index]; 
     "too_many_constraints", [test_case "too_many_constraints" `Quick too_many_constraints]; 
     (*"msg2", [test_case "msg2" `Quick msg2]; *)
-    (*"dd_test_another_ambiguous_reference_2", [test_case "dd_test_another_ambiguous_reference_2" `Quick dd_test_another_ambiguous_reference_2]; 
-    "md_test_another_ambiguous_reference_2", [test_case "md_test_another_ambiguous_reference_2" `Quick md_test_another_ambiguous_reference_2];  *)
+    (*"dd_test_another_ambiguous_reference_2", [test_case "dd_test_another_ambiguous_reference_2" `Quick dd_test_another_ambiguous_reference_2]; *)
 
 
   ]
