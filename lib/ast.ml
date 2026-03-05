@@ -193,7 +193,7 @@ let pp_print_nt_helper_underscores:
 let pp_print_nt_with_dots: Format.formatter -> (string * int option * int option) list -> unit
 = fun ppf nt_expr -> 
   Format.fprintf ppf "%a"
-  (Lib.pp_print_list pp_print_nt_helper_dots "!") nt_expr 
+  (Lib.pp_print_list pp_print_nt_helper_dots ".") nt_expr 
 
 let pp_print_nt_with_underscores: 
   Format.formatter -> (string * int option * int option) list -> unit

@@ -1,4 +1,9 @@
-<S> ::= <supported-ta-list-length> <SupportedTAList> { <supported-ta-list-length> <- int_to_bv(8, <SupportedTAList>.len); } ;
+//!! If you replace supported-ta-list-length constraint with derived field constraint,
+//   Goblin can't handle it because there are two cases for len (with different RHS indices). 
+//   The dep_map will only store 
+//   one of those cases, so if the coin flip fails, we will be computing the wrong case
+
+<S> ::= <supported-ta-list-length> <SupportedTAList> { <supported-ta-list-length> = int_to_bv(8, <SupportedTAList>.len); } ;
 
 <SupportedTAList>                   ::= <SupportedTAItem> { len := 1 ; }
                                     | <SupportedTAItem> <SupportedTAList> { len := <SupportedTAList>.len + 1 ; };

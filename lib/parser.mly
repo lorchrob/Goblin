@@ -358,11 +358,11 @@ nonterminal:
 | LT; str = ID; GT; { str }
 
 indexed_nonterminal:
-| LT; str = ID; GT; i = option (rhs_index); j = option(index); { str, i, j }
+| LT; str = ID; GT; i = option(rhs_index); j = option(index); { str, i, j }
 
 index:
 | LSQBRACKET; i = INTEGER; RSQBRACKET { i }
 
 
 rhs_index:
-| AT; i = INTEGER; { i }
+| AT; LCURLY; i = INTEGER; RCURLY; { i }

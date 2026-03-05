@@ -60,7 +60,7 @@ let pp_print_solver_ast: Format.formatter -> solver_ast -> unit
     ) subterms in
     Format.fprintf ppf "(%s%a%a %a)"
     constructor 
-    (fun _ppf idx1 -> match idx1 with None -> () | Some idx1 -> Format.printf "@%d" idx1) idx1  
+    (fun _ppf idx1 -> match idx1 with None -> () | Some idx1 -> Format.printf "@@{%d}" idx1) idx1  
     (fun _ppf idx2 -> match idx2 with None -> () | Some idx2 -> Format.printf "[%d]" idx2) idx2
     (Lib.pp_print_list pp_print_solver_ast' " ") subterms 
   | BVLeaf (_, bits) -> 

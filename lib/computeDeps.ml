@@ -89,9 +89,6 @@ let rec compute_dep: A.semantic_constraint Utils.StringMap.t -> SA.solver_ast ->
          The problem is that when computing this new dependency, we may have to 
          be at a different element in the input AST. Juggling the input AST and the 
          solver AST to evalute is tricky in general. 
-         Furthermore, the dep_map does not have enough information -- the string key 
-         could, in principle, map to different dependencies in different places in the 
-         input grammar. 
 
          We need a refactoring that will put enough information in the solver_ast 
          to evaluate without tracking the input AST.
@@ -128,7 +125,7 @@ and bool_list_to_il_int (signed : bool) (bits : bool list) p : A.expr =
 and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.solver_ast -> A.ast -> A.element -> A.expr -> A.expr list
 = fun ?(dep_map=Utils.StringMap.empty) solver_ast ast element expr -> 
   if !Flags.debug then 
-    Format.printf "Evaluating expression %a under element %a and solver_ast %a\n\n"
+    Format.printf "Evaluating expression %a under element \n%a\nand solver_ast \n%a\n\n"
       A.pp_print_expr expr 
       A.pp_print_element element
       SA.pp_print_solver_ast solver_ast;
@@ -436,7 +433,9 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.solver_ast 
 | BVCast (len, expr, p) -> (
   match call expr with 
   | [IntConst (i, _)] -> [A.il_int_to_bv len i p]
-  | e -> Format.printf "e: %a\n" A.pp_print_expr (List.hd (List.tl e)); eval_fail 27
+  | e -> 
+      Format.printf "e: %a\n" 
+        (Lib.pp_print_list A.pp_print_expr ", ") e; eval_fail 27
  )
 | BuiltInFunc (UbvToInt, [expr], p) -> (
   match call expr with 

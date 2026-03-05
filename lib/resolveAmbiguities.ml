@@ -142,18 +142,18 @@ let rec gen_all_exprs
 let process_sc
 = fun ctx ast ges sc -> match sc with 
   | A.DerivedField (nt, expr, p) -> 
-    let exprs = gen_all_exprs ctx ast ges expr in (
-    match exprs with 
-    | [] ->
-      let msg = Format.asprintf "Derived field %s contains some nonterminal reference that could not be evaluated. For example, if nonterminal <nt> has only one production rule, then `<nt>@1` cannot be evaluated (use <nt>@0 instead)." nt in 
+    let exprs = gen_all_exprs ctx ast ges expr in 
+    if List.length exprs = 0 then 
+      let msg = Format.asprintf "Semantic constraint contains some nonterminal reference that could not be evaluated. For example, if nonterminal <nt> has only one production rule, then `<nt>@1` cannot be evaluated (use <nt>@0 instead)." in 
       Utils.error msg p
-    | [expr] -> 
-      [A.DerivedField (nt, expr, p)]
-    | _ -> 
-      let msg = Format.asprintf "Derived field %s is defined ambiguously. More concretely, the definition of %s contains some nonterminal expression <nt_1>.<nt_2>...<nt_n> where some <nt_i> has multiple occurrences in its production rule (and hence the nonterminal expression could evaluate to more than one term, depending on which occurrence you pick)." 
+    else 
+      let exprs = List.filter (fun expr -> not (impossible_nt_expr expr)) exprs in
+      List.map (fun expr -> A.DerivedField (nt, expr, p)) exprs
+   (* | _ -> 
+     TODO: Re-implement the following error without triggering bug5.lus *)
+      (*let msg = Format.asprintf "Derived field %s is defined ambiguously. More concretely, the definition of %s contains some nonterminal expression <nt_1>.<nt_2>...<nt_n> where some <nt_i> has multiple occurrences in its production rule (and hence the nonterminal expression could evaluate to more than one term, depending on which occurrence you pick)." 
       nt nt in 
-      Utils.error msg p
-    )
+      Utils.error msg p*)
   | SmtConstraint (expr, p) ->
     let exprs = gen_all_exprs ctx ast ges expr in 
     if List.length exprs = 0 then 

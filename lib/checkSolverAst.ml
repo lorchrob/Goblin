@@ -69,12 +69,21 @@ let handle_scs ast solver_ast constructor element scs rhs_idx =
       [BConst (true, p)]) (* If sc is not applicable, it trivially holds *)
   | DerivedField (nt, expr, p) -> 
     (* TODO: Should `Some 0` be hardcoded? *)
+    if is_sc_applicable expr solver_ast || (* type annotation constraints are always applicable *)
+       match element with | A.TypeAnnotation _ -> true | A.ProdRule _ -> false then (
     let expr = A.CompOp (NTExpr ([nt, Some rhs_idx, Some 0], p), Eq, expr, p) in
-    (if !Flags.debug then Format.fprintf Format.std_formatter "Constraint %a is applicable in %a"
+    (if !Flags.debug then Format.fprintf Format.std_formatter "Dependency %a is applicable in %a"
       A.pp_print_expr expr
       SA.pp_print_solver_ast solver_ast
       );
     ComputeDeps.evaluate solver_ast ast element expr
+    ) else (
+      (if !Flags.debug then Format.fprintf Format.std_formatter "Dependency %a is not applicable in %a"
+        A.pp_print_expr expr
+        SA.pp_print_solver_ast solver_ast
+        );
+      [BConst (true, p)] (* If sc is not applicable, it trivially holds *)
+    )
   | AttrDef _ -> assert false
   ) scs in
   let b = List.exists (fun sc -> match sc with 
