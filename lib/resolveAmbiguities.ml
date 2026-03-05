@@ -4,9 +4,10 @@ module TC = TypeChecker
 let cartesian_product lst1 lst2 =
   List.map (fun x -> List.map (fun y -> (x, y)) lst2) lst1 |> List.flatten
 
-(*!! TODO *)
+(* TODO *)
 (* Returns true iff `expr` contains some pair of NTExprs making the constraint unfalsifiable 
-   (ie, <nt>@0 = <nt>@1). If so, we can filter out the constraint. *)
+   (ie, <nt>@0 = <nt>@1). If so, we can filter out the constraint. (Not filtering is still sound, 
+   since it will always be marked inapplicable by the search engine. But probably better to filter here.) *)
 let impossible_nt_expr _expr = false
 
 let gen_idx_options_from_head ges nt idx1 idx2 = 

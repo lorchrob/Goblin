@@ -18,25 +18,6 @@ type solver_ast =
 | VarLeaf of string 
 | UnitLeaf
 
-(*!!
-type expr = 
-| Op of expr * expr 
-| ...
-
-type q = Forall | Exists
-
-(* First string is variable name, second string is type *)
-type bound_vars = (string * string) list
-
-type formula = 
-| Quantifier of q * bound_vars * formula
-| Implies of formula * formula
-| Equality of expr * expr 
-| Disequality of expr * expr
-
-type ast = formula list
-*)
-
 let rec smtlib_of_stringset set =
   match Utils.StringSet.elements set with
   | [] ->

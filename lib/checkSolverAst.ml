@@ -4,11 +4,6 @@ module R = Res
 
 let (let*) = Res.(>>=)
 
-(*!!
-  * currently assumes that the leaf nodes are labeled (not the case in sygus_dac),
-    for now it's not too bad but could miss falsified type annotation semantic constraints 
-*)
-
 (* Check
   1. The solver_ast is an instance of the grammar (syntactic well-formedness)
     a. The grammar starts at the start symbol 

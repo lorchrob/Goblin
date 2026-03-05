@@ -77,8 +77,8 @@ let gen_constraints_from_ge ast ge = match ge with
     match element with 
     | A.ProdRule (_, attr_params, _, _) -> 
       let attr_param = List.nth attr_params i in
-      (*!!! TODO: If at a stage of the pipeline where `idx` is still None (and we haven't updated it here), 
-            it is too course-grained *)
+      (*!! TODO: If at a stage of the pipeline where `idx` is still None (and we haven't updated it here), 
+                 it is too course-grained *)
       let c = A.CompOp (A.NTExpr ([nt, idx1, idx2; "%_" ^ attr_param, None, None], p), 
                         A.Eq, 
                         attr, p) in 

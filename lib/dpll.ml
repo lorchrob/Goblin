@@ -151,7 +151,7 @@ type search_tree =
   (* DT at this node of the search tree, parent node, depth, and child nodes (if any). 
      child nodes have integer indices to denote that they are the nth expansion option. *)
   (*!! TODO: The `search_tree` in the `(search_tree * int) list ref` is not used. 
-             It takes nontrivial space -- remove!! *)
+             It takes nontrivial space -- remove! *)
 | STNode of derivation_tree * search_tree option * int * (search_tree * int) list ref
 
 let rec pp_print_derivation_tree ppf derivation_tree = match derivation_tree with 
@@ -347,7 +347,7 @@ let rec nt_will_be_reached derivation_tree ast nt =
   | new_head :: nts -> 
     let rule = List.find (fun element -> match element with
     | A.TypeAnnotation (nt2, _, _, _) 
-    (*!!! Index needs to be taken into account, see bug4.gbl *)
+    (*!! Index needs to be taken into account, see bug4.gbl *)
     | A.ProdRule (nt2, _, _, _) -> nt2 = (Utils.tr_fst head)
     ) ast in 
     match rule with 
@@ -586,7 +586,6 @@ let backtrack ctx ast assertion_level decision_stack solver backtrack_depth decl
     let STNode (dt, _, _, _) = st_node in 
     let original_constraints = collect_constraints_of_dt ast !derivation_tree in 
     let maintained_constraints = collect_constraints_of_dt ast dt in 
-    (*!! TODO: Fix bug where constraints aren't being removed *)
     (*Format.printf "Original constraints: %a, maintained constraints %a" 
     (Lib.pp_print_list A.pp_print_expr ", ") (ConstraintSet.to_list original_constraints)
     (Lib.pp_print_list A.pp_print_expr ", ") (ConstraintSet.to_list maintained_constraints);*)
@@ -874,7 +873,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.semantic_constraint Utils.StringMap.t
   (* Solver object *)
   let solver = Smt.initialize_solver () in
  
-  (*!! IDEA: dynamically alter starting depth limit *)
+  (* IDEA: dynamically alter starting depth limit *)
   (*** HYPERPARAMETERS *)
   let starting_depth_limit = !Flags.starting_depth_limit in 
   let restart_rate = !Flags.restart_rate in 

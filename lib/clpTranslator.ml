@@ -191,9 +191,9 @@ let clp_program_of_ast: Ast.ast -> clp_program
       let target = String.concat "_" nt_expr ^ "s" ^ (string_of_int i) in
       Term (FunctionApp (destructor_string, [Leaf (List.hd nt_expr); Leaf target])) 
     ) nt_exprs in
-    (*!! Missing: a function to instantiate scs with every possible reference in the previous 
-         terms and destructors *)
-    (*!! Could try to build field extractors from the LHS of the prod rules rather than the RHS to eliminate the last gather step *)
+    (* Missing: a function to instantiate scs with every possible reference in the previous 
+       terms and destructors *)
+    (* Could try to build field extractors from the LHS of the prod rules rather than the RHS to eliminate the last gather step *)
     let terms = List.map (fun nt ->
       
       Term (FunctionApp (extract_str nt, [Leaf nt]))

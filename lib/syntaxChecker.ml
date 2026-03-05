@@ -11,8 +11,8 @@
        because you could accidentally match the same constructor twice 
        rather than the distinct constructors. *)
 
-  (*!! TODO: 
-       Revisit dangling identifier checks (esp., for nonterminals on RHS not in constraints 
+  (* TODO: 
+     Revisit dangling identifier checks (esp., for nonterminals on RHS not in constraints 
 
   *)
 *)
@@ -428,7 +428,7 @@ let check_probabilities nt rhss p =
 
 let check_syntax: prod_rule_map -> Utils.StringSet.t -> ast -> ast 
 = fun prm nt_set ast -> 
-  (*let ast = sort_ast ast in*) (*!! Maybe need this in non-dpll engines? *)
+  (*let ast = sort_ast ast in*) (* Maybe need this in non-dpll engines? *)
   let start_symbol = match ast with 
   | Ast.ProdRule (nt, _, _, _) :: _ 
   | Ast.TypeAnnotation (nt, _, _, _) :: _ -> nt
