@@ -176,11 +176,11 @@ let bug5 () =
   | Ok _ -> ()  
   | Error msg -> fail msg
 
-(*let bug6 () =
+let bug6 () =
   let input = "../../../test/test_cases/bug6.gbl" in
   match main_pipeline input with
   | exception _ -> () 
-  | _ -> fail "should fail"*)
+  | _ -> fail "should fail"
 
 let dm_test_another_ambiguous_reference () =
   let input = "../../../test/test_cases/test_another_ambiguous_reference" in
@@ -870,11 +870,11 @@ let dd_test14 () =
 
   *)
 
-(*let example_fail () = 
-  let input = "../../../test/test_cases/example-fail.gbl" in
-  match main_pipeline input with 
+let example_fail () = 
+  let input = "../../../test/test_cases/example_fail.gbl" in
+  match main_pipeline input with
   | exception _ -> () 
-  | _ -> fail "should fail"*)
+  | _ -> fail "should fail"
 
 let dm_test16 () = 
   let input = "../../../test/test_cases/test16" in
@@ -1003,14 +1003,12 @@ let () =
     "bug3", [test_case "bug3" `Quick bug3]; 
     "bug4", [test_case "bug4" `Quick bug4]; 
     "bug5", [test_case "bug5" `Quick bug5]; 
-    (*!! TODO: Add this error back. Once you have ambiguously defined derived field error right. *)
-    (*"bug6", [test_case "bug6" `Quick bug6]; *) 
+    "bug6", [test_case "bug6" `Quick bug6]; 
     "bug2", [test_case "bug2" `Quick bug2]; 
     "bug8", [test_case "bug8" `Quick bug8]; 
     "probabilities", [test_case "probabilities" `Quick probabilities]; 
     "probabilities_2", [test_case "probabilities_2" `Quick probabilities_2]; 
-    (*!! TODO: Add this error back. Once you have ambiguously defined derived field error right. *)
-    (*"example-fail", [test_case "example-fail" `Quick example_fail]; *)
+    "example-fail", [test_case "example-fail" `Quick example_fail]; 
     "ngap-ngsetup", [test_case "ngap-ngsetup" `Quick ngap_ngsetup_bug]; 
     "reset_bug4", [test_case "reset_bug4" `Quick reset_bug4]; 
     "length_attr", [test_case "length_attr" `Quick length_attr]; 

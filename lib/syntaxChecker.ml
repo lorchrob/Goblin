@@ -27,6 +27,8 @@ module StringSet = Set.Make(
 
 type prod_rule_map = (Utils.StringSet.t) Utils.StringMap.t
 
+let (let*) = Res.(let*)
+
 (* Build production rule map, which is a map from each grammar nonterminal 
    to the list of valid nonterminal references *)
 let build_prm: ast -> prod_rule_map
@@ -189,8 +191,51 @@ let check_for_nonterminals expr p =
     Utils.error msg p 
   | _ -> expr
 
+let rec check_for_ambiguous_derived_fields ast df expr rhs = 
+  let r = check_for_ambiguous_derived_fields ast df in 
+  match expr with 
+  | NTExpr ((nt, idx, _) :: nts, p) -> 
+    let rhs_nts = Ast.nts_of_rhs rhs in 
+    let matching_rhs_nts = List.filter (fun nt' -> String.equal nt nt') rhs_nts in 
+    if List.length matching_rhs_nts > 1 then 
+     let msg = Format.asprintf "Derived field %s is defined ambiguously. More concretely, the definition of %s contains some nonterminal expression <nt_1>.<nt_2>...<nt_n> where some <nt_i> has multiple occurrences in its production rule (and hence the nonterminal expression could evaluate to more than one term, depending on which occurrence you pick)." df df in 
+     Utils.error msg p
+    else (
+      let element = Ast.find_element ast nt in 
+      match element with 
+      | Ast.TypeAnnotation _ -> Ok ()
+      | Ast.ProdRule (_, _, rhss, _) -> 
+        if List.length rhss > 1 && idx <> None then (
+          let msg = Format.asprintf "NTExpr within derived field %s must be defined in all possible RHSs" df in 
+          Utils.error msg p
+        ) else 
+          Res.seq_ (List.map (r (NTExpr (nts, p))) rhss)
+    )
+  | NTExpr ([], _) -> Ok ()
+  | BinOp (expr1, _, expr2, _) -> 
+    let _ = r expr1 rhs in 
+    r expr2 rhs
+  | UnOp (_, expr, _) -> 
+    r expr rhs
+  | CompOp (expr1, _, expr2, _) -> 
+    let _ = r expr1 rhs in 
+    r expr2 rhs
+  | BVCast (_, expr, _) 
+  | Singleton (expr, _) -> r expr rhs
+  | BuiltInFunc (_, exprs, _) ->
+    Res.seq_ (List.map (fun e -> r e rhs) exprs)
+  | BVConst _ 
+  | BLConst _ 
+  | BConst _ 
+  | PhConst _
+  | IntConst _ 
+  | StrConst _
+  | SynthAttr _
+  | InhAttr _
+  | EmptySet _  -> Ok ()
+
 let check_syntax_prod_rule: ast -> prod_rule_map -> Utils.StringSet.t -> prod_rule_rhs -> prod_rule_rhs
-= fun _ast prm nt_set rhs -> match rhs with 
+= fun ast prm nt_set rhs -> match rhs with 
 | Rhs (ges, scs, prob, p) ->
   let ges' = List.map Ast.grammar_element_to_string ges in
   let scs = List.map (fun sc -> match sc with 
@@ -199,6 +244,7 @@ let check_syntax_prod_rule: ast -> prod_rule_map -> Utils.StringSet.t -> prod_ru
     let expr = check_prod_rule_nt_exprs prm (Utils.StringSet.of_list ges') expr in
     AttrDef (nt2, expr, p)
   | DerivedField (nt2, expr, p) -> (
+    let _ = check_for_ambiguous_derived_fields ast nt2 expr rhs in 
     let expr = check_dangling_identifiers nt_set p expr in 
     if (not (Utils.StringSet.mem nt2 nt_set)) then Utils.error ("Dangling identifier <" ^ nt2 ^ ">") p else
     if (not (List.mem nt2 ges')) then Utils.error 
@@ -426,6 +472,22 @@ let check_probabilities nt rhss p =
       Utils.error msg p
     else rhss
 
+let check_no_redefinitions rhs = match rhs with 
+  | StubbedRhs _ -> rhs 
+  | Rhs (_, scs, _, p) -> 
+    let derived_fields = List.concat_map (fun sc -> match sc with 
+    | Ast.DerivedField (nt, _, _) -> [nt] 
+    | SmtConstraint _ | AttrDef _ -> []
+    ) scs in 
+    let derived_fields' = derived_fields |> Utils.StringSet.of_list |> Utils.StringSet.to_list in 
+    if not (List.equal String.equal derived_fields derived_fields') then 
+      let msg = Format.asprintf "Production rule RHS %a contains more than one derived field definition for the same nonterminal (derived field (you might also have to look at the type annotations to find the duplicates)"
+        Ast.pp_print_prod_rule_rhs rhs 
+      in 
+      Utils.error msg p
+    else 
+      rhs 
+
 let check_syntax: prod_rule_map -> Utils.StringSet.t -> ast -> ast 
 = fun prm nt_set ast -> 
   (*let ast = sort_ast ast in*) (* Maybe need this in non-dpll engines? *)
@@ -441,6 +503,7 @@ let check_syntax: prod_rule_map -> Utils.StringSet.t -> ast -> ast
   let ast = List.map (fun element -> match element with 
   | ProdRule (nt, inhs, rhss, p) -> 
     let rhss = List.map (check_syntax_prod_rule ast prm nt_set) rhss in
+    let rhss = List.map check_no_redefinitions rhss in
     let rhss = check_probabilities nt rhss p in 
     ProdRule (nt, inhs, rhss, p)
   | TypeAnnotation (nt, ty, scs, p) -> 

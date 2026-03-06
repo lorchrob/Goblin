@@ -148,8 +148,11 @@ let process_sc
       let msg = Format.asprintf "Semantic constraint contains some nonterminal reference that could not be evaluated. For example, if nonterminal <nt> has only one production rule, then `<nt>@1` cannot be evaluated (use <nt>@0 instead)." in 
       Utils.error msg p
     else 
-      let exprs = List.filter (fun expr -> not (impossible_nt_expr expr)) exprs in
-      List.map (fun expr -> A.DerivedField (nt, expr, p)) exprs
+      (* We purposefully don't disambiguate derived fields. It makes life easier in dependency computation--
+         consider <nt1> = <nt2>.<nt3>, where <nt3> has one occurrence in every RHS. 
+         We know from syntaxChecks that <nt2>.<nt3> is unambiguous, so dealing with indices like <nt3>@{0} vs <nt3>@{1} 
+         gives us extra work with no benefits *)
+      [A.DerivedField (nt, expr, p)]
    (* | _ -> 
      TODO: Re-implement the following error without triggering bug5.lus *)
       (*let msg = Format.asprintf "Derived field %s is defined ambiguously. More concretely, the definition of %s contains some nonterminal expression <nt_1>.<nt_2>...<nt_n> where some <nt_i> has multiple occurrences in its production rule (and hence the nonterminal expression could evaluate to more than one term, depending on which occurrence you pick)." 

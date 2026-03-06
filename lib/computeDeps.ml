@@ -67,7 +67,7 @@ let rec solver_ast_to_expr: SA.solver_ast -> A.expr list
   | StrLeaf s -> [StrConst (s, Lexing.dummy_pos)]
   | BoolLeaf b -> [BConst (b, Lexing.dummy_pos)]
 | SetLeaf _ -> Utils.error_no_pos "Sets are not yet supported in derived fields"
-| UnitLeaf -> Utils.crash "Unexpected case"
+| UnitLeaf -> Utils.crash "Unexpected case (solver_ast_to_expr UnitLeaf)"
 | Node (_, solver_asts) -> 
     (List.map solver_ast_to_expr solver_asts |> List.flatten)
 
@@ -143,8 +143,8 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.solver_ast 
         Utils.find_index_opt (fun ge -> match ge with 
         | A.Nonterminal (nt, idx, idx', _, _) -> 
           Utils.str_eq_ci id nt && 
-          (idx0 = idx) && 
-          (idx1 = idx')
+          (idx0 = idx  || idx0 = None) && 
+          (idx1 = idx' || idx1 = None)
         | StubbedNonterminal (nt, _) -> 
           Utils.str_eq_ci id nt 
         ) ges
@@ -472,7 +472,7 @@ and compute_deps: A.semantic_constraint Utils.StringMap.t -> A.ast -> SA.solver_
       SA.pp_print_solver_ast solver_ast;
   match solver_ast with
 | VarLeaf _ -> eval_fail  28
-| UnitLeaf -> Utils.crash "Unexpected case"
+| UnitLeaf -> Utils.crash "Unexpected case (compute_deps UnitLeaf)"
 | Node ((constructor, idx1, idx2), subterms) -> 
   let subterms = 
   List.map (fun subterm -> match subterm with 
