@@ -1,63 +1,104 @@
-(* Note that if this ambiguity resolution strategy becomes too laborious, 
-   there is a simpler (but less efficient) approach of also introducing new 
-   symbols at the grammar level 
-   (the current strategy avoids this). *)
-
 module A = Ast
 module TC = TypeChecker
-type nt = (string * int option) list
 
 let cartesian_product lst1 lst2 =
-  List.concat_map (fun x -> List.map (fun y -> (x, y)) lst2) lst1
+  List.map (fun x -> List.map (fun y -> (x, y)) lst2) lst1 |> List.flatten
 
-(* Given an input expr, convert it into a (generated) conjunction of 
-   all the possible expressions the base expr could represent. 
-   E.g., <A>.<B>.<C> > 0 could produce 
-   <A>.<B0>.<C0> > 1 and <A>.<B0>.<C1> > 1 and <A>.<B1>.<C0> > 1 and <A>.<B1>.<C1> > 1,
-   assuming there are ambiguous references for <A>.<B> and <B>.<C>.   *)
-let rec generate_all_possible_exprs: TC.context -> string list -> A.expr -> A.expr list
-(* `nts` represents the list of nonterminals that could be referenced in the expression *)
-= fun ctx nts expr -> 
-  let r = generate_all_possible_exprs ctx nts in
+(* TODO *)
+(* Returns true iff `expr` contains some pair of NTExprs making the constraint unfalsifiable 
+   (ie, <nt>@0 = <nt>@1). If so, we can filter out the constraint. (Not filtering is still sound, 
+   since it will always be marked inapplicable by the search engine. But probably better to filter here.) *)
+let impossible_nt_expr _expr = false
+
+let gen_idx_options_from_head ges nt idx1 idx2 = 
+  (* Collect all the nonterminals in this RHS that could apply *)
+  List.filter (function 
+  | A.StubbedNonterminal _ -> false
+  | A.Nonterminal (id, Some idx', Some idx'', _, _) -> (
+    match idx1, idx2 with 
+    | None, None -> id = nt 
+    | Some idx1, None -> id = nt && idx1 = idx' 
+    | None, Some idx2 -> id = nt && idx2 = idx''
+    | Some idx1, Some idx2 -> id = nt && idx1 = idx' && idx2 = idx''
+  )
+  | A.Nonterminal _ -> assert false
+  ) ges 
+  |> 
+  (* Pick out the indices *)
+  List.map (function 
+  | A.StubbedNonterminal _ -> assert false 
+  | A.Nonterminal (_, Some idx', Some idx'', _, _) -> idx', idx'' 
+  | A.Nonterminal _ -> assert false) 
+  |> 
+  List.split
+
+(* Every dot notation reference, if potentially ambiguous, should include an index (in bounds) 
+   to disambiguate *)
+let rec gen_all_exprs 
+= fun ctx ast ges expr -> 
+  let r = gen_all_exprs ctx ast ges in
+    (*Format.printf "input ges: %a\n"
+      (Lib.pp_print_list A.pp_print_grammar_element ", ") ges;*)
   match expr with 
-  | NTExpr (nt_expr, p) -> 
-    let rec helper nts nt_expr = match nt_expr with 
-      | [] -> Utils.crash "Impossible case in generate_all_possible_exprs"
-      (* If there is already an index, we eliminate the ambiguity. 
-         This might allow us to include indices in the input syntax for no (or little) extra cost *)
-      | (nt', Some idx) :: [] -> [[(nt', Some idx)]]
-      | (nt', None) :: [] -> 
-        let nt_options = 
-          nts |>
-          List.filter (fun nt'' -> String.equal nt' nt'') |>
-          List.mapi (fun i rhs_nt -> (rhs_nt, Some i)) 
+  | A.NTExpr ((nt, idx1, idx2) :: (nt2, idx3, idx4) :: nts, p) -> 
+    (* Find all possible references for idx1 and idx2 in this RHS *)
+    let idx1, idx2 = gen_idx_options_from_head ges nt idx1 idx2 in
+    let element = A.find_element ast nt in 
+    (* Find which RHSs could be referenced by (nt2, idx3, idx4) *)
+    let new_gess = match element with  
+    | ProdRule (_, _, rhss, _) -> 
+      let rhss = List.filteri (fun i rhs -> 
+        (idx3 = None || idx3 = Some i) && 
+        (idx4 = None || 
+          List.exists (fun ge -> 
+            match ge with | A.Nonterminal (_, _, Some idx4', _, _) -> idx4 = Some idx4' | _ -> false
+          ) (A.ges_of_rhs rhs))
+      ) rhss in 
+      List.map A.ges_of_rhs rhss
+    | TypeAnnotation (nt, _, _, p) -> 
+      if (idx3 = None || idx3 = Some 0) || 
+         (idx4 = None || idx4 = Some 0) 
+      then [[A.Nonterminal (nt, Some 0, Some 0, [], p)]]
+      else 
+        let msg = Format.asprintf "Nonterminal reference %s@%d is not valid" 
+          nt 
+          (Option.get idx3)
         in 
-        List.map (fun nt_option -> [nt_option]) nt_options
-      | (nt', Some idx) :: nt_expr' -> 
-        let nt_options = [(nt', Some idx)] in 
-        let nts' = match Utils.StringMap.find nt' ctx with 
-        | ADT options -> List.flatten options
-        | _ -> [nt']
-        in
-        let recursive_options = helper nts' nt_expr' in
-        let all_combos = cartesian_product nt_options recursive_options in 
-        List.map (fun (nt, nt_expr) -> nt :: nt_expr) all_combos
-      | (nt', None) :: nt_expr' -> 
-        let nt_options = 
-          nts |>
-          List.filter (fun nt'' -> String.equal nt' nt'') |>
-          List.mapi (fun i rhs_nt -> (rhs_nt, Some i)) 
-        in 
-        let nts' = match Utils.StringMap.find nt' ctx with 
-        | ADT options -> List.flatten options
-        | _ -> [nt']
-        in
-        let recursive_options = helper nts' nt_expr' in
-        let all_combos = cartesian_product nt_options recursive_options in 
-        List.map (fun (nt, nt_expr) -> nt :: nt_expr) all_combos
+        Utils.error msg p
+    in
+    (* Collect all possible tails *)
+    let ntss = 
+      List.map (fun new_ges -> gen_all_exprs ctx ast new_ges (NTExpr ((nt2, idx3, idx4) :: nts, p))) new_gess 
+      |> List.flatten 
     in 
-    let exprs = helper nts nt_expr in 
-    List.map (fun e -> A.NTExpr (e, p)) exprs
+    let ntss = List.map (function
+    | A.NTExpr (nts, _) -> 
+      (* We recursively generate fully disambiguated (indexed) NTExprs, so `Option.get` 
+         should not fail *)
+      List.map (fun (nt, idx1, idx2) -> nt, Option.get idx1, Option.get idx2) nts 
+    | _ -> assert false 
+    ) ntss
+    in
+    let head_options = List.map2 (fun idx1 idx2 -> nt, idx1, idx2) idx1 idx2 in
+    (*Format.printf "head_options 1: %a\n"
+      (Lib.pp_print_list (fun _ppf (nt, idx1, idx2) -> Format.printf "(%s, %d, %d)" nt idx1 idx2) ", ") head_options;
+    Format.printf "ges: %a\n"
+      (Lib.pp_print_list A.pp_print_grammar_element ", ") ges;*)
+    (* Combine every possible head with every possible tail *)
+    let nt_exprs = cartesian_product head_options ntss in
+    List.map (fun (nt_head, nt_tl) -> 
+      (* Re-wrap indices with Some to satisfy OCaml's type checker *)
+      A.NTExpr (List.map (fun (nt, idx1, idx2) -> nt, Some idx1, Some idx2) (nt_head :: nt_tl), p)
+    ) nt_exprs 
+  | A.NTExpr ((nt, idx1, idx2) :: [], p) -> 
+    let idx1, idx2 = gen_idx_options_from_head ges nt idx1 idx2 in
+    (*let head_options = List.map2 (fun idx1 idx2 -> nt, idx1, idx2) idx1 idx2 in 
+    Format.printf "head_options 2: %a\n"
+      (Lib.pp_print_list (fun _ppf (nt, idx1, idx2) -> Format.printf "(%s, %d, %d)" nt idx1 idx2) ", ") head_options;
+    Format.printf "ges: %a\n"
+      (Lib.pp_print_list A.pp_print_grammar_element ", ") ges;*)
+    List.map2 (fun idx1 idx2 -> A.NTExpr ((nt, Some idx1, Some idx2) :: [], p)) idx1 idx2
+  | A.NTExpr _ -> assert false
   | BinOp (expr1, op, expr2, p) -> 
     let exprs1 = r expr1 in 
     let exprs2 = r expr2 in 
@@ -99,84 +140,40 @@ let rec generate_all_possible_exprs: TC.context -> string list -> A.expr -> A.ex
   | InhAttr _
   | SynthAttr _ -> assert false
 
-let process_sc: TC.context -> string list -> A.semantic_constraint -> A.semantic_constraint 
-= fun ctx nts sc -> match sc with 
+let process_sc
+= fun ctx ast ges sc -> match sc with 
   | A.DerivedField (nt, expr, p) -> 
-    let exprs = generate_all_possible_exprs ctx nts expr in
-    let expr = match exprs with 
-      | _ :: _ :: _ -> Utils.error ("Dependent term '" ^ nt ^ "' is defined ambiguously") p
-      | expr :: _ -> expr
-      | [] -> Utils.crash "unexpected case"
-    in
-    DerivedField (nt, expr, p)
+    let exprs = gen_all_exprs ctx ast ges expr in 
+    if List.length exprs = 0 then 
+      let msg = Format.asprintf "Semantic constraint contains some nonterminal reference that could not be evaluated. For example, if nonterminal <nt> has only one production rule, then `<nt>@1` cannot be evaluated (use <nt>@0 instead)." in 
+      Utils.error msg p
+    else 
+      let exprs = List.filter (fun expr -> not (impossible_nt_expr expr)) exprs in
+      List.map (fun expr -> A.DerivedField (nt, expr, p)) exprs
+   (* | _ -> 
+     TODO: Re-implement the following error without triggering bug5.lus *)
+      (*let msg = Format.asprintf "Derived field %s is defined ambiguously. More concretely, the definition of %s contains some nonterminal expression <nt_1>.<nt_2>...<nt_n> where some <nt_i> has multiple occurrences in its production rule (and hence the nonterminal expression could evaluate to more than one term, depending on which occurrence you pick)." 
+      nt nt in 
+      Utils.error msg p*)
+  | SmtConstraint (expr, p) ->
+    let exprs = gen_all_exprs ctx ast ges expr in 
+    if List.length exprs = 0 then 
+      let msg = Format.asprintf "Semantic constraint contains some nonterminal reference that could not be evaluated. For example, if nonterminal <nt> has only one production rule, then `<nt>@1` cannot be evaluated (use <nt>@0 instead)." in 
+      Utils.error msg p
+    else 
+      let exprs = List.filter (fun expr -> not (impossible_nt_expr expr)) exprs in
+      List.map (fun expr -> A.SmtConstraint (expr, p)) exprs
   | AttrDef _ -> assert false
-  | SmtConstraint (expr, p) -> 
-    let exprs = generate_all_possible_exprs ctx nts expr in
-    let expr = List.fold_left (fun acc expr -> A.BinOp (expr, GLAnd, acc, p)) (BConst (true, p)) exprs in
-    SmtConstraint (expr, p)
-
-let process_sc_to_list: TC.context -> string list -> A.semantic_constraint -> A.semantic_constraint list
-= fun ctx nts sc -> match sc with 
-  | A.DerivedField (nt, expr, p) -> 
-    let exprs = generate_all_possible_exprs ctx nts expr in 
-    let _ = match exprs with 
-      (*!! TODO: Reimplement this check so it doesn't falsely flag bug5.gbl *)
-      (*| _ :: _ :: _ -> Utils.error ("Dependent term '" ^ nt ^ "' is defined ambiguously") p*)
-      | expr :: _ -> expr
-      | [] -> Utils.crash "unexpected case"
-    in
-    List.map (fun expr -> A.DerivedField (nt, expr, p)) exprs
-  | SmtConstraint (expr, p) -> 
-    let exprs = generate_all_possible_exprs ctx nts expr in
-    List.map (fun expr -> A.SmtConstraint (expr, p)) exprs
-  | AttrDef _ -> assert false
-
-(* Same as resolve_ambiguities, but we desugar to a list of 
-   semantic constraints rather than a conjunction of generated 
-   constraints. The conjunction makes more sense in the sygus encoding
-   (where we can encode the big conjunction with pattern matching 
-   over all the cases), 
-   while the list is required for the DPLL encoding where we explore one 
-   case at a time, ignoring constraints that aren't applicable in that case. *)
-let resolve_ambiguities_dpll: TC.context -> A.ast -> A.ast 
-= fun ctx ast -> List.map (fun element -> match element with
-| A.ProdRule (nt, ias, rhss, p) ->
-  (*!! Need to assume universally unique IDs *)
-  let nts = List.concat_map A.nts_of_rhs rhss in 
-  let rhss = List.map (fun rhs -> match rhs with 
-  | A.Rhs (ges, scs, prob, _) -> 
-    let scs = List.concat_map (process_sc_to_list ctx nts) scs in
-    (* Filter out scs with dot notation expressions of the form <nt1>[n], where 
-       [n] does not apply to this production rule *)
-    (*!! The above should generalize to the tail of NTExprs... *)
-    let scs = List.filter (function 
-    | A.AttrDef _ -> assert false
-    | A.SmtConstraint (expr, _)  
-    | A.DerivedField (_, expr, _) ->
-      let nts = A.get_nts_from_expr2 expr |> List.map List.hd in
-      List.for_all (fun (nt1, idx1) -> 
-        List.exists (function 
-        | A.StubbedNonterminal _ -> false 
-        | A.Nonterminal (nt2, idx2, _, _) -> nt1 = nt2 && idx1 = idx2 
-        ) ges
-      ) nts  
-    ) scs in 
-    A.Rhs (ges, scs, prob, p) 
-  | StubbedRhs _ -> rhs 
-  ) rhss in 
-  A.ProdRule (nt, ias, rhss, p)
-| TypeAnnotation (nt, ty, scs, p) -> 
-  let scs = List.concat_map (process_sc_to_list ctx [nt]) scs in
-  TypeAnnotation (nt, ty, scs, p)
-) ast 
 
 let resolve_ambiguities: TC.context -> A.ast -> A.ast 
 = fun ctx ast -> List.map (fun element -> match element with
 | A.ProdRule (nt, ias, rhss, p) ->
   let rhss = List.map (fun rhs -> match rhs with 
-  | A.Rhs (ges, scs, prob, _) -> A.Rhs (ges, List.map (process_sc ctx (A.nts_of_rhs rhs)) scs, prob, p) 
+  | A.Rhs (ges, scs, prob, _) -> 
+    let scs = List.map (process_sc ctx ast ges) scs in
+    A.Rhs (ges, List.flatten scs, prob, p) 
   | StubbedRhs _ -> rhs 
   ) rhss in 
   A.ProdRule (nt, ias, rhss, p)
-| TypeAnnotation (nt, ty, scs, p) -> TypeAnnotation (nt, ty, List.map (process_sc ctx [nt]) scs, p)
-) ast  
+| TypeAnnotation _ -> element (* no constraints left here (inlined) *) 
+) ast 

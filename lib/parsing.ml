@@ -23,7 +23,7 @@ let format_position (pos : Lexing.position) : string =
     pos.Lexing.pos_lnum 
     (pos.Lexing.pos_cnum - pos.Lexing.pos_bol)
 
-let parse_sygus: string -> Ast.ast -> (SolverAst.solver_ast, string) result
+let parse_solver: string -> Ast.ast -> (SolverAst.solver_ast, string) result
 = fun s ast ->
   let lexbuf = Lexing.from_string s in
   let error_message () =
@@ -43,10 +43,10 @@ let parse_sygus: string -> Ast.ast -> (SolverAst.solver_ast, string) result
   in
   match ast, solver_ast with 
   | ProdRule _ :: _, Error e -> print_endline e; solver_ast
-  | ProdRule _ :: _, Ok _ -> solver_ast 
+  | ProdRule _ :: _, Ok _sa -> solver_ast 
   (* Sygus files with top-level type annotations lose their constructor name *)
   | TypeAnnotation (nt, _, _, _) :: _, Ok solver_ast -> 
     let constructor = String.lowercase_ascii nt ^ "_con0" in
-    Ok (SolverAst.Node ((constructor, None), [solver_ast]))
+    Ok (SolverAst.Node ((constructor, None, None), [solver_ast]))
   | _, Error e -> print_endline e; solver_ast
   | _, Ok _ -> solver_ast

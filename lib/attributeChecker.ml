@@ -18,7 +18,7 @@ let check_element attribute_ctx ctx element = match element with
   | A.Rhs (ges, _, _, _) -> 
     let _ = List.map (fun ge -> match ge with 
     | A.StubbedNonterminal _ -> ge 
-    | A.Nonterminal (nt, _, ias, p) -> 
+    | A.Nonterminal (nt, _, _, ias, p) -> 
       let arg_tys = match Utils.StringMap.find_opt nt attribute_ctx with 
       | Some arg_tys -> arg_tys 
       | None -> [] in 

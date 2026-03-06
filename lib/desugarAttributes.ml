@@ -30,11 +30,11 @@ let rec attr_to_nt_expr
   let r = attr_to_nt_expr in
   match expr with
   | A.SynthAttr (nt, attr, p) ->
-    let nt1 = nt, None in 
-    let nt2 = "%_" ^ attr, None in 
+    let nt1 = nt, None, None in 
+    let nt2 = "%_" ^ attr, None, None in 
     A.NTExpr ([nt1; nt2], p)
   | InhAttr (attr, p) -> 
-    A.NTExpr (["%_" ^ attr, None], p) 
+    A.NTExpr (["%_" ^ attr, None, None], p) 
   | A.BVCast (len, expr, pos) -> A.BVCast (len, r expr, pos)
   | BinOp (expr1, op, expr2, pos) -> BinOp (r expr1, op, r expr2, pos) 
   | UnOp (op, expr, pos) -> UnOp (op, r expr, pos) 
@@ -62,7 +62,7 @@ let handle_sc _ctx sc = match sc with
   A.SmtConstraint (expr, p), None
 | A.AttrDef (attr, expr, p) ->
   let expr = attr_to_nt_expr expr in 
-  let c = A.CompOp (NTExpr (["%_" ^ attr, None], p), A.Eq, expr, p) in 
+  let c = A.CompOp (NTExpr (["%_" ^ attr, None, None], p), A.Eq, expr, p) in 
   A.SmtConstraint (c, p), Some ("%_" ^ attr)
 
 (* Inherited attribute constraints. For each inherited attribute "call" <nt>(<expr_1>, ..., <expr_n>), 
@@ -71,15 +71,15 @@ let handle_sc _ctx sc = match sc with
 *)
 let gen_constraints_from_ge ast ge = match ge with 
 | A.StubbedNonterminal _ -> []
-| A.Nonterminal (nt, idx, attrs, p) -> 
+| A.Nonterminal (nt, idx1, idx2, attrs, p) -> 
   List.mapi (fun i attr -> 
     let element = A.find_element ast nt in 
     match element with 
     | A.ProdRule (_, attr_params, _, _) -> 
       let attr_param = List.nth attr_params i in
-      (*!!! TODO: If at a stage of the pipeline where `idx` is still None (and we haven't updated it here), 
-            it is too course-grained *)
-      let c = A.CompOp (A.NTExpr ([nt, idx; "%_" ^ attr_param, None], p), 
+      (*!! TODO: If at a stage of the pipeline where `idx` is still None (and we haven't updated it here), 
+                 it is too course-grained *)
+      let c = A.CompOp (A.NTExpr ([nt, idx1, idx2; "%_" ^ attr_param, None, None], p), 
                         A.Eq, 
                         attr, p) in 
       A.SmtConstraint (c, p)
@@ -98,13 +98,13 @@ let desugar_attributes ctx ast =
       let scs, new_ges = List.map (handle_sc ctx) (scs @ new_scs) |> List.split in 
       let ges = List.map (fun ge -> match ge with 
       | A.StubbedNonterminal _ -> ge 
-      | A.Nonterminal (nt, idx, _, p) -> A.Nonterminal (nt, idx, [], p)
+      | A.Nonterminal (nt, idx1, idx2, _, p) -> A.Nonterminal (nt, idx1, idx2, [], p)
       ) ges
       in
       let new_ges = List.filter_map Fun.id new_ges in
-      let new_ges = List.map (fun str -> A.Nonterminal (str, None, [], p)) new_ges in
+      let new_ges = List.map (fun str -> A.Nonterminal (str, None, None, [], p)) new_ges in
       (* Inherited attributes *)
-      let new_ges2 = List.map (fun str -> A.Nonterminal ("%_" ^ str, None, [], p)) ias in
+      let new_ges2 = List.map (fun str -> A.Nonterminal ("%_" ^ str, None, None, [], p)) ias in
       (*let scs, _ = List.map (handle_sc ctx) (scs @ new_scs) |> List.split in *)
       A.Rhs (ges @ new_ges @ new_ges2, scs, prob, p)
     ) rhss in 

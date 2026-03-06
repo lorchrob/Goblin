@@ -89,9 +89,6 @@ let rec compute_dep: A.semantic_constraint Utils.StringMap.t -> SA.solver_ast ->
          The problem is that when computing this new dependency, we may have to 
          be at a different element in the input AST. Juggling the input AST and the 
          solver AST to evalute is tricky in general. 
-         Furthermore, the dep_map does not have enough information -- the string key 
-         could, in principle, map to different dependencies in different places in the 
-         input grammar. 
 
          We need a refactoring that will put enough information in the solver_ast 
          to evaluate without tracking the input AST.
@@ -128,14 +125,14 @@ and bool_list_to_il_int (signed : bool) (bits : bool list) p : A.expr =
 and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.solver_ast -> A.ast -> A.element -> A.expr -> A.expr list
 = fun ?(dep_map=Utils.StringMap.empty) solver_ast ast element expr -> 
   if !Flags.debug then 
-    Format.printf "Evaluating expression %a under element %a and solver_ast %a\n\n"
+    Format.printf "Evaluating expression %a under element \n%a\nand solver_ast \n%a\n\n"
       A.pp_print_expr expr 
       A.pp_print_element element
       SA.pp_print_solver_ast solver_ast;
   let call = evaluate ~dep_map solver_ast ast element in
   match expr with 
 | NTExpr ([], _) -> Utils.crash "Unexpected case in evaluate 1"
-| NTExpr ((id, idx0) :: rest, p) ->
+| NTExpr ((id, idx0, idx1) :: rest, p) ->
   let child_index, child_element = match element with 
   | A.TypeAnnotation _ -> 0, element
   | A.ProdRule (_, _, rhss, _) ->
@@ -144,9 +141,10 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.solver_ast 
       | A.StubbedRhs _ -> None 
       | Rhs (ges, _, _, _) ->
         Utils.find_index_opt (fun ge -> match ge with 
-        | A.Nonterminal (nt, idx, _, _) -> 
+        | A.Nonterminal (nt, idx, idx', _, _) -> 
           Utils.str_eq_ci id nt && 
-          idx0 = idx 
+          (idx0 = idx) && 
+          (idx1 = idx')
         | StubbedNonterminal (nt, _) -> 
           Utils.str_eq_ci id nt 
         ) ges
@@ -162,7 +160,7 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.solver_ast 
   | VarLeaf _ | BVLeaf _ | IntLeaf _ | BLLeaf _ | BoolLeaf _ | StrLeaf _ | SetLeaf _ | UnitLeaf 
   | SA.Node (_, ([BVLeaf _] | [BLLeaf _] | [IntLeaf _] | [BoolLeaf _] | [StrLeaf _] | [SetLeaf _])) ->
     solver_ast_to_expr solver_ast
-  | Node ((_id, _), subterms) ->
+  | Node ((_id, _, _), subterms) ->
     if !Flags.debug then 
       Format.printf "nth: Looking for child_index %d in solver_ast %a\n" 
         child_index 
@@ -435,17 +433,19 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.solver_ast 
 | BVCast (len, expr, p) -> (
   match call expr with 
   | [IntConst (i, _)] -> [A.il_int_to_bv len i p]
-  | _ -> eval_fail 27
+  | e -> 
+      Format.printf "e: %a\n" 
+        (Lib.pp_print_list A.pp_print_expr ", ") e; eval_fail 27
  )
 | BuiltInFunc (UbvToInt, [expr], p) -> (
   match call expr with 
   | [BVConst (_, i, _) ] -> [bool_list_to_il_int false i p]
-  | _ -> eval_fail 27
+  | _ -> eval_fail 28
 ) 
 | BuiltInFunc (SbvToInt, [expr], p) -> (
   match call expr with 
   | [BVConst (_, i, _)] -> [bool_list_to_il_int true i p]
-  | _ -> eval_fail 27
+  | _ -> eval_fail 29
 )
 | BuiltInFunc (Repeat, [expr1; expr2], p) -> (
   match call expr1, call expr2 with 
@@ -455,7 +455,7 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.solver_ast 
       A.pp_print_expr expr2 
       (Lib.pp_print_list Format.pp_print_bool "; ") (Utils.replicate b i);
       [A.BLConst (Utils.replicate b i, p)]
-  | _ -> eval_fail 27
+  | _ -> eval_fail 30 
 )
 | BVConst _ | BLConst _ | IntConst _ | BConst _ | PhConst _ | StrConst _ | EmptySet _ -> [expr]
 | e -> 
@@ -473,7 +473,7 @@ and compute_deps: A.semantic_constraint Utils.StringMap.t -> A.ast -> SA.solver_
   match solver_ast with
 | VarLeaf _ -> eval_fail  28
 | UnitLeaf -> Utils.crash "Unexpected case"
-| Node ((constructor, idx), subterms) -> 
+| Node ((constructor, idx1, idx2), subterms) -> 
   let subterms = 
   List.map (fun subterm -> match subterm with 
   | SA.Node (_hd, [VarLeaf var]) -> 
@@ -495,5 +495,5 @@ and compute_deps: A.semantic_constraint Utils.StringMap.t -> A.ast -> SA.solver_
   | SA.Node _ -> compute_deps dep_map ast subterm
   | _ -> subterm
   ) subterms in 
-  Node ((constructor, idx), subterms)
+  Node ((constructor, idx1, idx2), subterms)
 | _ -> solver_ast

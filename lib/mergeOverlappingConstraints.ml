@@ -30,7 +30,7 @@ let merge: A.ast -> A.element -> A.ast
         | A.StubbedRhs _ -> rhs 
         | A.Rhs (ges, scs2, prob, p) -> 
           if List.exists (fun ge -> match ge with 
-          | A.Nonterminal (nt3, _, _, _) -> nt = nt3  
+          | A.Nonterminal (nt3, _, _, _, _) -> nt = nt3  
           | A.StubbedNonterminal _ -> false
           ) ges 
           then A.Rhs (ges, scs @ scs2, prob, p) (* Push up the constraints *)
@@ -77,7 +77,10 @@ let merge: A.ast -> A.element -> A.ast
         (* We can place None in the index because this pipeline step happens before 
            resolveAmbiguities. *)
         Utils.debug_print Format.pp_print_string Format.std_formatter "Replacing dependency with sygus expr";
-        A.SmtConstraint (A.prepend_nt_to_dot_exprs nt (A.CompOp (NTExpr ([nt2, None], p), Eq, expr, p)), p)
+        A.SmtConstraint (
+          A.prepend_nt_to_dot_exprs nt (A.CompOp (NTExpr ([nt2, None, None], p), Eq, expr, p)), 
+          p
+        )
       | AttrDef _ -> assert false
       ) scs in 
       let ast = List.fold_left (fun acc element -> match element with
@@ -87,7 +90,7 @@ let merge: A.ast -> A.element -> A.ast
         | A.StubbedRhs _ -> rhs 
         | A.Rhs (ges, scs2, prob, p) -> 
           if List.exists (fun ge -> match ge with 
-          | A.Nonterminal (nt3, _, _, _) -> nt = nt3  
+          | A.Nonterminal (nt3, _, _, _, _) -> nt = nt3  
           | A.StubbedNonterminal _ -> false
           ) ges 
           then 

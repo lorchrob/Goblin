@@ -41,7 +41,7 @@ let rec pp_print_clp_term: Format.formatter -> clp_term -> unit
 
 let expr_of_sc sc = match sc with 
 | A.SmtConstraint (expr, _) -> expr 
-| DerivedField (nt, expr, p) -> CompOp (NTExpr ([nt, None], p), Eq, expr, p)
+| DerivedField (nt, expr, p) -> CompOp (NTExpr ([nt, None, None], p), Eq, expr, p)
 | AttrDef _ -> assert false
 
 let pp_print_clp_element: Format.formatter -> clp_element -> unit 
@@ -94,7 +94,7 @@ let rec create_field_extractors: A.ast -> string list -> clp_rule list
     | A.Rhs (ges, _, _, _) ->
       let leaves = List.map (function 
       | A.StubbedNonterminal _ -> assert false
-      | Nonterminal (nt, _, _, _) -> 
+      | Nonterminal (nt, _, _, _, _) -> 
         if nt2 = nt then nt2 else "_"
       ) ges in
       let instances_of_nt2 = List.filter (fun leaf -> leaf <> "_") leaves in
@@ -120,7 +120,7 @@ let rec create_field_extractors: A.ast -> string list -> clp_rule list
     | A.Rhs (ges, _, _, _) -> 
       let instances_of_nt2 = List.filter_map (function 
       | A.StubbedNonterminal _ -> None
-      | Nonterminal (nt, _, _, _) -> 
+      | Nonterminal (nt, _, _, _, _) -> 
         if nt2 = nt then Some nt2 else None
       ) ges in
       if List.is_empty instances_of_nt2 then [] else
@@ -180,7 +180,7 @@ let clp_program_of_ast: Ast.ast -> clp_program
     let t = FunctionApp (nt, [FunctionApp (nt ^ (string_of_int i), leaves)]) in
     let nt_exprs = List.concat_map (fun sc -> A.get_nts_from_expr2 (expr_of_sc sc)) scs in
     let nt_exprs = List.filter (fun nt_expr -> List.length nt_expr >= 2) nt_exprs in 
-    let nt_exprs = List.map (List.map fst) nt_exprs in
+    let nt_exprs = List.map (List.map Utils.tr_fst) nt_exprs in
     let nt_exprs = List.concat_map (fun nt_expr -> 
       let matching_nts = List.filter (fun nt -> is_base_and_indexed (List.hd nt_expr) nt) nts in 
       List.map (fun nt -> nt :: List.tl nt_expr) matching_nts
@@ -191,9 +191,9 @@ let clp_program_of_ast: Ast.ast -> clp_program
       let target = String.concat "_" nt_expr ^ "s" ^ (string_of_int i) in
       Term (FunctionApp (destructor_string, [Leaf (List.hd nt_expr); Leaf target])) 
     ) nt_exprs in
-    (*!! Missing: a function to instantiate scs with every possible reference in the previous 
-         terms and destructors *)
-    (*!! Could try to build field extractors from the LHS of the prod rules rather than the RHS to eliminate the last gather step *)
+    (* Missing: a function to instantiate scs with every possible reference in the previous 
+       terms and destructors *)
+    (* Could try to build field extractors from the LHS of the prod rules rather than the RHS to eliminate the last gather step *)
     let terms = List.map (fun nt ->
       
       Term (FunctionApp (extract_str nt, [Leaf nt]))
@@ -207,7 +207,9 @@ let clp_program_of_ast: Ast.ast -> clp_program
   let scs = A.scs_of_element element in
   let nt_exprs = List.concat_map (fun sc -> A.get_nts_from_expr2 (expr_of_sc sc)) scs in
   let nt_exprs = List.filter (fun nt_expr -> List.length nt_expr > 1) nt_exprs in
-  let field_extractors = List.concat_map (create_field_extractors ast) (List.map (List.map fst) nt_exprs) in
+  let field_extractors = 
+    List.concat_map (create_field_extractors ast) (List.map (List.map Utils.tr_fst) nt_exprs) 
+  in
   acc @ rules @ field_extractors
 | TypeAnnotation (nt, ty, scs, _) -> 
   (* Create a CLP rule for each type annotation *)

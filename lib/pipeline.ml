@@ -71,9 +71,9 @@ let main_pipeline ?(engine: Flags.engine option = None) ?(grammar: Ast.ast optio
   (* Desugar attributes *)
   Utils.debug_print Format.pp_print_string ppf "\nDesugaring attributes:\n";
   let ast = DesugarAttributes.desugar_attributes ctx ast in
-  (*!! Ideally, the checker would take as input the base AST, not the desugared one. 
-       But then we have to update the checker to deal with attributes. 
-       This is probably worth it in the long run. *)
+  (* TODO: Ideally, the checker would take as input the base AST, not the desugared one. 
+           But then we have to update the checker to deal with attributes. 
+           This is probably worth it in the long run. *)
   Utils.debug_print Ast.pp_print_ast ppf ast;
 
   (* Populate nonterminal indices *)
@@ -81,10 +81,8 @@ let main_pipeline ?(engine: Flags.engine option = None) ?(grammar: Ast.ast optio
   let ast = PopulateIndices.populate_indices ast in
   Utils.debug_print Ast.pp_print_ast ppf ast;
 
-  (*!! To properly test non-DPLL engines, this should be set within the engine below and not outside *)
-  let ast_to_return = ResolveAmbiguities.resolve_ambiguities_dpll ctx ast in
-
-  (*let ast_to_return = ResolveAmbiguities.resolve_ambiguities_dpll ctx ast in*)
+  (* To properly test non-DPLL engines, this should be set within the engine below and not outside *)
+  let ast_to_return = ResolveAmbiguities.resolve_ambiguities ctx ast in
 
   (*Format.printf "ast_to_return: %a\n"
     Ast.pp_print_ast ast_to_return;*)

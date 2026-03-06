@@ -4,11 +4,6 @@ module R = Res
 
 let (let*) = Res.(>>=)
 
-(*!!
-  * currently assumes that the leaf nodes are labeled (not the case in sygus_dac),
-    for now it's not too bad but could miss falsified type annotation semantic constraints 
-*)
-
 (* Check
   1. The solver_ast is an instance of the grammar (syntactic well-formedness)
     a. The grammar starts at the start symbol 
@@ -22,7 +17,7 @@ let (let*) = Res.(>>=)
 
 let check_start_symbol: Ast.ast -> SolverAst.solver_ast -> (unit, string) result 
 = fun ast solver_ast -> match ast, solver_ast with 
-| A.ProdRule (nt, _, _, _) :: _, SA.Node ((constructor, _), _) -> 
+| A.ProdRule (nt, _, _, _) :: _, SA.Node ((constructor, _, _), _) -> 
   if Utils.str_eq_ci nt (Utils.extract_base_name constructor) 
     then Ok () 
   else 
@@ -30,7 +25,8 @@ let check_start_symbol: Ast.ast -> SolverAst.solver_ast -> (unit, string) result
 | A.TypeAnnotation _ :: _, _ -> Utils.crash "Unexpected case in check_start_symbol"
 | _ -> Error "Solver AST root node is a leaf node"
 
-let rec is_nt_applicable: SolverAst.solver_ast -> (string * int option) list -> bool 
+let rec is_nt_applicable: 
+  SolverAst.solver_ast -> (string * int option * int option) list -> bool 
 = fun solver_ast nt -> match solver_ast, nt with
   | Node (_, children), head :: tail -> 
     let child = List.find_opt (fun child -> match child with 
@@ -49,7 +45,7 @@ let is_sc_applicable: Ast.expr -> SolverAst.solver_ast -> bool
   let nts_are_applicable = List.map (is_nt_applicable solver_ast) nts in 
   List.for_all (fun a -> a) nts_are_applicable
 
-let handle_scs ast solver_ast constructor element scs = 
+let handle_scs ast solver_ast constructor element scs rhs_idx = 
   let scs = List.map (fun sc -> match sc with 
   | A.SmtConstraint (expr, p) -> 
     if is_sc_applicable expr solver_ast || (* type annotation constraints are always applicable *)
@@ -67,12 +63,22 @@ let handle_scs ast solver_ast constructor element scs =
         );
       [BConst (true, p)]) (* If sc is not applicable, it trivially holds *)
   | DerivedField (nt, expr, p) -> 
-    let expr = A.CompOp (NTExpr ([nt, Some 0], p), Eq, expr, p) in
-    (if !Flags.debug then Format.fprintf Format.std_formatter "Constraint %a is applicable in %a"
+    (* TODO: Should `Some 0` be hardcoded? *)
+    if is_sc_applicable expr solver_ast || (* type annotation constraints are always applicable *)
+       match element with | A.TypeAnnotation _ -> true | A.ProdRule _ -> false then (
+    let expr = A.CompOp (NTExpr ([nt, Some rhs_idx, Some 0], p), Eq, expr, p) in
+    (if !Flags.debug then Format.fprintf Format.std_formatter "Dependency %a is applicable in %a"
       A.pp_print_expr expr
       SA.pp_print_solver_ast solver_ast
       );
     ComputeDeps.evaluate solver_ast ast element expr
+    ) else (
+      (if !Flags.debug then Format.fprintf Format.std_formatter "Dependency %a is not applicable in %a"
+        A.pp_print_expr expr
+        SA.pp_print_solver_ast solver_ast
+        );
+      [BConst (true, p)] (* If sc is not applicable, it trivially holds *)
+    )
   | AttrDef _ -> assert false
   ) scs in
   let b = List.exists (fun sc -> match sc with 
@@ -85,13 +91,13 @@ let handle_scs ast solver_ast constructor element scs =
 
 let rec check_syntax_semantics: Ast.ast -> SolverAst.solver_ast -> (unit, string) result 
 = fun ast solver_ast -> match solver_ast with 
-  | Node ((constructor, _), children) -> 
+  | Node ((constructor, _, _), children) -> 
     (* In dpll divide and conquer module, 
        we get an extra nesting of stub and concrete NTs 
        for some reason. *)
     let skip_condition = 
       match children with 
-      | [Node ((constructor2, _), _)] ->
+      | [Node ((constructor2, _, _), _)] ->
         Utils.str_eq_ci constructor (Utils.extract_base_name constructor2)
       | _ -> false
     in
@@ -108,30 +114,31 @@ let rec check_syntax_semantics: Ast.ast -> SolverAst.solver_ast -> (unit, string
     match element with 
     | None -> Error ("Dangling constructor identifier " ^ (Utils.extract_base_name constructor))
     | Some (TypeAnnotation (_, _, scs, _) as element) -> 
-      handle_scs ast solver_ast constructor element scs
+      handle_scs ast solver_ast constructor element scs 0
     | Some (A.ProdRule (_, _, rhss, _) as element) ->
       (* Find the matching production rule from ast, if one exists *)
-      let rhs = List.find_opt (fun rhs -> match rhs with 
-      | A.StubbedRhs _ -> false 
+      let rhs = List.find_mapi (fun i rhs -> match rhs with 
+      | A.StubbedRhs _ -> None 
       | A.Rhs (ges, _, _, _) -> 
-        if List.length ges != List.length children then false 
+        if List.length ges != List.length children then None
         else 
-          List.for_all2 (fun child ge ->  
+          if List.for_all2 (fun child ge ->  
             match child, ge with 
             | _, A.StubbedNonterminal _ -> false 
-            | SA.Node ((constructor, _), _), Nonterminal (nt, _, _, _) -> 
+            | SA.Node ((constructor, _, _), _), Nonterminal (nt, _, _, _, _) -> 
               Utils.str_eq_ci (Utils.extract_base_name constructor) nt
             | _, _ -> true
-          ) children ges
+          ) children ges 
+          then Some (rhs, i) else None
       ) rhss in 
       if rhs = None then 
         Error ("Could not find an associated production rule for constructor '" ^ constructor ^"'") 
       else 
-        let scs = match Option.get rhs with 
-        | (StubbedRhs _) -> assert false 
-        | (Rhs (_, scs, _, _)) -> scs 
+        let scs, rhs_idx = match Option.get rhs with 
+        | (StubbedRhs _, _) -> assert false 
+        | (Rhs (_, scs, _, _), idx) -> scs, idx
         in 
-        handle_scs ast solver_ast constructor element scs)
+        handle_scs ast solver_ast constructor element scs rhs_idx)
   | _ -> Ok ()
 
 let check_solver_ast: Ast.ast -> SolverAst.solver_ast -> (unit, string) result 

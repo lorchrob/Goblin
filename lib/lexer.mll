@@ -3,6 +3,8 @@
 
   exception SyntaxError of string
 
+  let debug = false
+
   let mk_hashtbl init =
     let tbl = List.length init |> Hashtbl.create in
     init |> List.iter (fun (k, v) -> Hashtbl.add tbl k v) ;
@@ -71,52 +73,66 @@ rule read =
   | white { read lexbuf }
   | newline { Lexing.new_line lexbuf ; read lexbuf }
   | "//" [^ '\n']* '\n' { read lexbuf }
-  | ":=" { GETS }
-  | "::=" { PRODUCTION }
-  | "::" {TYPEANNOT}
-  | "|" { OPTION }
-  | "<" { LT }
-  | ">" { GT }
-  | "<=" { LTE }
-  | ">=" { GTE }
-  | "=" { EQ }
-  | "=>" { LIMPLIES }
-  | "{" { LCURLY }
-  | "}" { RCURLY }
-  | "<-" { ASSIGN }
-  (* | "->" { ARROW } *)
-  | "str.++" { STRCONCAT }
-  | "+" { PLUS }
-  | "[" { LSQBRACKET } 
-  | "]" { RSQBRACKET }
-  | "-" { MINUS }
-  | "*" { TIMES }
-  | "div" { DIV }
-  | "(" { LPAREN }
-  | ")" { RPAREN }
-  | "," { COMMA }
-  | ";" { SEMICOLON }
-  | "." { DOT }
+  | ":=" { Utils.debug_print Format.pp_print_string Format.std_formatter ":="; GETS }
+  | "::=" { Utils.debug_print Format.pp_print_string Format.std_formatter "::="; PRODUCTION }
+  | "::" { Utils.debug_print Format.pp_print_string Format.std_formatter "::"; TYPEANNOT }
+  | "|" { Utils.debug_print Format.pp_print_string Format.std_formatter "|"; OPTION }
+  | "<" { Utils.debug_print Format.pp_print_string Format.std_formatter "<"; LT }
+  | ">" { Utils.debug_print Format.pp_print_string Format.std_formatter ">"; GT }
+  | "<=" { Utils.debug_print Format.pp_print_string Format.std_formatter "<="; LTE }
+  | ">=" { Utils.debug_print Format.pp_print_string Format.std_formatter ">="; GTE }
+  | "=" { Utils.debug_print Format.pp_print_string Format.std_formatter "="; EQ }
+  | "=>" { Utils.debug_print Format.pp_print_string Format.std_formatter "=>"; LIMPLIES }
+  | "{" { Utils.debug_print Format.pp_print_string Format.std_formatter "{"; LCURLY }
+  | "}" { Utils.debug_print Format.pp_print_string Format.std_formatter "}"; RCURLY }
+  | "<-" { Utils.debug_print Format.pp_print_string Format.std_formatter "<-"; ASSIGN }
+  | "str.++" { Utils.debug_print Format.pp_print_string Format.std_formatter "str.++"; STRCONCAT }
+  | "+" { Utils.debug_print Format.pp_print_string Format.std_formatter "+"; PLUS }
+  | "[" { Utils.debug_print Format.pp_print_string Format.std_formatter "["; LSQBRACKET }
+  | "]" { Utils.debug_print Format.pp_print_string Format.std_formatter "]"; RSQBRACKET }
+  | "-" { Utils.debug_print Format.pp_print_string Format.std_formatter "-"; MINUS }
+  | "*" { Utils.debug_print Format.pp_print_string Format.std_formatter "*"; TIMES }
+  | "div" { Utils.debug_print Format.pp_print_string Format.std_formatter "div"; DIV }
+  | "@" { Utils.debug_print Format.pp_print_string Format.std_formatter "@"; AT }
+  | "(" { Utils.debug_print Format.pp_print_string Format.std_formatter "("; LPAREN }
+  | ")" { Utils.debug_print Format.pp_print_string Format.std_formatter ")"; RPAREN }
+  | "," { Utils.debug_print Format.pp_print_string Format.std_formatter ","; COMMA }
+  | ";" { Utils.debug_print Format.pp_print_string Format.std_formatter ";"; SEMICOLON }
+  | "." { Utils.debug_print Format.pp_print_string Format.std_formatter "."; DOT }
   | "0b" { read_bits lexbuf }
   | "0x" { read_hex lexbuf }
-  | '"'[^ '"']*'"' as s   { STRING (String.sub s 1 (String.length s - 2)) }
-  | int as p { INTEGER (int_of_string p) }
-  | decimal as p { DECIMAL (float_of_string p) }
+  | '"'[^ '"']*'"' as s   {
+    let content = String.sub s 1 (String.length s - 2) in
+    Utils.debug_print Format.pp_print_string Format.std_formatter ("\"" ^ content ^ "\" ");
+    STRING content
+  }
+  | int as p {
+    Utils.debug_print Format.pp_print_string Format.std_formatter (p);
+    INTEGER (int_of_string p)
+  }
+  | decimal as p {
+    Utils.debug_print Format.pp_print_string Format.std_formatter (p);
+    DECIMAL (float_of_string p)
+  }
   | id as p {
     try (
-      Utils.debug_print Format.pp_print_string Format.std_formatter p; (* switch to true for more debug output *)
+      Utils.debug_print Format.pp_print_string Format.std_formatter (p);
       Hashtbl.find keyword_table p
     ) with Not_found -> ID (p)
   }
-  | eof { EOF }
+  | eof { Utils.debug_print Format.pp_print_string Format.std_formatter "EOF "; EOF }
   | _ as c { raise (SyntaxError (Printf.sprintf "Unexpected character: %c" c)) }
 
 and read_bits = parse
-  | bit+ as b { BITS (List.of_seq (String.to_seq b |> Seq.map (fun c -> c = '1'))) }
+  | bit+ as b {
+      Utils.debug_print Format.pp_print_string Format.std_formatter ("0b" ^ b ^ " ");
+      BITS (List.of_seq (String.to_seq b |> Seq.map (fun c -> c = '1')))
+    }
   | _ { Utils.crash "Invalid bit sequence" }
 
 and read_hex = parse
   | ['0'-'9''a'-'f''A'-'F']+ as h {
+      Utils.debug_print Format.pp_print_string Format.std_formatter ("0x" ^ h ^ " ");
       let bits =
         h
         |> String.to_seq

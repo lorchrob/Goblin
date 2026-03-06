@@ -3,7 +3,7 @@ let replace_stub: string -> SolverAst.solver_ast list -> SolverAst.solver_ast op
   List.find_opt (fun solver_ast -> match solver_ast with 
   | SolverAst.IntLeaf _ | BVLeaf _ | BLLeaf _ | VarLeaf _ 
   | BoolLeaf _ | StrLeaf _ | SetLeaf _ | UnitLeaf -> false 
-  | Node ((constructor, _), _) -> 
+  | Node ((constructor, _, _), _) -> 
     (* To compare stubs, we only need the stub ID prefix "_stubN"*)
     Utils.extract_base_name possible_stub = Utils.extract_base_name constructor
     || 

@@ -134,24 +134,24 @@ type concrete_set =
 | ConcreteStringSetLeaf of Utils.StringSet.t
 
 type derivation_tree = 
-| SymbolicLeaf of A.il_type * (string * int option) list (* path to this node *)
+| SymbolicLeaf of A.il_type * (string * int option * int option) list (* path to this node *)
 | DependentTermLeaf of string 
-| ConcreteBoolLeaf of (string * int option) list * bool (* path to this node, value of the leaf *)
-| ConcreteIntLeaf of (string * int option) list * int 
-| ConcreteUnitLeaf of (string * int option) list
-| ConcretePlaceholderLeaf of (string * int option) list * string 
-| ConcreteStringLeaf of (string * int option) list * string
-| ConcreteSetLeaf of (string * int option) list * concrete_set
-| ConcreteBitVectorLeaf of (string * int option) list * int * bool list 
-| ConcreteBitListLeaf of (string * int option) list * bool list
+| ConcreteBoolLeaf of (string * int option * int option) list * bool (* path to this node, value of the leaf *)
+| ConcreteIntLeaf of (string * int option * int option) list * int 
+| ConcreteUnitLeaf of (string * int option * int option) list
+| ConcretePlaceholderLeaf of (string * int option * int option) list * string 
+| ConcreteStringLeaf of (string * int option * int option) list * string
+| ConcreteSetLeaf of (string * int option * int option) list * concrete_set
+| ConcreteBitVectorLeaf of (string * int option * int option) list * int * bool list 
+| ConcreteBitListLeaf of (string * int option * int option) list * bool list
 (* label, path to this node, children *)
-| Node of (string * int option) * (string * int option) list * derivation_tree list
+| Node of (string * int option * int option) * (string * int option * int option) list * derivation_tree list
 
 type search_tree =
   (* DT at this node of the search tree, parent node, depth, and child nodes (if any). 
      child nodes have integer indices to denote that they are the nth expansion option. *)
   (*!! TODO: The `search_tree` in the `(search_tree * int) list ref` is not used. 
-             It takes nontrivial space -- remove!! *)
+             It takes nontrivial space -- remove! *)
 | STNode of derivation_tree * search_tree option * int * (search_tree * int) list ref
 
 let rec pp_print_derivation_tree ppf derivation_tree = match derivation_tree with 
@@ -171,12 +171,13 @@ let rec pp_print_derivation_tree ppf derivation_tree = match derivation_tree wit
     let bits = List.map Bool.to_int bits in
   Format.fprintf ppf "(BitList 0b%a)"
     (Lib.pp_print_list Format.pp_print_int "") bits
-| Node ((nt, Some idx), _, children) -> 
-  Format.fprintf ppf "(%a%d %a)"
+| Node ((nt, Some idx1, Some idx2), _, children) -> 
+  Format.fprintf ppf "(%a.%d.%d %a)"
     Format.pp_print_string nt 
-    idx
+    idx1 
+    idx2
     (Lib.pp_print_list pp_print_derivation_tree " ") children
-| Node ((nt, None), _, children) -> 
+| Node ((nt, _, _), _, children) -> 
   Format.fprintf ppf "(%a %a)"
     Format.pp_print_string nt 
     (Lib.pp_print_list pp_print_derivation_tree " ") children
@@ -214,7 +215,7 @@ let declare_smt_variables: 'a -> Utils.StringSet.t ref -> A.il_type Utils.String
 
 (* State expression nonterminals in terms of absolute paths from 
    the root of the derivation tree *)
-let rec universalize_expr: bool -> (string * int option) list -> Ast.expr -> Ast.expr
+let rec universalize_expr: bool -> (string * int option * int option) list -> Ast.expr -> Ast.expr
 = fun is_type_annotation prefix expr ->
   let r = universalize_expr is_type_annotation prefix in
   match expr with
@@ -240,9 +241,10 @@ let rec universalize_expr: bool -> (string * int option) list -> Ast.expr -> Ast
   | SynthAttr _ -> assert false
 
 let string_of_path path = 
-  let path = List.map (fun (nt, idx) -> match idx with 
-  | None -> nt
-  | Some idx -> Format.asprintf "%s%d" nt idx
+  let path = List.map (fun (nt, idx1, idx2) -> match idx1, idx2 with 
+  | None, None -> nt
+  | Some idx1, Some idx2 -> Format.asprintf "%s!%d!%d" nt idx1 idx2
+  | _ -> assert false
   ) path in 
   String.concat "_" path
 
@@ -253,7 +255,7 @@ let rec normalize_derivation_tree ctx ast declared_variables solver
 let r = normalize_derivation_tree ctx ast declared_variables solver constraints_to_assert variable_stack 
                                    blocking_clause_vars assertion_level in 
 match dt with 
-| Node ((nt, idx), path, []) -> 
+| Node ((nt, idx1, idx2), path, []) -> 
   let forced_expansion = List.find_map (fun element -> match element with 
   | A.ProdRule (nt2, _, [Rhs (ges, scs, _, _)], _) -> 
     if Utils.str_eq_ci nt nt2 then 
@@ -264,10 +266,10 @@ match dt with
       ) scs |> List.split in
       let expr_variables = List.map A.get_nts_from_expr2 constraints_to_add |> List.flatten in
       let ty_ctx = List.fold_left (fun acc nt -> 
-        let ty = Utils.StringMap.find_opt (List.rev nt |> List.hd |> fst) ctx in 
+        let ty = Utils.StringMap.find_opt (List.rev nt |> List.hd |> Utils.tr_fst) ctx in 
         let ty = match ty with 
         | Some ty -> ty 
-        | None -> Utils.crash ("couldn't find " ^ (List.rev nt |> List.hd |> fst))
+        | None -> Utils.crash ("couldn't find " ^ (List.rev nt |> List.hd |> Utils.tr_fst))
         in
         let str = Format.asprintf "%a" (Lib.pp_print_list SmtPrinter.pp_print_nt_helper "_") nt in
         Utils.StringMap.add str ty acc
@@ -275,10 +277,10 @@ match dt with
       declare_smt_variables variable_stack declared_variables ty_ctx solver blocking_clause_vars assertion_level ;
       constraints_to_assert := ConstraintSet.union !constraints_to_assert (ConstraintSet.of_list constraints_to_add); 
       let children = List.map (fun ge -> match ge with 
-        | A.Nonterminal (nt, idx_opt, _, _) ->
-          Node ((nt, idx_opt), path @ [nt, idx_opt], [])  
+        | A.Nonterminal (nt, idx_opt1, idx_opt2, _, _) ->
+          Node ((nt, idx_opt1, idx_opt2), path @ [nt, idx_opt1, idx_opt2], [])  
         | StubbedNonterminal (_id, stub_id) -> 
-          Node ((_id, None), path @ [_id, None], [DependentTermLeaf stub_id])
+          Node ((_id, None, None), path @ [_id, None, None], [DependentTermLeaf stub_id])
         ) ges in
        Some children 
     else 
@@ -295,14 +297,14 @@ match dt with
       | AttrDef _ -> assert false
       ) scs |> ConstraintSet.of_list in
       constraints_to_assert := ConstraintSet.union !constraints_to_assert constraints_to_add;
-      Some [SymbolicLeaf (ty, path @ [(nt, idx)])]
+      Some [SymbolicLeaf (ty, path @ [(nt, idx1, idx2)])]
     else None 
   ) ast in 
   let children = match forced_expansion with 
   | Some children -> children 
   | None -> [] 
   in 
-  Node ((nt, idx), path, List.map r children) 
+  Node ((nt, idx1, idx2), path, List.map r children) 
 | Node (nt, path, children) -> 
   Node (nt, path, List.map r children)
 | leaf -> leaf 
@@ -316,7 +318,7 @@ let new_decision_level: Smt.solver_instance -> int ref -> Utils.StringSet.t ref 
   ()
 
 let rec collect_constraints_of_dt ast = function 
-  | Node ((nt, _), path, children) -> 
+  | Node ((nt, _, _), path, children) -> 
     let child_constraints = List.map (collect_constraints_of_dt ast) children in 
     let child_constraints = List.fold_left ConstraintSet.union ConstraintSet.empty child_constraints in
     let grammar_rule = List.find (fun element -> match element with 
@@ -338,14 +340,15 @@ let rec collect_constraints_of_dt ast = function
    in a given derivation_tree *)
 let rec nt_will_be_reached derivation_tree ast nt = 
   (* at each step, check if the rest of nt is reachable from head *)
-  let rec nt_will_be_reached_ast: (string * int option) list -> (string * int option) -> bool 
+  let rec nt_will_be_reached_ast: 
+    (string * int option * int option) list -> (string * int option * int option) -> bool 
   = fun nt head -> match nt with 
   | [] -> true 
   | new_head :: nts -> 
     let rule = List.find (fun element -> match element with
     | A.TypeAnnotation (nt2, _, _, _) 
-    (*!!! Index needs to be taken into account, see bug4.gbl *)
-    | A.ProdRule (nt2, _, _, _) -> nt2 = (fst head)
+    (*!! Index needs to be taken into account, see bug4.gbl *)
+    | A.ProdRule (nt2, _, _, _) -> nt2 = (Utils.tr_fst head)
     ) ast in 
     match rule with 
     | ProdRule (_, _, rhss, _) -> 
@@ -358,23 +361,32 @@ let rec nt_will_be_reached derivation_tree ast nt =
   in
   match nt with 
   | [] -> true 
-  | str :: nts -> match derivation_tree with 
+  | (str, idx1, idx2) :: nts -> match derivation_tree with 
     | Node (head, _, children) -> 
       if children = [] then nt_will_be_reached_ast nt head
       else (
         match List.find_opt (fun child -> match child with 
-        | Node (nt2, _, _) -> str = nt2
-        | SymbolicLeaf (_, path) -> str = (Utils.last path)
+        | Node ((nt2, idx', idx''), _, _) -> 
+          str = nt2 && ((idx1 = idx' && idx2 = idx'') || (idx1 = None && idx2 = None))
+        | SymbolicLeaf (_, path) -> 
+          str = (Utils.last path |> Utils.tr_fst) && 
+          ((idx1 = None && idx2 = None) || 
+           (idx1 = (Utils.last path |> Utils.tr_snd) && 
+            idx2 = (Utils.last path |> Utils.tr_trd)))
         | ConcreteIntLeaf (path, _) | ConcreteBoolLeaf (path, _) 
         | ConcreteUnitLeaf path | ConcreteBitListLeaf (path, _) 
         | ConcreteBitVectorLeaf (path, _, _) | ConcretePlaceholderLeaf (path, _) 
-        | ConcreteStringLeaf (path, _) | ConcreteSetLeaf (path, _) -> str = (Utils.last path)
-        | DependentTermLeaf nt2 -> (fst str) = nt2
+        | ConcreteStringLeaf (path, _) | ConcreteSetLeaf (path, _) -> 
+          str = (Utils.last path |> Utils.tr_fst) && 
+          ((idx1 = None && idx2 = None) || 
+            (idx1 = (Utils.last path |> Utils.tr_snd)) && 
+             idx2 = (Utils.last path |> Utils.tr_trd))
+        | DependentTermLeaf nt2 -> str = nt2
         ) children with 
         | Some child -> nt_will_be_reached child ast nts
         | None -> 
           if !Flags.debug then Format.fprintf Format.std_formatter "Could not find child %s from node %s\n"
-            (fst str) (fst head);
+            str (Utils.tr_fst head);
           false)
     | _ -> true
 
@@ -422,7 +434,7 @@ let initialize_globals ctx ast derivation_tree start_symbol constraints_to_asser
   (* Keep around constraints we may not need to assert *)
   constraints_to_assert := ConstraintSet.empty; 
   (* Incremental construction of output term so far *)
-  derivation_tree := (Node ((start_symbol, Some 0), [start_symbol, Some 0], []));
+  derivation_tree := (Node ((start_symbol, Some 0, Some 0), [start_symbol, Some 0, Some 0], []));
   derivation_tree := normalize_derivation_tree ctx ast declared_variables solver constraints_to_assert !variable_stack blocking_clause_vars assertion_level !derivation_tree ;
   constraints_to_assert := assert_applicable_constraints constraints_to_assert !derivation_tree ast solver;
   (* Set of paths through the tree to help determine when to push constraints from constraints_to_assert *)
@@ -483,7 +495,7 @@ let find_new_expansion ast derivation_tree curr_st_node =
   in 
   let rec expansion_probabilities dt =
   match dt with
-  | Node ((nt, _), _, []) ->
+  | Node ((nt, _, _), _, []) ->
     let probs =
     match List.find_opt (fun e -> match e with
     | A.ProdRule (nt2, _, _, _) | TypeAnnotation (nt2, _, _, _) -> nt = nt2
@@ -515,7 +527,7 @@ let find_new_expansion ast derivation_tree curr_st_node =
         expanded_node, Node (nt, path, child :: expanded_children)
       | _ -> assert false 
     )
-  | Node ((nt, idx), path, []) -> 
+  | Node ((nt, idx1, idx2), path, []) -> 
     let element = List.find (fun element -> match element with 
     | A.TypeAnnotation (nt2, _, _, _) 
     | ProdRule (nt2, _, _, _) -> Utils.str_eq_ci nt nt2
@@ -523,7 +535,9 @@ let find_new_expansion ast derivation_tree curr_st_node =
     match element with 
     | TypeAnnotation (_, ty, _, _) -> 
       if n = 1 then 
-        let expanded_node = Node ((nt, idx), path, [SymbolicLeaf (ty, path @ [(nt, idx)])]) in 
+        let expanded_node = 
+          Node ((nt, idx1, idx2), path, [SymbolicLeaf (ty, path @ [(nt, idx1, idx2)])]) 
+        in
         expanded_node, expanded_node 
       else assert false 
     | ProdRule (_nt', _, rhss, _) -> 
@@ -531,15 +545,15 @@ let find_new_expansion ast derivation_tree curr_st_node =
       match rhs with 
       | A.Rhs (ges, _, _, _) -> 
         let children = List.map (fun ge -> match ge with 
-        | A.Nonterminal (nt, idx_opt, _, _) ->
-          Node ((nt, idx_opt), path @ [nt, idx_opt], [])  
+        | A.Nonterminal (nt, idx_opt1, idx_opt2, _, _) ->
+          Node ((nt, idx_opt1, idx_opt2), path @ [nt, idx_opt1, idx_opt2], [])  
         | StubbedNonterminal (nt_id, stub_id) -> 
-          Node ((nt_id, None), path @ [nt_id, None], [DependentTermLeaf stub_id])
+          Node ((nt_id, None, None), path @ [nt_id, None, None], [DependentTermLeaf stub_id])
         ) ges in 
-        let expanded_node = Node ((nt, idx), path, children) in 
+        let expanded_node = Node ((nt, idx1, idx2), path, children) in 
         expanded_node, expanded_node 
       | StubbedRhs str -> 
-        let expanded_node = Node ((nt, idx), path, [DependentTermLeaf str]) in 
+        let expanded_node = Node ((nt, idx1, idx2), path, [DependentTermLeaf str]) in 
         expanded_node, expanded_node
     )
   | _ -> assert false 
@@ -572,7 +586,6 @@ let backtrack ctx ast assertion_level decision_stack solver backtrack_depth decl
     let STNode (dt, _, _, _) = st_node in 
     let original_constraints = collect_constraints_of_dt ast !derivation_tree in 
     let maintained_constraints = collect_constraints_of_dt ast dt in 
-    (*!! TODO: Fix bug where constraints aren't being removed *)
     (*Format.printf "Original constraints: %a, maintained constraints %a" 
     (Lib.pp_print_list A.pp_print_expr ", ") (ConstraintSet.to_list original_constraints)
     (Lib.pp_print_list A.pp_print_expr ", ") (ConstraintSet.to_list maintained_constraints);*)
@@ -586,9 +599,10 @@ let backtrack ctx ast assertion_level decision_stack solver backtrack_depth decl
     curr_st_node := st_node
   )
 
-let string_of_constructor (str, idx) = match idx with 
-| None -> str 
-| Some idx -> str ^ (string_of_int idx)
+let string_of_constructor (str, idx1, idx2) = match idx1, idx2 with 
+| None, None -> str 
+| Some idx1, Some idx2 -> str ^ "!" ^ (string_of_int idx1) ^ "!" ^ (string_of_int idx2)
+| _ -> assert false
 
 let rec model_of_solver_ast: SolverAst.solver_ast -> (model_value Utils.StringMap.t, unit) result
 = fun solver_ast -> 
@@ -626,14 +640,14 @@ let get_smt_result: A.ast -> Smt.solver_instance -> bool -> (model_value Utils.S
     Smt.issue_solver_command "(get-model)\n" solver;
     let response = Smt.read_get_model_response solver in
     if !Flags.debug then Format.fprintf Format.std_formatter "Solver response: %s\n" response;
-    let result = match Parsing.parse_sygus response ast with 
+    let result = match Parsing.parse_solver response ast with 
     | Ok result -> result 
     | Error msg -> Format.fprintf Format.std_formatter "Error parsing: %s\n" msg; assert false 
     in
     Some (model_of_solver_ast result)
   ) else if response = "sat" then None  
   else
-    let result = match Parsing.parse_sygus response ast with 
+    let result = match Parsing.parse_solver response ast with 
     | Ok result -> result 
     | Error msg -> Format.fprintf Format.std_formatter "Error parsing: %s\n" msg; assert false 
     in
@@ -727,7 +741,7 @@ let rec is_complete derivation_tree = match derivation_tree with
 let rec solver_ast_of_derivation_tree: derivation_tree -> SA.solver_ast 
 = fun derivation_tree -> match derivation_tree with
 | DependentTermLeaf nt -> VarLeaf (String.lowercase_ascii (nt ^ "_con")) (* Match sygus encoding format *)
-| SymbolicLeaf (_, path) -> VarLeaf (String.concat "" (List.map fst path))
+| SymbolicLeaf (_, path) -> VarLeaf (String.concat "" (List.map Utils.tr_fst path))
 | ConcreteIntLeaf (_, i) -> IntLeaf i
 | ConcreteUnitLeaf _ -> UnitLeaf
 | ConcreteBitListLeaf (_, bits) -> BLLeaf bits 
@@ -759,9 +773,14 @@ let pp_print_model_pair ppf (k, v) =
     pp_print_model_value v 
 
 let rec get_dt_vars = function 
-| Node ((id, idx), _, children) -> 
-  let id_str = Format.asprintf "%s%a"
-    id (fun ppf idx -> match idx with | Some idx -> Format.pp_print_int ppf idx | None -> ()) idx in
+| Node ((id, idx1, idx2), _, children) -> 
+
+  let id_str = match idx1, idx2 with 
+  | Some idx1, Some idx2 -> Format.asprintf "%s.%d.%d"
+     id idx1 idx2
+  | None, None -> id 
+  | _ -> assert false
+  in
   let r = List.map get_dt_vars children in
   let r = List.fold_left Utils.StringSet.union Utils.StringSet.empty r in
   Utils.StringSet.map (fun child -> 
@@ -847,14 +866,14 @@ let dpll: A.il_type Utils.StringMap.t -> A.semantic_constraint Utils.StringMap.t
   in
 
   let start_symbol, start_path = match List.hd ast with 
-  | A.TypeAnnotation (nt, _, _, _) -> nt, [nt, Some 0]
-  | ProdRule (nt, _, _, _) -> nt, [nt, Some 0]
+  | A.TypeAnnotation (nt, _, _, _) -> nt, [nt, Some 0, Some 0]
+  | ProdRule (nt, _, _, _) -> nt, [nt, Some 0, Some 0]
   in 
 
   (* Solver object *)
   let solver = Smt.initialize_solver () in
  
-  (*!! IDEA: dynamically alter starting depth limit *)
+  (* IDEA: dynamically alter starting depth limit *)
   (*** HYPERPARAMETERS *)
   let starting_depth_limit = !Flags.starting_depth_limit in 
   let restart_rate = !Flags.restart_rate in 
@@ -876,7 +895,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.semantic_constraint Utils.StringMap.t
   (* Keep around constraints we may not need to assert *)
   let constraints_to_assert = ref ConstraintSet.empty in 
   (* Incremental construction of output term so far *)
-  let derivation_tree = ref (Node ((start_symbol, Some 0), start_path, [])) in 
+  let derivation_tree = ref (Node ((start_symbol, Some 0, Some 0), start_path, [])) in 
   derivation_tree := normalize_derivation_tree ctx ast declared_variables solver constraints_to_assert !variable_stack blocking_clause_vars assertion_level !derivation_tree ;
   constraints_to_assert := assert_applicable_constraints constraints_to_assert !derivation_tree ast solver;
   (* Current spot in the search tree *) 
@@ -975,7 +994,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.semantic_constraint Utils.StringMap.t
       (* Find the associated AST rule for the new expansion *)
       let grammar_rule = List.find (fun element -> match element with 
       | A.ProdRule (nt2, _, _, _) 
-      | A.TypeAnnotation (nt2, _, _, _) -> Utils.str_eq_ci (fst nt) nt2
+      | A.TypeAnnotation (nt2, _, _, _) -> Utils.str_eq_ci (Utils.tr_fst nt) nt2
       ) ast in 
       let path' = string_of_path path |> String.lowercase_ascii in
 
@@ -1008,16 +1027,16 @@ let dpll: A.il_type Utils.StringMap.t -> A.semantic_constraint Utils.StringMap.t
         let chosen_rule = List.find (fun rhs -> match rhs with 
         | A.StubbedRhs str1 -> (
           match children with 
-          | [Node ((_, None), _, [DependentTermLeaf str2])] ->
+          | [Node ((_, None, None), _, [DependentTermLeaf str2])] ->
             Utils.str_eq_ci str1 str2
           | _ -> false 
           )
         | A.Rhs (ges, _, _, _) -> 
           if List.length ges = List.length children then 
             List.for_all2 (fun child ge -> match child, ge with 
-            | Node ((nt, idx), _, _), A.Nonterminal (nt2, idx2, _, _) -> 
-              Utils.str_eq_ci nt nt2 && idx = idx2
-            | Node ((_, None), _, [DependentTermLeaf stub_id1]), A.StubbedNonterminal (_, stub_id2) ->
+            | Node ((nt, idx1, idx2), _, _), A.Nonterminal (nt2, idx3, idx4, _, _) -> 
+              Utils.str_eq_ci nt nt2 && idx1 = idx3 && idx2 = idx4
+            | Node ((_, None, None), _, [DependentTermLeaf stub_id1]), A.StubbedNonterminal (_, stub_id2) ->
               Utils.str_eq_ci stub_id1 stub_id2
             | _ -> false 
             ) children ges 
@@ -1033,7 +1052,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.semantic_constraint Utils.StringMap.t
             (* Assert semantic constraints for production rules *)
             let expr_variables = A.get_nts_from_expr2 expr in
             let ty_ctx = List.fold_left (fun acc nt -> 
-              let ty = Utils.StringMap.find (List.rev nt |> List.hd |> fst) ctx in 
+              let ty = Utils.StringMap.find (List.rev nt |> List.hd |> Utils.tr_fst) ctx in 
               let str = Format.asprintf "%a" (Lib.pp_print_list SmtPrinter.pp_print_nt_helper "_") nt in
               let str = path' ^ "_" ^ str in 
               Utils.StringMap.add str ty acc

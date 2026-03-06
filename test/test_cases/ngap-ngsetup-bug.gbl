@@ -21,18 +21,18 @@
 <supported-ta-value>                :: BitVec(2);
 <supported-ta-item-sequence>        ::= <extension-flag><preamble>;
 <BroadcastPLMNList-Values>          ::= <broadcast-plmn-list-length> <BroadcastPLMNList> {
-    <BroadcastPLMNList>.<_length> >= 1 and <BroadcastPLMNList>.<_length> <= 12;    
+    <BroadcastPLMNList>.len >= 1 and <BroadcastPLMNList>.len <= 12;    
 };
-<BroadcastPLMNList>                 ::= <_length> <BroadcastPLMNItem> { <_length> = 1 ;}
-                                    | <_length> <BroadcastPLMNItem> <BroadcastPLMNList> { <_length> = <BroadcastPLMNList>.<_length> + 1 ; };
+<BroadcastPLMNList>                 ::= <BroadcastPLMNItem> { len := 1 ;}
+                                    | <BroadcastPLMNItem> <BroadcastPLMNList> { len := <BroadcastPLMNList>.len + 1 ; };
 <BroadcastPLMNItem>                 ::= <broadcast-plmn-sequence> <PLMNIdentity> <SliceSupportList-Values>;
 <broadcast-plmn-sequence>           ::= <extension-flag> <preamble> <broadcast-plmn-padding>;
 <SliceSupportList-Values>           ::= <SliceSupportList-values-length> <SliceSupportList>
 {
-    <SliceSupportList>.<_length> >= 1 and <SliceSupportList>.<_length> <= 1024;
+    <SliceSupportList>.len >= 1 and <SliceSupportList>.len <= 1024;
 };
-<SliceSupportList>                  ::= <_length> <SliceSupportItem> { <_length> = 1 ; }
-                                    | <_length> <SliceSupportItem> <SliceSupportList> { <_length> = <SliceSupportList>.<_length> + 1 ; };
+<SliceSupportList>                  ::= <SliceSupportItem> { len := 1 ; }
+                                    | <SliceSupportItem> <SliceSupportList> { len := <SliceSupportList>.len + 1 ; };
 <SliceSupportItem>                  ::= <slice-support-item-sequence> <S-NSSAI>;
 <slice-support-item-sequence>       ::= <extension-flag> <preamble>;
 <S-NSSAI>                           ::= <extension-flag> <s-nssai-options>;
@@ -117,7 +117,7 @@
 <grn-length>                        :: BitVec(8);
 <grn-sequence-id>                   :: BitVec(16);
 <supported-ta-length>		:: BitVec(8);
-<_length> :: Int;
+len :: Int;
 <sd-padding>		:: BitVec(3);
 <gnb-id-choice>		::BitVec(1);
 <gnb-id-string-padding> 	:: BitVec(3);
