@@ -143,8 +143,8 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.solver_ast 
         Utils.find_index_opt (fun ge -> match ge with 
         | A.Nonterminal (nt, idx, idx', _, _) -> 
           Utils.str_eq_ci id nt && 
-          (idx0 = idx) && 
-          (idx1 = idx')
+          (idx0 = idx  || idx0 = None) && 
+          (idx1 = idx' || idx1 = None)
         | StubbedNonterminal (nt, _) -> 
           Utils.str_eq_ci id nt 
         ) ges
