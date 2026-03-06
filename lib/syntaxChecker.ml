@@ -472,6 +472,22 @@ let check_probabilities nt rhss p =
       Utils.error msg p
     else rhss
 
+let check_no_redefinitions rhs = match rhs with 
+  | StubbedRhs _ -> rhs 
+  | Rhs (_, scs, _, p) -> 
+    let derived_fields = List.concat_map (fun sc -> match sc with 
+    | Ast.DerivedField (nt, _, _) -> [nt] 
+    | SmtConstraint _ | AttrDef _ -> []
+    ) scs in 
+    let derived_fields' = derived_fields |> Utils.StringSet.of_list |> Utils.StringSet.to_list in 
+    if not (List.equal String.equal derived_fields derived_fields') then 
+      let msg = Format.asprintf "Production rule RHS %a contains more than one derived field definition for the same nonterminal (derived field (you might also have to look at the type annotations to find the duplicates)"
+        Ast.pp_print_prod_rule_rhs rhs 
+      in 
+      Utils.error msg p
+    else 
+      rhs 
+
 let check_syntax: prod_rule_map -> Utils.StringSet.t -> ast -> ast 
 = fun prm nt_set ast -> 
   (*let ast = sort_ast ast in*) (* Maybe need this in non-dpll engines? *)
@@ -487,6 +503,7 @@ let check_syntax: prod_rule_map -> Utils.StringSet.t -> ast -> ast
   let ast = List.map (fun element -> match element with 
   | ProdRule (nt, inhs, rhss, p) -> 
     let rhss = List.map (check_syntax_prod_rule ast prm nt_set) rhss in
+    let rhss = List.map check_no_redefinitions rhss in
     let rhss = check_probabilities nt rhss p in 
     ProdRule (nt, inhs, rhss, p)
   | TypeAnnotation (nt, ty, scs, p) -> 

@@ -46,7 +46,7 @@ let is_sc_applicable: Ast.expr -> SolverAst.solver_ast -> bool
   List.for_all (fun a -> a) nts_are_applicable
 
 let handle_scs ast solver_ast constructor element scs rhs_idx = 
-  let scs = List.map (fun sc -> match sc with 
+  let scs' = List.map (fun sc -> match sc with 
   | A.SmtConstraint (expr, p) -> 
     if is_sc_applicable expr solver_ast || (* type annotation constraints are always applicable *)
        match element with | A.TypeAnnotation _ -> true | A.ProdRule _ -> false
@@ -85,8 +85,19 @@ let handle_scs ast solver_ast constructor element scs rhs_idx =
   | [A.BConst (false, _)] -> true 
   | [BConst (true, _)] -> false 
   | _ -> Utils.crash "Unexpected pattern in check_syntax_semantics"
-  ) scs in
-  if b then Error ("Semantic constraint on constructor '" ^ constructor ^ "' is falsified") else
+  ) scs' in
+  if b then 
+    let i = List.find_index (fun sc -> match sc with 
+  | [A.BConst (false, _)] -> true 
+  | [BConst (true, _)] -> false 
+  | _ -> Utils.crash "Unexpected pattern in check_syntax_semantics"
+  ) scs' in 
+    let failed_sc = List.nth scs (Option.get i) in
+    let msg = Format.asprintf "Semantic constraint %a on constructor '%s' is falsified" 
+      A.pp_print_semantic_constraint failed_sc 
+      constructor 
+    in
+    Error msg else
   Ok ()
 
 let rec check_syntax_semantics: Ast.ast -> SolverAst.solver_ast -> (unit, string) result 
