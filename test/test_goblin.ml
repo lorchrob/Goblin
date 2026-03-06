@@ -872,9 +872,11 @@ let dd_test14 () =
 
 let example_fail () = 
   let input = "../../../test/test_cases/example-fail.gbl" in
-  match main_pipeline input with 
-  | exception _ -> () 
-  | _ -> fail "should fail"
+  let solver_ast, _, ast = main_pipeline ~engine:(Some DpllMono) input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
+  match output with
+  | Ok _ -> ()  
+  | Error msg -> fail msg
 
 let dm_test16 () = 
   let input = "../../../test/test_cases/test16" in
