@@ -20,7 +20,6 @@ let only_parse = ref false
 let show_winner = ref false
 let dump_clp = ref false
 let multiple_solutions = ref false
-let saecred = ref false
 let filename = ref None
 let selected_engine = ref DpllMono
 let output_format = ref SExpression 
@@ -95,11 +94,6 @@ let parse_args () =
     Arg.(value & flag & info ["multiple-solutions"] ~doc) 
   in
 
-  let saecred_flag =
-    let doc = "Activate saecred mode" in
-    Arg.(value & flag & info ["saecred"] ~doc)
-  in
-
   let filename_flag =
     let doc = "Specify the input file" in
     Arg.(value & opt (some string) None & info ["file"] ~doc)
@@ -141,7 +135,7 @@ let parse_args () =
   in
 
   let set_flags new_debug new_no_warnings new_only_parse new_show_winner 
-                new_dump_clp new_multiple_solutions new_saecred new_filename new_engine new_output_format 
+                new_dump_clp new_multiple_solutions new_filename new_engine new_output_format 
                 new_num_solutions new_starting_depth_limit new_restart_rate new_sols_per_iter new_seed =
     Format.pp_print_flush Format.std_formatter ();
     debug := new_debug;
@@ -150,7 +144,6 @@ let parse_args () =
     show_winner := new_show_winner;
     dump_clp := new_dump_clp;
     multiple_solutions := new_multiple_solutions; 
-    saecred := new_saecred;
     filename := new_filename;
     selected_engine := new_engine;
     output_format := new_output_format;
@@ -169,7 +162,6 @@ let parse_args () =
           $ show_winner_flag
           $ dump_clp_flag
           $ multiple_solutions_flag
-          $ saecred_flag
           $ filename_flag
           $ engine_flag
           $ output_format_flag
