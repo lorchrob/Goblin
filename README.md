@@ -49,3 +49,7 @@ or how to integrate Goblin into your fuzzing workflow.
 ### Citing Goblin
 
 Details to come :)
+
+### Papers using Goblin
+
+Details to come :)
