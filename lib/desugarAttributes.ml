@@ -49,6 +49,7 @@ let rec attr_to_nt_expr
   | NTExpr _
   | StrConst _
   | EmptySet _ -> expr
+  | ActLit _ -> assert false
 
 (* Convert synthesized and inherited attributes to their corresponding bare NTExprs 
    (using the generated nonterminals). 

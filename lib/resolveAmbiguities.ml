@@ -139,6 +139,7 @@ let rec gen_all_exprs
     Utils.error msg (A.pos_of_expr expr)
   | InhAttr _
   | SynthAttr _ -> assert false
+  | ActLit _ -> assert false
 
 let process_sc
 = fun ctx ast ges sc -> match sc with 

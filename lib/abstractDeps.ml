@@ -8,6 +8,7 @@ let rec calculate_casts: expr -> expr
   | _ -> BVCast (len, expr, p)
   )
 | BinOp (expr1, op, expr2, p) -> BinOp (calculate_casts expr1, op, calculate_casts expr2, p) 
+| ActLit (nt_expr, p) -> ActLit (calculate_casts nt_expr, p)
 | UnOp (op, expr, p) -> UnOp (op, calculate_casts expr, p) 
 | Singleton (expr, p) -> Singleton (calculate_casts expr, p)
 | CompOp (expr1, op, expr2, p) -> CompOp (calculate_casts expr1, op, calculate_casts expr2, p) 

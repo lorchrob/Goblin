@@ -104,6 +104,7 @@ let rec check_dangling_identifiers: Utils.StringSet.t -> Lexing.position -> expr
   | InhAttr _
   | PhConst _ 
   | StrConst _ -> expr
+  | ActLit _ -> assert false
 
 let rec check_nt_expr_refs: 
   prod_rule_map -> (string * int option * int option) list -> 
@@ -150,6 +151,7 @@ let rec check_prod_rule_nt_exprs: prod_rule_map -> Utils.StringSet.t -> expr -> 
   | PhConst _ 
   | InhAttr _
   | StrConst _ -> expr
+  | ActLit _ -> assert false
 
 (* Check each nonterminal expression begins with a valid nonterminal
    and contains valid dot notation references *)
@@ -178,6 +180,7 @@ let rec check_type_annot_nt_exprs: prod_rule_map -> Utils.StringSet.t -> expr ->
   | SynthAttr _
   | InhAttr _
   | StrConst _ -> expr
+  | ActLit _ -> assert false
 
 
 (* Every SMT constraint must contain some nonterminal. Everything else is trivial, ie, reduces to either 
@@ -233,6 +236,7 @@ let rec check_for_ambiguous_derived_fields ast df expr rhs =
   | SynthAttr _
   | InhAttr _
   | EmptySet _  -> Ok ()
+  | ActLit _ -> assert false
 
 let check_syntax_prod_rule: ast -> prod_rule_map -> Utils.StringSet.t -> prod_rule_rhs -> prod_rule_rhs
 = fun ast prm nt_set rhs -> match rhs with 
@@ -393,6 +397,7 @@ let str_const_to_ph_const ast =
   | SynthAttr _
   | InhAttr _
   | PhConst _ as expr -> expr
+  | ActLit _ -> assert false
   in
 
   let handle_sc ty sc = match sc with 
