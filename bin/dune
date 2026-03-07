@@ -1,5 +1,0 @@
-(executable
- (public_name goblin)
- (name main)
- (libraries goblin)
- )
