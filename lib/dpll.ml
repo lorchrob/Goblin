@@ -3,15 +3,34 @@ module SA = SolverAst
 module B = Batteries
 
 let (let*) = Res.(>>=)
+
+(* APPLICABILITY PR 
+   - every time you encounter constraints, immediately assert *all* constraints (DONE)
+   - every time you encounter constraints, 
+     declare (but don't assert) the activation literal (DONE)
+   - every time you expand to a leaf (symbolic terminal), 
+     declare and assert the activation literal (DONE)
+   - not best way to handle declarations for activation literals yet. 
+     Because we may encounter an activation literal at a constraint first, or at 
+     a leaf first.
+       - don't we already have this problem with regular leaf variables? 
+         if already declared they won't be redeclared because we check the set of 
+         declared variables. But maybe can do better (let cvc5 do the check for us? 
+         and use print-success?)
+*) 
+
 (* TODO 
 
-   * Optimization: normalize in cases where you have an open leaf and multiple prod rule options, 
-     but only one remaining option 
-   * Optimization: don't represent search tree explicitly in memory; it exists logically but only use 
-     minimal bits to represent it (e.g., a map from DTs to indices of expansions you've tried; 
+   * Optimization: normalize in cases where you have an open leaf 
+     and multiple prod rule options, but only one remaining option 
+   * Optimization: don't represent search tree explicitly in memory; 
+     it exists logically but only use minimal bits to represent it 
+     (e.g., a map from DTs to indices of expansions you've tried; 
      map from DT to depth, and so on) 
-   * Optimization: Better way to do dot notation constraints -- synthesized attribute style? But maybe doesn't work 
-     since <A>.<B> could reference multiple <B>s in the same prod rule, and we don't want to use list map. 
+   * Optimization: Better way to do dot notation constraints -- 
+     synthesized attribute style? But maybe doesn't work 
+     since <A>.<B> could reference multiple <B>s in the same prod rule, 
+     and we don't want to use list map. 
      CLP style, but w/ semantics to somehow avoid list map?
      W/ CLP style variable passing, the user specifies exactly what gets passed up the chain... 
    * Optimization: Actually for dot notation, one idea: Do "constraint passing", where instead 
@@ -196,15 +215,18 @@ let random_int_in_range: int -> int -> int
 = fun min max ->
   min + Random.int (max - min + 1) 
 
-let declare_smt_variables: 'a -> Utils.StringSet.t ref -> A.il_type Utils.StringMap.t -> Smt.solver_instance -> 'b -> 'c -> unit 
+let declare_smt_variables 
 = fun variable_stack declared_variables ctx solver blocking_clause_vars assertion_level -> 
   Utils.StringMap.iter (fun var ty -> 
     if Utils.StringSet.mem var !declared_variables then 
       () 
     else 
-      let declaration_string = Format.asprintf "(declare-fun %s () %a)\n" var SmtPrinter.pp_print_ty ty in
+      let declaration_string = Format.asprintf "(declare-fun %s () %a)\n" 
+        var SmtPrinter.pp_print_ty ty 
+      in
       declared_variables := Utils.StringSet.add var !declared_variables;
-      (* Hacky -- if at the zeroth assertion level, we keep variables around by storing them in blocking_clause_vars,
+      (* Hacky -- if at the zeroth assertion level, we keep variables around 
+         by storing them in blocking_clause_vars, 
          even if they aren't part of a blocking clause *)
       if !assertion_level = 0 then 
         blocking_clause_vars := Utils.StringSet.add var !blocking_clause_vars; 
@@ -272,8 +294,11 @@ match dt with
         | Some ty -> ty 
         | None -> Utils.crash ("couldn't find " ^ (List.rev nt |> List.hd |> Utils.tr_fst))
         in
-        let str = Format.asprintf "%a" (Lib.pp_print_list SmtPrinter.pp_print_nt_helper "_") nt in
-        Utils.StringMap.add str ty acc
+        let str = Format.asprintf "%a" 
+          (Lib.pp_print_list SmtPrinter.pp_print_nt_helper "_") nt 
+        in
+        (* Declare variable and its activation literal *)
+        Utils.StringMap.add str ty (Utils.StringMap.add (str ^ "_actlit") A.Bool acc) 
       ) Utils.StringMap.empty expr_variables in
       declare_smt_variables variable_stack declared_variables ty_ctx solver blocking_clause_vars assertion_level ;
       constraints_to_assert := ConstraintSet.union !constraints_to_assert (ConstraintSet.of_list constraints_to_add); 
@@ -287,7 +312,7 @@ match dt with
     else 
       None
   | A.ProdRule (_, _, _, _) -> None 
-  | TypeAnnotation (nt2, ty, scs, _) ->
+  | TypeAnnotation (nt2, ty, scs, p) ->
     let path' = string_of_path path |> String.lowercase_ascii in
     if Utils.str_eq_ci nt nt2 then 
       let constraints_to_add = List.concat_map (fun sc -> match sc with 
@@ -297,6 +322,14 @@ match dt with
       | DerivedField _ -> [] 
       | AttrDef _ -> assert false
       ) scs |> ConstraintSet.of_list in
+      (* Also declare and assert activation literals *)
+      let path'' = (string_of_path path |> String.lowercase_ascii) ^ "_actlit" in
+      declare_smt_variables variable_stack declared_variables 
+        (Utils.StringMap.singleton path'' A.Bool) solver blocking_clause_vars assertion_level;
+      let actlit = 
+        universalize_expr true path (A.ActLit (A.NTExpr ([nt2, idx1, idx2], p), p))
+      in
+      let constraints_to_add = ConstraintSet.add actlit constraints_to_add in 
       constraints_to_assert := ConstraintSet.union !constraints_to_assert constraints_to_add;
       Some [SymbolicLeaf (ty, path @ [(nt, idx1, idx2)])]
     else None 
@@ -318,116 +351,12 @@ let new_decision_level: Smt.solver_instance -> int ref -> Utils.StringSet.t ref 
   Smt.issue_solver_command push_cmd solver; 
   ()
 
-let rec collect_constraints_of_dt ast = function 
-  | Node ((nt, _, _), path, children) -> 
-    let child_constraints = List.map (collect_constraints_of_dt ast) children in 
-    let child_constraints = List.fold_left ConstraintSet.union ConstraintSet.empty child_constraints in
-    let grammar_rule = List.find (fun element -> match element with 
-      | A.ProdRule (nt2, _, _, _) 
-      | TypeAnnotation (nt2, _, _, _) -> nt = nt2
-      ) ast in 
-    let constraints = A.scs_of_element grammar_rule |> 
-    List.concat_map (fun sc -> match sc with 
-    | A.SmtConstraint (expr, _) -> 
-      let expr = (universalize_expr true path expr) in
-        [expr] 
-    | DerivedField _ -> [] 
-    | AttrDef _ -> assert false
-    ) |> ConstraintSet.of_list in 
-    ConstraintSet.union constraints child_constraints
-  | _ -> ConstraintSet.empty
-
-(* Determine whether an nt, in dot notation, will __necessarily__ be reached 
-   in a given derivation_tree *)
-let rec nt_will_be_reached derivation_tree ast nt = 
-  (* at each step, check if the rest of nt is reachable from head *)
-  let rec nt_will_be_reached_ast: 
-    (string * int option * int option) list -> (string * int option * int option) -> bool 
-  = fun nt head -> match nt with 
-  | [] -> true 
-  | new_head :: nts -> 
-    let rule = List.find (fun element -> match element with
-    | A.TypeAnnotation (nt2, _, _, _) 
-    (*!! Index needs to be taken into account, see bug4.gbl *)
-    | A.ProdRule (nt2, _, _, _) -> nt2 = (Utils.tr_fst head)
-    ) ast in 
-    match rule with 
-    | ProdRule (_, _, rhss, _) -> 
-      (* There are multiple options. Conservatively say the nt may not be reached. 
-         TODO: This is a safe approximation. A more exact analysis would see if the nt is reachable in all cases. *)
-      if List.length rhss <> 1 then false
-      else 
-        nt_will_be_reached_ast nts new_head
-    | _ -> true
+let assert_all_constraints constraint_set solver =
+  let _ = ConstraintSet.iter (fun expr -> 
+    Smt.assert_smt_constraint solver expr;
+  ) !constraint_set 
   in
-  match nt with 
-  | [] -> true 
-  | (str, idx1, idx2) :: nts -> match derivation_tree with 
-    | Node (head, _, children) -> 
-      if children = [] then nt_will_be_reached_ast nt head
-      else (
-        match List.find_opt (fun child -> match child with 
-        | Node ((nt2, idx', idx''), _, _) -> 
-          str = nt2 && ((idx1 = idx' && idx2 = idx'') || (idx1 = None && idx2 = None))
-        | SymbolicLeaf (_, path) -> 
-          str = (Utils.last path |> Utils.tr_fst) && 
-          ((idx1 = None && idx2 = None) || 
-           (idx1 = (Utils.last path |> Utils.tr_snd) && 
-            idx2 = (Utils.last path |> Utils.tr_trd)))
-        | ConcreteIntLeaf (path, _) | ConcreteBoolLeaf (path, _) 
-        | ConcreteUnitLeaf path | ConcreteBitListLeaf (path, _) 
-        | ConcreteBitVectorLeaf (path, _, _) | ConcretePlaceholderLeaf (path, _) 
-        | ConcreteStringLeaf (path, _) | ConcreteSetLeaf (path, _) -> 
-          str = (Utils.last path |> Utils.tr_fst) && 
-          ((idx1 = None && idx2 = None) || 
-            (idx1 = (Utils.last path |> Utils.tr_snd)) && 
-             idx2 = (Utils.last path |> Utils.tr_trd))
-        | DependentTermLeaf nt2 -> str = nt2
-        ) children with 
-        | Some child -> nt_will_be_reached child ast nts
-        | None -> 
-          if !Flags.debug then Format.fprintf Format.std_formatter "Could not find child %s from node %s\n"
-            str (Utils.tr_fst head);
-          false)
-    | _ -> true
-
-(* Determine if a constraint necessarily applies to a given derivation tree. 
-   It may not apply if the nonterminals referenced by the constraint are avoidable 
-   by selecting other production rule options in the AST. 
-   We don't support constraints with no nonterminals (see syntax checker)--they are trivial 
-           and mess with this check *)
-let constraint_is_applicable expr derivation_tree ast = 
-  let nts = A.get_nts_from_expr2 expr in
-  List.fold_left (fun acc nt -> 
-    acc && nt_will_be_reached derivation_tree ast (List.tl nt)
-  ) true nts
-
-let assert_applicable_constraints constraint_set derivation_tree ast solver =
-  let _constraints_to_remove = 
-    ConstraintSet.fold (fun expr acc -> 
-      if constraint_is_applicable expr derivation_tree ast then (
-        (* declare_smt_variables declared_variables (Utils.StringMap.singleton path' A.Int) solver; *)
-        (*if !Flags.debug then Format.fprintf Format.std_formatter "Constraint %a is applicable in derivation tree %a\n"
-          A.pp_print_expr expr 
-          pp_print_derivation_tree derivation_tree;*)
-        Smt.assert_smt_constraint solver expr;
-        ConstraintSet.add expr acc
-      ) else (
-       (*if !Flags.debug then Format.fprintf Format.std_formatter "Constraint %a is not applicable in derivation tree %a\n"
-          A.pp_print_expr expr 
-          pp_print_derivation_tree derivation_tree;*)
-        acc
-      )
-    )  !constraint_set ConstraintSet.empty 
-  in
-  (* unsound! Constraints may need to be reasserted. 
-     Say you have a dot notation constraint, but it doesn't become applicable until a later decision. 
-     If you assert and forget, then backtrack, you may re-expand, in a different path, to the same situation 
-     where that constraint holds. But, it won't be around to re-assert. And you won't re-add that constraint 
-     to the constraint set because it is associated with a higher-up node. So you can only remove constraints 
-     that are rooted at DT nodes that were backtracked away, not ones that are potentially rooted higher up. *)
-  (*constraint_set := ConstraintSet.diff !constraint_set constraints_to_remove;*)
-  !constraint_set
+  ConstraintSet.empty
 
 let initialize_globals ctx ast derivation_tree start_symbol constraints_to_assert 
                        decision_stack _declared_variables backtrack_depth curr_st_node declared_variables solver 
@@ -437,7 +366,7 @@ let initialize_globals ctx ast derivation_tree start_symbol constraints_to_asser
   (* Incremental construction of output term so far *)
   derivation_tree := (Node ((start_symbol, Some 0, Some 0), [start_symbol, Some 0, Some 0], []));
   derivation_tree := normalize_derivation_tree ctx ast declared_variables solver constraints_to_assert !variable_stack blocking_clause_vars assertion_level !derivation_tree ;
-  constraints_to_assert := assert_applicable_constraints constraints_to_assert !derivation_tree ast solver;
+  constraints_to_assert := assert_all_constraints constraints_to_assert solver;
   (* Set of paths through the tree to help determine when to push constraints from constraints_to_assert *)
   (* let provenance_list = _ in *) (* Challenge: backtracking affects provenance list *)
   (* Keep track of all decisions so we can easily backtrack in the derivation tree *)
@@ -585,13 +514,6 @@ let backtrack ctx ast assertion_level decision_stack solver backtrack_depth decl
     let st_node = Stack.pop !decision_stack in
     let popped_vars = Stack.pop !variable_stack in 
     let STNode (dt, _, _, _) = st_node in 
-    let original_constraints = collect_constraints_of_dt ast !derivation_tree in 
-    let maintained_constraints = collect_constraints_of_dt ast dt in 
-    (*Format.printf "Original constraints: %a, maintained constraints %a" 
-    (Lib.pp_print_list A.pp_print_expr ", ") (ConstraintSet.to_list original_constraints)
-    (Lib.pp_print_list A.pp_print_expr ", ") (ConstraintSet.to_list maintained_constraints);*)
-    let constraints_to_remove = ConstraintSet.diff original_constraints maintained_constraints in
-    constraints_to_assert := ConstraintSet.diff !constraints_to_assert constraints_to_remove;
     declared_variables := 
       Utils.StringSet.union
         (Utils.StringSet.diff !declared_variables !popped_vars)
@@ -898,7 +820,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.semantic_constraint Utils.StringMap.t
   (* Incremental construction of output term so far *)
   let derivation_tree = ref (Node ((start_symbol, Some 0, Some 0), start_path, [])) in 
   derivation_tree := normalize_derivation_tree ctx ast declared_variables solver constraints_to_assert !variable_stack blocking_clause_vars assertion_level !derivation_tree ;
-  constraints_to_assert := assert_applicable_constraints constraints_to_assert !derivation_tree ast solver;
+  constraints_to_assert := assert_all_constraints constraints_to_assert solver;
   (* Current spot in the search tree *) 
   let curr_st_node = ref (STNode (!derivation_tree, None, 0, ref [])) in
   (* Set of paths through the tree to help determine when to push constraints from constraints_to_assert *)
@@ -1002,12 +924,20 @@ let dpll: A.il_type Utils.StringMap.t -> A.semantic_constraint Utils.StringMap.t
       (* Assert semantic constraints for the new expansion (backtrack if necessary) *)
       match grammar_rule with 
       | A.TypeAnnotation (_, _, [], _) -> ()
-      | A.TypeAnnotation (_, ty, scs, _) -> 
+      | A.TypeAnnotation (_, ty, scs, p) -> 
         List.iter (fun sc -> match sc with 
         | A.SmtConstraint (expr, _) ->
           declare_smt_variables !variable_stack declared_variables (Utils.StringMap.singleton path' ty) solver blocking_clause_vars assertion_level; 
           constraints_to_assert := ConstraintSet.add (universalize_expr true path expr) !constraints_to_assert;
-          constraints_to_assert := assert_applicable_constraints constraints_to_assert !derivation_tree ast solver;
+          (* Also declare and assert activation literals *)
+          let path'' = (string_of_path path |> String.lowercase_ascii) ^ "_actlit" in
+          declare_smt_variables !variable_stack declared_variables 
+            (Utils.StringMap.singleton path'' A.Bool) solver blocking_clause_vars assertion_level;
+          let actlit = 
+            universalize_expr true path (A.ActLit (A.NTExpr ([nt], p), p))
+          in
+          constraints_to_assert := ConstraintSet.add actlit !constraints_to_assert;
+          constraints_to_assert := assert_all_constraints constraints_to_assert solver;
           let model = get_smt_result ast solver false in  
           (match model with 
           | Some (Ok _) -> assert false
@@ -1056,7 +986,8 @@ let dpll: A.il_type Utils.StringMap.t -> A.semantic_constraint Utils.StringMap.t
               let ty = Utils.StringMap.find (List.rev nt |> List.hd |> Utils.tr_fst) ctx in 
               let str = Format.asprintf "%a" (Lib.pp_print_list SmtPrinter.pp_print_nt_helper "_") nt in
               let str = path' ^ "_" ^ str in 
-              Utils.StringMap.add str ty acc
+              (* Declare variable and its activation literal *)
+              Utils.StringMap.add str ty (Utils.StringMap.add (str ^ "_actlit") A.Bool acc) 
             ) Utils.StringMap.empty expr_variables in
             declare_smt_variables !variable_stack declared_variables ty_ctx solver blocking_clause_vars assertion_level;
             constraints_to_assert := ConstraintSet.add (universalize_expr false path expr) !constraints_to_assert;
@@ -1068,7 +999,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.semantic_constraint Utils.StringMap.t
 
           (* Assert the constraints from this choice (and also try to assert constraints hanging around from earlier on,
              but maybe weren't definitely applicable until this decision) *)
-          constraints_to_assert := assert_applicable_constraints constraints_to_assert !derivation_tree ast solver;
+          constraints_to_assert := assert_all_constraints constraints_to_assert solver;
           let model = get_smt_result ast solver false in
           (match model with 
           | None -> (* sat *)
