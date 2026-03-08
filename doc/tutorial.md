@@ -392,7 +392,7 @@ For now, due to the polymorphism associated with `length(.)`, it is only support
 on the right-hand side of an arrow operator `<-`, 
 while `seq.len(.)` can be used directly in SMT constraints.
 
-#### Dot Notation
+#### Dot Notation and nonterminal indexing operators
 
 As described in the previous section, the dot operator `.` can be used to reference 
 child nonterminals further down in the derivation tree. 
@@ -410,11 +410,21 @@ either the first or second child `<D>` of either the first or second occurrence
 of `<B>`. The system treats all ambiguous references of this form 
 as **implicitly universally quantified** over the structure of generated terms -- that is, 
 one can view the above constraint as internally desugaring to 
-`<B>[0].<D>[0] > <C>[0]; <B>[0].<D>[1] > <C>[0]; <B>[1].<D>[0] > <C>[0]; <B>[1].<D>[1] > <C>[0]`,
-where the bracket notation `[i]` of a nonterminal symbol uniquely indicates which occurrence of the nonterminal 
-symbol is being referenced. 
+`<B>@{0}[0].<D>@{0}[0] > <C>@{0}[0]; <B>@{0}[0].<D>@{0}[1] > <C>@{0}[0]; <B>@{0}[1].<D>@{0}[0] > <C>@{0}[0]; <B>@{0}[1].<D>@{0}[1] > <C>@{0}[0]`.
+Here, we introduce two notations for indexing nonterminals, `@{i}` and `[i]`. 
+Here, `@{i}` refers to the `i`th production rule right-hand side, and `[i]` refers to the `i`th occurrence of the nonterminal 
+within that right-hand side. 
 
-More concretely, `(A0 (B0 (D0 1) (D1 1)) (B1 (D0 1) (D1 1)) (C0 0))` is a member of the input grammar because
+Indexing operators `@{i}` and `[i]` are available in Goblin's user-facing surface language. 
+Hence, if the user only wants to constrain the `j`th occurrence of `<nt>`'s `i`th production rule, 
+they can use `<nt>@{i}[j]`. 
+These indices can be mixed and matched -- for example, `<nt>@{i}` refers to every occurrence of `<nt>` in the `i`th 
+production rule option, and `<nt>[j]` refers to the `j`th occurrence of `<nt>` within each production rule (if that many occurrences exist).
+Further, indices can be combined with the dot operator -- 
+for example, `<nt>.<nt1>@{i}.<nt2>[j]` refers to the the `j`th occurrence of `<nt2>` in every production rule option of `<nt1>`, 
+where `<nt1>` refers to those occurrences of `<nt1>` that are in the `i`th production rule option of (every) `<nt>`. 
+
+Returning to the above grammar, `(A0 (B0 (D0 1) (D1 1)) (B1 (D0 1) (D1 1)) (C0 0))` is a member of the language because
 in `<A>`'s expansion, child `<C>` is less than every child `<D>` of every child `<B>`.
 
 Furthermore, also consider the following example, where `<B>` gets a separate production rule
@@ -427,8 +437,8 @@ also referencing `<D>`.
 ```
 
 At term generation time, if `<B>`'s second production rule is chosen, 
-then (e.g.) constraint `<B>[0].<D>[1] > <C>[0]` is considered trivially satisfied, 
-since `<B>[0]` does not have a child `<D>[1]` (instead, it has a single child, `<D>[2]`).
+then (e.g.) constraint `<B>@{0}[0].<D>@{0}[1] > <C>@{0}[0]` is considered trivially satisfied, 
+since `<B>@{0}[0]` does not have a child `<D>@{0}[1]` (instead, it has a single child, `<D>@{1}[0]`).
 Or, perhaps more intuitively, the constraint applies regardless of which production rule option is chosen 
 for `<B>`.
 
@@ -501,6 +511,7 @@ See `evaluation` and `test/test_cases` for example `.gbl` files (Goblin input fi
 ### How does Goblin work?
 
 STUB
+
 
 
 
