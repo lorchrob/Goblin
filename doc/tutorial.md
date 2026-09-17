@@ -293,9 +293,6 @@ Inherited attributes are declared on the right-hand side of production rule opti
 and they are somewhat analogous to function arguments. 
 On line 2, `(v :: Int)` denotes that the production rules for `<L>` take some inherited attribute `v` of type `Int`, 
 which is allowed to be referenced in the constraints. 
-The type annotation is required, and `v` is local to `<L>`: 
-it can only be referenced within `<L>`'s production rules, 
-and other nonterminals may declare their own inherited attributes named `v` (possibly with different types). 
 Unlike synthesized attributes (such as `len` below), inherited attributes do not need a separate top-level type annotation. 
 Here, we constrain that list element `<E>` is equal to `v`. 
 Inherited attributes have a **call site requirement** -- 
