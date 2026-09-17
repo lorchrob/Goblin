@@ -47,6 +47,11 @@ let main_pipeline ?(engine: Flags.engine option = None) ?(grammar: Ast.ast optio
     ast
   in
 
+  (* Must precede syntax and type checking, which need each inherited attribute's owner *)
+  let ast = ScopeInhAttrs.scope_inh_attrs ast in 
+  Utils.debug_print Format.pp_print_string ppf "\nInherited attributes scoped:\n";
+  Utils.debug_print Ast.pp_print_ast ppf ast;
+
   (* Desugar type annotation constraints *) 
   let ast = EliminateTaConstraints.eliminate_ta_constraints ast in 
   Utils.debug_print Format.pp_print_string ppf "\nType annotation constraints eliminated:\n";
@@ -130,14 +135,10 @@ let main_pipeline ?(engine: Flags.engine option = None) ?(grammar: Ast.ast optio
   Utils.debug_print Format.pp_print_string ppf "\nFinal result:\n";
   let output = Utils.capture_output Serialize.serialize solver_ast in 
   if not !Flags.multiple_solutions then (
-    if !Flags.output_format = Flags.SExpression then 
-      SolverAst.pp_print_solver_ast Format.std_formatter solver_ast
-    else if !Flags.output_format = Flags.Hex then 
-      let ast_bytes = Serialize.serialize_bytes Big [] solver_ast in
-      Utils.print_bytes_as_hex ast_bytes 
-    else if !Flags.output_format = Flags.HexPacked then 
-      let ast_bytes = Serialize.serialize_bytes_packed solver_ast in
-      Utils.print_bytes_as_hex ast_bytes 
+    match !Flags.output_format with
+    | Flags.SExpression -> SolverAst.pp_print_solver_ast Format.std_formatter solver_ast
+    | Flags.Hex -> Serialize.print_hex (Serialize.serialize_bytes Big []) solver_ast
+    | Flags.HexPacked -> Serialize.print_hex Serialize.serialize_bytes_packed solver_ast
   );
   solver_ast, output, ast_to_return
 

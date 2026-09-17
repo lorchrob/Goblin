@@ -1,0 +1,6 @@
+<S> ::= <L>(3) <M>;
+<L>(v :: Int) ::= <E> { <E> = v; };
+<M> ::= <E> { <E> = v; };
+<E> :: Int;
+
+// `v` is an inherited attribute of <L>, not <M>

@@ -19,13 +19,13 @@ let check_element attribute_ctx ctx element = match element with
     let _ = List.map (fun ge -> match ge with 
     | A.StubbedNonterminal _ -> ge 
     | A.Nonterminal (nt, _, _, ias, p) -> 
-      let arg_tys = match Utils.StringMap.find_opt nt attribute_ctx with 
+      let arg_tys = match Nt.Map.find_opt nt attribute_ctx with 
       | Some arg_tys -> arg_tys 
       | None -> [] in 
       if List.length arg_tys <> List.length ias then (
         let msg = 
-          Format.asprintf "Nonterminal %s is passed the incorrect number of inherited attributes (found %d, expected %d)" 
-            nt (List.length ias) (List.length arg_tys)
+          Format.asprintf "Nonterminal %a is passed the incorrect number of inherited attributes (found %d, expected %d)" 
+            Nt.pp nt (List.length ias) (List.length arg_tys)
         in  
         Utils.error msg p
       );
@@ -36,8 +36,8 @@ let check_element attribute_ctx ctx element = match element with
         let inf_ty, exp_ty = List.find (fun (inf_ty, arg_ty) -> 
           not (A.eq_il_type inf_ty arg_ty)
         ) (List.combine inf_tys arg_tys) in
-        let msg = Format.asprintf "Inherited attribute passed to nonterminal %s has expected type %a but inferred type %a" 
-          nt 
+        let msg = Format.asprintf "Inherited attribute passed to nonterminal %a has expected type %a but inferred type %a" 
+          Nt.pp nt 
           A.pp_print_ty exp_ty 
           A.pp_print_ty inf_ty in 
         Utils.error msg p
@@ -57,7 +57,7 @@ let check_element attribute_ctx ctx element = match element with
   (* Check no duplicate synth attribute definitions (within an RHS) *) 
   let duplicate_attribute_definition = List.exists (Utils.has_duplicate String.equal) synth_attrss in 
   if duplicate_attribute_definition then (
-    let msg = Format.asprintf "Nonterminal %s has some synthesized attribute with duplicate definitions (within a given production rule option)" nt in 
+    let msg = Format.asprintf "Nonterminal %a has some synthesized attribute with duplicate definitions (within a given production rule option)" Nt.pp nt in 
     Utils.error msg p
   );  
   let str_list_eq l1 l2 = 
@@ -68,7 +68,7 @@ let check_element attribute_ctx ctx element = match element with
   if Utils.all_equal synth_attrss str_list_eq then 
     element 
   else 
-    let msg = Format.asprintf "Nonterminal %s has some synthesized attribute that is not defined in every production rule" nt in 
+    let msg = Format.asprintf "Nonterminal %a has some synthesized attribute that is not defined in every production rule" Nt.pp nt in 
     Utils.error msg p
 
 let check_attributes ctx ast = 
@@ -76,10 +76,6 @@ let check_attributes ctx ast =
   let attribute_ctx = List.fold_left (fun acc element -> match element with 
   | A.TypeAnnotation _ -> acc 
   | A.ProdRule (nt, ias, _, _) -> 
-    let tys = List.map (fun ia -> 
-      let ia = "%_" ^ ia in 
-      Utils.StringMap.find ia ctx
-    ) ias in 
-    Utils.StringMap.add nt tys acc 
-  ) Utils.StringMap.empty ast in
+    Nt.Map.add nt (List.map snd ias) acc 
+  ) Nt.Map.empty ast in
   List.map (check_element attribute_ctx ctx) ast

@@ -41,6 +41,9 @@ For example, `<my_list> ::= <E> <L> { len := 1 + <L>.len; } | <Nil> { len := 0 }
 
 The production rule options for a particular nonterminal may also take **inherited attributes** as inputs, which can be used in the semantic constraints.
 For example, `<my_list>(v :: Int) ::= <E> <L>(v) { <E> = v; } | <Nil>;` denotes a list where every element is equal to inherited attribute `v`.
+Each inherited attribute must be declared with its type, and it is scoped to the nonterminal that declares it: it may only be referenced in that nonterminal's production rules, and different nonterminals may declare inherited attributes with the same name (even with different types).
+
+Within a nonterminal's production rules, an attribute name written without dot notation refers to an inherited attribute of that nonterminal if there is one, and otherwise to a synthesized attribute that the nonterminal defines. For example, in `<my_list> ::= <E> <L> { len := 1 + <L>.len; <E> < len; } | <Nil> { len := 0; };`, the `len` in `<E> < len` refers to the `len` synthesized by `<my_list>`. So that such a reference is unambiguous, a nonterminal may not declare an inherited attribute with the same name as a synthesized attribute it defines.
 
 The prior examples are instances of **SMT constraints**; however, one may also define a different kind of semantic constraint called a **derived field**. Derived fields are of the form `<nonterminal> <- <expr>;`, denoting that `<nonterminal>` can be computed by expression `<expr>`. Derived fields are equivalent to equality SMT constraints of the form `<nonterminal> = <expr>`, but they are different in the sense that Goblin will compute them after constraint solving rather than passing them to the SMT solver. Because of this, the set of supported function symbols for the `<expr>` in a derived field
 is greater than the set supported symbols for SMT constraints, since the latter must have a straightforward translation

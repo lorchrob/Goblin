@@ -118,8 +118,8 @@ let lift: A.ast -> A.element -> A.ast
       let scs = List.map (fun sc -> match sc with 
       | A.SmtConstraint _ -> sc 
       | A.DerivedField (nt', _, _) -> 
-        let msg = Format.asprintf "Derived field %s defined is within the prod rule for nonterminal %s. However, nonterminal %s is itself SMT-constrained. Goblin does not currently support this overlap. To fix, model derived field %s with a (non-derived) equality constraint."
-          nt' nt nt nt' in
+        let msg = Format.asprintf "Derived field %a defined is within the prod rule for nonterminal %a. However, nonterminal %a is itself SMT-constrained. Goblin does not currently support this overlap. To fix, model derived field %a with a (non-derived) equality constraint."
+          Nt.pp nt' Nt.pp nt Nt.pp nt Nt.pp nt' in
         Utils.error msg p
       | AttrDef _ -> assert false
       ) scs in
@@ -133,8 +133,8 @@ let lift: A.ast -> A.element -> A.ast
         let scs = List.map (fun sc -> match sc with 
         | A.SmtConstraint _ -> sc 
         | A.DerivedField (nt', _, _) -> 
-        let msg = Format.asprintf "Derived field %s defined is within the prod rule for nonterminal %s. However, nonterminal %s is itself SMT-constrained. Goblin does not currently support this overlap. To fix, model derived field %s with a (non-derived) equality constraint."
-          nt' nt nt nt' in
+        let msg = Format.asprintf "Derived field %a defined is within the prod rule for nonterminal %a. However, nonterminal %a is itself SMT-constrained. Goblin does not currently support this overlap. To fix, model derived field %a with a (non-derived) equality constraint."
+          Nt.pp nt' Nt.pp nt Nt.pp nt Nt.pp nt' in
         Utils.error msg p
       | AttrDef _ -> assert false
         ) scs in

@@ -4,18 +4,16 @@ module IntSet = Set.Make(Int)
 module IntMap = Map.Make(Int)
 
 module SILSet = Set.Make(struct
-  type t = (string * int option * int option) list 
+  type t = (Nt.t * int option * int option) list 
   
   let compare l1 l2 =
     List.compare (fun (s1, i1, i2) (s2, i3, i4) -> 
-    let cmp_str = String.compare s1 s2 in
+    let cmp_str = Nt.compare s1 s2 in
     if cmp_str <> 0 then cmp_str
     else if compare i1 i3 <> 0 then compare i1 i3 
     else compare i2 i4) l1 l2 
 end)
 
-(* Module state for creating fresh identifiers *)
-let k = ref 0
 
 let read_file filename =
   let ic = open_in filename in
@@ -41,10 +39,6 @@ let rec split3 lst =
       let (xs, ys, zs) = split3 t in
       (x :: xs, y :: ys, z :: zs)
 
-let mk_fresh_stub_id id = 
-  let id = "_stub" ^ (string_of_int !k) ^ "_" ^ id in 
-  k := !k + 1;
-  String.uppercase_ascii id
 
 let replicate value length =
   let rec replicate_aux value length acc =
@@ -202,18 +196,7 @@ let sequence_option (xs : 'a option list) : 'a list option =
     xs
     (Some [])
 
-let extract_base_name str =
-  let str = String.lowercase_ascii str in
-  let open Str in
-  (* Remove optional trailing "_con" or "_con123" *)
-  let str =
-    global_replace (regexp "_con[0-9]*$") "" str
-  in
-  (* Remove prefix "_stub" *)
-  let str =
-    global_replace (Str.regexp "^_stub[0-9]*_") "" str
-  in
-  str
+
 
 let str_eq_ci s1 s2 =
   String.lowercase_ascii s1 = String.lowercase_ascii s2

@@ -37,17 +37,57 @@ let bug4 () =
   | _ -> Alcotest.fail "Expected exception, but got success"
   | exception _ -> ()  
 
-let inh_attr_fail_1 () =
-  let input = "../../../test/test_cases/inh-attr-fail-1.gbl" in
+let contains_substring s sub =
+  let n = String.length s and m = String.length sub in
+  let rec loop i = i + m <= n && (String.sub s i m = sub || loop (i + 1)) in
+  loop 0
+
+let expect_error input expected_msg =
   match main_pipeline input with
   | _ -> Alcotest.fail "Expected exception, but got success"
-  | exception _ -> ()  
+  | exception Failure msg ->
+    if not (contains_substring msg expected_msg) then
+      Alcotest.failf "Expected error containing %S, but got %S" expected_msg msg
+
+let inh_attr_fail_1 () =
+  expect_error "../../../test/test_cases/inh-attr-fail-1.gbl"
+    "Nonterminal L is passed the incorrect number of inherited attributes (found 0, expected 1)"
 
 let inh_attr_fail_2 () =
-  let input = "../../../test/test_cases/inh-attr-fail-2.gbl" in
-  match main_pipeline input with
-  | _ -> Alcotest.fail "Expected exception, but got success"
-  | exception _ -> ()  
+  expect_error "../../../test/test_cases/inh-attr-fail-2.gbl"
+    "Inherited attribute passed to nonterminal L has expected type Int but inferred type Bool"
+
+let inh_attr_fail_3 () =
+  expect_error "../../../test/test_cases/inh-attr-fail-3.gbl"
+    "Unknown identifier w"
+
+let inh_attr_fail_4 () =
+  expect_error "../../../test/test_cases/inh-attr-fail-4.gbl"
+    "Unknown identifier v"
+
+let inh_attr_fail_5 () =
+  expect_error "../../../test/test_cases/inh-attr-fail-5.gbl"
+    "Unknown identifier v (attributes cannot be referenced in type annotations)"
+
+let inh_attr_fail_6 () =
+  expect_error "../../../test/test_cases/inh-attr-fail-6.gbl"
+    "Nonterminal <L> declares the same inherited attribute more than once"
+
+let inh_attr_fail_7 () =
+  expect_error "../../../test/test_cases/inh-attr-fail-7.gbl"
+    "Inherited attribute passed to nonterminal B has expected type Bool but inferred type Int"
+
+let inh_attr_fail_8 () =
+  expect_error "../../../test/test_cases/inh-attr-fail-8.gbl"
+    "v is an inherited attribute of <L>, so it cannot be accessed with dot notation"
+
+let inh_attr_fail_9 () =
+  expect_error "../../../test/test_cases/inh-attr-fail-9.gbl"
+    "Nonterminal <L> declares len as an inherited attribute and also defines it as a synthesized attribute"
+
+let inh_attr_fail_10 () =
+  expect_error "../../../test/test_cases/inh-attr-fail-10.gbl"
+    "Unknown identifier size"
 
 let bug3 () =
   let input = "../../../test/test_cases/bug3.gbl" in
@@ -90,7 +130,7 @@ let test_check_solver_ast () =
   let filename = "../../../test/test_cases/test_check_solver_ast" in
   let input = Utils.read_file filename in 
   let ast = Parsing.parse input in
-  let solver_ast = SolverAst.Node (("A", None, None), [SolverAst.Node (("B", None, None), [SolverAst.VarLeaf ""]); SolverAst.Node (("C", None, None), [SolverAst.VarLeaf ""])]) in
+  let solver_ast = SolverAst.Node ((Nt.User "A", None, None), [SolverAst.Node ((Nt.User "B", None, None), [SolverAst.Leaf (Placeholder "")]); SolverAst.Node ((Nt.User "C", None, None), [SolverAst.Leaf (Placeholder "")])]) in
   let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
@@ -100,7 +140,7 @@ let test_check_solver_ast_2 () =
   let filename = "../../../test/test_cases/test_check_solver_ast" in
   let input = Utils.read_file filename in 
   let ast = Parsing.parse input in 
-  let solver_ast = SolverAst.Node (("A", None, None), [SolverAst.Node (("D", None, None), [SolverAst.VarLeaf ""]); SolverAst.Node (("C", None, None), [SolverAst.VarLeaf ""])]) in
+  let solver_ast = SolverAst.Node ((Nt.User "A", None, None), [SolverAst.Node ((Nt.User "D", None, None), [SolverAst.Leaf (Placeholder "")]); SolverAst.Node ((Nt.User "C", None, None), [SolverAst.Leaf (Placeholder "")])]) in
   let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> fail "Expected error"
@@ -110,7 +150,7 @@ let test_check_solver_ast_3 () =
   let filename = "../../../test/test_cases/test_check_solver_ast_2" in
   let input = Utils.read_file filename in 
   let ast = Parsing.parse input in 
-  let solver_ast = SolverAst.Node (("A", None, None), [SolverAst.Node (("B", None, None), [SolverAst.IntLeaf 3]); SolverAst.Node (("C", None, None), [SolverAst.IntLeaf 2])]) in
+  let solver_ast = SolverAst.Node ((Nt.User "A", None, None), [SolverAst.Node ((Nt.User "B", None, None), [SolverAst.Leaf (Int 3)]); SolverAst.Node ((Nt.User "C", None, None), [SolverAst.Leaf (Int 2)])]) in
   let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()
@@ -120,7 +160,7 @@ let test_check_solver_ast_4 () =
   let filename = "../../../test/test_cases/test_check_solver_ast_2" in
   let input = Utils.read_file filename in 
   let ast = Parsing.parse input in 
-  let solver_ast = SolverAst.Node (("A", None, None), [SolverAst.Node (("B", None, None), [SolverAst.Node (("G", None, None), [SolverAst.IntLeaf 1])]); SolverAst.Node (("C", None, None), [SolverAst.Node (("G", None, None), [SolverAst.IntLeaf (2)])])]) in
+  let solver_ast = SolverAst.Node ((Nt.User "A", None, None), [SolverAst.Node ((Nt.User "B", None, None), [SolverAst.Node ((Nt.User "G", None, None), [SolverAst.Leaf (Int 1)])]); SolverAst.Node ((Nt.User "C", None, None), [SolverAst.Node ((Nt.User "G", None, None), [SolverAst.Leaf (Int (2))])])]) in
   let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> fail "Expected failure"
@@ -130,7 +170,7 @@ let test_check_solver_ast_5 () =
   let filename = "../../../test/test_cases/test_check_solver_ast_2" in
   let input = Utils.read_file filename in 
   let ast = Parsing.parse input in 
-  let solver_ast = SolverAst.Node (("C", None, None), [SolverAst.Node (("G", None, None), [SolverAst.IntLeaf 1])]) in
+  let solver_ast = SolverAst.Node ((Nt.User "C", None, None), [SolverAst.Node ((Nt.User "G", None, None), [SolverAst.Leaf (Int 1)])]) in
   let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> fail "Expected failure"
@@ -140,7 +180,7 @@ let test_check_solver_ast_6 () =
   let filename = "../../../test/test_cases/test_check_solver_ast_3" in
   let input = Utils.read_file filename in 
   let ast = Parsing.parse input in 
-  let solver_ast = SolverAst.Node (("A", None, None), [SolverAst.Node (("B", None, None), [SolverAst.IntLeaf (-1)]); SolverAst.Node (("C", None, None), [SolverAst.IntLeaf (-2)])]) in
+  let solver_ast = SolverAst.Node ((Nt.User "A", None, None), [SolverAst.Node ((Nt.User "B", None, None), [SolverAst.Leaf (Int (-1))]); SolverAst.Node ((Nt.User "C", None, None), [SolverAst.Leaf (Int (-2))])]) in
   let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()
@@ -150,7 +190,7 @@ let test_check_solver_ast_7 () =
   let filename = "../../../test/test_cases/test_check_solver_ast_3" in
   let input = Utils.read_file filename in 
   let ast = Parsing.parse input in 
-  let solver_ast = SolverAst.Node (("A", None, None), [SolverAst.Node (("B", None, None), [SolverAst.Node (("G", None, None), [SolverAst.IntLeaf (2)])]); SolverAst.Node (("C", None, None), [SolverAst.Node (("G", None, None), [SolverAst.IntLeaf (1)])])]) in
+  let solver_ast = SolverAst.Node ((Nt.User "A", None, None), [SolverAst.Node ((Nt.User "B", None, None), [SolverAst.Node ((Nt.User "G", None, None), [SolverAst.Leaf (Int (2))])]); SolverAst.Node ((Nt.User "C", None, None), [SolverAst.Node ((Nt.User "G", None, None), [SolverAst.Leaf (Int (1))])])]) in
   let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> fail "Expected failure"
@@ -253,6 +293,38 @@ let inh_attr () =
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
+
+let inh_attr_scoped () =
+  let input = "../../../test/test_cases/inh-attr-scoped.gbl" in
+  let solver_ast, _, ast = main_pipeline input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
+  match output with
+  | Ok _ -> ()  
+  | Error msg -> fail msg
+
+let inh_attr_synth_same_name () =
+  expect_error "../../../test/test_cases/inh-attr-synth-same-name.gbl"
+    "Nonterminal <L> declares len as an inherited attribute and also defines it as a synthesized attribute"
+
+(* A bare attribute name refers to the enclosing nonterminal's synthesized attribute *)
+let inh_attr_own_synth () =
+  let input = "../../../test/test_cases/inh-attr-own-synth.gbl" in
+  let solver_ast, _, ast = main_pipeline input in
+  let output = CheckSolverAst.check_solver_ast ast solver_ast in
+  match output with
+  | Ok _ -> ()  
+  | Error msg -> fail msg
+
+(* Nonterminal names ending in "_con" *)
+let con_suffix () =
+  List.iter (fun engine -> 
+    List.iter (fun input -> 
+      let solver_ast, _, ast = main_pipeline ~engine:(Some engine) input in
+      match CheckSolverAst.check_solver_ast ast solver_ast with
+      | Ok _ -> ()  
+      | Error msg -> fail msg
+    ) ["../../../test/test_cases/con-suffix.gbl"; "../../../test/test_cases/con-suffix-2.gbl"]
+  ) [Flags.DpllMono; Flags.DpllDac]
 
 let dm_test_vertical_ambiguous_reference_2 () =
   let input = "../../../test/test_cases/test_vertical_ambiguous_reference_2" in
@@ -1018,6 +1090,18 @@ let () =
     "inh_attr", [test_case "inh_attr" `Quick inh_attr]; 
     "inh_attr_fail_1", [test_case "inh_attr_fail_1" `Quick inh_attr_fail_1]; 
     "inh_attr_fail_2", [test_case "inh_attr_fail_2" `Quick inh_attr_fail_2]; 
+    "inh_attr_fail_3", [test_case "inh_attr_fail_3" `Quick inh_attr_fail_3]; 
+    "inh_attr_fail_4", [test_case "inh_attr_fail_4" `Quick inh_attr_fail_4]; 
+    "inh_attr_fail_5", [test_case "inh_attr_fail_5" `Quick inh_attr_fail_5]; 
+    "inh_attr_fail_6", [test_case "inh_attr_fail_6" `Quick inh_attr_fail_6]; 
+    "inh_attr_fail_7", [test_case "inh_attr_fail_7" `Quick inh_attr_fail_7]; 
+    "inh_attr_fail_8", [test_case "inh_attr_fail_8" `Quick inh_attr_fail_8]; 
+    "inh_attr_fail_9", [test_case "inh_attr_fail_9" `Quick inh_attr_fail_9]; 
+    "inh_attr_fail_10", [test_case "inh_attr_fail_10" `Quick inh_attr_fail_10]; 
+    "con_suffix", [test_case "con_suffix" `Quick con_suffix]; 
+    "inh_attr_scoped", [test_case "inh_attr_scoped" `Quick inh_attr_scoped]; 
+    "inh_attr_synth_same_name", [test_case "inh_attr_synth_same_name" `Quick inh_attr_synth_same_name]; 
+    "inh_attr_own_synth", [test_case "inh_attr_own_synth" `Quick inh_attr_own_synth]; 
     "index", [test_case "index" `Quick index]; 
     "too_many_constraints", [test_case "too_many_constraints" `Quick too_many_constraints]; 
     (*"msg2", [test_case "msg2" `Quick msg2]; *)

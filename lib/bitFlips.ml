@@ -8,9 +8,9 @@ let flip_bit_list lst =
 
 let rec flip_bits: solver_ast -> solver_ast 
 = fun solver_ast -> Random.self_init (); match solver_ast with 
-| UnitLeaf | IntLeaf _ | BVLeaf _ | VarLeaf _ | BoolLeaf _ | StrLeaf _ |SetLeaf _ -> solver_ast 
-| BLLeaf bits -> 
-  BLLeaf (flip_bit_list bits)
+| Leaf (BitList bits) -> 
+  Leaf (BitList (flip_bit_list bits))
+| Leaf _ | StubLeaf _ | Model _ | Infeasible -> solver_ast 
 | Node (constructor, children) -> 
   let children = List.map flip_bits children in 
   Node (constructor, children)

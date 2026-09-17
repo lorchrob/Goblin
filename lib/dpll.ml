@@ -99,112 +99,54 @@ Interfacing with the solver
     * Serialize the AST
 *)
 
-type model_value = 
-| ConcreteBool of bool
-| ConcreteInt of int
-| ConcretePlaceholder of string
-| ConcreteString of string
-| ConcreteBitVector of int * bool list
-| ConcreteBitList of bool list
-| ConcreteStringSet of Utils.StringSet.t
+(* Raised when the search proves that the grammar has no solution *)
+exception Infeasible_grammar
 
-let rec pp_print_ss ppf = function 
-  | [] -> Format.pp_print_string ppf "(as set.empty (Set String))"
-  | [s] -> 
-    Format.fprintf ppf "(set.singleton \"%s\")"
-      s
-  | s :: tl -> 
-    Format.fprintf ppf "(set.union (set.singleton \"%s\") %a)" 
-      s pp_print_ss tl
+(* SMT model: values of declared SMT variables *)
+type model = Value.t Utils.StringMap.t
 
-let pp_print_model_value ppf = function
-| ConcreteBool b -> Format.pp_print_bool ppf b
-| ConcreteInt i -> 
-  if i >= 0 then 
-    Format.pp_print_int ppf i 
-  else 
-    Format.fprintf ppf "(- %d)" (-1 * i) 
-| ConcretePlaceholder str -> Format.pp_print_string ppf str
-| ConcreteString str -> Format.fprintf ppf "\"%s\"" str 
-| ConcreteStringSet ss -> pp_print_ss ppf (Utils.StringSet.to_list ss)
-| ConcreteBitVector (_, bits) -> 
-  let bits = List.map Bool.to_int bits in
-  Format.fprintf ppf "#b%a"
-    (Lib.pp_print_list Format.pp_print_int "") bits
-| ConcreteBitList bits -> 
-  let print_smt_bool_seq fmt (lst : bool list) : unit =
-  match lst with
-  | [] ->
-    Format.fprintf fmt "seq.empty"
-  | [b] ->
-    if b then Format.fprintf fmt "(seq.unit true)"
-    else Format.fprintf fmt "(seq.unit false)"
-  | _ ->
-    Format.fprintf fmt "(seq.++ ";
-    let print_unit b =
-      if b then Format.fprintf fmt "(seq.unit true) "
-      else Format.fprintf fmt "(seq.unit false) "
-    in
-    List.iter print_unit lst;
-    Format.fprintf fmt ")"
-  in print_smt_bool_seq ppf bits
+type path = (Nt.t * int option * int option) list
 
-type concrete_set = 
-| ConcreteStringSetLeaf of Utils.StringSet.t
+(* Derivation tree (a possibly unfinished generated term).
+   Each node is identified by its path from the root; its label is the last element of the path. *)
+type derivation_tree = {
+  path : path;
+  expansion : expansion;
+}
+and expansion = 
+(* Not yet expanded *)
+| Open
+(* Expanded with a production rule *)
+| Children of derivation_tree list
+(* Symbolic terminal of the given type, with its value (if already known) *)
+| Terminal of A.il_type * Value.t option
+(* Computed separately (derived field or divide and conquer subproblem) *)
+| Dependent of Nt.stub
 
-type derivation_tree = 
-| SymbolicLeaf of A.il_type * (string * int option * int option) list (* path to this node *)
-| DependentTermLeaf of string 
-| ConcreteBoolLeaf of (string * int option * int option) list * bool (* path to this node, value of the leaf *)
-| ConcreteIntLeaf of (string * int option * int option) list * int 
-| ConcreteUnitLeaf of (string * int option * int option) list
-| ConcretePlaceholderLeaf of (string * int option * int option) list * string 
-| ConcreteStringLeaf of (string * int option * int option) list * string
-| ConcreteSetLeaf of (string * int option * int option) list * concrete_set
-| ConcreteBitVectorLeaf of (string * int option * int option) list * int * bool list 
-| ConcreteBitListLeaf of (string * int option * int option) list * bool list
-(* label, path to this node, children *)
-| Node of (string * int option * int option) * (string * int option * int option) list * derivation_tree list
+let label dt = Utils.last dt.path
 
-type search_tree =
-  (* DT at this node of the search tree, parent node, depth, and child nodes (if any). 
-     child nodes have integer indices to denote that they are the nth expansion option. *)
-  (*!! TODO: The `search_tree` in the `(search_tree * int) list ref` is not used. 
-             It takes nontrivial space -- remove! *)
-| STNode of derivation_tree * search_tree option * int * (search_tree * int) list ref
+(* A spot in the search: the derivation tree, its search depth, 
+   and the (indices of the) expansions already tried from here *)
+type search_node = {
+  dt : derivation_tree;
+  depth : int;
+  tried : int list ref;
+}
 
-let rec pp_print_derivation_tree ppf derivation_tree = match derivation_tree with 
-| SymbolicLeaf _ -> Format.pp_print_string ppf "sym_leaf"
-| DependentTermLeaf _ -> Format.pp_print_string ppf "dep_sym_leaf"
-| ConcreteBoolLeaf (_, b) -> Format.pp_print_bool ppf b 
-| ConcreteIntLeaf (_, int) -> Format.pp_print_int ppf int 
-| ConcreteUnitLeaf _ -> ()
-| ConcretePlaceholderLeaf (_, ph) -> Format.fprintf ppf "\"%s\"" ph 
-| ConcreteStringLeaf (_, str) -> Format.pp_print_string ppf str 
-| ConcreteSetLeaf _ -> Format.pp_print_string ppf "concrete_string_set"
-| ConcreteBitVectorLeaf (_, _, bits) -> 
-  let bits = List.map Bool.to_int bits in
-  Format.fprintf ppf "0b%a"
-    (Lib.pp_print_list Format.pp_print_int "") bits
-| ConcreteBitListLeaf (_, bits) -> 
-    let bits = List.map Bool.to_int bits in
-  Format.fprintf ppf "(BitList 0b%a)"
-    (Lib.pp_print_list Format.pp_print_int "") bits
-| Node ((nt, Some idx1, Some idx2), _, children) -> 
-  Format.fprintf ppf "(%a.%d.%d %a)"
-    Format.pp_print_string nt 
-    idx1 
-    idx2
-    (Lib.pp_print_list pp_print_derivation_tree " ") children
-| Node ((nt, _, _), _, children) -> 
-  Format.fprintf ppf "(%a %a)"
-    Format.pp_print_string nt 
-    (Lib.pp_print_list pp_print_derivation_tree " ") children
-
-module DTSet = Set.Make(struct
-  type t = derivation_tree ref
-  let compare = Stdlib.compare
-end)
+let rec pp_print_derivation_tree ppf dt = 
+  let pp_print_label ppf = function
+  | (nt, Some idx1, Some idx2) -> Format.fprintf ppf "%a.%d.%d" Nt.pp_symbol nt idx1 idx2
+  | (nt, _, _) -> Nt.pp_symbol ppf nt
+  in
+  match dt.expansion with 
+  | Open -> Format.fprintf ppf "(%a )" pp_print_label (label dt)
+  | Children children -> 
+    Format.fprintf ppf "(%a %a)"
+      pp_print_label (label dt)
+      (Lib.pp_print_list pp_print_derivation_tree " ") children
+  | Terminal (_, None) -> Format.fprintf ppf "(%a sym_leaf)" pp_print_label (label dt)
+  | Terminal (_, Some value) -> Format.fprintf ppf "(%a %a)" pp_print_label (label dt) Value.pp value
+  | Dependent _ -> Format.fprintf ppf "(%a dep_sym_leaf)" pp_print_label (label dt)
 
 module ConstraintSet = Set.Make(struct
   type t = A.expr
@@ -237,7 +179,7 @@ let declare_smt_variables
 
 (* State expression nonterminals in terms of absolute paths from 
    the root of the derivation tree *)
-let rec universalize_expr: bool -> (string * int option * int option) list -> Ast.expr -> Ast.expr
+let rec universalize_expr: bool -> (Nt.t * int option * int option) list -> Ast.expr -> Ast.expr
 = fun is_type_annotation prefix expr ->
   let r = universalize_expr is_type_annotation prefix in
   match expr with
@@ -261,15 +203,24 @@ let rec universalize_expr: bool -> (string * int option * int option) list -> As
   | StrConst _ 
   | EmptySet _ -> expr
   | InhAttr _ 
+  | OwnSynthAttr _
   | SynthAttr _ -> assert false
 
 let string_of_path path = 
   let path = List.map (fun (nt, idx1, idx2) -> match idx1, idx2 with 
-  | None, None -> nt
-  | Some idx1, Some idx2 -> Format.asprintf "%s!%d!%d" nt idx1 idx2
+  | None, None -> Nt.to_symbol nt
+  | Some idx1, Some idx2 -> Format.asprintf "%a!%d!%d" Nt.pp_symbol nt idx1 idx2
   | _ -> assert false
   ) path in 
   String.concat "_" path
+
+(* Unexpanded children of the node at `path`, for production rule option `ges` *)
+let children_of_ges path ges = List.map (fun ge -> match ge with 
+| A.Nonterminal (nt, idx_opt1, idx_opt2, _, _) ->
+  { path = path @ [nt, idx_opt1, idx_opt2]; expansion = Open }
+| StubbedNonterminal stub -> 
+  { path = path @ [stub.stands_for, None, None]; expansion = Dependent stub }
+) ges
 
 (* Normalize a derivation tree for a fixed spot in the search tree. 
    Collect the associated constraints discovered during normalization. *)
@@ -277,11 +228,13 @@ let rec normalize_derivation_tree ctx ast declared_variables solver
                                   constraints_to_assert variable_stack blocking_clause_vars assertion_level dt = 
 let r = normalize_derivation_tree ctx ast declared_variables solver constraints_to_assert variable_stack 
                                    blocking_clause_vars assertion_level in 
-match dt with 
-| Node ((nt, idx1, idx2), path, []) -> 
+let path = dt.path in
+match dt.expansion with 
+| Open -> 
+  let (nt, idx1, idx2) = label dt in
   let forced_expansion = List.find_map (fun element -> match element with 
   | A.ProdRule (nt2, _, [Rhs (ges, scs, _, _)], _) -> 
-    if Utils.str_eq_ci nt nt2 then 
+    if Nt.equal_ci nt nt2 then 
       let constraints_to_add, _exprs = List.concat_map (fun sc -> match sc with 
       | A.SmtConstraint (e, _) -> [universalize_expr false path e, e] 
       | DerivedField _ -> [] 
@@ -289,10 +242,10 @@ match dt with
       ) scs |> List.split in
       let expr_variables = List.map A.get_nts_from_expr2 constraints_to_add |> List.flatten in
       let ty_ctx = List.fold_left (fun acc nt -> 
-        let ty = Utils.StringMap.find_opt (List.rev nt |> List.hd |> Utils.tr_fst) ctx in 
+        let ty = Nt.Map.find_opt (List.rev nt |> List.hd |> Utils.tr_fst) ctx in 
         let ty = match ty with 
         | Some ty -> ty 
-        | None -> Utils.crash ("couldn't find " ^ (List.rev nt |> List.hd |> Utils.tr_fst))
+        | None -> Utils.crash (Format.asprintf "couldn't find %a" Nt.pp (List.rev nt |> List.hd |> Utils.tr_fst))
         in
         let str = Format.asprintf "%a" 
           (Lib.pp_print_list SmtPrinter.pp_print_nt_helper "_") nt 
@@ -302,19 +255,13 @@ match dt with
       ) Utils.StringMap.empty expr_variables in
       declare_smt_variables variable_stack declared_variables ty_ctx solver blocking_clause_vars assertion_level ;
       constraints_to_assert := ConstraintSet.union !constraints_to_assert (ConstraintSet.of_list constraints_to_add); 
-      let children = List.map (fun ge -> match ge with 
-        | A.Nonterminal (nt, idx_opt1, idx_opt2, _, _) ->
-          Node ((nt, idx_opt1, idx_opt2), path @ [nt, idx_opt1, idx_opt2], [])  
-        | StubbedNonterminal (_id, stub_id) -> 
-          Node ((_id, None, None), path @ [_id, None, None], [DependentTermLeaf stub_id])
-        ) ges in
-       Some children 
+      Some (Children (children_of_ges path ges))
     else 
       None
   | A.ProdRule (_, _, _, _) -> None 
   | TypeAnnotation (nt2, ty, scs, p) ->
     let path' = string_of_path path |> String.lowercase_ascii in
-    if Utils.str_eq_ci nt nt2 then 
+    if Nt.equal_ci nt nt2 then 
       let constraints_to_add = List.concat_map (fun sc -> match sc with 
       | A.SmtConstraint (e, _) -> 
       declare_smt_variables variable_stack declared_variables (Utils.StringMap.singleton path' ty) solver blocking_clause_vars assertion_level;
@@ -331,17 +278,16 @@ match dt with
       in
       let constraints_to_add = ConstraintSet.add actlit constraints_to_add in 
       constraints_to_assert := ConstraintSet.union !constraints_to_assert constraints_to_add;
-      Some [SymbolicLeaf (ty, path @ [(nt, idx1, idx2)])]
+      Some (Terminal (ty, None))
     else None 
   ) ast in 
-  let children = match forced_expansion with 
-  | Some children -> children 
-  | None -> [] 
-  in 
-  Node ((nt, idx1, idx2), path, List.map r children) 
-| Node (nt, path, children) -> 
-  Node (nt, path, List.map r children)
-| leaf -> leaf 
+  (match forced_expansion with 
+  | Some (Children children) -> { dt with expansion = Children (List.map r children) }
+  | Some expansion -> { dt with expansion }
+  | None -> dt)
+| Children children -> 
+  { dt with expansion = Children (List.map r children) }
+| Terminal _ | Dependent _ -> dt
 
 let new_decision_level: Smt.solver_instance -> int ref -> Utils.StringSet.t ref Stack.t ref -> unit 
 = fun solver assertion_level variable_stack ->
@@ -364,7 +310,7 @@ let initialize_globals ctx ast derivation_tree start_symbol constraints_to_asser
   (* Keep around constraints we may not need to assert *)
   constraints_to_assert := ConstraintSet.empty; 
   (* Incremental construction of output term so far *)
-  derivation_tree := (Node ((start_symbol, Some 0, Some 0), [start_symbol, Some 0, Some 0], []));
+  derivation_tree := { path = [start_symbol, Some 0, Some 0]; expansion = Open };
   derivation_tree := normalize_derivation_tree ctx ast declared_variables solver constraints_to_assert !variable_stack blocking_clause_vars assertion_level !derivation_tree ;
   constraints_to_assert := assert_all_constraints constraints_to_assert solver;
   (* Set of paths through the tree to help determine when to push constraints from constraints_to_assert *)
@@ -376,7 +322,7 @@ let initialize_globals ctx ast derivation_tree start_symbol constraints_to_asser
   (* Track whether, since the last restart, we backtracked due to the depth limit *) 
   backtrack_depth := false; 
   (* Current spot in the search tree *) 
-  curr_st_node := STNode (!derivation_tree, None, 0, ref []);
+  curr_st_node := { dt = !derivation_tree; depth = 0; tried = ref [] };
   declared_variables := !blocking_clause_vars ;
   ()
 
@@ -420,12 +366,11 @@ let sample_excluding (expansion_probs : float list list) (visited : int list) : 
 
 (* Return expanded node, updated DT, whether or not it was a real choice *)
 let find_new_expansion ast derivation_tree curr_st_node = 
-  let visited_indices = match !curr_st_node with 
-  | STNode (_, _, _, children) -> List.map snd !children 
-  in 
+  let visited_indices = !(!curr_st_node.tried) in 
   let rec expansion_probabilities dt =
-  match dt with
-  | Node ((nt, _, _), _, []) ->
+  match dt.expansion with
+  | Open ->
+    let (nt, _, _) = label dt in
     let probs =
     match List.find_opt (fun e -> match e with
     | A.ProdRule (nt2, _, _, _) | TypeAnnotation (nt2, _, _, _) -> nt = nt2
@@ -436,57 +381,44 @@ let find_new_expansion ast derivation_tree curr_st_node =
     | None -> Utils.crash "No matching grammar rule"
     in
     [probs]
-  | Node (_, _, children) ->
+  | Children children ->
     List.flatten (List.map expansion_probabilities children)
-  | _ -> []
+  | Terminal _ | Dependent _ -> []
   in
-  let rec perform_nth_expansion derivation_tree n = 
-  (*if !Flags.debug then Format.fprintf Format.std_formatter "Performing %dth expansion of dt %a\n" 
-    n 
-    pp_print_derivation_tree derivation_tree;*)
-  match derivation_tree with 
-  | Node (nt, path, child :: children) -> 
-    let m = List.length (List.flatten (expansion_probabilities child)) in 
-    if m > n then 
-      let expanded_node, expanded_child = perform_nth_expansion child n in 
-      expanded_node, Node (nt, path, expanded_child :: children) 
-    else ( 
-      let expanded_node, rec_dt = perform_nth_expansion (Node (nt, path, children)) (n - m) in 
-      match rec_dt with 
-      | Node (nt, path, expanded_children) -> 
-        expanded_node, Node (nt, path, child :: expanded_children)
-      | _ -> assert false 
-    )
-  | Node ((nt, idx1, idx2), path, []) -> 
+  let num_expansions dt = List.length (List.flatten (expansion_probabilities dt)) in
+  (* Perform the nth expansion (counting over the open nodes, in order) *)
+  let rec perform_nth_expansion dt n = 
+  match dt.expansion with 
+  | Children children -> 
+    let expanded_node, children = perform_nth_expansion_list children n in 
+    expanded_node, { dt with expansion = Children children }
+  | Open -> 
+    let (nt, _, _) = label dt in
     let element = List.find (fun element -> match element with 
     | A.TypeAnnotation (nt2, _, _, _) 
-    | ProdRule (nt2, _, _, _) -> Utils.str_eq_ci nt nt2
-    ) ast in (
-    match element with 
+    | ProdRule (nt2, _, _, _) -> Nt.equal_ci nt nt2
+    ) ast in 
+    let expansion = match element with 
     | TypeAnnotation (_, ty, _, _) -> 
-      if n = 1 then 
-        let expanded_node = 
-          Node ((nt, idx1, idx2), path, [SymbolicLeaf (ty, path @ [(nt, idx1, idx2)])]) 
-        in
-        expanded_node, expanded_node 
-      else assert false 
-    | ProdRule (_nt', _, rhss, _) -> 
-      let rhs = List.nth rhss n in 
-      match rhs with 
-      | A.Rhs (ges, _, _, _) -> 
-        let children = List.map (fun ge -> match ge with 
-        | A.Nonterminal (nt, idx_opt1, idx_opt2, _, _) ->
-          Node ((nt, idx_opt1, idx_opt2), path @ [nt, idx_opt1, idx_opt2], [])  
-        | StubbedNonterminal (nt_id, stub_id) -> 
-          Node ((nt_id, None, None), path @ [nt_id, None, None], [DependentTermLeaf stub_id])
-        ) ges in 
-        let expanded_node = Node ((nt, idx1, idx2), path, children) in 
-        expanded_node, expanded_node 
-      | StubbedRhs str -> 
-        let expanded_node = Node ((nt, idx1, idx2), path, [DependentTermLeaf str]) in 
-        expanded_node, expanded_node
-    )
-  | _ -> assert false 
+      if n = 1 then Terminal (ty, None) else assert false 
+    | ProdRule (_, _, rhss, _) -> (
+      match List.nth rhss n with 
+      | A.Rhs (ges, _, _, _) -> Children (children_of_ges dt.path ges)
+      | StubbedRhs stub -> Dependent stub
+    ) in
+    let expanded_node = { dt with expansion } in
+    expanded_node, expanded_node 
+  | Terminal _ | Dependent _ -> assert false 
+  and perform_nth_expansion_list children n = match children with 
+  | child :: children -> 
+    let m = num_expansions child in 
+    if m > n then 
+      let expanded_node, child = perform_nth_expansion child n in 
+      expanded_node, child :: children
+    else 
+      let expanded_node, children = perform_nth_expansion_list children (n - m) in 
+      expanded_node, child :: children
+  | [] -> assert false
   in
   let expansion_probabilities_list = expansion_probabilities derivation_tree in 
   let total_num_choices = expansion_probabilities_list |> List.concat |> List.length in
@@ -502,7 +434,7 @@ let backtrack ctx ast assertion_level decision_stack solver backtrack_depth decl
     (*Format.pp_print_string Format.std_formatter "Restarting...\n%!";*)
     Smt.issue_solver_command "(pop 1)" solver; 
     Smt.issue_solver_command "(push 1)" solver;
-    (if not !backtrack_depth then raise (Failure "infeasible"));
+    (if not !backtrack_depth then raise Infeasible_grammar);
     depth_limit := !depth_limit + 1;
     if !Flags.debug then Format.fprintf Format.std_formatter "Increasing depth limit to %d\n" !depth_limit;
     initialize_globals ctx ast derivation_tree start_symbol constraints_to_assert 
@@ -513,7 +445,7 @@ let backtrack ctx ast assertion_level decision_stack solver backtrack_depth decl
     Smt.issue_solver_command "(pop 1)" solver;
     let st_node = Stack.pop !decision_stack in
     let popped_vars = Stack.pop !variable_stack in 
-    let STNode (dt, _, _, _) = st_node in 
+    let dt = st_node.dt in 
     declared_variables := 
       Utils.StringSet.union
         (Utils.StringSet.diff !declared_variables !popped_vars)
@@ -522,39 +454,20 @@ let backtrack ctx ast assertion_level decision_stack solver backtrack_depth decl
     curr_st_node := st_node
   )
 
-let string_of_constructor (str, idx1, idx2) = match idx1, idx2 with 
-| None, None -> str 
-| Some idx1, Some idx2 -> str ^ "!" ^ (string_of_int idx1) ^ "!" ^ (string_of_int idx2)
-| _ -> assert false
-
-let rec model_of_solver_ast: SolverAst.solver_ast -> (model_value Utils.StringMap.t, unit) result
+let model_of_solver_ast: SolverAst.solver_ast -> (model, unit) result
 = fun solver_ast -> 
   match solver_ast with 
-  | VarLeaf var when var = "infeasible" -> 
+  | Infeasible -> 
     Format.pp_print_flush Format.std_formatter (); Error ()
-  | Node (constructor, [SetLeaf (StringSet value)]) -> 
-    Ok (Utils.StringMap.singleton (string_of_constructor constructor) (ConcreteStringSet value))
-  | Node (constructor, [IntLeaf value]) -> 
-    Ok (Utils.StringMap.singleton (string_of_constructor constructor) (ConcreteInt value))
-  | Node (constructor, [StrLeaf value]) -> 
-    Ok (Utils.StringMap.singleton (string_of_constructor constructor) (ConcreteString value))
-  | Node (constructor, [BoolLeaf value]) -> 
-    Ok (Utils.StringMap.singleton (string_of_constructor constructor) (ConcreteBool value))
-  | Node (_, [UnitLeaf]) -> 
-    Ok Utils.StringMap.empty
-  | Node (constructor, [BLLeaf value]) -> 
-    Ok (Utils.StringMap.singleton (string_of_constructor constructor) (ConcreteBitList value))
-    | Node (constructor, [BVLeaf (len, value)]) -> 
-    Ok (Utils.StringMap.singleton (string_of_constructor constructor) (ConcreteBitVector (len, value)))
-  | Node (_, children) -> 
-    (Res.seq_chain (fun acc child -> 
-      let* map = model_of_solver_ast child in 
-      Ok (Utils.StringMap.merge Lib.union_keys acc map)  
-    ) Utils.StringMap.empty children)
-  | VarLeaf _ | BLLeaf _ | BVLeaf _ | UnitLeaf
-  | BoolLeaf _ | StrLeaf _ | IntLeaf _ | SetLeaf _ -> Utils.crash "Unexpected case in model_of_solver_ast"
+  | Model values -> 
+    Ok (List.fold_left (fun acc (symbol, value) -> match value with 
+      | Value.Unit -> acc
+      | Bool _ | Int _ | String _ | Placeholder _ | BitVector _ | BitList _ | StringSet _ -> 
+        Utils.StringMap.add symbol value acc
+    ) Utils.StringMap.empty values)
+  | Leaf _ | StubLeaf _ | Node _ -> Utils.crash "Unexpected case in model_of_solver_ast"
 
-let get_smt_result: A.ast -> Smt.solver_instance -> bool -> (model_value Utils.StringMap.t, unit) result option
+let get_smt_result: A.ast -> Smt.solver_instance -> bool -> (model, unit) result option
 = fun ast solver get_model -> 
   Smt.issue_solver_command "(check-sat)\n" solver;
   let response = Smt.read_check_sat_response solver in
@@ -576,145 +489,82 @@ let get_smt_result: A.ast -> Smt.solver_instance -> bool -> (model_value Utils.S
     in
     Some (model_of_solver_ast result)
 
-let ty_of_concrete_leaf leaf = match leaf with 
-| ConcreteBitListLeaf _ -> A.BitList 
-| ConcreteIntLeaf _ -> Int 
-| ConcreteStringLeaf _ -> String 
-| ConcretePlaceholderLeaf _ -> Placeholder 
-| ConcreteBitVectorLeaf (_, n, _) -> BitVector n
-| ConcreteBoolLeaf _ -> Bool 
-| ConcreteUnitLeaf _ -> Unit
-| _ -> Utils.crash "Unexpected case in ty_of_concrete_leaf"
-
-let rec instantiate_terminals: model_value Utils.StringMap.t -> derivation_tree -> derivation_tree 
-= fun model derivation_tree -> 
-  let r = instantiate_terminals model in 
-  match derivation_tree with 
-  | ConcreteIntLeaf (path, _) | ConcreteBoolLeaf (path, _) | ConcreteBitListLeaf (path, _)
-  | ConcreteBitVectorLeaf (path, _, _) | ConcretePlaceholderLeaf (path, _) 
-  | ConcreteUnitLeaf path
-  | ConcreteStringLeaf (path, _) | ConcreteSetLeaf (path, _) -> 
-    let path' = string_of_path (Utils.init path) |> String.lowercase_ascii in
-    (match Utils.StringMap.find_opt path' model with 
-    | Some (ConcreteInt int) -> ConcreteIntLeaf (path, int)
-    | Some (ConcreteBool bool) -> ConcreteBoolLeaf (path, bool)
-    | Some (ConcreteBitList bitlist) -> ConcreteBitListLeaf (path, bitlist)
-    | Some (ConcreteBitVector (len, bits)) -> ConcreteBitVectorLeaf (path, len, bits)
-    | Some (ConcreteString str) -> ConcreteStringLeaf (path, str)
-    | Some (ConcreteStringSet s) -> ConcreteSetLeaf (path, ConcreteStringSetLeaf s)
-    | Some (ConcretePlaceholder ph) -> ConcretePlaceholderLeaf (path, ph)
-    (* Model contain unconstrained variables not present in this derivation tree *)
-    | None -> SymbolicLeaf (ty_of_concrete_leaf derivation_tree, path)) 
-  | SymbolicLeaf (ty, path) -> 
-    let path' = string_of_path (Utils.init path) |> String.lowercase_ascii in
-    (match Utils.StringMap.find_opt path' model with 
-    | Some (ConcreteInt int) -> ConcreteIntLeaf (path, int)
-    | Some (ConcreteBool bool) -> ConcreteBoolLeaf (path, bool)
-    | Some (ConcreteBitList bitlist) -> ConcreteBitListLeaf (path, bitlist)
-    | Some (ConcreteBitVector (len, bits)) -> ConcreteBitVectorLeaf (path, len, bits)
-    | Some (ConcreteString str) -> ConcreteStringLeaf (path, str)
-    | Some (ConcretePlaceholder ph) -> ConcretePlaceholderLeaf (path, ph)
-    | Some (ConcreteStringSet s) -> ConcreteSetLeaf (path, ConcreteStringSetLeaf s)
-    | None -> SymbolicLeaf (ty, path) (* Model contain unconstrained variables not present in this derivation tree *))
-  | DependentTermLeaf _ -> derivation_tree
-  | Node (nt, path, children) -> 
-    let children = List.map r children in 
-    Node (nt, path, children)
+(* Set each terminal's value from the model *)
+let rec instantiate_terminals: model -> derivation_tree -> derivation_tree 
+= fun model dt -> 
+  match dt.expansion with 
+  | Terminal (ty, _) -> 
+    let symbol = string_of_path dt.path |> String.lowercase_ascii in
+    (* If the model does not contain the variable, it is unconstrained *)
+    { dt with expansion = Terminal (ty, Utils.StringMap.find_opt symbol model) }
+  | Children children -> 
+    { dt with expansion = Children (List.map (instantiate_terminals model) children) }
+  | Open | Dependent _ -> dt
   
+(* Assign random values to the terminals that the model leaves unconstrained *)
 let rec fill_unconstrained_nonterminals: derivation_tree -> derivation_tree 
-= fun derivation_tree -> 
-  let r = fill_unconstrained_nonterminals in 
-  match derivation_tree with 
-  | ConcreteIntLeaf _ | ConcreteBitListLeaf _ | ConcreteBitVectorLeaf _ 
-  | ConcreteBoolLeaf _ | ConcretePlaceholderLeaf _ | ConcreteStringLeaf _ 
-  | ConcreteSetLeaf _ | ConcreteUnitLeaf _ -> derivation_tree 
-  | SymbolicLeaf (Unit, path) -> ConcreteUnitLeaf path
-  | SymbolicLeaf (Int, path) -> 
-    ConcreteIntLeaf (path, random_int_in_range (-100) 100)
-  | SymbolicLeaf (Bool, path) -> 
-    ConcreteBoolLeaf (path, Random.bool ())
-  | SymbolicLeaf (BitList, path) -> 
-    ConcreteBitListLeaf (path, Utils.random_bools (random_int_in_range 0 25))
-  | SymbolicLeaf (BitVector n, path) -> 
-    ConcreteBitVectorLeaf (path, n, Utils.random_bools n)
-  | SymbolicLeaf (Placeholder, path) -> 
-    ConcretePlaceholderLeaf (path, "generated_placeholder")
-  | SymbolicLeaf (String, path) -> 
-    ConcreteStringLeaf (path, Utils.random_string (random_int_in_range 0 25))
-  | SymbolicLeaf (Set ty, path) ->
-    let set = match ty with 
-    | String -> Utils.StringSet.empty 
-    | _ -> Utils.crash "TODO: Support more set types in DPLL module" in
-    ConcreteSetLeaf (path, (ConcreteStringSetLeaf set)) 
-  | SymbolicLeaf (ADT _, _) -> Utils.crash "Unexpected case in fill_unconstrained_nonterminals"
-  | DependentTermLeaf _ -> derivation_tree
-  | Node (nt, path, children) ->  
-    let children = List.map r children in
-    Node (nt, path, children)
+= fun dt -> 
+  let value_of_ty: A.il_type -> Value.t = function
+  | Unit -> Unit
+  | Int -> Int (random_int_in_range (-100) 100)
+  | Bool -> Bool (Random.bool ())
+  | BitList -> BitList (Utils.random_bools (random_int_in_range 0 25))
+  | BitVector n -> BitVector (n, Utils.random_bools n)
+  | Placeholder -> Placeholder "generated_placeholder"
+  | String -> String (Utils.random_string (random_int_in_range 0 25))
+  | Set String -> StringSet Utils.StringSet.empty
+  | Set _ -> Utils.crash "TODO: Support more set types in DPLL module"
+  | ADT _ -> Utils.crash "Unexpected case in fill_unconstrained_nonterminals"
+  in
+  match dt.expansion with 
+  | Terminal (ty, None) -> { dt with expansion = Terminal (ty, Some (value_of_ty ty)) }
+  | Children children -> 
+    { dt with expansion = Children (List.map fill_unconstrained_nonterminals children) }
+  | Terminal (_, Some _) | Open | Dependent _ -> dt
 
-let rec is_complete derivation_tree = match derivation_tree with
-| SymbolicLeaf _ | ConcreteIntLeaf _ | DependentTermLeaf _ 
-| ConcreteBitListLeaf _ | ConcreteBitVectorLeaf _ | ConcreteBoolLeaf _ 
-| ConcreteUnitLeaf _
-| ConcretePlaceholderLeaf _ | ConcreteStringLeaf _ | ConcreteSetLeaf _ -> true
-| Node (_, _, children) -> 
-  let children = List.map is_complete children in
-  List.length children > 0 && List.fold_left (&&) true children 
+let rec is_complete dt = match dt.expansion with
+| Open -> false
+| Terminal _ | Dependent _ -> true
+| Children children -> 
+  children <> [] && List.for_all is_complete children 
 
 let rec solver_ast_of_derivation_tree: derivation_tree -> SA.solver_ast 
-= fun derivation_tree -> match derivation_tree with
-| DependentTermLeaf nt -> VarLeaf (String.lowercase_ascii (nt ^ "_con")) (* Match sygus encoding format *)
-| SymbolicLeaf (_, path) -> VarLeaf (String.concat "" (List.map Utils.tr_fst path))
-| ConcreteIntLeaf (_, i) -> IntLeaf i
-| ConcreteUnitLeaf _ -> UnitLeaf
-| ConcreteBitListLeaf (_, bits) -> BLLeaf bits 
-| ConcreteBitVectorLeaf (_, len, bits) -> BVLeaf (len, bits)
-| ConcretePlaceholderLeaf (_, ph) -> VarLeaf ph 
-| ConcreteStringLeaf (_, str) -> StrLeaf str
-| ConcreteSetLeaf (_, (ConcreteStringSetLeaf set)) -> SetLeaf (StringSet set)
-| ConcreteBoolLeaf (_, b) -> BoolLeaf b
-| Node (nt, _, children) -> 
-  let children = List.map solver_ast_of_derivation_tree children in 
-  Node (nt, children)
-
-(*(* Naive computation of dt_frontier *)
-let rec compute_new_dt_frontier derivation_tree = match derivation_tree with 
-| SymbolicLeaf _ | ConcreteIntLeaf _ | DependentTermLeaf _ | ConcreteSetLeaf _  
-| ConcreteBoolLeaf _ | ConcreteBitListLeaf _ | ConcreteBitVectorLeaf _ 
-| ConcretePlaceholderLeaf _ | ConcreteStringLeaf _ -> DTSet.empty
-| Node (_, _, children) as node -> 
-  if children = [] then DTSet.singleton (ref node) else
-  List.fold_left (fun acc child -> 
-    DTSet.union acc (compute_new_dt_frontier child)
-  ) DTSet.empty children *)
-
-
+= fun dt -> 
+  let children = match dt.expansion with 
+  | Open -> []
+  | Children children -> List.map solver_ast_of_derivation_tree children
+  | Terminal (_, Some value) -> [Leaf value]
+  (* TODO: Unfilled terminals are rendered as a placeholder made of the path's symbols *)
+  | Terminal (_, None) -> 
+    let symbols = List.map (fun (nt, _, _) -> Nt.to_symbol nt) (dt.path @ [label dt]) in
+    [Leaf (Placeholder (String.concat "" symbols))]
+  | Dependent stub -> [StubLeaf stub]
+  in
+  Node (label dt, children)
 
 let pp_print_model_pair ppf (k, v) = 
   Format.fprintf ppf "(= %s %a)" 
     k 
-    pp_print_model_value v 
+    Value.pp_smt v 
 
-let rec get_dt_vars = function 
-| Node ((id, idx1, idx2), _, children) -> 
-
-  let id_str = match idx1, idx2 with 
-  | Some idx1, Some idx2 -> Format.asprintf "%s.%d.%d"
-     id idx1 idx2
-  | None, None -> id 
+(* Names of the terminal variables in `dt`. 
+   TODO: The separators differ from `string_of_path`, so these never match model variables *)
+let rec get_dt_vars dt = 
+  let id_str = match label dt with 
+  | (id, Some idx1, Some idx2) -> Format.asprintf "%a.%d.%d" Nt.pp_symbol id idx1 idx2
+  | (id, None, None) -> Nt.to_symbol id 
   | _ -> assert false
   in
-  let r = List.map get_dt_vars children in
-  let r = List.fold_left Utils.StringSet.union Utils.StringSet.empty r in
+  let r = match dt.expansion with 
+  | Open | Dependent _ -> Utils.StringSet.empty
+  | Terminal _ -> Utils.StringSet.singleton ""
+  | Children children -> 
+    List.fold_left Utils.StringSet.union Utils.StringSet.empty (List.map get_dt_vars children)
+  in
   Utils.StringSet.map (fun child -> 
     if String.equal child "" then id_str 
     else id_str ^ "_" ^ child
   ) r
-| ConcreteBitVectorLeaf _| ConcreteSetLeaf _ | ConcreteBitListLeaf _ 
-| ConcreteStringLeaf _ | ConcreteIntLeaf _ | ConcreteBoolLeaf _ 
-| ConcretePlaceholderLeaf _ | ConcreteUnitLeaf _ | SymbolicLeaf _ -> 
-  Utils.StringSet.singleton "" 
-| DependentTermLeaf _ -> Utils.StringSet.empty 
 
 let push_blocking_clause variable_stack model dt declared_variables solver blocking_clause_vars assertion_level update_bc_vars = 
   let dt_vars = get_dt_vars !dt in
@@ -723,16 +573,7 @@ let push_blocking_clause variable_stack model dt declared_variables solver block
     (Lib.pp_print_list Format.pp_print_string ", ") (Utils.StringSet.to_list dt_vars)  
     (Lib.pp_print_list Format.pp_print_string ", ") (Utils.StringMap.bindings model |> List.map fst); *)
   let model = Utils.StringMap.filter (fun var _ -> Utils.StringSet.mem var dt_vars) model in
-  let ctx_of_model model = Utils.StringMap.map (function 
-  | ConcreteBool _ -> A.Bool 
-  | ConcreteInt _ -> A.Int 
-  | ConcreteString _ -> A.String
-  | ConcreteBitList _ -> A.BitList 
-  | ConcreteStringSet _ -> A.Set(String)
-  | ConcreteBitVector (w, _) -> A.BitVector w
-  | ConcretePlaceholder _ -> A.Placeholder 
-  ) model in 
-  let ctx = ctx_of_model model in 
+  let ctx = Utils.StringMap.map Value.ty model in 
   declare_smt_variables variable_stack declared_variables ctx solver blocking_clause_vars assertion_level; 
   if update_bc_vars then 
     blocking_clause_vars := Utils.StringSet.union !blocking_clause_vars 
@@ -779,7 +620,7 @@ let rec generate_n_solutions n ast model r derivation_tree declared_variables so
       * Remove the constraints from the constraint set associated with nodes no longer in DT
 
 *)
-let dpll: A.il_type Utils.StringMap.t -> A.semantic_constraint Utils.StringMap.t -> A.ast -> SA.solver_ast
+let dpll: TypeChecker.context -> A.semantic_constraint Nt.StubMap.t -> A.ast -> SA.solver_ast
 = fun ctx dep_map ast ->  
   let _ = match !Flags.seed with 
   | None -> 
@@ -818,15 +659,15 @@ let dpll: A.il_type Utils.StringMap.t -> A.semantic_constraint Utils.StringMap.t
   (* Keep around constraints we may not need to assert *)
   let constraints_to_assert = ref ConstraintSet.empty in 
   (* Incremental construction of output term so far *)
-  let derivation_tree = ref (Node ((start_symbol, Some 0, Some 0), start_path, [])) in 
+  let derivation_tree = ref { path = start_path; expansion = Open } in 
   derivation_tree := normalize_derivation_tree ctx ast declared_variables solver constraints_to_assert !variable_stack blocking_clause_vars assertion_level !derivation_tree ;
   constraints_to_assert := assert_all_constraints constraints_to_assert solver;
   (* Current spot in the search tree *) 
-  let curr_st_node = ref (STNode (!derivation_tree, None, 0, ref [])) in
+  let curr_st_node = ref { dt = !derivation_tree; depth = 0; tried = ref [] } in
   (* Set of paths through the tree to help determine when to push constraints from constraints_to_assert *)
   (* let provenance_list = _ in *) (* Challenge: backtracking affects provenance list *)
   (* Keep track of all decisions so we can easily backtrack in the derivation tree *)
-  let decision_stack : search_tree Stack.t ref = ref (B.Stack.create ()) in 
+  let decision_stack : search_node Stack.t ref = ref (B.Stack.create ()) in 
   (* IDS depth limit *) 
   let depth_limit = ref starting_depth_limit in
   (* Track whether, since the last restart, we backtracked due to the depth limit *) 
@@ -867,12 +708,8 @@ let dpll: A.il_type Utils.StringMap.t -> A.semantic_constraint Utils.StringMap.t
       Stack.push !curr_st_node !decision_stack;
     );
     derivation_tree := normalize_derivation_tree ctx ast declared_variables solver constraints_to_assert !variable_stack blocking_clause_vars assertion_level !derivation_tree ; 
-    curr_st_node := (match !curr_st_node with 
-    | STNode (_, _, depth, visited) -> 
-      let new_st_node = STNode (!derivation_tree, Some !curr_st_node, depth + 1, ref []) in 
-      visited := (new_st_node, expansion_index) :: !visited; 
-      new_st_node
-    ); 
+    !curr_st_node.tried := expansion_index :: !(!curr_st_node.tried);
+    curr_st_node := { dt = !derivation_tree; depth = !curr_st_node.depth + 1; tried = ref [] }; 
 
     if !Flags.debug then Format.fprintf Format.std_formatter "Expanded DT: %a\nExpanded node: %a\n" 
       pp_print_derivation_tree !derivation_tree 
@@ -894,13 +731,12 @@ let dpll: A.il_type Utils.StringMap.t -> A.semantic_constraint Utils.StringMap.t
     ) else 
 
     (* Assert constraints for the expanded node *)
-    match expanded_node, !curr_st_node with 
-    (SymbolicLeaf _ | ConcreteIntLeaf _ | DependentTermLeaf _ | ConcreteSetLeaf _ 
-    | ConcreteBitListLeaf _ | ConcreteBitVectorLeaf _ | ConcreteBoolLeaf _ 
-    | ConcreteUnitLeaf _
-    | ConcretePlaceholderLeaf _ | ConcreteStringLeaf _), _  -> () (* nothing else to do *)
-    | Node (_, _, []), STNode _ -> assert false
-    | Node (nt, path, children), STNode (_, _, depth, _) -> 
+    match expanded_node.expansion with 
+    | Open -> assert false
+    | Children _ | Terminal _ | Dependent _ -> 
+      let nt = label expanded_node in
+      let path = expanded_node.path in
+      let depth = !curr_st_node.depth in
       if !Flags.debug then Format.fprintf Format.std_formatter "Current search tree depth: %d\n" 
         depth;
 
@@ -917,7 +753,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.semantic_constraint Utils.StringMap.t
       (* Find the associated AST rule for the new expansion *)
       let grammar_rule = List.find (fun element -> match element with 
       | A.ProdRule (nt2, _, _, _) 
-      | A.TypeAnnotation (nt2, _, _, _) -> Utils.str_eq_ci (Utils.tr_fst nt) nt2
+      | A.TypeAnnotation (nt2, _, _, _) -> Nt.equal_ci (Utils.tr_fst nt) nt2
       ) ast in 
       let path' = string_of_path path |> String.lowercase_ascii in
 
@@ -955,23 +791,21 @@ let dpll: A.il_type Utils.StringMap.t -> A.semantic_constraint Utils.StringMap.t
       | A.ProdRule (_, _, rhss, _) -> 
         (*Format.printf "Finding the chosen rule for %a\n%!" 
           pp_print_derivation_tree expanded_node; *)
-        let chosen_rule = List.find (fun rhs -> match rhs with 
-        | A.StubbedRhs str1 -> (
-          match children with 
-          | [Node ((_, None, None), _, [DependentTermLeaf str2])] ->
-            Utils.str_eq_ci str1 str2
-          | _ -> false 
-          )
-        | A.Rhs (ges, _, _, _) -> 
-          if List.length ges = List.length children then 
-            List.for_all2 (fun child ge -> match child, ge with 
-            | Node ((nt, idx1, idx2), _, _), A.Nonterminal (nt2, idx3, idx4, _, _) -> 
-              Utils.str_eq_ci nt nt2 && idx1 = idx3 && idx2 = idx4
-            | Node ((_, None, None), _, [DependentTermLeaf stub_id1]), A.StubbedNonterminal (_, stub_id2) ->
-              Utils.str_eq_ci stub_id1 stub_id2
-            | _ -> false 
-            ) children ges 
-          else false 
+        let chosen_rule = List.find (fun rhs -> match rhs, expanded_node.expansion with 
+        | A.StubbedRhs stub1, Dependent stub2 -> Nt.equal_stub stub1 stub2
+        | A.Rhs (ges, _, _, _), Children children -> 
+          List.length ges = List.length children && 
+          List.for_all2 (fun child ge -> match ge with 
+          | A.Nonterminal (nt2, idx3, idx4, _, _) -> 
+            let (nt, idx1, idx2) = label child in
+            Nt.equal_ci nt nt2 && idx1 = idx3 && idx2 = idx4
+          | A.StubbedNonterminal stub2 -> (
+            match child.expansion with 
+            | Dependent stub1 -> Nt.equal_stub stub1 stub2
+            | Open | Children _ | Terminal _ -> false)
+          ) children ges 
+        | A.StubbedRhs _, (Open | Children _ | Terminal _) 
+        | A.Rhs _, (Open | Terminal _ | Dependent _) -> false 
         ) rhss in
         if !Flags.debug then Format.fprintf Format.std_formatter "Chose rule %a\n" 
           A.pp_print_prod_rule_rhs chosen_rule;
@@ -983,7 +817,7 @@ let dpll: A.il_type Utils.StringMap.t -> A.semantic_constraint Utils.StringMap.t
             (* Assert semantic constraints for production rules *)
             let expr_variables = A.get_nts_from_expr2 expr in
             let ty_ctx = List.fold_left (fun acc nt -> 
-              let ty = Utils.StringMap.find (List.rev nt |> List.hd |> Utils.tr_fst) ctx in 
+              let ty = Nt.Map.find (List.rev nt |> List.hd |> Utils.tr_fst) ctx in 
               let str = Format.asprintf "%a" (Lib.pp_print_list SmtPrinter.pp_print_nt_helper "_") nt in
               let str = path' ^ "_" ^ str in 
               (* Declare variable and its activation literal *)
@@ -1089,9 +923,11 @@ let dpll: A.il_type Utils.StringMap.t -> A.semantic_constraint Utils.StringMap.t
   Smt.cleanup_solver solver;
   Option.get !result 
 
-  with Failure e -> 
+  with 
+  | Infeasible_grammar -> 
     Smt.cleanup_solver solver;
-    (if not (String.equal e "infeasible") then 
-      Utils.crash e);
     Format.pp_print_flush Format.std_formatter ();
-    StrLeaf "infeasible"
+    Infeasible
+  | Failure e -> 
+    Smt.cleanup_solver solver;
+    Utils.crash e

@@ -9,23 +9,6 @@ module A = Ast
 
 let eval_fail index = Utils.crash ("evaluation error #" ^ string_of_int index)
 
-(* TODO: Replace with Utils.extract_base_name *)
-let remove_stub input = 
-  let open Str in
-  let re = regexp "^_stub[0-9]+_\\(.*\\)$" in
-  if string_match re input 0 then
-    matched_group 1 input
-  else
-    input
-
-let remove_suffix input = 
-  let open Str in
-  let re = regexp "^\\(.*\\)_con[0-9]*$" in
-  if string_match re input 0 then
-    String.uppercase_ascii (matched_group 1 input)
-  else
-    String.uppercase_ascii input
-
 let bvult bv1 bv2 =
   let rec compare_bits bv1 bv2 =
     match bv1, bv2 with
@@ -40,46 +23,42 @@ let bvult bv1 bv2 =
   else
     compare_bits bv1 bv2
 
-(* Constructor string created with: "_stub" ^ (string_of_int !k) ^ "_" ^ nt *)
-let process_constructor_str: string -> string 
-= fun input -> 
-  let re = Str.regexp "\\(.*\\)_con" in
-  if Str.string_match re input 0 then Str.matched_group 1 input |> String.uppercase_ascii
-  else Utils.crash "Interal error (process_constructor_str): Input string does not match the required format" 
-
 let expr_to_solver_ast: A.expr -> SA.solver_ast 
 = fun expr -> match expr with 
-| IntConst (i, _) -> IntLeaf i 
-  | PhConst (s, _) -> VarLeaf s
-  | BVConst (len, bits, _) -> BVLeaf (len, bits)
-  | BLConst (bits, _) -> BLLeaf bits
-  | StrConst (s, _) -> StrLeaf s
-  | BConst (b, _) -> BoolLeaf b
+| IntConst (i, _) -> Leaf (Int i)
+| PhConst (s, _) -> Leaf (Placeholder s)
+| BVConst (len, bits, _) -> Leaf (BitVector (len, bits))
+| BLConst (bits, _) -> Leaf (BitList bits)
+| StrConst (s, _) -> Leaf (String s)
+| BConst (b, _) -> Leaf (Bool b)
 | _ -> A.pp_print_expr Format.std_formatter expr; eval_fail 1
 
 let rec solver_ast_to_expr: SA.solver_ast -> A.expr list
 = fun solver_ast -> 
   match solver_ast with 
-| IntLeaf i -> [IntConst (i, Lexing.dummy_pos)]
-  | BVLeaf (len, bits) -> [BVConst (len, bits, Lexing.dummy_pos)]
-  | BLLeaf bits -> [BLConst (bits, Lexing.dummy_pos)]
-  | VarLeaf s -> [PhConst (s, Lexing.dummy_pos)]
-  | StrLeaf s -> [StrConst (s, Lexing.dummy_pos)]
-  | BoolLeaf b -> [BConst (b, Lexing.dummy_pos)]
-| SetLeaf _ -> Utils.error_no_pos "Sets are not yet supported in derived fields"
-| UnitLeaf -> Utils.crash "Unexpected case (solver_ast_to_expr UnitLeaf)"
+| Leaf (Int i) -> [IntConst (i, Lexing.dummy_pos)]
+| Leaf (BitVector (len, bits)) -> [BVConst (len, bits, Lexing.dummy_pos)]
+| Leaf (BitList bits) -> [BLConst (bits, Lexing.dummy_pos)]
+| Leaf (Placeholder s) -> [PhConst (s, Lexing.dummy_pos)]
+| Leaf (String s) -> [StrConst (s, Lexing.dummy_pos)]
+| Leaf (Bool b) -> [BConst (b, Lexing.dummy_pos)]
+| Leaf (StringSet _) -> Utils.error_no_pos "Sets are not yet supported in derived fields"
+| Leaf Unit -> Utils.crash "Unexpected case (solver_ast_to_expr Unit)"
+| StubLeaf _ -> Utils.crash "Unexpected case (solver_ast_to_expr StubLeaf)"
+| Model _ -> Utils.crash "Unexpected case (solver_ast_to_expr Model)"
+| Infeasible -> Utils.crash "Unexpected case (solver_ast_to_expr Infeasible)"
 | Node (_, solver_asts) -> 
     (List.map solver_ast_to_expr solver_asts |> List.flatten)
 
-let rec compute_dep: A.semantic_constraint Utils.StringMap.t -> SA.solver_ast -> A.ast -> A.element -> string -> SA.solver_ast
-= fun dep_map solver_ast ast _element var -> 
+let rec compute_dep: A.semantic_constraint Nt.StubMap.t -> SA.solver_ast -> A.ast -> A.element -> Nt.stub -> SA.solver_ast
+= fun dep_map solver_ast ast _element stub -> 
   if !Flags.debug then 
-    Format.printf "compute_dep: computing dependency for %s in solver_ast %a\n"
-      var
+    Format.printf "compute_dep: computing dependency for %a in solver_ast %a\n"
+      Nt.pp (Stub stub)
       SA.pp_print_solver_ast solver_ast;
-  match Utils.StringMap.find_opt (process_constructor_str var) dep_map with 
+  match Nt.StubMap.find_opt stub dep_map with 
   | None -> 
-    Utils.crash ("Hanging identifier '" ^ var ^ "' when computing dependencies")
+    Utils.crash (Format.asprintf "Hanging identifier '%a' when computing dependencies" Nt.pp (Stub stub))
   | Some sc -> (
     match sc with 
     | SmtConstraint _ -> Utils.crash "Encountered SmtConstraint when computing dependencies"
@@ -122,8 +101,8 @@ and bool_list_to_il_int (signed : bool) (bits : bool list) p : A.expr =
   else
     A.IntConst (unsigned_val, p)
 
-and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.solver_ast -> A.ast -> A.element -> A.expr -> A.expr list
-= fun ?(dep_map=Utils.StringMap.empty) solver_ast ast element expr -> 
+and evaluate: ?dep_map:A.semantic_constraint Nt.StubMap.t -> SA.solver_ast -> A.ast -> A.element -> A.expr -> A.expr list
+= fun ?(dep_map=Nt.StubMap.empty) solver_ast ast element expr -> 
   if !Flags.debug then 
     Format.printf "Evaluating expression %a under element \n%a\nand solver_ast \n%a\n\n"
       A.pp_print_expr expr 
@@ -142,23 +121,23 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.solver_ast 
       | Rhs (ges, _, _, _) ->
         Utils.find_index_opt (fun ge -> match ge with 
         | A.Nonterminal (nt, idx, idx', _, _) -> 
-          Utils.str_eq_ci id nt && 
+          Nt.equal_ci id nt && 
           (idx0 = idx  || idx0 = None) && 
           (idx1 = idx' || idx1 = None)
-        | StubbedNonterminal (nt, _) -> 
-          Utils.str_eq_ci id nt 
+        | StubbedNonterminal stub -> 
+          Nt.equal_ci id stub.stands_for 
         ) ges
       ) rhss in 
       Option.get ci, 
       List.find (fun element -> match element with 
       | A.TypeAnnotation (id2, _, _, _)
-      | A.ProdRule (id2, _, _, _) -> Utils.str_eq_ci id id2
+      | A.ProdRule (id2, _, _, _) -> Nt.equal_ci id id2
       ) ast 
   in 
   (
   match solver_ast with  
-  | VarLeaf _ | BVLeaf _ | IntLeaf _ | BLLeaf _ | BoolLeaf _ | StrLeaf _ | SetLeaf _ | UnitLeaf 
-  | SA.Node (_, ([BVLeaf _] | [BLLeaf _] | [IntLeaf _] | [BoolLeaf _] | [StrLeaf _] | [SetLeaf _])) ->
+  | Leaf _ | StubLeaf _ | Model _ | Infeasible
+  | SA.Node (_, [Leaf (BitVector _ | BitList _ | Int _ | Bool _ | String _ | StringSet _)]) ->
     solver_ast_to_expr solver_ast
   | Node ((_id, _, _), subterms) ->
     if !Flags.debug then 
@@ -167,14 +146,13 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.solver_ast 
         SA.pp_print_solver_ast solver_ast;
     let child_solver_ast = List.nth subterms child_index in 
     match child_solver_ast with 
-    | Node (_, [VarLeaf var]) -> 
+    | Node (_, [StubLeaf stub]) when Nt.StubMap.mem stub dep_map -> 
       (* If we encounter a dependency, we have to compute it first.
          Could loop infinitely! Maybe use a cache to see if we've tried to compute this before? *)
-      if Utils.StringMap.mem (remove_suffix var |> String.uppercase_ascii) dep_map 
-      then 
-        let solver_ast = compute_dep dep_map solver_ast ast child_element var in 
-        compute_deps dep_map ast solver_ast |> solver_ast_to_expr 
-      else child_solver_ast |> solver_ast_to_expr 
+      let solver_ast = compute_dep dep_map solver_ast ast child_element stub in 
+      compute_deps dep_map ast solver_ast |> solver_ast_to_expr 
+    | Node (_, [(StubLeaf _ | Leaf (Placeholder _))]) -> 
+      child_solver_ast |> solver_ast_to_expr 
     | Node _ when rest <> [] -> 
       evaluate ~dep_map child_solver_ast ast child_element (NTExpr (rest, p))
     | _ ->
@@ -464,34 +442,35 @@ and evaluate: ?dep_map:A.semantic_constraint Utils.StringMap.t -> SA.solver_ast 
   Utils.error msg (A.pos_of_expr e) 
 
 
-and compute_deps: A.semantic_constraint Utils.StringMap.t -> A.ast -> SA.solver_ast -> SA.solver_ast 
+and compute_deps: A.semantic_constraint Nt.StubMap.t -> A.ast -> SA.solver_ast -> SA.solver_ast 
 = fun dep_map ast solver_ast -> 
   if !Flags.debug then 
     Format.printf "compute_deps with solver_ast %a\n"
       (*A.pp_print_ast ast *)
       SA.pp_print_solver_ast solver_ast;
   match solver_ast with
-| VarLeaf _ -> eval_fail  28
-| UnitLeaf -> Utils.crash "Unexpected case (compute_deps UnitLeaf)"
+| Leaf (Placeholder _) | StubLeaf _ -> eval_fail  28
+| Leaf Unit -> Utils.crash "Unexpected case (compute_deps Unit)"
 | Node ((constructor, idx1, idx2), subterms) -> 
   let subterms = 
   List.map (fun subterm -> match subterm with 
-  | SA.Node (_hd, [VarLeaf var]) -> 
+  | SA.Node (_hd, [(StubLeaf _ | Leaf (Placeholder _)) as leaf]) -> 
     let element = List.find_opt (fun element -> match element with 
     | A.TypeAnnotation (nt, _, _, _)  
     | ProdRule (nt, _, _, _) -> 
-      Utils.str_eq_ci nt (Utils.extract_base_name constructor)
+      Nt.equal_ci nt (Nt.unstub constructor)
     ) ast in
     let element = match element with 
     | None -> 
       Utils.crash "compute_deps"
     | Some element -> element 
     in
-    if Utils.StringMap.mem (remove_suffix var |> String.uppercase_ascii) dep_map
-    then 
-      SA.Node (_hd, [compute_dep dep_map solver_ast ast element var]) 
-    else solver_ast 
-  | SA.Node (_, ([BVLeaf _] | [BLLeaf _] | [IntLeaf _] | [BoolLeaf _] | [StrLeaf _] | [SetLeaf _])) -> subterm
+    (match leaf with 
+    | StubLeaf stub when Nt.StubMap.mem stub dep_map -> 
+      SA.Node (_hd, [compute_dep dep_map solver_ast ast element stub]) 
+    (* TODO: Should not replace the subterm with the whole term *)
+    | StubLeaf _ | Leaf _ | Node _ | Model _ | Infeasible -> solver_ast)
+  | SA.Node (_, [Leaf (BitVector _ | BitList _ | Int _ | Bool _ | String _ | StringSet _)]) -> subterm
   | SA.Node _ -> compute_deps dep_map ast subterm
   | _ -> subterm
   ) subterms in 

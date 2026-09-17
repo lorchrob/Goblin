@@ -1,24 +1,24 @@
 open Ast
 open Graph
 
-let rec from_ge_list_to_string_list (ge_list : grammar_element list) : string list = 
+let rec from_ge_list_to_nt_list (ge_list : grammar_element list) : Nt.t list = 
   match ge_list with
   | [] -> []  
-  | Nonterminal(x, _, _, _, _)::xs -> x :: from_ge_list_to_string_list xs 
-  | StubbedNonterminal(x,y)::xs -> x :: y :: from_ge_list_to_string_list xs 
+  | Nonterminal(x, _, _, _, _)::xs -> x :: from_ge_list_to_nt_list xs 
+  | StubbedNonterminal stub::xs -> stub.stands_for :: Nt.Stub stub :: from_ge_list_to_nt_list xs 
 
-let rec get_all_nt_from_rhs (rvalue : prod_rule_rhs list) : string list = 
+let rec get_all_nt_from_rhs (rvalue : prod_rule_rhs list) : Nt.t list = 
   match rvalue with 
   | [] -> []
-  | Rhs(ge_list, _, _, _)::xs -> (from_ge_list_to_string_list ge_list) @ (get_all_nt_from_rhs xs)  
+  | Rhs(ge_list, _, _, _)::xs -> (from_ge_list_to_nt_list ge_list) @ (get_all_nt_from_rhs xs)  
   | StubbedRhs(_)::xs -> get_all_nt_from_rhs xs 
 
-let get_all_dependencies_from_one_element (ge : element) : (string * string) list = 
+let get_all_dependencies_from_one_element (ge : element) : (Nt.t * Nt.t) list = 
   match ge with 
   | ProdRule(lvalue, _, rhs, _) -> (List.map (fun x-> (lvalue, x))(get_all_nt_from_rhs rhs))  |> (List.filter (fun (x,y) ->  x <> y) )
   | TypeAnnotation(_, _, _, _) -> [] 
 
-let rec get_all_dependencies_from_grammar (g : ast) : (string * string) list = 
+let rec get_all_dependencies_from_grammar (g : ast) : (Nt.t * Nt.t) list = 
   match g with 
   | [] -> [] 
   | x :: xs -> get_all_dependencies_from_one_element x @ get_all_dependencies_from_grammar xs   
@@ -35,13 +35,13 @@ let rec get_nt_from_rhs rhs =
   | Rhs (geList, _, _, _) :: xs -> (get_nt_from_geList geList) @ (get_nt_from_rhs xs)
   | StubbedRhs _ :: xs -> (get_nt_from_rhs xs)
 
-let rec get_all_nt (g : ast) : string list =
+let rec get_all_nt (g : ast) : Nt.t list =
   match g with
   | [] -> []
   | ProdRule (nt, _, rhs, _) :: xs -> nt :: (get_nt_from_rhs rhs)  @ (get_all_nt xs)
   | TypeAnnotation (_, _, _, _) :: xs -> get_all_nt xs
 
-let rec get_dependencies (nt : string) (geList : grammar_element list) : string list =
+let rec get_dependencies (nt : Nt.t) (geList : grammar_element list) : Nt.t list =
   match geList with
   | [] -> []
   | Nonterminal(x, _, _, _, _) :: xs -> 
@@ -50,18 +50,18 @@ let rec get_dependencies (nt : string) (geList : grammar_element list) : string 
     else get_dependencies nt xs
   | _ :: xs -> get_dependencies nt xs
 
-let rec get_all_rhs_elements (nt : string) (prList : prod_rule_rhs list) : string list =
+let rec get_all_rhs_elements (nt : Nt.t) (prList : prod_rule_rhs list) : Nt.t list =
   match prList with
   | [] -> []
   | Rhs (geList, _, _, _) :: xs -> (get_dependencies nt geList) @ (get_all_rhs_elements nt xs)
   | StubbedRhs (_) :: xs -> get_all_rhs_elements nt xs
 
-let rec get_edge_pairs (nts : (string * (string list)) list): (string * string) list =
+let rec get_edge_pairs (nts : (Nt.t * (Nt.t list)) list): (Nt.t * Nt.t) list =
   match nts with
   | [] -> []
   | (a, xs) :: ys -> (List.map (fun x -> (a, x)) xs) @ (get_edge_pairs ys)
 
-let rec get_all_rules (nt : string) (g : ast) : prod_rule_rhs list =
+let rec get_all_rules (nt : Nt.t) (g : ast) : prod_rule_rhs list =
   match g with
   | [] -> []
   | ProdRule (a, _, prod_rule_lst, _) :: xs ->
@@ -71,13 +71,13 @@ let rec get_all_rules (nt : string) (g : ast) : prod_rule_rhs list =
       get_all_rules nt xs
   | TypeAnnotation (_, _, _, _) :: xs -> (get_all_rules nt xs)
 
-let rec get_nt_dependency_pairs (nts : string list) (g : ast) : (string * (string list)) list =
+let rec get_nt_dependency_pairs (nts : Nt.t list) (g : ast) : (Nt.t * (Nt.t list)) list =
   match nts with
   | [] -> []
   | x :: xs -> (x, (get_all_rhs_elements x (get_all_rules x g))) :: (get_nt_dependency_pairs xs g)
 
 module Node = struct                                      
-  type t = string                                                                     
+  type t = Nt.t                                                                     
   let compare = Stdlib.compare                                                 
   let hash = Hashtbl.hash                                                          
   let equal = (=)                                                                  
@@ -85,8 +85,8 @@ end
 
 module G = Imperative.Digraph.Concrete(Node)
 
-module StringPairSet = Set.Make(
-  struct type t = string * string 
+module NtPairSet = Set.Make(
+  struct type t = Nt.t * Nt.t 
 let compare (s11, s12) (s21, s22) = 
   match Stdlib.compare s11 s21 with 
   | 0 -> Stdlib.compare s12 s22 
@@ -94,25 +94,25 @@ let compare (s11, s12) (s21, s22) =
 end
 ) 
 
-module StringSet = Set.Make(
-  struct type t = string 
+module NtSet = Set.Make(
+  struct type t = Nt.t 
 let compare = Stdlib.compare 
 end
 )
 
-let rec create_set_from_list myset  (dependency_list : (string * string) list) = 
+let rec create_set_from_list myset  (dependency_list : (Nt.t * Nt.t) list) = 
   match dependency_list with 
   | [] -> myset 
-  | x::xs -> create_set_from_list (StringPairSet.add x myset) xs 
+  | x::xs -> create_set_from_list (NtPairSet.add x myset) xs 
 
 let print_tuple_list lst =
-  List.iter (fun (x, y) -> Printf.printf "(%s, %s)\n" x y) lst;;
+  List.iter (fun (x, y) -> Format.printf "(%a, %a)\n" Nt.pp x Nt.pp y) lst;;
 
 let print_list lst =
-  List.iter (fun x -> Printf.printf "%s " x) lst;
-  print_endline "" ;;
+  List.iter (fun x -> Format.printf "%a " Nt.pp x) lst;
+  Format.printf "@." ;;
 
-let rec collect_rules_for_nt (cnt : string) (ogrammar : ast) : ast = 
+let rec collect_rules_for_nt (cnt : Nt.t) (ogrammar : ast) : ast = 
   match ogrammar with 
   | [] -> [] 
   | ProdRule(x, a, y, pos):: xs -> 
@@ -122,7 +122,7 @@ let rec collect_rules_for_nt (cnt : string) (ogrammar : ast) : ast =
       if x = cnt then TypeAnnotation(x, y, z, pos)  :: collect_rules_for_nt cnt xs
       else collect_rules_for_nt cnt xs 
 
-let rec collect_rules (non_term_list : string list ) (ogrammar : ast) (cgrammar : ast) : ast = 
+let rec collect_rules (non_term_list : Nt.t list ) (ogrammar : ast) (cgrammar : ast) : ast = 
   match non_term_list with 
   | [] -> cgrammar 
   | x::xs -> 
@@ -154,11 +154,11 @@ let canonicalize (ogrammar : ast) : ast option =
     (* Continue with existing cycle detection for other types of cycles *)
     let g = G.create () in 
     let all_nt = get_all_nt ogrammar in 
-    let unique_nts = StringSet.of_list all_nt in 
+    let unique_nts = NtSet.of_list all_nt in 
     let all_dependencies = get_all_dependencies_from_grammar ogrammar in 
-    let unique_dependencies = StringPairSet.of_list all_dependencies in 
-    StringSet.iter (fun s -> G.add_vertex g s) unique_nts; 
-    StringPairSet.iter (fun s -> G.add_edge g (fst s) (snd s)) unique_dependencies ;
+    let unique_dependencies = NtPairSet.of_list all_dependencies in 
+    NtSet.iter (fun s -> G.add_vertex g s) unique_nts; 
+    NtPairSet.iter (fun s -> G.add_edge g (fst s) (snd s)) unique_dependencies ;
     let module MyDfs = Traverse.Dfs(G) in
     if (MyDfs.has_cycle g) then None  
     else 
@@ -266,14 +266,14 @@ let find_cycle g =
   !cycle_ref
 
 
-let canonicalize_scs (scs : semantic_constraint list) : string list option = 
+let canonicalize_scs (scs : semantic_constraint list) : Nt.t list option = 
   let g = G.create () in 
   let all_nt = get_all_nt_scs scs in 
-  let unique_nts = StringSet.of_list all_nt in 
+  let unique_nts = NtSet.of_list all_nt in 
   let all_dependencies = get_all_dependencies_from_scs scs in 
-  let unique_dependencies = StringPairSet.of_list all_dependencies in 
-  StringSet.iter (fun s -> G.add_vertex g s) unique_nts; 
-  StringPairSet.iter (fun s-> G.add_edge g (fst s) (snd s)) unique_dependencies ;
+  let unique_dependencies = NtPairSet.of_list all_dependencies in 
+  NtSet.iter (fun s -> G.add_vertex g s) unique_nts; 
+  NtPairSet.iter (fun s-> G.add_edge g (fst s) (snd s)) unique_dependencies ;
   match find_cycle g with 
   | Some cycle -> Some cycle 
   | None -> None
@@ -285,32 +285,32 @@ let find_vertex g label =
   | Some v -> v
   | None -> Utils.crash "Vertex not found"  (* This case should never happen as per the assumption *)
     
-let dead_rule_removal_2 (canonicalized_grammar : ast) (start_symbol : string) : ast =
+let dead_rule_removal_2 (canonicalized_grammar : ast) (start_symbol : Nt.t) : ast =
   let g = G.create() in
   let all_nt = get_all_nt canonicalized_grammar in 
-  let unique_nts = StringSet.of_list all_nt in 
+  let unique_nts = NtSet.of_list all_nt in 
   let all_dependencies = get_all_dependencies_from_grammar canonicalized_grammar in 
-  let unique_dependencies = StringPairSet.of_list all_dependencies in 
-  StringSet.iter (fun s -> G.add_vertex g s) unique_nts; 
-  StringPairSet.iter (fun s-> G.add_edge g (fst s) (snd s)) unique_dependencies ;
+  let unique_dependencies = NtPairSet.of_list all_dependencies in 
+  NtSet.iter (fun s -> G.add_vertex g s) unique_nts; 
+  NtPairSet.iter (fun s-> G.add_edge g (fst s) (snd s)) unique_dependencies ;
   let start = find_vertex g start_symbol in
   let module CheckPath = Path.Check(G) in
   let path_checker = CheckPath.create g in
-  let connected_paths = StringSet.filter (fun x -> CheckPath.check_path path_checker start (find_vertex g x)) unique_nts in
-  let dead_rule_removed_graph = collect_rules (StringSet.fold (fun x y -> x :: y) connected_paths []) canonicalized_grammar [] in
+  let connected_paths = NtSet.filter (fun x -> CheckPath.check_path path_checker start (find_vertex g x)) unique_nts in
+  let dead_rule_removed_graph = collect_rules (NtSet.fold (fun x y -> x :: y) connected_paths []) canonicalized_grammar [] in
   dead_rule_removed_graph
 
-let dead_rule_removal (canonicalized_grammar : ast) (start_symbol : string) : ast option =
+let dead_rule_removal (canonicalized_grammar : ast) (start_symbol : Nt.t) : ast option =
   let g = G.create() in
   let all_nt = get_all_nt canonicalized_grammar in 
-  let unique_nts = StringSet.of_list all_nt in 
+  let unique_nts = NtSet.of_list all_nt in 
   let all_dependencies = get_all_dependencies_from_grammar canonicalized_grammar in 
-  let unique_dependencies = StringPairSet.of_list all_dependencies in 
-  StringSet.iter (fun s -> G.add_vertex g s) unique_nts; 
-  StringPairSet.iter (fun s-> G.add_edge g (fst s) (snd s)) unique_dependencies ;
+  let unique_dependencies = NtPairSet.of_list all_dependencies in 
+  NtSet.iter (fun s -> G.add_vertex g s) unique_nts; 
+  NtPairSet.iter (fun s-> G.add_edge g (fst s) (snd s)) unique_dependencies ;
   let start = find_vertex g start_symbol in
   let module CheckPath = Path.Check(G) in
   let path_checker = CheckPath.create g in
-  let connected_paths = StringSet.filter (fun x -> CheckPath.check_path path_checker start (find_vertex g x)) unique_nts in
-  let dead_rule_removed_graph = collect_rules (StringSet.fold (fun x y -> x :: y) connected_paths []) canonicalized_grammar [] in
+  let connected_paths = NtSet.filter (fun x -> CheckPath.check_path path_checker start (find_vertex g x)) unique_nts in
+  let dead_rule_removed_graph = collect_rules (NtSet.fold (fun x y -> x :: y) connected_paths []) canonicalized_grammar [] in
   canonicalize dead_rule_removed_graph ;

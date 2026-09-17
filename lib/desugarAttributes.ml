@@ -31,10 +31,15 @@ let rec attr_to_nt_expr
   match expr with
   | A.SynthAttr (nt, attr, p) ->
     let nt1 = nt, None, None in 
-    let nt2 = "%_" ^ attr, None, None in 
+    let nt2 = Nt.SynthAttr attr, None, None in 
     A.NTExpr ([nt1; nt2], p)
-  | InhAttr (attr, p) -> 
-    A.NTExpr (["%_" ^ attr, None, None], p) 
+  | InhAttr (Some owner, attr, p) -> 
+    A.NTExpr ([Nt.InhAttr (owner, attr), None, None], p) 
+  | InhAttr (None, _, _) -> Utils.crash "Unscoped inherited attribute in desugarAttributes" 
+  (* The generated nonterminal for a synthesized attribute is a child of the 
+     nonterminal defining it, hence a one-element nonterminal expression *)
+  | OwnSynthAttr (attr, p) -> 
+    A.NTExpr ([Nt.SynthAttr attr, None, None], p) 
   | A.BVCast (len, expr, pos) -> A.BVCast (len, r expr, pos)
   | BinOp (expr1, op, expr2, pos) -> BinOp (r expr1, op, r expr2, pos) 
   | UnOp (op, expr, pos) -> UnOp (op, r expr, pos) 
@@ -63,12 +68,13 @@ let handle_sc _ctx sc = match sc with
   A.SmtConstraint (expr, p), None
 | A.AttrDef (attr, expr, p) ->
   let expr = attr_to_nt_expr expr in 
-  let c = A.CompOp (NTExpr (["%_" ^ attr, None, None], p), A.Eq, expr, p) in 
-  A.SmtConstraint (c, p), Some ("%_" ^ attr)
+  let c = A.CompOp (NTExpr ([Nt.SynthAttr attr, None, None], p), A.Eq, expr, p) in 
+  A.SmtConstraint (c, p), Some (Nt.SynthAttr attr)
 
 (* Inherited attribute constraints. For each inherited attribute "call" <nt>(<expr_1>, ..., <expr_n>), 
    generate constraints 
-   <nt>.<%_attribute_i> = <expr_i> for all i from 1 through n, inclusive.
+   <nt>.<attribute_i> = <expr_i> for all i from 1 through n, inclusive, 
+   where <attribute_i> is the generated nonterminal for <nt>'s ith inherited attribute.
 *)
 let gen_constraints_from_ge ast ge = match ge with 
 | A.StubbedNonterminal _ -> []
@@ -76,11 +82,11 @@ let gen_constraints_from_ge ast ge = match ge with
   List.mapi (fun i attr -> 
     let element = A.find_element ast nt in 
     match element with 
-    | A.ProdRule (_, attr_params, _, _) -> 
-      let attr_param = List.nth attr_params i in
+    | A.ProdRule (Nt.User callee, attr_params, _, _) -> 
+      let attr_param, _ = List.nth attr_params i in
       (*!! TODO: If at a stage of the pipeline where `idx` is still None (and we haven't updated it here), 
                  it is too course-grained *)
-      let c = A.CompOp (A.NTExpr ([nt, idx1, idx2; "%_" ^ attr_param, None, None], p), 
+      let c = A.CompOp (A.NTExpr ([nt, idx1, idx2; Nt.InhAttr (callee, attr_param), None, None], p), 
                         A.Eq, 
                         attr, p) in 
       A.SmtConstraint (c, p)
@@ -90,6 +96,10 @@ let gen_constraints_from_ge ast ge = match ge with
 let desugar_attributes ctx ast = 
   let ast = List.map (fun element -> match element with 
   | A.ProdRule (nt, ias, rhss, p) -> 
+    let owner = match nt with 
+    | Nt.User owner -> owner 
+    | SynthAttr _ | InhAttr _ | Stub _ -> Utils.crash "Unexpected generated nonterminal in desugarAttributes"
+    in
     let rhss = List.map (fun rhs -> match rhs with 
     | A.StubbedRhs _ -> rhs
     | A.Rhs (ges, scs, prob, p) -> 
@@ -103,13 +113,15 @@ let desugar_attributes ctx ast =
       ) ges
       in
       let new_ges = List.filter_map Fun.id new_ges in
-      let new_ges = List.map (fun str -> A.Nonterminal (str, None, None, [], p)) new_ges in
+      let new_ges = List.map (fun nt -> A.Nonterminal (nt, None, None, [], p)) new_ges in
       (* Inherited attributes *)
-      let new_ges2 = List.map (fun str -> A.Nonterminal ("%_" ^ str, None, None, [], p)) ias in
+      let new_ges2 = List.map (fun (ia, _) -> A.Nonterminal (Nt.InhAttr (owner, ia), None, None, [], p)) ias in
       (*let scs, _ = List.map (handle_sc ctx) (scs @ new_scs) |> List.split in *)
       A.Rhs (ges @ new_ges @ new_ges2, scs, prob, p)
     ) rhss in 
-    A.ProdRule (nt, [], rhss, p)
-  | A.TypeAnnotation _ -> element
+    (* Type annotations for the generated inherited attribute nonterminals *)
+    let new_tas = List.map (fun (ia, ty) -> A.TypeAnnotation (Nt.InhAttr (owner, ia), ty, [], p)) ias in
+    A.ProdRule (nt, [], rhss, p) :: new_tas
+  | A.TypeAnnotation _ -> [element]
   ) ast in 
-  ast 
+  List.concat ast 

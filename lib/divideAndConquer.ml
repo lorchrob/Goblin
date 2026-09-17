@@ -14,8 +14,8 @@ let rec stub_subproblems_prod_rule_rhss
   hd :: tl', subproblems 
 | Rhs (ges, scs, prob, p) :: tl -> 
   let tl', subproblems = stub_subproblems_prod_rule_rhss nt elements tl in
-  let stub_id = Utils.mk_fresh_stub_id nt in
-  StubbedRhs (stub_id) :: tl', (ProdRule (stub_id, [], [Rhs (ges, scs, prob, p)], p) :: elements) :: subproblems
+  let stub = Nt.fresh_stub nt in
+  StubbedRhs stub :: tl', (ProdRule (Stub stub, [], [Rhs (ges, scs, prob, p)], p) :: elements) :: subproblems
 
 let stub_subproblems: ast -> ast * ast list
 = fun ast -> 
@@ -32,7 +32,8 @@ let stub_subproblems: ast -> ast * ast list
       element :: ast', subproblems
     | TypeAnnotation (nt, ty, scs, p) ->
       let ast', subproblems = stub_subproblems' elements in 
-      ProdRule (nt, [], [StubbedRhs nt], p) :: ast', (TypeAnnotation (nt, ty, scs, p) :: elements) :: subproblems
+      (* The subproblem is rooted at `nt` itself *)
+      ProdRule (nt, [], [StubbedRhs (Nt.fresh_stub nt)], p) :: ast', (TypeAnnotation (nt, ty, scs, p) :: elements) :: subproblems
     )
   | [] -> [], []
   in 

@@ -1,0 +1,5 @@
+<S> ::= <Pkt_con> <Z>;
+<Pkt_con> ::= <A> <B> { <A> <- <B> + 1; };
+<A> :: Int;
+<B> :: Int;
+<Z> :: Int;

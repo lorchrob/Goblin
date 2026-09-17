@@ -18,15 +18,15 @@ let (let*) = Res.(>>=)
 let check_start_symbol: Ast.ast -> SolverAst.solver_ast -> (unit, string) result 
 = fun ast solver_ast -> match ast, solver_ast with 
 | A.ProdRule (nt, _, _, _) :: _, SA.Node ((constructor, _, _), _) -> 
-  if Utils.str_eq_ci nt (Utils.extract_base_name constructor) 
+  if Nt.equal_ci nt (Nt.unstub constructor) 
     then Ok () 
   else 
-  Error ("Solver AST root constructor '" ^ constructor ^ "' does not match the AST start symbol '" ^ nt ^ "'")
+  Error (Format.asprintf "Solver AST root constructor '%a' does not match the AST start symbol '%a'" Nt.pp constructor Nt.pp nt)
 | A.TypeAnnotation _ :: _, _ -> Utils.crash "Unexpected case in check_start_symbol"
 | _ -> Error "Solver AST root node is a leaf node"
 
 let rec is_nt_applicable: 
-  SolverAst.solver_ast -> (string * int option * int option) list -> bool 
+  SolverAst.solver_ast -> (Nt.t * int option * int option) list -> bool 
 = fun solver_ast nt -> match solver_ast, nt with
   | Node (_, children), head :: tail -> 
     let child = List.find_opt (fun child -> match child with 
@@ -93,9 +93,9 @@ let handle_scs ast solver_ast constructor element scs rhs_idx =
   | _ -> Utils.crash "Unexpected pattern in check_syntax_semantics"
   ) scs' in 
     let failed_sc = List.nth scs (Option.get i) in
-    let msg = Format.asprintf "Semantic constraint %a on constructor '%s' is falsified" 
+    let msg = Format.asprintf "Semantic constraint %a on constructor '%a' is falsified" 
       A.pp_print_semantic_constraint failed_sc 
-      constructor 
+      Nt.pp constructor 
     in
     Error msg else
   Ok ()
@@ -109,7 +109,7 @@ let rec check_syntax_semantics: Ast.ast -> SolverAst.solver_ast -> (unit, string
     let skip_condition = 
       match children with 
       | [Node ((constructor2, _, _), _)] ->
-        Utils.str_eq_ci constructor (Utils.extract_base_name constructor2)
+        Nt.equal_ci constructor (Nt.unstub_once constructor2)
       | _ -> false
     in
     if skip_condition then check_syntax_semantics ast (List.hd children) else
@@ -117,13 +117,12 @@ let rec check_syntax_semantics: Ast.ast -> SolverAst.solver_ast -> (unit, string
     let* _ = R.seq (List.map (check_syntax_semantics ast) children) in
     (* Find this node's corresponding AST element *) 
     let element = List.find_opt (fun element -> match element with
-    | A.TypeAnnotation (nt, _, _, _) -> 
-      Utils.str_eq_ci (Utils.extract_base_name constructor) nt 
+    | A.TypeAnnotation (nt, _, _, _) 
     | A.ProdRule (nt, _, _, _) -> 
-      Utils.str_eq_ci (Utils.extract_base_name constructor) nt 
+      Nt.equal_ci (Nt.unstub constructor) nt 
     ) ast in (
     match element with 
-    | None -> Error ("Dangling constructor identifier " ^ (Utils.extract_base_name constructor))
+    | None -> Error (Format.asprintf "Dangling constructor identifier %a" Nt.pp (Nt.unstub constructor))
     | Some (TypeAnnotation (_, _, scs, _) as element) -> 
       handle_scs ast solver_ast constructor element scs 0
     | Some (A.ProdRule (_, _, rhss, _) as element) ->
@@ -137,13 +136,13 @@ let rec check_syntax_semantics: Ast.ast -> SolverAst.solver_ast -> (unit, string
             match child, ge with 
             | _, A.StubbedNonterminal _ -> false 
             | SA.Node ((constructor, _, _), _), Nonterminal (nt, _, _, _, _) -> 
-              Utils.str_eq_ci (Utils.extract_base_name constructor) nt
+              Nt.equal_ci (Nt.unstub constructor) nt
             | _, _ -> true
           ) children ges 
           then Some (rhs, i) else None
       ) rhss in 
       if rhs = None then 
-        Error ("Could not find an associated production rule for constructor '" ^ constructor ^"'") 
+        Error (Format.asprintf "Could not find an associated production rule for constructor '%a'" Nt.pp constructor) 
       else 
         let scs, rhs_idx = match Option.get rhs with 
         | (StubbedRhs _, _) -> assert false 

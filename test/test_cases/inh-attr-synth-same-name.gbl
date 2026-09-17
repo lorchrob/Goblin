@@ -1,0 +1,6 @@
+<S> ::= <L>(7);
+<L>(len :: Int) ::= <E> { <E> = len; len := <E>; };
+<E> :: Int;
+len :: Int;
+
+// Inherited attribute `len` clashes with synthesized attribute `len`

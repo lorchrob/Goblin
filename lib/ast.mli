@@ -41,7 +41,7 @@ type il_type =
 | String 
 | BitVector of int 
 | BitList 
-| ADT of string list list 
+| ADT of Nt.t list list 
 | Set of il_type
 
 type builtin_func = 
@@ -59,8 +59,12 @@ type builtin_func =
 | SbvToInt 
 
 type expr = 
-| InhAttr of string * Lexing.position
-| SynthAttr of string * string * Lexing.position (* NT string * attribute name *)
+(** Owning nonterminal (filled in by {!ScopeInhAttrs}; [None] right after parsing) * attribute name *)
+| InhAttr of string option * string * Lexing.position
+| SynthAttr of Nt.t * string * Lexing.position (** NT * attribute name *)
+(** Synthesized attribute of the enclosing nonterminal, referenced without dot notation
+    (produced by {!ScopeInhAttrs}) *)
+| OwnSynthAttr of string * Lexing.position
 | EmptySet of il_type * Lexing.position
 | Singleton of expr * Lexing.position
 | BinOp of expr * bin_operator * expr * Lexing.position
@@ -71,7 +75,7 @@ type expr =
    The int options are initially None, but may be populated by the tool as a  
    structured form of renaming to clarify ambiguous dot notation references.
    *)
-| NTExpr of (string * int option * int option) list * Lexing.position
+| NTExpr of (Nt.t * int option * int option) list * Lexing.position
 | BVConst of int * bool list * Lexing.position
 | BLConst of bool list * Lexing.position
 | BConst of bool * Lexing.position
@@ -83,47 +87,48 @@ type expr =
 | ActLit of expr * Lexing.position
 
 type semantic_constraint =
-| DerivedField of string * expr * Lexing.position
+| DerivedField of Nt.t * expr * Lexing.position
 | SmtConstraint of expr * Lexing.position
 | AttrDef of string * expr * Lexing.position (* attribute := <expression> *)
 
 type grammar_element =
-| Nonterminal of string * int option * int option * expr list * Lexing.position
-| StubbedNonterminal of string * string
+| Nonterminal of Nt.t * int option * int option * expr list * Lexing.position
+| StubbedNonterminal of Nt.stub
 
 type prod_rule_rhs = 
 (* float denotes production rule option probability *)
 | Rhs of grammar_element list * semantic_constraint list * float option * Lexing.position
-| StubbedRhs of string
+(** Stubbed-out RHS (divide and conquer) *)
+| StubbedRhs of Nt.stub
 
 type element =
-(* NT LHS * inherited attributes * RHSs * position *)
-| ProdRule of string * string list * prod_rule_rhs list * Lexing.position
-| TypeAnnotation of string * il_type * semantic_constraint list * Lexing.position
+(** NT LHS * (inherited attribute, type) list * RHSs * position *)
+| ProdRule of Nt.t * (string * il_type) list * prod_rule_rhs list * Lexing.position
+| TypeAnnotation of Nt.t * il_type * semantic_constraint list * Lexing.position
 
 type ast = element list
 
-val get_nts_from_expr : expr -> string list
-val get_nts_from_sc: semantic_constraint -> string list 
+val get_nts_from_expr : expr -> Nt.t list
+val get_nts_from_sc: semantic_constraint -> Nt.t list 
 val pp_print_element: Format.formatter -> element ->  unit 
 val pp_print_ast : Format.formatter -> ast -> unit
-val pp_print_nt_with_dots : Format.formatter -> (string * int option * int option) list -> unit
-val pp_print_nt_with_underscores : Format.formatter -> (string * int option * int option) list -> unit
+val pp_print_nt_with_dots : Format.formatter -> (Nt.t * int option * int option) list -> unit
+val pp_print_nt_with_underscores : Format.formatter -> (Nt.t * int option * int option) list -> unit
 val pp_print_expr : Format.formatter -> expr -> unit
 val pp_print_ty : Format.formatter -> il_type -> unit
 val pp_print_semantic_constraint: Format.formatter -> semantic_constraint -> unit
 val pp_print_prod_rule_rhs: Format.formatter -> prod_rule_rhs -> unit
 val pp_print_grammar_element: Format.formatter -> grammar_element ->  unit 
 val il_int_to_bv : int -> int -> Lexing.position -> expr
-val grammar_element_to_string : grammar_element -> string
-val nts_of_rhs: prod_rule_rhs -> string list 
+val nt_of_grammar_element : grammar_element -> Nt.t
+val nts_of_rhs: prod_rule_rhs -> Nt.t list 
 val expr_contains_dangling_nt: Utils.SILSet.t -> expr -> bool 
-val ast_constrains_nt: ast -> string -> bool
-val prepend_nt_to_dot_exprs: string -> expr -> expr
-val get_nts_from_expr2: expr -> (string * int option * int option) list list
+val ast_constrains_nt: ast -> Nt.t -> bool
+val prepend_nt_to_dot_exprs: Nt.t -> expr -> expr
+val get_nts_from_expr2: expr -> (Nt.t * int option * int option) list list
 val scs_of_element: element -> semantic_constraint list
-val nts_of_ast: ast -> Utils.StringSet.t 
-val find_element: ast -> string -> element
+val nts_of_ast: ast -> Nt.Set.t 
+val find_element: ast -> Nt.t -> element
 val pos_of_expr: expr -> Lexing.position
 val pp_print_builtin_func: Format.formatter -> builtin_func -> unit
 val eq_il_type: il_type -> il_type -> bool

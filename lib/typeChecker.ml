@@ -1,6 +1,6 @@
 open Ast
 
-type context = il_type Utils.StringMap.t
+type context = il_type Nt.Map.t
 
 type mode = 
 | SyGuS 
@@ -15,28 +15,34 @@ let build_context: ast -> ast * context
 = fun ast -> 
   let ctx = List.fold_left (fun acc element -> match element with 
   | ProdRule (nt, ias, rhss, _) -> 
+    let owner = match nt with 
+    | Nt.User owner -> owner 
+    | SynthAttr _ | InhAttr _ | Stub _ -> Utils.crash "Unexpected generated nonterminal in build_context"
+    in
     let options = List.map (fun rhs -> match rhs with
       | Rhs (ges, scs, _, _) -> 
         (* options1, options2, and option3 represent the extra generated nonterminals 
            that will exist after we desugar attributes in desugarAttributes.ml *)
         (* User ges *)
         let options1 = List.fold_left (fun acc ge -> match ge with 
-        | Nonterminal (nt, _, _, _, _) 
-        | StubbedNonterminal (nt, _) -> nt :: acc
+        | Nonterminal (nt, _, _, _, _) -> nt :: acc
+        | StubbedNonterminal stub -> stub.stands_for :: acc
         ) [] ges |> List.rev in 
         (* Generated attribute ges *)
         let options2 = List.fold_left (fun acc sc -> match sc with 
         | SmtConstraint _  
         | DerivedField _ -> acc 
-        | AttrDef (attr, _, _) -> ("%_" ^ attr) :: acc
+        | AttrDef (attr, _, _) -> Nt.SynthAttr attr :: acc
         ) [] scs |> List.rev in 
-        let options3 = List.map (fun ia -> "%_" ^ ia) ias in 
+        let options3 = List.map (fun (ia, _) -> Nt.InhAttr (owner, ia)) ias in 
         options1 @ options2 @ options3
       | StubbedRhs _ -> []
     ) rhss in
-    Utils.StringMap.add nt (ADT options) acc 
-  | TypeAnnotation (nt, ty, _, _) -> Utils.StringMap.add nt ty acc
-  ) Utils.StringMap.empty ast in 
+    (* Inherited attribute types are declared inline in the production rule *)
+    let acc = List.fold_left (fun acc (ia, ty) -> Nt.Map.add (Nt.InhAttr (owner, ia)) ty acc) acc ias in
+    Nt.Map.add nt (ADT options) acc 
+  | TypeAnnotation (nt, ty, _, _) -> Nt.Map.add nt ty acc
+  ) Nt.Map.empty ast in 
   ast, ctx
 
 let last lst = lst |> List.rev |> List.hd
@@ -44,9 +50,9 @@ let last lst = lst |> List.rev |> List.hd
 let rec infer_type_expr: context -> mode -> expr -> il_type option
 = fun ctx mode expr -> match expr with 
 | NTExpr (nt_expr, p) -> (
-  match Utils.StringMap.find (Utils.tr_fst (last nt_expr)) ctx with 
+  match Nt.Map.find (Utils.tr_fst (last nt_expr)) ctx with 
   | ADT _ -> 
-    let msg = "Type checking error: Nonterminal '" ^ (Utils.tr_fst (last nt_expr)) ^ "' has a composite type, but is used in some operation that requires a primitive type" in
+    let msg = Format.asprintf "Type checking error: Nonterminal '%a' has a composite type, but is used in some operation that requires a primitive type" Nt.pp (Utils.tr_fst (last nt_expr)) in
     type_checker_error mode msg p;
     None
   | ty -> Some ty
@@ -348,14 +354,16 @@ let rec infer_type_expr: context -> mode -> expr -> il_type option
     let ty_str = Utils.capture_output Ast.pp_print_ty (Option.get inf_ty) in 
     let msg = "Type checking error: re.(union | ++) expected type String, given type " ^ ty_str in 
     Utils.error msg p
-| InhAttr (attr, _) ->
+| InhAttr (owner, attr, _) ->
+  (* Added to the context by build_context *)
+  (match owner with 
+  | Some owner -> Some (Nt.Map.find (Nt.InhAttr (owner, attr)) ctx)
+  | None -> Utils.crash "Unscoped inherited attribute in type checker")
+| SynthAttr (_, attr, _)
+| OwnSynthAttr (attr, _) ->
   (* The parser already inserts the underscore in the TypeAnnotation in the AST, 
      so we need to add it here to find it in the context *)
-  Some (Utils.StringMap.find ("%_" ^ attr) ctx)
-| SynthAttr (_, attr, _) ->
-  (* The parser already inserts the underscore in the TypeAnnotation in the AST, 
-     so we need to add it here to find it in the context *)
-  Some (Utils.StringMap.find ("%_" ^ attr) ctx)
+  Some (Nt.Map.find (Nt.SynthAttr attr) ctx)
 | e -> 
   let msg = Format.asprintf "Unexpected expression in type checker: %a" 
     Ast.pp_print_expr e in
@@ -380,7 +388,7 @@ let check_prod_rhs ctx rhss = match rhss with
   let scs = List.map (fun sc -> match sc with 
   | DerivedField (nt2, expr, p) -> 
     let exp_ty = 
-      match Utils.StringMap.find_opt nt2 ctx with 
+      match Nt.Map.find_opt nt2 ctx with 
       | None -> 
         Utils.error "DerivedField LHS must be a nonterminal with a primitive (non-inductive) type" p
       | Some exp_ty -> exp_ty 
@@ -392,7 +400,7 @@ let check_prod_rhs ctx rhss = match rhss with
     let expr = check_type_expr ctx SyGuS exp_ty expr p in 
     SmtConstraint (expr, p)
   | AttrDef (attr, expr, p) -> 
-    let exp_ty = Utils.StringMap.find ("%_" ^ attr) ctx in 
+    let exp_ty = Nt.Map.find (Nt.SynthAttr attr) ctx in 
     let expr = check_type_expr ctx SyGuS exp_ty expr p in 
     AttrDef (attr, expr, p)
   ) scs in 
@@ -409,7 +417,7 @@ let check_types: context -> ast -> ast
     let scs = List.map (fun sc -> match sc with 
     | DerivedField (nt2, expr, p) ->
       let exp_ty = 
-        match Utils.StringMap.find_opt nt2 ctx with 
+        match Nt.Map.find_opt nt2 ctx with 
         | None -> 
           Utils.error "DerivedField LHS must be a nonterminal with a primitive (non-inductive) type" p
         | Some exp_ty -> exp_ty 
@@ -430,4 +438,4 @@ let check_types: context -> ast -> ast
 
 let pp_print_ctx ppf ctx = 
   Format.fprintf ppf "%a\n" 
-    (Lib.pp_print_list (fun _ (nt, ty) -> Format.printf "%s -> %a" nt Ast.pp_print_ty ty) "; ") (Utils.StringMap.bindings ctx) 
+    (Lib.pp_print_list (fun _ (nt, ty) -> Format.printf "%a -> %a" Nt.pp nt Ast.pp_print_ty ty) "; ") (Nt.Map.bindings ctx) 

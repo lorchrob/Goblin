@@ -116,17 +116,21 @@ element:
 (* Attribute type annotation *) 
 | attribute = ID; TYPEANNOT; t = il_type; SEMICOLON;
   { 
-    TypeAnnotation ("%_" ^ attribute, t, [], $startpos) 
+    TypeAnnotation (Nt.SynthAttr attribute, t, [], $startpos) 
   }
 (* Production rule *)
 | nt = nonterminal; PRODUCTION; rhss = separated_nonempty_list(OPTION, rhs); SEMICOLON;
   { 
     ProdRule (nt, [], rhss, $startpos) 
   }
-| nt = nonterminal; LPAREN; params = separated_nonempty_list(COMMA, ID); RPAREN; PRODUCTION; rhss = separated_nonempty_list(OPTION, rhs); SEMICOLON;
+(* Production rule with inherited attributes (type annotations required) *)
+| nt = nonterminal; LPAREN; params = separated_nonempty_list(COMMA, inh_attr_param); RPAREN; PRODUCTION; rhss = separated_nonempty_list(OPTION, rhs); SEMICOLON;
   { 
     ProdRule (nt, params, rhss, $startpos) 
   }
+
+inh_attr_param:
+| attr = ID; TYPEANNOT; ty = il_type; { (attr, ty) }
 
 rhs:
 | ges = nonempty_list(grammar_element); scs = option(semantic_constraints); prob = option(DECIMAL);
@@ -172,7 +176,7 @@ semantic_constraint:
   }
 
 expr: 
-| id = ID; { InhAttr (id, $startpos) }
+| id = ID; { InhAttr (None, id, $startpos) }
 | EMPTYSET; LT; ty = il_type; GT; 
   { 
     EmptySet (ty, $startpos) 
@@ -355,10 +359,10 @@ nt_expr:
 | nt = indexed_nonterminal; DOT; nts = nt_expr; { nt :: nts }
 
 nonterminal:
-| LT; str = ID; GT; { str }
+| LT; str = ID; GT; { Nt.User str }
 
 indexed_nonterminal:
-| LT; str = ID; GT; i = option(rhs_index); j = option(index); { str, i, j }
+| LT; str = ID; GT; i = option(rhs_index); j = option(index); { Nt.User str, i, j }
 
 index:
 | LSQBRACKET; i = INTEGER; RSQBRACKET { i }
