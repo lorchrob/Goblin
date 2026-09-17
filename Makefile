@@ -5,7 +5,7 @@ all:
 	@dune install
 
 test:
-	OCAMLRUNPARAM=b dune test -j 1 --verbose
+	OCAMLRUNPARAM=b dune test -j 1 --force --verbose
 
 clean:
 	@dune clean
