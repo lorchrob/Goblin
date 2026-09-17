@@ -174,4 +174,5 @@ let rec pp_print_expr: ?nt_prefix:string -> TC.context -> Format.formatter -> A.
       A.pp_print_builtin_func func 
       (Lib.pp_print_list r " ") es
   | InhAttr _
+  | OwnSynthAttr _
   | SynthAttr _ -> assert false

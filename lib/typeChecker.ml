@@ -359,7 +359,8 @@ let rec infer_type_expr: context -> mode -> expr -> il_type option
   (match owner with 
   | Some owner -> Some (Nt.Map.find (Nt.InhAttr (owner, attr)) ctx)
   | None -> Utils.crash "Unscoped inherited attribute in type checker")
-| SynthAttr (_, attr, _) ->
+| SynthAttr (_, attr, _)
+| OwnSynthAttr (attr, _) ->
   (* The parser already inserts the underscore in the TypeAnnotation in the AST, 
      so we need to add it here to find it in the context *)
   Some (Nt.Map.find (Nt.SynthAttr attr) ctx)

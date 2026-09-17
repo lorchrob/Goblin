@@ -1,0 +1,7 @@
+<S> ::= <L>(7) { <L>.len = 7; };
+<L>(len :: Int) ::= <E> { <E> = len; len := <E>; };
+<E> :: Int;
+len :: Int;
+
+// <L>.len cannot refer to an inherited attribute, and <L> cannot declare 
+// `len` as both an inherited and a synthesized attribute

@@ -1,0 +1,7 @@
+<S> ::= <L>;
+<L> ::= <E> { len := <E>; <E> < len + 10; };
+<E> :: Int;
+len :: Int;
+
+// A bare attribute name refers to the synthesized attribute 
+// defined by the enclosing nonterminal

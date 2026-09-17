@@ -1,0 +1,6 @@
+<S> ::= <L>;
+<L> ::= <E> { len := <E>; <E> < size; };
+<E> :: Int;
+len :: Int;
+
+// `size` is neither an inherited nor a synthesized attribute of <L>

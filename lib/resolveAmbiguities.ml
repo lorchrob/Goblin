@@ -138,6 +138,7 @@ let rec gen_all_exprs
       A.pp_print_expr expr in 
     Utils.error msg (A.pos_of_expr expr)
   | InhAttr _
+  | OwnSynthAttr _
   | SynthAttr _ -> assert false
   | ActLit _ -> assert false
 

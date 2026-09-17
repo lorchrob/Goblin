@@ -272,3 +272,10 @@ let serialize_bytes_packed: SA.solver_ast -> bytes
   in 
   let bits = SA.Leaf (BitList (bits_of_sa 0 solver_ast |> snd)) in 
   serialize_bytes Little [] bits 
+
+(* Print a term in hexadecimal, using `to_bytes` to encode it. 
+   The byte formats have no encoding for an infeasible result, so it prints as text *)
+let print_hex to_bytes solver_ast = match solver_ast with
+| SA.Infeasible -> serialize Format.std_formatter solver_ast
+| SA.Node _ | Leaf _ | StubLeaf _ | Model _ ->
+  Utils.print_bytes_as_hex (to_bytes solver_ast)

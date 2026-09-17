@@ -36,6 +36,10 @@ let rec attr_to_nt_expr
   | InhAttr (Some owner, attr, p) -> 
     A.NTExpr ([Nt.InhAttr (owner, attr), None, None], p) 
   | InhAttr (None, _, _) -> Utils.crash "Unscoped inherited attribute in desugarAttributes" 
+  (* The generated nonterminal for a synthesized attribute is a child of the 
+     nonterminal defining it, hence a one-element nonterminal expression *)
+  | OwnSynthAttr (attr, p) -> 
+    A.NTExpr ([Nt.SynthAttr attr, None, None], p) 
   | A.BVCast (len, expr, pos) -> A.BVCast (len, r expr, pos)
   | BinOp (expr1, op, expr2, pos) -> BinOp (r expr1, op, r expr2, pos) 
   | UnOp (op, expr, pos) -> UnOp (op, r expr, pos) 

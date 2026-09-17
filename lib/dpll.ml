@@ -203,6 +203,7 @@ let rec universalize_expr: bool -> (Nt.t * int option * int option) list -> Ast.
   | StrConst _ 
   | EmptySet _ -> expr
   | InhAttr _ 
+  | OwnSynthAttr _
   | SynthAttr _ -> assert false
 
 let string_of_path path = 

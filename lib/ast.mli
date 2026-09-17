@@ -62,6 +62,9 @@ type expr =
 (** Owning nonterminal (filled in by {!ScopeInhAttrs}; [None] right after parsing) * attribute name *)
 | InhAttr of string option * string * Lexing.position
 | SynthAttr of Nt.t * string * Lexing.position (** NT * attribute name *)
+(** Synthesized attribute of the enclosing nonterminal, referenced without dot notation
+    (produced by {!ScopeInhAttrs}) *)
+| OwnSynthAttr of string * Lexing.position
 | EmptySet of il_type * Lexing.position
 | Singleton of expr * Lexing.position
 | BinOp of expr * bin_operator * expr * Lexing.position

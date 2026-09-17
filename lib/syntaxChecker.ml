@@ -85,6 +85,9 @@ let rec check_dangling_identifiers: Nt.Set.t -> Lexing.position -> expr -> expr
     let _ = check_d_ids_nt_expr [nt] in 
     let _ = check_d_ids_attribute attr in 
     SynthAttr (nt, attr, p)
+  | OwnSynthAttr (attr, p) -> 
+    let _ = check_d_ids_attribute attr in 
+    OwnSynthAttr (attr, p)
   | EmptySet (ty, p) -> EmptySet (ty, p)
   | Singleton (expr, p) -> Singleton (call expr, p)
   | BinOp (expr1, op, expr2, p) -> BinOp (call expr1, op, call expr2, p) 
@@ -145,6 +148,7 @@ let rec check_prod_rule_nt_exprs: prod_rule_map -> Nt.Set.t -> expr -> expr
   | IntConst _ 
   | PhConst _ 
   | InhAttr _
+  | OwnSynthAttr _
   | StrConst _ -> expr
   | ActLit _ -> assert false
 
@@ -174,6 +178,7 @@ let rec check_type_annot_nt_exprs: prod_rule_map -> Nt.Set.t -> expr -> expr
   | PhConst _ 
   | SynthAttr _
   | InhAttr _
+  | OwnSynthAttr _
   | StrConst _ -> expr
   | ActLit _ -> assert false
 
@@ -230,6 +235,7 @@ let rec check_for_ambiguous_derived_fields ast df expr rhs =
   | StrConst _
   | SynthAttr _
   | InhAttr _
+  | OwnSynthAttr _
   | EmptySet _  -> Ok ()
   | ActLit _ -> assert false
 
@@ -390,6 +396,7 @@ let str_const_to_ph_const ast =
   | IntConst _ 
   | SynthAttr _
   | InhAttr _
+  | OwnSynthAttr _
   | PhConst _ as expr -> expr
   | ActLit _ -> assert false
   in

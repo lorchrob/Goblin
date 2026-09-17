@@ -74,6 +74,9 @@ type expr =
 (* Owning nonterminal (filled in by ScopeInhAttrs; None right after parsing) * attribute name *)
 | InhAttr of string option * string * Lexing.position 
 | SynthAttr of Nt.t * string * Lexing.position (* NT * attribute name *)
+(* Synthesized attribute of the enclosing nonterminal, referenced without dot notation
+   (produced by ScopeInhAttrs) *)
+| OwnSynthAttr of string * Lexing.position
 | EmptySet of il_type * Lexing.position
 | Singleton of expr * Lexing.position
 | BinOp of expr * bin_operator * expr * Lexing.position
@@ -145,6 +148,7 @@ let rec get_nts_from_expr: expr -> Nt.t list
   | IntConst _ 
   | StrConst _
   | InhAttr _
+  | OwnSynthAttr _
   | EmptySet _  -> [] 
 
 let rec get_nts_from_expr2: expr -> (Nt.t * int option * int option) list list
@@ -153,6 +157,7 @@ let rec get_nts_from_expr2: expr -> (Nt.t * int option * int option) list list
   match expr with 
   | NTExpr (nts, _) -> [nts]
   | InhAttr _
+  | OwnSynthAttr _
   | SynthAttr _ -> assert false
   | BinOp (expr1, _, expr2, _) -> 
     r expr1 @ r expr2
@@ -281,7 +286,8 @@ let rec pp_print_expr: Format.formatter -> expr -> unit
 | SynthAttr (nt, attr, _) -> 
   Format.fprintf ppf "<%a>.%s"
     Nt.pp nt attr
-| InhAttr (_, attr, _) -> Format.pp_print_string ppf attr
+| InhAttr (_, attr, _) 
+| OwnSynthAttr (attr, _) -> Format.pp_print_string ppf attr
 | EmptySet (ty, _) -> 
   Format.fprintf ppf "set.empty<%a>"
     pp_print_ty ty
@@ -492,6 +498,7 @@ let rec expr_contains_dangling_nt: Utils.SILSet.t -> expr -> bool
   | IntConst _ 
   | StrConst _ 
   | InhAttr _
+  | OwnSynthAttr _
   | EmptySet _ -> false
 
 let sc_constrains_nt: Nt.t -> semantic_constraint -> bool 
@@ -545,6 +552,7 @@ let rec prepend_nt_to_dot_exprs: Nt.t -> expr -> expr
   | StrConst _
   | EmptySet _ -> expr
   | InhAttr _
+  | OwnSynthAttr _
   | SynthAttr _ -> assert false
   | ActLit _ -> assert false
 
@@ -588,6 +596,7 @@ let pos_of_expr expr = match expr with
 | StrConst (_, pos) 
 | SynthAttr (_, _, pos)
 | InhAttr (_, _, pos)
+| OwnSynthAttr (_, pos)
 | ActLit (_, pos) 
 | EmptySet (_, pos) -> pos 
 

@@ -22,6 +22,7 @@ let rec calculate_casts: expr -> expr
 | StrConst _ 
 | EmptySet _ -> expr
 | InhAttr _
+| OwnSynthAttr _
 | SynthAttr _ -> assert false
 
 let stub_grammar_element: TypeChecker.context -> semantic_constraint list -> grammar_element -> semantic_constraint option * grammar_element * TypeChecker.context
