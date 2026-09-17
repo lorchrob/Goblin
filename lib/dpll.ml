@@ -4,22 +4,14 @@ module B = Batteries
 
 let (let*) = Res.(>>=)
 
-(* APPLICABILITY PR 
-   - every time you encounter constraints, immediately assert *all* constraints (DONE)
-   - every time you encounter constraints, 
-     declare (but don't assert) the activation literal (DONE)
-   - every time you expand to a leaf (symbolic terminal), 
-     declare and assert the activation literal (DONE)
-   - not best way to handle declarations for activation literals yet. 
-     Because we may encounter an activation literal at a constraint first, or at 
-     a leaf first.
-       - don't we already have this problem with regular leaf variables? 
-         if already declared they won't be redeclared because we check the set of 
-         declared variables. But maybe can do better (let cvc5 do the check for us? 
-         and use print-success?)
-*) 
+(* TODO
 
-(* TODO 
+   * Not the best way to handle declarations for activation literals yet,
+     because we may encounter an activation literal at a constraint first, or at
+     a leaf first. Don't we already have this problem with regular leaf variables?
+     If already declared they won't be redeclared because we check the set of
+     declared variables. But maybe can do better (let cvc5 do the check for us?
+     and use print-success?)
 
    * Optimization: normalize in cases where you have an open leaf 
      and multiple prod rule options, but only one remaining option 
@@ -41,7 +33,6 @@ let (let*) = Res.(>>=)
      Then, you can pass these constraints down. To support this, you'd also need to 
      reference the other way in dot notation -- e.g., you'd pass down <D> = parent.fresh_lit 
      to child node <C>.
-   * Optimization: Track constraints you can assert and immediately forget 
 *)
 
 (*
@@ -49,7 +40,7 @@ A -> B C { B.F < C.J } | D E
 B -> F G | H I
 C -> J K | L M
 _ :: Int
-*)
+*) 
 
 (* 
   * At each production rule, choose an option to pursue 
@@ -97,7 +88,7 @@ Interfacing with the solver
       E.g., root.nt1[0].nt2[1].leaf]
     * Parse the model into an AST (with each new variable, incrementally expand the tree)
     * Serialize the AST
-*)
+*) 
 
 (* Raised when the search proves that the grammar has no solution *)
 exception Infeasible_grammar
@@ -152,6 +143,12 @@ module ConstraintSet = Set.Make(struct
   type t = A.expr
   let compare = Stdlib.compare
 end)
+
+(* Constraints are asserted the moment they are encountered, at the current
+   assertion level, so that backtracking retracts them via (pop 1). *)
+let assert_constraints: Smt.solver_instance -> ConstraintSet.t -> unit
+= fun solver constraints ->
+  ConstraintSet.iter (Smt.assert_smt_constraint solver) constraints
 
 let random_int_in_range: int -> int -> int
 = fun min max ->
@@ -222,11 +219,11 @@ let children_of_ges path ges = List.map (fun ge -> match ge with
   { path = path @ [stub.stands_for, None, None]; expansion = Dependent stub }
 ) ges
 
-(* Normalize a derivation tree for a fixed spot in the search tree. 
-   Collect the associated constraints discovered during normalization. *)
+(* Normalize a derivation tree for a fixed spot in the search tree.
+   Assert the associated constraints discovered during normalization. *)
 let rec normalize_derivation_tree ctx ast declared_variables solver 
-                                  constraints_to_assert variable_stack blocking_clause_vars assertion_level dt = 
-let r = normalize_derivation_tree ctx ast declared_variables solver constraints_to_assert variable_stack 
+                                  variable_stack blocking_clause_vars assertion_level dt =
+let r = normalize_derivation_tree ctx ast declared_variables solver variable_stack
                                    blocking_clause_vars assertion_level in 
 let path = dt.path in
 match dt.expansion with 
@@ -254,7 +251,7 @@ match dt.expansion with
         Utils.StringMap.add str ty (Utils.StringMap.add (str ^ "_actlit") A.Bool acc) 
       ) Utils.StringMap.empty expr_variables in
       declare_smt_variables variable_stack declared_variables ty_ctx solver blocking_clause_vars assertion_level ;
-      constraints_to_assert := ConstraintSet.union !constraints_to_assert (ConstraintSet.of_list constraints_to_add); 
+      assert_constraints solver (ConstraintSet.of_list constraints_to_add);
       Some (Children (children_of_ges path ges))
     else 
       None
@@ -276,8 +273,7 @@ match dt.expansion with
       let actlit = 
         universalize_expr true path (A.ActLit (A.NTExpr ([nt2, idx1, idx2], p), p))
       in
-      let constraints_to_add = ConstraintSet.add actlit constraints_to_add in 
-      constraints_to_assert := ConstraintSet.union !constraints_to_assert constraints_to_add;
+      assert_constraints solver (ConstraintSet.add actlit constraints_to_add);
       Some (Terminal (ty, None))
     else None 
   ) ast in 
@@ -297,24 +293,12 @@ let new_decision_level: Smt.solver_instance -> int ref -> Utils.StringSet.t ref 
   Smt.issue_solver_command push_cmd solver; 
   ()
 
-let assert_all_constraints constraint_set solver =
-  let _ = ConstraintSet.iter (fun expr -> 
-    Smt.assert_smt_constraint solver expr;
-  ) !constraint_set 
-  in
-  ConstraintSet.empty
-
-let initialize_globals ctx ast derivation_tree start_symbol constraints_to_assert 
+let initialize_globals ctx ast derivation_tree start_symbol
                        decision_stack _declared_variables backtrack_depth curr_st_node declared_variables solver 
                        variable_stack blocking_clause_vars assertion_level = 
-  (* Keep around constraints we may not need to assert *)
-  constraints_to_assert := ConstraintSet.empty; 
   (* Incremental construction of output term so far *)
   derivation_tree := { path = [start_symbol, Some 0, Some 0]; expansion = Open };
-  derivation_tree := normalize_derivation_tree ctx ast declared_variables solver constraints_to_assert !variable_stack blocking_clause_vars assertion_level !derivation_tree ;
-  constraints_to_assert := assert_all_constraints constraints_to_assert solver;
-  (* Set of paths through the tree to help determine when to push constraints from constraints_to_assert *)
-  (* let provenance_list = _ in *) (* Challenge: backtracking affects provenance list *)
+  derivation_tree := normalize_derivation_tree ctx ast declared_variables solver !variable_stack blocking_clause_vars assertion_level !derivation_tree ;
   (* Keep track of all decisions so we can easily backtrack in the derivation tree *)
   decision_stack := B.Stack.create ();
   variable_stack := B.Stack.create ();
@@ -328,7 +312,7 @@ let initialize_globals ctx ast derivation_tree start_symbol constraints_to_asser
 
 (* We (1) pick an NT to expand uniformly at random, then 
       (2) pick a production rule option based on user distribution (uniform if absent)
-*)
+*) 
 let sample_excluding (expansion_probs : float list list) (visited : int list) : int =
   (* Annotate probabilities with indices *) 
   let expansion_probs, _ = List.fold_left (fun (acc_list, acc_i) probs -> 
@@ -368,7 +352,7 @@ let sample_excluding (expansion_probs : float list list) (visited : int list) : 
 let find_new_expansion ast derivation_tree curr_st_node = 
   let visited_indices = !(!curr_st_node.tried) in 
   let rec expansion_probabilities dt =
-  match dt.expansion with
+  match dt.expansion with 
   | Open ->
     let (nt, _, _) = label dt in
     let probs =
@@ -381,7 +365,7 @@ let find_new_expansion ast derivation_tree curr_st_node =
     | None -> Utils.crash "No matching grammar rule"
     in
     [probs]
-  | Children children ->
+  | Children children -> 
     List.flatten (List.map expansion_probabilities children)
   | Terminal _ | Dependent _ -> []
   in
@@ -428,7 +412,7 @@ let find_new_expansion ast derivation_tree curr_st_node =
   expanded_node, index_to_pick, new_dt, real_choice 
 
 let backtrack ctx ast assertion_level decision_stack solver backtrack_depth declared_variables 
-              constraints_to_assert depth_limit start_symbol derivation_tree curr_st_node
+              depth_limit start_symbol derivation_tree curr_st_node
               variable_stack blocking_clause_vars = 
   if !assertion_level = 1 then ( (* restarting *)
     (*Format.pp_print_string Format.std_formatter "Restarting...\n%!";*)
@@ -437,12 +421,12 @@ let backtrack ctx ast assertion_level decision_stack solver backtrack_depth decl
     (if not !backtrack_depth then raise Infeasible_grammar);
     depth_limit := !depth_limit + 1;
     if !Flags.debug then Format.fprintf Format.std_formatter "Increasing depth limit to %d\n" !depth_limit;
-    initialize_globals ctx ast derivation_tree start_symbol constraints_to_assert 
+    initialize_globals ctx ast derivation_tree start_symbol 
                        decision_stack declared_variables backtrack_depth curr_st_node declared_variables solver
                        variable_stack blocking_clause_vars assertion_level; 
   ) else ( 
     assertion_level := !assertion_level - 1;
-    Smt.issue_solver_command "(pop 1)" solver;
+    Smt.issue_solver_command "(pop 1)" solver; 
     let st_node = Stack.pop !decision_stack in
     let popped_vars = Stack.pop !variable_stack in 
     let dt = st_node.dt in 
@@ -619,7 +603,7 @@ let rec generate_n_solutions n ast model r derivation_tree declared_variables so
       * Pop an assertion level, backtrack in search tree to last real choice 
       * Remove the constraints from the constraint set associated with nodes no longer in DT
 
-*)
+*) 
 let dpll: TypeChecker.context -> A.semantic_constraint Nt.StubMap.t -> A.ast -> SA.solver_ast
 = fun ctx dep_map ast ->  
   let _ = match !Flags.seed with 
@@ -656,16 +640,11 @@ let dpll: TypeChecker.context -> A.semantic_constraint Nt.StubMap.t -> A.ast -> 
   let assertion_level = ref 0 in 
   (* Track declared (SMT-level) variables to avoid redeclaration *)
   let declared_variables = ref Utils.StringSet.empty in 
-  (* Keep around constraints we may not need to assert *)
-  let constraints_to_assert = ref ConstraintSet.empty in 
   (* Incremental construction of output term so far *)
   let derivation_tree = ref { path = start_path; expansion = Open } in 
-  derivation_tree := normalize_derivation_tree ctx ast declared_variables solver constraints_to_assert !variable_stack blocking_clause_vars assertion_level !derivation_tree ;
-  constraints_to_assert := assert_all_constraints constraints_to_assert solver;
+  derivation_tree := normalize_derivation_tree ctx ast declared_variables solver !variable_stack blocking_clause_vars assertion_level !derivation_tree ;
   (* Current spot in the search tree *) 
   let curr_st_node = ref { dt = !derivation_tree; depth = 0; tried = ref [] } in
-  (* Set of paths through the tree to help determine when to push constraints from constraints_to_assert *)
-  (* let provenance_list = _ in *) (* Challenge: backtracking affects provenance list *)
   (* Keep track of all decisions so we can easily backtrack in the derivation tree *)
   let decision_stack : search_node Stack.t ref = ref (B.Stack.create ()) in 
   (* IDS depth limit *) 
@@ -695,8 +674,6 @@ let dpll: TypeChecker.context -> A.semantic_constraint Nt.StubMap.t -> A.ast -> 
       Format.fprintf Format.std_formatter "num_iterations: %d\n" !num_iterations; *)
      
     if !Flags.debug then Format.fprintf Format.std_formatter "------------------------\n";
-    (*if !Flags.debug then Format.fprintf Format.std_formatter "Constraints to assert: %a\n"
-      (Lib.pp_print_list A.pp_print_expr " ") (ConstraintSet.elements !constraints_to_assert);*)
     if !Flags.debug then Format.fprintf Format.std_formatter "Derivation tree: %a\n"
       pp_print_derivation_tree !derivation_tree;
 
@@ -707,7 +684,7 @@ let dpll: TypeChecker.context -> A.semantic_constraint Nt.StubMap.t -> A.ast -> 
       new_decision_level solver assertion_level variable_stack; 
       Stack.push !curr_st_node !decision_stack;
     );
-    derivation_tree := normalize_derivation_tree ctx ast declared_variables solver constraints_to_assert !variable_stack blocking_clause_vars assertion_level !derivation_tree ; 
+    derivation_tree := normalize_derivation_tree ctx ast declared_variables solver !variable_stack blocking_clause_vars assertion_level !derivation_tree ; 
     !curr_st_node.tried := expansion_index :: !(!curr_st_node.tried);
     curr_st_node := { dt = !derivation_tree; depth = !curr_st_node.depth + 1; tried = ref [] }; 
 
@@ -725,7 +702,7 @@ let dpll: TypeChecker.context -> A.semantic_constraint Nt.StubMap.t -> A.ast -> 
         (* prepare to generate another solution *)
         assertion_level := 1;
         depth_limit := starting_depth_limit;
-        initialize_globals ctx ast derivation_tree start_symbol constraints_to_assert 
+        initialize_globals ctx ast derivation_tree start_symbol 
                            decision_stack declared_variables backtrack_depth curr_st_node declared_variables solver
                            variable_stack blocking_clause_vars assertion_level; 
     ) else 
@@ -746,7 +723,7 @@ let dpll: TypeChecker.context -> A.semantic_constraint Nt.StubMap.t -> A.ast -> 
         Utils.debug_print Format.pp_print_string Format.std_formatter 
           ("Exceeded depth limit " ^ (string_of_int !depth_limit) ^ "!\n");
         backtrack ctx ast assertion_level decision_stack solver backtrack_depth declared_variables 
-                  constraints_to_assert depth_limit start_symbol derivation_tree curr_st_node 
+                  depth_limit start_symbol derivation_tree curr_st_node 
                   variable_stack blocking_clause_vars
       ) else 
 
@@ -764,7 +741,6 @@ let dpll: TypeChecker.context -> A.semantic_constraint Nt.StubMap.t -> A.ast -> 
         List.iter (fun sc -> match sc with 
         | A.SmtConstraint (expr, _) ->
           declare_smt_variables !variable_stack declared_variables (Utils.StringMap.singleton path' ty) solver blocking_clause_vars assertion_level; 
-          constraints_to_assert := ConstraintSet.add (universalize_expr true path expr) !constraints_to_assert;
           (* Also declare and assert activation literals *)
           let path'' = (string_of_path path |> String.lowercase_ascii) ^ "_actlit" in
           declare_smt_variables !variable_stack declared_variables 
@@ -772,8 +748,8 @@ let dpll: TypeChecker.context -> A.semantic_constraint Nt.StubMap.t -> A.ast -> 
           let actlit = 
             universalize_expr true path (A.ActLit (A.NTExpr ([nt], p), p))
           in
-          constraints_to_assert := ConstraintSet.add actlit !constraints_to_assert;
-          constraints_to_assert := assert_all_constraints constraints_to_assert solver;
+          assert_constraints solver
+            (ConstraintSet.of_list [universalize_expr true path expr; actlit]);
           let model = get_smt_result ast solver false in  
           (match model with 
           | Some (Ok _) -> assert false
@@ -782,7 +758,7 @@ let dpll: TypeChecker.context -> A.semantic_constraint Nt.StubMap.t -> A.ast -> 
               "it was SAT, waiting to expand before instantiating in derivation tree\n"; 
           | Some (Error ()) -> 
             backtrack ctx ast assertion_level decision_stack solver backtrack_depth declared_variables 
-                  constraints_to_assert depth_limit start_symbol derivation_tree curr_st_node
+                  depth_limit start_symbol derivation_tree curr_st_node
                   variable_stack blocking_clause_vars
           )
         | A.DerivedField _ -> ()
@@ -824,17 +800,15 @@ let dpll: TypeChecker.context -> A.semantic_constraint Nt.StubMap.t -> A.ast -> 
               Utils.StringMap.add str ty (Utils.StringMap.add (str ^ "_actlit") A.Bool acc) 
             ) Utils.StringMap.empty expr_variables in
             declare_smt_variables !variable_stack declared_variables ty_ctx solver blocking_clause_vars assertion_level;
-            constraints_to_assert := ConstraintSet.add (universalize_expr false path expr) !constraints_to_assert;
+            assert_constraints solver
+              (ConstraintSet.singleton (universalize_expr false path expr));
             (* don't instantiate yet -- we haven't hit the leaf nodes *)
             (* derivation_tree := instantiate_terminals model derivation_tree;  *)
           | A.DerivedField _ -> ()
           | A.AttrDef _ -> assert false
           ) scs;
 
-          (* Assert the constraints from this choice (and also try to assert constraints hanging around from earlier on,
-             but maybe weren't definitely applicable until this decision) *)
-          constraints_to_assert := assert_all_constraints constraints_to_assert solver;
-          let model = get_smt_result ast solver false in
+          let model = get_smt_result ast solver false in  
           (match model with 
           | None -> (* sat *)
             if !Flags.debug then Format.pp_print_string Format.std_formatter 
@@ -842,19 +816,17 @@ let dpll: TypeChecker.context -> A.semantic_constraint Nt.StubMap.t -> A.ast -> 
           | Some (Error ()) -> (* unsat *)
             if !Flags.debug then Format.pp_print_string Format.std_formatter "it was UNSAT, backtracking\n"; 
             backtrack ctx ast assertion_level decision_stack solver backtrack_depth declared_variables 
-                  constraints_to_assert depth_limit start_symbol derivation_tree curr_st_node 
+                  depth_limit start_symbol derivation_tree curr_st_node 
                   variable_stack blocking_clause_vars
           | Some _ -> assert false
           ); 
 
   done;
 
-  if !Flags.debug then Format.fprintf Format.std_formatter "Constraints to assert: %a\n"
-    (Lib.pp_print_list A.pp_print_expr " ") (ConstraintSet.elements !constraints_to_assert);
   if !Flags.debug then Format.fprintf Format.std_formatter "Derivation tree: %a\n"
     pp_print_derivation_tree !derivation_tree;
 
-  (* Handle any remaining constraints from last iteration of the loop *)
+  (* The derivation tree is complete; get the model that instantiates its terminals *)
   let model = get_smt_result ast solver true in
   (match model with 
   | Some (Ok model) -> (* sat *)
@@ -864,7 +836,7 @@ let dpll: TypeChecker.context -> A.semantic_constraint Nt.StubMap.t -> A.ast -> 
   | Some (Error ()) -> (* unsat *)
     if !Flags.debug then Format.pp_print_string Format.std_formatter "it was UNSAT, backtracking\n"; 
     backtrack ctx ast assertion_level decision_stack solver backtrack_depth declared_variables 
-                  constraints_to_assert depth_limit start_symbol derivation_tree curr_st_node 
+                  depth_limit start_symbol derivation_tree curr_st_node 
                   variable_stack blocking_clause_vars
   ); 
 
@@ -913,10 +885,10 @@ let dpll: TypeChecker.context -> A.semantic_constraint Nt.StubMap.t -> A.ast -> 
     (* prepare to generate another solution *)
     assertion_level := 1;
     depth_limit := starting_depth_limit;
-    initialize_globals ctx ast derivation_tree start_symbol constraints_to_assert 
+    initialize_globals ctx ast derivation_tree start_symbol 
                        decision_stack declared_variables backtrack_depth curr_st_node declared_variables solver 
                        variable_stack blocking_clause_vars assertion_level; 
-  );
+  ); 
   ()
   done; 
 
