@@ -4,25 +4,31 @@ type endianness =
 | Little 
 | Big
 
+(* Nonterminals that are not serialized: generated attribute nonterminals, 
+   and nonterminals whose names start with an underscore *)
+let is_hidden nt = match nt with 
+| Nt.User s -> s.[0] = '_'
+| Stub _ | SynthAttr _ | InhAttr _ -> true
+
 let serialize: Format.formatter -> SA.solver_ast -> unit 
 = fun ppf solver_ast -> 
   let rec pp_print_solver_ast' ppf solver_ast = match solver_ast with 
   | SA.Node (_, subterms) -> 
     Format.fprintf ppf "%a"
     (Lib.pp_print_list pp_print_solver_ast' "") subterms 
-  | BLLeaf bits
-  | BVLeaf (_, bits) -> 
-    let bits = List.map Bool.to_int bits in
-    Format.fprintf ppf "%a"
-    (Lib.pp_print_list Format.pp_print_int "") bits
-  | VarLeaf id 
-  | StrLeaf id -> Format.fprintf ppf "%s" id;
-  | IntLeaf i -> Format.pp_print_int ppf i
-  | UnitLeaf -> ()
-  | BoolLeaf b -> Format.pp_print_bool ppf b
-  | SetLeaf (StringSet s) -> 
+  | Leaf (BitList bits)
+  | Leaf (BitVector (_, bits)) -> Value.pp_print_bits ppf bits
+  | Leaf (Placeholder id)
+  | Leaf (String id) -> Format.fprintf ppf "%s" id;
+  | Leaf (Int i) -> Format.pp_print_int ppf i
+  | Leaf Unit -> ()
+  | Leaf (Bool b) -> Format.pp_print_bool ppf b
+  | Leaf (StringSet s) -> 
     Format.fprintf Format.std_formatter "{%a}" 
       (Lib.pp_print_list Format.pp_print_string ", ") (Utils.StringSet.to_list s)
+  | StubLeaf stub -> Format.fprintf ppf "%s" (String.lowercase_ascii (Nt.to_symbol (Stub stub)))
+  | Infeasible -> Format.fprintf ppf "infeasible"
+  | Model _ -> Utils.crash "Unexpected SMT model in serialize"
   in 
   Format.fprintf ppf "%a\n" 
   pp_print_solver_ast' solver_ast
@@ -117,12 +123,8 @@ let serialize_bytes: endianness -> string list -> SA.solver_ast -> bytes
   let rec serialize_aux endianness exception_list solver_ast offset acc_metadata =
     match solver_ast with
   | SA.Node ((id, _, _), subterms) ->
-      if id.[0] = '_' then Bytes.empty, acc_metadata, offset else
-      let is_match = List.exists (fun str -> 
-        let regex = Str.regexp (String.lowercase_ascii str ^ "_con[0-9]+") in 
-        Str.string_match regex (String.lowercase_ascii id) 0 || 
-        Utils.str_eq_ci id str
-      ) exception_list in
+      if is_hidden id then Bytes.empty, acc_metadata, offset else
+      let is_match = List.exists (fun str -> Nt.equal_ci id (Nt.User str)) exception_list in
       let endianness = if is_match then flip_endianness default_endianness else default_endianness in
       List.fold_left
       (fun (acc_bytes, acc_metadata, current_offset) term ->
@@ -130,13 +132,13 @@ let serialize_bytes: endianness -> string list -> SA.solver_ast -> bytes
         (Bytes.cat acc_bytes term_bytes, term_metadata, new_offset))
       (Bytes.empty, acc_metadata, offset) subterms
       
-    | BLLeaf bits
-    | BVLeaf (_, bits) ->
+    | Leaf (BitList bits)
+    | Leaf (BitVector (_, bits)) ->
       let bit_bytes = bools_to_bytes endianness bits in
       (bit_bytes, acc_metadata, offset + Bytes.length bit_bytes)
       
-    | StrLeaf id 
-    | VarLeaf id ->
+    | Leaf (String id)
+    | Leaf (Placeholder id) ->
       let var_leaf_data = Bytes.of_string id in
       let var_leaf_length = Bytes.length var_leaf_data in
       let new_metadata = {
@@ -145,14 +147,17 @@ let serialize_bytes: endianness -> string list -> SA.solver_ast -> bytes
       } in
       (var_leaf_data, new_metadata, offset + var_leaf_length)
       
-    | BoolLeaf b ->  
+    | Leaf (Bool b) ->  
       let bits = [b] in 
       let bit_bytes = bools_to_bytes endianness bits in
       (bit_bytes, acc_metadata, offset + Bytes.length bit_bytes)
 
-    | IntLeaf _ -> Utils.crash "Trying to serialize a mathematical integer to bytes"
-    | SetLeaf _ -> Utils.crash "Trying to serialize a set to bytes" 
-    | UnitLeaf  -> Utils.crash "Trying to serialize the unit element to bytes"
+    | Leaf (Int _) -> Utils.crash "Trying to serialize a mathematical integer to bytes"
+    | Leaf (StringSet _) -> Utils.crash "Trying to serialize a set to bytes" 
+    | Leaf Unit  -> Utils.crash "Trying to serialize the unit element to bytes"
+    | StubLeaf _ -> Utils.crash "Trying to serialize an unresolved stub to bytes"
+    | Infeasible -> Utils.crash "Trying to serialize an infeasible result to bytes"
+    | Model _ -> Utils.crash "Unexpected SMT model in serialize_bytes"
   in
   let initial_metadata = {
     var_leaf_count = 0;
@@ -231,32 +236,32 @@ let int_to_bytes_min endianness (n:int) : bytes =
 let serialize_bytes_packed: SA.solver_ast -> bytes 
 = fun solver_ast -> 
   let rec bits_of_sa bit_count solver_ast = match solver_ast with 
-  | SA.BLLeaf bits -> (bit_count + List.length bits), bits
-  | BVLeaf (_, bits) -> (bit_count + List.length bits), bits
-  | BoolLeaf bit -> bit_count + 1, [bit]
-  | StrLeaf str | VarLeaf str when Utils.str_eq_ci str "trailing-bits" -> 
+  | SA.Leaf (BitList bits) -> (bit_count + List.length bits), bits
+  | Leaf (BitVector (_, bits)) -> (bit_count + List.length bits), bits
+  | Leaf (Bool bit) -> bit_count + 1, [bit]
+  | Leaf (String str | Placeholder str) when Utils.str_eq_ci str "trailing-bits" -> 
     let num_bits_to_pad = ((8 - (bit_count mod 8)) mod 8) in 
     (*Format.printf "bit_count: %d, num_bits_to_pad: %d\n"
       bit_count num_bits_to_pad;*)
     let bits = Utils.replicate false num_bits_to_pad in 
     (bit_count + List.length bits), bits
-  | StrLeaf str | VarLeaf str -> 
+  | Leaf (String str | Placeholder str) -> 
     let bytes = Bytes.of_string str in 
     let bits = bytes_to_bools_be bytes in 
     (bit_count + List.length bits), bits
-  | IntLeaf i -> 
+  | Leaf (Int i) -> 
     let bytes = int_to_bytes_min Big i in 
     let bits = bytes_to_bools_be bytes in 
     (bit_count + List.length bits), bits
   | Node ((id, _, _), children) -> 
-    if id.[0] = '_' then bit_count, [] else
+    if is_hidden id then bit_count, [] else
     let r = List.fold_left (fun (acc_bit_count, acc_bits) child -> 
       let acc_bit_count', bits' = bits_of_sa acc_bit_count child in 
       acc_bit_count', acc_bits @ bits' 
     ) (bit_count, []) children in
     if !Flags.debug then (
-      Format.printf "Serializing %s to %a\n" 
-        id 
+      Format.printf "Serializing %a to %a\n" 
+        Nt.pp id 
         (Lib.pp_print_list Format.pp_print_bool ", ") (snd r)
     );
     r
@@ -265,5 +270,5 @@ let serialize_bytes_packed: SA.solver_ast -> bytes
       SolverAst.pp_print_solver_ast sa in 
     Utils.crash msg
   in 
-  let bits = SA.BLLeaf (bits_of_sa 0 solver_ast |> snd) in 
+  let bits = SA.Leaf (BitList (bits_of_sa 0 solver_ast |> snd)) in 
   serialize_bytes Little [] bits 

@@ -34,13 +34,13 @@ let rec find_random_production_rule (grammar : ast) : element option =
     | ProdRule (x, ia, y, pos) -> Some (ProdRule (x, ia, y, pos))
     | _ -> find_random_production_rule grammar
 
-let rec grammar_element_addition (geList : grammar_element list) (nt : string) (insertion_index : int) : grammar_element list = 
+let rec grammar_element_addition (geList : grammar_element list) (nt : Nt.t) (insertion_index : int) : grammar_element list = 
     match insertion_index, geList with
     | _, [] -> [Nonterminal (nt, None, None, [], Lexing.dummy_pos)]
     | 0, xs -> (Nonterminal (nt, None, None, [], Lexing.dummy_pos)) :: xs
     | count, x :: xs -> x :: (grammar_element_addition xs nt (count - 1))
      
-let rec mutation_add_s1 (g : ast) (nt : string) (pr : element option) : ast * bool = 
+let rec mutation_add_s1 (g : ast) (nt : Nt.t) (pr : element option) : ast * bool = 
     match pr with 
     | Some (ProdRule (nt_name, _, _, _)) -> (
         match g with
@@ -86,7 +86,7 @@ let rec mutation_add_s1 (g : ast) (nt : string) (pr : element option) : ast * bo
         let (gg, r) = mutation_add_s1 ys nt in
         (TypeAnnotation(v, w, x)::gg, r) *)
 
-and isPresentInExpr (nt:string) (e:expr) : bool = 
+and isPresentInExpr (nt:Nt.t) (e:expr) : bool = 
     match e with 
     | BinOp (e1, _, e2, _) -> (isPresentInExpr nt e1) || (isPresentInExpr nt e2)
     | UnOp (_, e, _) -> (isPresentInExpr nt e)
@@ -99,7 +99,7 @@ and isPresentInExpr (nt:string) (e:expr) : bool =
     | NTExpr (n, _) -> (List.mem nt (List.map Utils.tr_fst n))
     | _ -> false 
     
-let rec remove_constraints (nt : string) (clist : semantic_constraint list) : semantic_constraint list = 
+let rec remove_constraints (nt : Nt.t) (clist : semantic_constraint list) : semantic_constraint list = 
     match clist with 
     | [] -> [] 
     | x::xs -> 
@@ -149,7 +149,7 @@ let rec mutation_delete g nt =
         let (gg, r) = mutation_delete ys nt 
                 in (TypeAnnotation(v, w, x, pos) :: gg, r)
 
-let update_constraint (nt : string) (cList : semantic_constraint list) (operation : bin_operator) : semantic_constraint list =
+let update_constraint (nt : Nt.t) (cList : semantic_constraint list) (operation : bin_operator) : semantic_constraint list =
     match cList with 
     | [] -> []
     | x :: xs ->
@@ -210,7 +210,7 @@ let rec get_production_rules_for_crossover g =
     let r2 = random_element g in
     match r1, r2 with
     | ProdRule(a, _, _, _), ProdRule(c, _, _, _) -> 
-        if a = "SAE_PACKET" || c = "SAE_PACKET" then get_production_rules_for_crossover g
+        if a = Nt.User "SAE_PACKET" || c = Nt.User "SAE_PACKET" then get_production_rules_for_crossover g
         else r1, r2
     | _, _ -> get_production_rules_for_crossover g
 
@@ -230,7 +230,7 @@ let rec replace_geList b rhs1 rhs2 crossoverPRs =
         then (replace_Rhs b rhs2 (snd crossoverPRs)) @ (replace_geList xss rhs1 rhs2 crossoverPRs)
         else x :: (replace_geList xss rhs1 rhs2 crossoverPRs)
 
-let rec grammarUpdateAfterCrossover (nt : string) (g : ast) (rhs1 : prod_rule_rhs) (rhs2 : prod_rule_rhs) (crossoverPRs : (prod_rule_rhs * prod_rule_rhs)) : ast = 
+let rec grammarUpdateAfterCrossover (nt : Nt.t) (g : ast) (rhs1 : prod_rule_rhs) (rhs2 : prod_rule_rhs) (crossoverPRs : (prod_rule_rhs * prod_rule_rhs)) : ast = 
     match g with
     | [] -> []
     | ProdRule(a, ia, b, p) :: xs -> 
@@ -263,8 +263,8 @@ let mutation_crossover (rhs1 : prod_rule_rhs) (rhs2 : prod_rule_rhs) : (prod_rul
             match randomGe1, randomGe2 with
             | (Nonterminal (a, _, _, _, _)), (Nonterminal (b, _, _, _, _)) -> 
                 (Rhs(crossoverList1, (remove_constraints a scList1), prob, p1), Rhs(crossoverList2, (remove_constraints b scList2), prob2, p2))
-            | (Nonterminal _, (StubbedNonterminal (_, _))) -> Utils.crash "unexpected crossover"
-            | ((StubbedNonterminal (_, _)), _) -> Utils.crash "unexpected crossover"
+            | (Nonterminal _, (StubbedNonterminal _)) -> Utils.crash "unexpected crossover"
+            | ((StubbedNonterminal _), _) -> Utils.crash "unexpected crossover"
         )
     | (Rhs (_, _, _, _), StubbedRhs _) -> Utils.crash "unexpected crossover"
     | (StubbedRhs _, _) -> Utils.crash "unexpected crossover"

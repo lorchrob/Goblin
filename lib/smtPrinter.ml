@@ -59,9 +59,9 @@ let pp_print_compop: Format.formatter -> A.comp_operator -> unit
 | _ -> assert false
 
 let pp_print_nt_helper 
-= fun ppf (str, idx1, idx2) -> 
+= fun ppf (nt, idx1, idx2) -> 
   Format.fprintf ppf "%s%s"
-    (String.lowercase_ascii str) 
+    (String.lowercase_ascii (Nt.to_symbol nt)) 
     (match idx1, idx2 with 
     | None, None -> ""
     | Some i, None | None, Some i -> "!" ^ string_of_int i
@@ -72,7 +72,6 @@ let rec pp_print_expr: ?nt_prefix:string -> TC.context -> Format.formatter -> A.
   let r = pp_print_expr ~nt_prefix ctx in
   match expr with 
   | NTExpr (nts, _) ->
-    let nts = List.map (fun (str, idx1, idx2) -> String.lowercase_ascii str, idx1, idx2) nts in
     (if not (String.equal nt_prefix "") then
       Format.pp_print_string ppf (nt_prefix ^ "_"));
     Lib.pp_print_list pp_print_nt_helper "_" ppf nts

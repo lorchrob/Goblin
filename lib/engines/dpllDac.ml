@@ -24,8 +24,8 @@ let dpll ppf ctx ast =
       Utils.debug_print Format.pp_print_string ppf "\nStarting DPLL engine:\n";
       let solver_asts = Parallelism.parallel_map (Dpll.dpll ctx dep_map) asts in 
       let solver_asts = 
-      if List.mem (SolverAst.VarLeaf "infeasible") solver_asts 
-        then [SolverAst.VarLeaf "infeasible"]
+      if List.hd solver_asts = SolverAst.Infeasible then [SolverAst.Infeasible]
+      else if List.mem SolverAst.Infeasible solver_asts then Utils.error_no_pos "dpll_dac engine not applicable to this input (some subproblem is infeasible)"
         else solver_asts
       in
       Utils.debug_print Format.pp_print_string ppf "\nOutputs from DPLL engines:\n";
@@ -42,6 +42,6 @@ let dpll ppf ctx ast =
       Utils.debug_print SolverAst.pp_print_solver_ast ppf solver_ast; 
 
       Some solver_ast
-    ) else Some (VarLeaf ""))
+    ) else Some (Leaf (Placeholder "")))
 
   else None

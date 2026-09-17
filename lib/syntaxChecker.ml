@@ -19,13 +19,8 @@
 
 open Ast
 
-module StringSet = Set.Make(
-  struct type t = string 
-  let compare = Stdlib.compare 
-  end
-)
 
-type prod_rule_map = (Utils.StringSet.t) Utils.StringMap.t
+type prod_rule_map = (Nt.Set.t) Nt.Map.t
 
 let (let*) = Res.(let*)
 
@@ -37,47 +32,47 @@ let build_prm: ast -> prod_rule_map
   | ProdRule (nt, _, rhss, p) -> 
     List.fold_left (fun acc rhss -> match rhss with 
     | Rhs (ges, _, _, _) -> 
-      let grammar_elements = List.map Ast.grammar_element_to_string ges in
-      let grammar_elements = Utils.StringSet.of_list grammar_elements in (
-      match Utils.StringMap.find_opt nt acc with 
+      let grammar_elements = List.map Ast.nt_of_grammar_element ges in
+      let grammar_elements = Nt.Set.of_list grammar_elements in (
+      match Nt.Map.find_opt nt acc with 
       | Some mem -> 
-        if (Utils.StringSet.is_empty mem) then 
-          Utils.error ("Nonterminal " ^ nt ^ " has both a type annotation and a production rule") p
-        else Utils.StringMap.add nt (Utils.StringSet.union mem grammar_elements) acc 
+        if (Nt.Set.is_empty mem) then 
+          Utils.error (Format.asprintf "Nonterminal %a has both a type annotation and a production rule" Nt.pp nt) p
+        else Nt.Map.add nt (Nt.Set.union mem grammar_elements) acc 
       | None -> 
-        Utils.StringMap.add nt grammar_elements acc
+        Nt.Map.add nt grammar_elements acc
       )
     | StubbedRhs _ -> acc
     ) acc rhss
   | TypeAnnotation (nt, _, _, p) -> 
-    match Utils.StringMap.find_opt nt acc with 
+    match Nt.Map.find_opt nt acc with 
     | Some _ -> 
-      Utils.error ("Nonterminal " ^ nt ^ " either has two type annotations, or has both a type annotation and a production rule") p
+      Utils.error (Format.asprintf "Nonterminal %a either has two type annotations, or has both a type annotation and a production rule" Nt.pp nt) p
     | None -> 
-      Utils.StringMap.add nt Utils.StringSet.empty acc 
-  ) Utils.StringMap.empty ast in 
+      Nt.Map.add nt Nt.Set.empty acc 
+  ) Nt.Map.empty ast in 
   prm
 
 (* Build nonterminal set, which the set of nonterminals with either
    their own production rules or type annotations *)
-let build_nt_set: ast -> Utils.StringSet.t 
+let build_nt_set: ast -> Nt.Set.t 
 = fun ast -> 
   List.fold_left (fun acc element -> match element with 
   | ProdRule (nt, _, _, _)
-  | TypeAnnotation (nt, _, _, _) -> Utils.StringSet.add nt acc
-  ) Utils.StringSet.empty ast
+  | TypeAnnotation (nt, _, _, _) -> Nt.Set.add nt acc
+  ) Nt.Set.empty ast
 
-let rec check_dangling_identifiers: Utils.StringSet.t -> Lexing.position -> expr -> expr 
+let rec check_dangling_identifiers: Nt.Set.t -> Lexing.position -> expr -> expr 
 = fun nt_set p expr -> 
   let call = check_dangling_identifiers nt_set p in 
   let check_d_ids_nt_expr nt_expr = 
-    List.iter (fun nt -> match Utils.StringSet.find_opt nt nt_set with 
-    | None -> Utils.error ("Dangling identifier <" ^ nt ^ "> (you are referencing a nonterminal which either does not exist or is not present in the current context)") p
+    List.iter (fun nt -> match Nt.Set.find_opt nt nt_set with 
+    | None -> Utils.error (Format.asprintf "Dangling identifier <%a> (you are referencing a nonterminal which either does not exist or is not present in the current context)" Nt.pp nt) p
     | Some _ -> ()
     ) nt_expr
   in
   let check_d_ids_attribute attr = 
-    match Utils.StringSet.find_opt ("%_" ^ attr) nt_set with 
+    match Nt.Set.find_opt (Nt.SynthAttr attr) nt_set with 
     | None -> Utils.error (Format.asprintf "Dangling identifier %s (you are trying to access an attribute that was never defined, or does not have a type annotation)" attr) p
     | Some _ -> ()
   in
@@ -107,11 +102,11 @@ let rec check_dangling_identifiers: Utils.StringSet.t -> Lexing.position -> expr
   | ActLit _ -> assert false
 
 let rec check_nt_expr_refs: 
-  prod_rule_map -> (string * int option * int option) list -> 
-  Lexing.position -> (string * int option * int option) list 
+  prod_rule_map -> (Nt.t * int option * int option) list -> 
+  Lexing.position -> (Nt.t * int option * int option) list 
 = fun prm nt_expr p -> match nt_expr with 
 | (nt1, idx1, idx2) :: (nt2, idx3, idx4) :: tl ->
-  if (not (Utils.StringSet.mem nt2 (Utils.StringMap.find nt1 prm))) 
+  if (not (Nt.Set.mem nt2 (Nt.Map.find nt1 prm))) 
   then 
     let sub_expr_str = 
       Utils.capture_output Ast.pp_print_nt_with_dots [(nt1, idx1, idx2); (nt2, idx3, idx4)] in
@@ -121,21 +116,21 @@ let rec check_nt_expr_refs:
 
 (* Check each nonterminal expression begins with a valid nonterminal
    and contains valid dot notation references *)
-let rec check_prod_rule_nt_exprs: prod_rule_map -> Utils.StringSet.t -> expr -> expr 
+let rec check_prod_rule_nt_exprs: prod_rule_map -> Nt.Set.t -> expr -> expr 
 = fun prm nts expr -> 
   let call = check_prod_rule_nt_exprs prm nts in
   match expr with 
   | NTExpr (nt_expr, p) -> 
-    if (not (Utils.StringSet.mem (List.hd nt_expr |> Utils.tr_fst) nts)) 
+    if (not (Nt.Set.mem (List.hd nt_expr |> Utils.tr_fst) nts)) 
     then 
-      Utils.error ("Nonterminal " ^  (List.hd nt_expr |> Utils.tr_fst) ^ " not found in current production rule RHS or type annotation") p
+      Utils.error (Format.asprintf "Nonterminal %a not found in current production rule RHS or type annotation" Nt.pp (List.hd nt_expr |> Utils.tr_fst)) p
     else
       let nt_expr = check_nt_expr_refs prm nt_expr p in 
       NTExpr (nt_expr, p) 
   | SynthAttr (nt, attr, p) -> 
-    if (not (Utils.StringSet.mem nt nts)) 
+    if (not (Nt.Set.mem nt nts)) 
     then 
-      Utils.error ("Nonterminal " ^ nt ^ " not found in current production rule RHS or type annotation") p
+      Utils.error (Format.asprintf "Nonterminal %a not found in current production rule RHS or type annotation" Nt.pp nt) p
     else SynthAttr (nt, attr, p)
   | EmptySet (ty, p) -> EmptySet (ty, p)
   | Singleton (expr, p) -> Singleton (call expr, p)
@@ -155,13 +150,13 @@ let rec check_prod_rule_nt_exprs: prod_rule_map -> Utils.StringSet.t -> expr -> 
 
 (* Check each nonterminal expression begins with a valid nonterminal
    and contains valid dot notation references *)
-let rec check_type_annot_nt_exprs: prod_rule_map -> Utils.StringSet.t -> expr -> expr 
+let rec check_type_annot_nt_exprs: prod_rule_map -> Nt.Set.t -> expr -> expr 
 = fun prm nts expr -> 
   let call = check_type_annot_nt_exprs prm nts in
   match expr with 
   | NTExpr (nt_expr, p) -> 
-    if (not (Utils.StringSet.mem (List.hd nt_expr |> Utils.tr_fst) nts)) 
-    then Utils.error ("Nonterminal " ^  (List.hd nt_expr |> Utils.tr_fst) ^ " not found in current production rule RHS or type annotation") p
+    if (not (Nt.Set.mem (List.hd nt_expr |> Utils.tr_fst) nts)) 
+    then Utils.error (Format.asprintf "Nonterminal %a not found in current production rule RHS or type annotation" Nt.pp (List.hd nt_expr |> Utils.tr_fst)) p
     else
       let nt_expr = check_nt_expr_refs prm nt_expr p in 
       NTExpr (nt_expr, p) 
@@ -199,9 +194,9 @@ let rec check_for_ambiguous_derived_fields ast df expr rhs =
   match expr with 
   | NTExpr ((nt, idx, _) :: nts, p) -> 
     let rhs_nts = Ast.nts_of_rhs rhs in 
-    let matching_rhs_nts = List.filter (fun nt' -> String.equal nt nt') rhs_nts in 
+    let matching_rhs_nts = List.filter (fun nt' -> Nt.equal nt nt') rhs_nts in 
     if List.length matching_rhs_nts > 1 then 
-     let msg = Format.asprintf "Derived field %s is defined ambiguously. More concretely, the definition of %s contains some nonterminal expression <nt_1>.<nt_2>...<nt_n> where some <nt_i> has multiple occurrences in its production rule (and hence the nonterminal expression could evaluate to more than one term, depending on which occurrence you pick)." df df in 
+     let msg = Format.asprintf "Derived field %a is defined ambiguously. More concretely, the definition of %a contains some nonterminal expression <nt_1>.<nt_2>...<nt_n> where some <nt_i> has multiple occurrences in its production rule (and hence the nonterminal expression could evaluate to more than one term, depending on which occurrence you pick)." Nt.pp df Nt.pp df in 
      Utils.error msg p
     else (
       let element = Ast.find_element ast nt in 
@@ -209,7 +204,7 @@ let rec check_for_ambiguous_derived_fields ast df expr rhs =
       | Ast.TypeAnnotation _ -> Ok ()
       | Ast.ProdRule (_, _, rhss, _) -> 
         if List.length rhss > 1 && idx <> None then (
-          let msg = Format.asprintf "NTExpr within derived field %s must be defined in all possible RHSs" df in 
+          let msg = Format.asprintf "NTExpr within derived field %a must be defined in all possible RHSs" Nt.pp df in 
           Utils.error msg p
         ) else 
           Res.seq_ (List.map (r (NTExpr (nts, p))) rhss)
@@ -238,32 +233,32 @@ let rec check_for_ambiguous_derived_fields ast df expr rhs =
   | EmptySet _  -> Ok ()
   | ActLit _ -> assert false
 
-let check_syntax_prod_rule: ast -> prod_rule_map -> Utils.StringSet.t -> prod_rule_rhs -> prod_rule_rhs
+let check_syntax_prod_rule: ast -> prod_rule_map -> Nt.Set.t -> prod_rule_rhs -> prod_rule_rhs
 = fun ast prm nt_set rhs -> match rhs with 
 | Rhs (ges, scs, prob, p) ->
-  let ges' = List.map Ast.grammar_element_to_string ges in
+  let ges' = List.map Ast.nt_of_grammar_element ges in
   let scs = List.map (fun sc -> match sc with 
   | AttrDef (nt2, expr, p) -> 
     let expr = check_dangling_identifiers nt_set p expr in 
-    let expr = check_prod_rule_nt_exprs prm (Utils.StringSet.of_list ges') expr in
+    let expr = check_prod_rule_nt_exprs prm (Nt.Set.of_list ges') expr in
     AttrDef (nt2, expr, p)
   | DerivedField (nt2, expr, p) -> (
     let _ = check_for_ambiguous_derived_fields ast nt2 expr rhs in 
     let expr = check_dangling_identifiers nt_set p expr in 
-    if (not (Utils.StringSet.mem nt2 nt_set)) then Utils.error ("Dangling identifier <" ^ nt2 ^ ">") p else
+    if (not (Nt.Set.mem nt2 nt_set)) then Utils.error (Format.asprintf "Dangling identifier <%a>" Nt.pp nt2) p else
     if (not (List.mem nt2 ges')) then Utils.error 
-      ("DerivedField LHS identifier " ^ nt2 ^ " is not present on the RHS of the corresponding production rule") p else
-    let expr = check_prod_rule_nt_exprs prm (Utils.StringSet.of_list ges') expr in
+      (Format.asprintf "DerivedField LHS identifier %a is not present on the RHS of the corresponding production rule" Nt.pp nt2) p else
+    let expr = check_prod_rule_nt_exprs prm (Nt.Set.of_list ges') expr in
       DerivedField (nt2, expr, p)
     )
   | SmtConstraint (expr, p) -> 
     let expr = check_for_nonterminals expr p in
     let expr = check_dangling_identifiers nt_set p expr in 
-    let expr = check_prod_rule_nt_exprs prm (Utils.StringSet.of_list ges') expr in
+    let expr = check_prod_rule_nt_exprs prm (Nt.Set.of_list ges') expr in
     SmtConstraint (expr, p)
   ) scs in 
   let _ = List.map (fun ge -> 
-    if not (Utils.StringSet.mem ge nt_set) then Utils.error ("Dangling identifier <" ^ ge ^ ">") p 
+    if not (Nt.Set.mem ge nt_set) then Utils.error (Format.asprintf "Dangling identifier <%a>" Nt.pp ge) p 
     else ge
   ) ges' in
   Rhs (ges, scs, prob, p)
@@ -272,9 +267,8 @@ let check_syntax_prod_rule: ast -> prod_rule_map -> Utils.StringSet.t -> prod_ru
 let rhss_contains_nt nt rhss = 
   List.exists (fun rhs -> match rhs with 
   | Rhs (ges, _, _, _) -> List.exists (fun ge -> match ge with 
-    | Nonterminal (nt2, _, _, _, _)
-    | StubbedNonterminal (nt2, _) -> 
-      nt = nt2
+    | Nonterminal (nt2, _, _, _, _) -> Nt.equal nt nt2
+    | StubbedNonterminal stub -> Nt.equal nt stub.stands_for
   ) ges
   | StubbedRhs _ -> false
   ) rhss
@@ -324,7 +318,7 @@ let remove_circular_deps: ast -> ast
           | None -> dependencies
           | Some cycle ->
             let msg = Format.asprintf "Derived field cyclic dependency detected: %a\n" 
-              (Lib.pp_print_list Format.pp_print_string " ") cycle
+              (Lib.pp_print_list Nt.pp " ") cycle
             in
             Utils.error msg p
           in 
@@ -336,25 +330,25 @@ let remove_circular_deps: ast -> ast
 let check_scs_for_dep_terms: semantic_constraint list -> semantic_constraint list  
 = fun scs -> 
   let dep_terms = List.fold_left (fun acc sc -> match sc with 
-| DerivedField (nt, _, _) -> StringSet.add nt acc 
+| DerivedField (nt, _, _) -> Nt.Set.add nt acc 
   | _ -> acc
-  ) StringSet.empty scs in
+  ) Nt.Set.empty scs in
   let deps_to_convert = List.fold_left (fun acc sc -> match sc with 
   | DerivedField _ -> acc
   | AttrDef (_, expr, _)
   | SmtConstraint (expr, _) -> 
-    let nts = Ast.get_nts_from_expr expr |> StringSet.of_list in 
-    let intersection = StringSet.inter dep_terms nts in
-    if StringSet.is_empty intersection then acc
+    let nts = Ast.get_nts_from_expr expr |> Nt.Set.of_list in 
+    let intersection = Nt.Set.inter dep_terms nts in
+    if Nt.Set.is_empty intersection then acc
     else 
       let deps_to_convert = intersection in
-      StringSet.union acc deps_to_convert
-  ) StringSet.empty scs in 
+      Nt.Set.union acc deps_to_convert
+  ) Nt.Set.empty scs in 
   List.fold_left (fun acc sc -> match sc with 
   | DerivedField (nt, _, p) -> 
-    if StringSet.mem nt deps_to_convert then (
-      let msg = Format.asprintf "Derived field %s mentioned in semantic constraint"
-        nt 
+    if Nt.Set.mem nt deps_to_convert then (
+      let msg = Format.asprintf "Derived field %a mentioned in semantic constraint"
+        Nt.pp nt 
       in 
       Utils.error msg p
     ) else sc :: acc
@@ -430,28 +424,28 @@ let language_emptiness_check ast start_symbol =
   in
   let add_productive_nts ast productive_nts = 
     List.fold_left (fun acc element -> match element with 
-    | TypeAnnotation (nt, _, _, _) -> Utils.StringSet.add nt acc 
+    | TypeAnnotation (nt, _, _, _) -> Nt.Set.add nt acc 
     | ProdRule (nt, _, rhss, _) ->
       (* Does there exist some RHS for which all NTs are productive? *)
       if List.exists (fun rhs -> 
         let nts = Ast.nts_of_rhs rhs in 
-        List.for_all (fun nt -> Utils.StringSet.mem nt acc) nts 
+        List.for_all (fun nt -> Nt.Set.mem nt acc) nts 
       ) rhss
       then
-        Utils.StringSet.add nt acc 
+        Nt.Set.add nt acc 
       else acc
     ) productive_nts ast  
   in
-  let productive_nt_set = Utils.StringSet.empty in 
-  let productive_nt_set = Utils.recurse_until_fixpoint productive_nt_set Utils.StringSet.equal (add_productive_nts ast) in 
-  if Utils.StringSet.equal productive_nt_set (Ast.nts_of_ast ast) then
-  (*if Utils.StringSet.mem start_symbol productive_nt_set then   *)
+  let productive_nt_set = Nt.Set.empty in 
+  let productive_nt_set = Utils.recurse_until_fixpoint productive_nt_set Nt.Set.equal (add_productive_nts ast) in 
+  if Nt.Set.equal productive_nt_set (Ast.nts_of_ast ast) then
+  (*if Nt.Set.mem start_symbol productive_nt_set then   *)
     () 
   else 
-    let unproductive = Utils.StringSet.diff (Ast.nts_of_ast ast) productive_nt_set |> Utils.StringSet.to_list in
+    let unproductive = Nt.Set.diff (Ast.nts_of_ast ast) productive_nt_set |> Nt.Set.to_list in
     Utils.error_no_pos 
       (Format.asprintf "CFG has empty language. Unproductive nonterminals: %a (check for an infinite recursion in the grammar)" 
-        (Lib.pp_print_list (fun ppf str -> Format.fprintf ppf "<%s>" str) ", ") unproductive)
+        (Lib.pp_print_list (fun ppf nt -> Format.fprintf ppf "<%a>" Nt.pp nt) ", ") unproductive)
       
 
 let check_probabilities nt rhss p = 
@@ -467,13 +461,13 @@ let check_probabilities nt rhss p =
       | Rhs (_, _, Some prob, _) -> 
         acc_rhss @ [rhs], acc_prob +. prob
       | Rhs (_, _, None, p) -> 
-        let msg = Format.asprintf "Production rule options for nonterminal <%s> must either all contain probability annotations, or none of them" nt in 
+        let msg = Format.asprintf "Production rule options for nonterminal <%a> must either all contain probability annotations, or none of them" Nt.pp nt in 
         Utils.error msg p
       | StubbedRhs _ -> assert false
     ) ([], 0.0) rhss in 
     let epsilon = 1e-12 in
     if abs_float (total_probability -. 1.0) > epsilon then
-      let msg = Format.asprintf "Production rule probabilities for nonterminal <%s> must add to 1.0" nt in 
+      let msg = Format.asprintf "Production rule probabilities for nonterminal <%a> must add to 1.0" Nt.pp nt in 
       Utils.error msg p
     else rhss
 
@@ -484,8 +478,8 @@ let check_no_redefinitions rhs = match rhs with
     | Ast.DerivedField (nt, _, _) -> [nt] 
     | SmtConstraint _ | AttrDef _ -> []
     ) scs in 
-    let derived_fields' = derived_fields |> Utils.StringSet.of_list |> Utils.StringSet.to_list in 
-    if not (List.equal String.equal derived_fields derived_fields') then 
+    let derived_fields' = derived_fields |> Nt.Set.of_list |> Nt.Set.to_list in 
+    if not (List.equal Nt.equal derived_fields derived_fields') then 
       let msg = Format.asprintf "Production rule RHS %a contains more than one derived field definition for the same nonterminal (derived field (you might also have to look at the type annotations to find the duplicates)"
         Ast.pp_print_prod_rule_rhs rhs 
       in 
@@ -493,7 +487,7 @@ let check_no_redefinitions rhs = match rhs with
     else 
       rhs 
 
-let check_syntax: prod_rule_map -> Utils.StringSet.t -> ast -> ast 
+let check_syntax: prod_rule_map -> Nt.Set.t -> ast -> ast 
 = fun prm nt_set ast -> 
   (*let ast = sort_ast ast in*) (* Maybe need this in non-dpll engines? *)
   let start_symbol = match ast with 
@@ -515,18 +509,18 @@ let check_syntax: prod_rule_map -> Utils.StringSet.t -> ast -> ast
     let scs = List.map (fun sc -> match sc with 
     | AttrDef (nt2, expr, p) ->
       let expr = check_dangling_identifiers nt_set p expr in 
-      let expr = check_prod_rule_nt_exprs prm (Utils.StringSet.singleton nt) expr in
+      let expr = check_prod_rule_nt_exprs prm (Nt.Set.singleton nt) expr in
       AttrDef (nt2, expr, p)
     | DerivedField (nt2, expr, p) ->
       let expr = check_dangling_identifiers nt_set p expr in  
-      if (not (Utils.StringSet.mem nt2 nt_set)) then Utils.error ("Dangling identifier <" ^ nt2 ^ ">") p else
-      if (not (nt2 = nt)) then Utils.error ("DerivedField LHS identifier " ^ nt2 ^ " is not present in the corresponding type annotation") p else
-      let expr = check_type_annot_nt_exprs prm (Utils.StringSet.singleton nt) expr in
+      if (not (Nt.Set.mem nt2 nt_set)) then Utils.error (Format.asprintf "Dangling identifier <%a>" Nt.pp nt2) p else
+      if (not (nt2 = nt)) then Utils.error (Format.asprintf "DerivedField LHS identifier %a is not present in the corresponding type annotation" Nt.pp nt2) p else
+      let expr = check_type_annot_nt_exprs prm (Nt.Set.singleton nt) expr in
       DerivedField (nt2, expr, p) 
     | SmtConstraint (expr, p) -> 
       let expr = check_for_nonterminals expr p in
       let expr = check_dangling_identifiers nt_set p expr in  
-      let expr = check_type_annot_nt_exprs prm (Utils.StringSet.singleton nt) expr in
+      let expr = check_type_annot_nt_exprs prm (Nt.Set.singleton nt) expr in
       SmtConstraint (expr, p)
     ) scs in 
     TypeAnnotation (nt, ty, scs, p)

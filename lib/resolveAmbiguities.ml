@@ -16,10 +16,10 @@ let gen_idx_options_from_head ges nt idx1 idx2 =
   | A.StubbedNonterminal _ -> false
   | A.Nonterminal (id, Some idx', Some idx'', _, _) -> (
     match idx1, idx2 with 
-    | None, None -> id = nt 
-    | Some idx1, None -> id = nt && idx1 = idx' 
-    | None, Some idx2 -> id = nt && idx2 = idx''
-    | Some idx1, Some idx2 -> id = nt && idx1 = idx' && idx2 = idx''
+    | None, None -> Nt.equal id nt 
+    | Some idx1, None -> Nt.equal id nt && idx1 = idx' 
+    | None, Some idx2 -> Nt.equal id nt && idx2 = idx''
+    | Some idx1, Some idx2 -> Nt.equal id nt && idx1 = idx' && idx2 = idx''
   )
   | A.Nonterminal _ -> assert false
   ) ges 
@@ -60,8 +60,8 @@ let rec gen_all_exprs
          (idx4 = None || idx4 = Some 0) 
       then [[A.Nonterminal (nt, Some 0, Some 0, [], p)]]
       else 
-        let msg = Format.asprintf "Nonterminal reference %s@%d is not valid" 
-          nt 
+        let msg = Format.asprintf "Nonterminal reference %a@%d is not valid" 
+          Nt.pp nt 
           (Option.get idx3)
         in 
         Utils.error msg p

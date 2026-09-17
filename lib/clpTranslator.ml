@@ -86,7 +86,7 @@ let rec create_field_extractors: A.ast -> string list -> clp_rule list
 | nt1 :: nt2 :: [] -> 
   let extractor = nt1 ^ "_" ^ nt2 ^ "s" in 
   let nt1_rhss = List.find_map (function 
-  | A.ProdRule (nt, _, rhss, _) -> if nt1 = nt then Some rhss else None
+  | A.ProdRule (nt, _, rhss, _) -> if nt1 = Nt.to_symbol nt then Some rhss else None
   | TypeAnnotation _ -> None
   ) ast |> Option.get in
   List.mapi (fun i rhs -> match rhs with 
@@ -95,7 +95,7 @@ let rec create_field_extractors: A.ast -> string list -> clp_rule list
       let leaves = List.map (function 
       | A.StubbedNonterminal _ -> assert false
       | Nonterminal (nt, _, _, _, _) -> 
-        if nt2 = nt then nt2 else "_"
+        if nt2 = Nt.to_symbol nt then nt2 else "_"
       ) ges in
       let instances_of_nt2 = List.filter (fun leaf -> leaf <> "_") leaves in
       let instances_of_nt2 = List.mapi (fun i nt -> nt ^ (string_of_int i)) instances_of_nt2 in
@@ -112,7 +112,7 @@ let rec create_field_extractors: A.ast -> string list -> clp_rule list
   let nt1_extractor = String.concat "_" (nt1 :: nt2 :: rest) ^ "s" in 
   let nt2_extractor = String.concat "_" (nt2 :: rest) ^ "s" in 
   let nt1_rhss = List.find_map (function 
-  | A.ProdRule (nt, _, rhss, _) -> if nt1 = nt then Some rhss else None
+  | A.ProdRule (nt, _, rhss, _) -> if nt1 = Nt.to_symbol nt then Some rhss else None
   | TypeAnnotation _ -> None
   ) ast |> Option.get in
   let field_extractors = List.mapi (fun i rhs -> match rhs with
@@ -121,7 +121,7 @@ let rec create_field_extractors: A.ast -> string list -> clp_rule list
       let instances_of_nt2 = List.filter_map (function 
       | A.StubbedNonterminal _ -> None
       | Nonterminal (nt, _, _, _, _) -> 
-        if nt2 = nt then Some nt2 else None
+        if nt2 = Nt.to_symbol nt then Some nt2 else None
       ) ges in
       if List.is_empty instances_of_nt2 then [] else
       let instances_of_nt2 = List.mapi (fun i nt -> nt ^ (string_of_int i)) instances_of_nt2 in
@@ -140,63 +140,47 @@ let rec create_field_extractors: A.ast -> string list -> clp_rule list
   ) nt1_rhss |> List.flatten in 
   field_extractors @ (create_field_extractors ast (nt2 :: rest))
 
+(* Pair each name with its occurrence index *)
 let annotate_occurrences strs =
   let tbl = Hashtbl.create 10 in
   List.map (fun s ->
     let count = Hashtbl.find_opt tbl s |> Option.value ~default:0 in
     Hashtbl.replace tbl s (count + 1);
-    s ^ string_of_int count
+    s, count
   ) strs
 
-let is_base_and_indexed s1 s2 =
-  let is_suffix_number s base =
-    let base_len = String.length base in
-    let s_len = String.length s in
-    if s_len <= base_len then false
-    else
-      let prefix = String.sub s 0 base_len in
-      let suffix = String.sub s base_len (s_len - base_len) in
-      prefix = base && 
-      String.for_all (fun c -> '0' <= c && c <= '9') suffix
-  in
-  is_suffix_number s2 s1 || is_suffix_number s1 s2
-
-let extract_str input =
-  let re = Str.regexp "^\\([a-zA-Z_]+\\)[0-9]*$" in
-  if Str.string_match re input 0 then
-    Str.matched_group 1 input
-  else
-    input 
+(* CLP variable for the given occurrence of a nonterminal *)
+let occurrence_var (s, count) = s ^ string_of_int count
 
 let clp_program_of_ast: Ast.ast -> clp_program 
 = fun ast -> List.fold_left (fun acc element -> match element with 
 | A.ProdRule (nt, _, rhss, _) -> 
+  let nt = Nt.to_symbol nt in
   (* Create a CLP rule for each prod rule RHS *)
   let rules = List.mapi (fun i rhs -> match rhs with 
   | A.StubbedRhs _ -> Utils.crash "unexpected case in clp_program_of_ast"
   | A.Rhs (_, scs, _, _) -> 
-    let nts = A.nts_of_rhs rhs |> annotate_occurrences in
-    let leaves = List.map (fun nt -> Leaf nt) nts in 
+    let nts = A.nts_of_rhs rhs |> List.map Nt.to_symbol |> annotate_occurrences in
+    let leaves = List.map (fun nt -> Leaf (occurrence_var nt)) nts in 
     let t = FunctionApp (nt, [FunctionApp (nt ^ (string_of_int i), leaves)]) in
     let nt_exprs = List.concat_map (fun sc -> A.get_nts_from_expr2 (expr_of_sc sc)) scs in
     let nt_exprs = List.filter (fun nt_expr -> List.length nt_expr >= 2) nt_exprs in 
-    let nt_exprs = List.map (List.map Utils.tr_fst) nt_exprs in
+    let nt_exprs = List.map (List.map (fun (nt, _, _) -> Nt.to_symbol nt)) nt_exprs in
+    (* Each dot notation expression, for each occurrence of its head nonterminal *)
     let nt_exprs = List.concat_map (fun nt_expr -> 
-      let matching_nts = List.filter (fun nt -> is_base_and_indexed (List.hd nt_expr) nt) nts in 
-      List.map (fun nt -> nt :: List.tl nt_expr) matching_nts
+      let matching_nts = List.filter (fun (nt, _) -> nt = List.hd nt_expr) nts in 
+      List.map (fun nt -> nt, List.tl nt_expr) matching_nts
     ) nt_exprs in
-    let destructors = List.mapi (fun i nt_expr -> 
-      let nt_expr' = List.map extract_str nt_expr in
-      let destructor_string = String.concat "_" nt_expr' ^ "s" in
-      let target = String.concat "_" nt_expr ^ "s" ^ (string_of_int i) in
-      Term (FunctionApp (destructor_string, [Leaf (List.hd nt_expr); Leaf target])) 
+    let destructors = List.mapi (fun i ((head, _) as occurrence, tail) -> 
+      let destructor_string = String.concat "_" (head :: tail) ^ "s" in
+      let target = String.concat "_" (occurrence_var occurrence :: tail) ^ "s" ^ (string_of_int i) in
+      Term (FunctionApp (destructor_string, [Leaf (occurrence_var occurrence); Leaf target])) 
     ) nt_exprs in
     (* Missing: a function to instantiate scs with every possible reference in the previous 
        terms and destructors *)
     (* Could try to build field extractors from the LHS of the prod rules rather than the RHS to eliminate the last gather step *)
-    let terms = List.map (fun nt ->
-      
-      Term (FunctionApp (extract_str nt, [Leaf nt]))
+    let terms = List.map (fun ((nt, _) as occurrence) ->
+      Term (FunctionApp (nt, [Leaf (occurrence_var occurrence)]))
     ) nts in
     let scs = List.map (fun sc -> SemanticConstraint (expr_of_sc sc)) scs in
     (* let scs = generalize_scs_ambiguous_references scs terms destructors in *)
@@ -208,10 +192,11 @@ let clp_program_of_ast: Ast.ast -> clp_program
   let nt_exprs = List.concat_map (fun sc -> A.get_nts_from_expr2 (expr_of_sc sc)) scs in
   let nt_exprs = List.filter (fun nt_expr -> List.length nt_expr > 1) nt_exprs in
   let field_extractors = 
-    List.concat_map (create_field_extractors ast) (List.map (List.map Utils.tr_fst) nt_exprs) 
+    List.concat_map (create_field_extractors ast) (List.map (List.map (fun (nt, _, _) -> Nt.to_symbol nt)) nt_exprs) 
   in
   acc @ rules @ field_extractors
 | TypeAnnotation (nt, ty, scs, _) -> 
+  let nt = Nt.to_symbol nt in
   (* Create a CLP rule for each type annotation *)
   let scs = List.map expr_of_sc scs in
   acc @ [LeafRule (FunctionApp(nt, [Leaf nt]), nt, ty, scs)]

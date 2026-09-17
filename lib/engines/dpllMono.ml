@@ -31,4 +31,4 @@ let dpll ppf ctx ast =
     Utils.debug_print SolverAst.pp_print_solver_ast ppf solver_ast; 
 
     solver_ast
-  ) else VarLeaf ""
+  ) else Leaf (Placeholder "")

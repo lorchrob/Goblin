@@ -53,7 +53,7 @@ type il_type =
 | String
 | BitVector of int 
 | BitList
-| ADT of string list list
+| ADT of Nt.t list list
 | Set of il_type
 
 type builtin_func = 
@@ -71,8 +71,9 @@ type builtin_func =
 | SbvToInt 
 
 type expr = 
-| InhAttr of string * Lexing.position 
-| SynthAttr of string * string * Lexing.position (* NT string * attribute name *)
+(* Owning nonterminal (filled in by ScopeInhAttrs; None right after parsing) * attribute name *)
+| InhAttr of string option * string * Lexing.position 
+| SynthAttr of Nt.t * string * Lexing.position (* NT * attribute name *)
 | EmptySet of il_type * Lexing.position
 | Singleton of expr * Lexing.position
 | BinOp of expr * bin_operator * expr * Lexing.position
@@ -82,7 +83,7 @@ type expr =
 (* The int options are initially None, but may be populated by the tool as a  
    structured form of renaming to clarify ambiguous dot notation references.
    *)
-| NTExpr of (string * int option * int option) list * Lexing.position
+| NTExpr of (Nt.t * int option * int option) list * Lexing.position
 | BVConst of int * bool list * Lexing.position
 | BLConst of bool list * Lexing.position
 | BConst of bool * Lexing.position
@@ -94,32 +95,33 @@ type expr =
 | ActLit of expr * Lexing.position
 
 type semantic_constraint = 
-| DerivedField of string * expr * Lexing.position (* <nonterminal> <- <expression> *)
+| DerivedField of Nt.t * expr * Lexing.position (* <nonterminal> <- <expression> *)
 | SmtConstraint of expr * Lexing.position (* Any boolean expression *)
 | AttrDef of string * expr * Lexing.position (* attribute := <expression> *)
 
 type grammar_element = 
 (* Nonterminal name * optional RHS index * optional NT index * 
    inherited attributes * position *)
-| Nonterminal of string * int option * int option * expr list * Lexing.position
-| StubbedNonterminal of string * string (* Ignore *)
+| Nonterminal of Nt.t * int option * int option * expr list * Lexing.position
+| StubbedNonterminal of Nt.stub (* Ignore *)
 
 type prod_rule_rhs =
 (* float denotes production rule option probability *)
 | Rhs of grammar_element list * semantic_constraint list * float option * Lexing.position
-| StubbedRhs of string (* Ignore *)
+(* Stubbed-out RHS (divide and conquer) *)
+| StubbedRhs of Nt.stub (* Ignore *)
 
 type element = 
 (* NT LHS * (inherited attribute, type) list * RHSs * position *)
-| ProdRule of string * (string * il_type) list * prod_rule_rhs list * Lexing.position
-| TypeAnnotation of string * il_type * semantic_constraint list * Lexing.position
+| ProdRule of Nt.t * (string * il_type) list * prod_rule_rhs list * Lexing.position
+| TypeAnnotation of Nt.t * il_type * semantic_constraint list * Lexing.position
 
 (* This is the type of the grammar terms *)
 type ast = element list
 
 (* This function is used before desugaring dot expressions *)
 (* TODO: Why is this function returning a string list rather than a string list list? *)
-let rec get_nts_from_expr: expr -> string list 
+let rec get_nts_from_expr: expr -> Nt.t list 
 = fun expr -> 
   let r = get_nts_from_expr in
   match expr with 
@@ -145,7 +147,7 @@ let rec get_nts_from_expr: expr -> string list
   | InhAttr _
   | EmptySet _  -> [] 
 
-let rec get_nts_from_expr2: expr -> (string * int option * int option) list list
+let rec get_nts_from_expr2: expr -> (Nt.t * int option * int option) list list
 = fun expr -> 
   let r = get_nts_from_expr2 in
   match expr with 
@@ -172,10 +174,11 @@ let rec get_nts_from_expr2: expr -> (string * int option * int option) list list
   | StrConst _ 
   | EmptySet _ -> []
 
-let pp_print_nt_helper_dots: Format.formatter -> string * int option * int option -> unit 
+let pp_print_nt_helper_dots: Format.formatter -> Nt.t * int option * int option -> unit 
 = fun ppf (nt, idx1, idx2) -> 
-  Format.fprintf ppf "<%s%s>" 
-    nt
+  (* Attributes are written without angle brackets *)
+  Format.fprintf ppf (if Nt.is_attribute nt then "%a%s" else "<%a%s>")
+    Nt.pp nt
     (match idx1, idx2 with 
     | None, None -> ""
     | Some i, None -> "!" ^ string_of_int i ^ "!"
@@ -183,23 +186,23 @@ let pp_print_nt_helper_dots: Format.formatter -> string * int option * int optio
     | Some i, Some j -> "!" ^ string_of_int i ^ "!" ^ string_of_int j)
 
 let pp_print_nt_helper_underscores: 
-  Format.formatter -> string * int option * int option -> unit 
+  Format.formatter -> Nt.t * int option * int option -> unit 
 = fun ppf (nt, idx1, idx2) -> 
-  Format.fprintf ppf "%s%s" 
-    nt
+  Format.fprintf ppf "%a%s" 
+    Nt.pp nt
     (match idx1, idx2 with 
     | None, None -> ""
     | Some i, None -> "!" ^ string_of_int i ^ "!"
     | None, Some i -> "!" ^ string_of_int i
     | Some i, Some j -> "!" ^ string_of_int i ^ "!" ^ string_of_int j)
 
-let pp_print_nt_with_dots: Format.formatter -> (string * int option * int option) list -> unit
+let pp_print_nt_with_dots: Format.formatter -> (Nt.t * int option * int option) list -> unit
 = fun ppf nt_expr -> 
   Format.fprintf ppf "%a"
   (Lib.pp_print_list pp_print_nt_helper_dots ".") nt_expr 
 
 let pp_print_nt_with_underscores: 
-  Format.formatter -> (string * int option * int option) list -> unit
+  Format.formatter -> (Nt.t * int option * int option) list -> unit
 = fun ppf nt_expr -> 
   Format.fprintf ppf "<%a>"
   (Lib.pp_print_list pp_print_nt_helper_underscores "_") nt_expr 
@@ -256,7 +259,7 @@ let rec pp_print_ty: Format.formatter -> il_type -> unit
 | Set ty -> Format.fprintf ppf "Set(%a)" pp_print_ty ty
 | ADT rules -> 
   Format.fprintf ppf "ADT: %a"
-    (Lib.pp_print_list (Lib.pp_print_list Format.pp_print_string " ") "; ") rules
+    (Lib.pp_print_list (Lib.pp_print_list Nt.pp " ") "; ") rules
 
 let pp_print_builtin_func ppf func = 
   match func with 
@@ -273,21 +276,12 @@ let pp_print_builtin_func ppf func =
   | UbvToInt -> Format.fprintf ppf "ubv_to_int"
   | SbvToInt -> Format.fprintf ppf "sbv_to_int"
 
-(* Inherited attributes are scoped to the nonterminal that declares them.
-   Internally, inherited attribute `ia` of nonterminal `<nt>` is renamed to `nt%ia`
-   (`%` cannot appear in user identifiers), and its generated nonterminal is `%_nt%ia`. *)
-let scope_inh_attr nt ia = nt ^ "%" ^ ia
-
-let unscope_inh_attr ia = match String.rindex_opt ia '%' with
-| Some i -> String.sub ia (i + 1) (String.length ia - i - 1)
-| None -> ia
-
 let rec pp_print_expr: Format.formatter -> expr -> unit 
 = fun ppf expr -> match expr with
 | SynthAttr (nt, attr, _) -> 
-  Format.fprintf ppf "<%s>.%s"
-    nt attr
-| InhAttr (attr, _) -> Format.pp_print_string ppf (unscope_inh_attr attr)
+  Format.fprintf ppf "<%a>.%s"
+    Nt.pp nt attr
+| InhAttr (_, attr, _) -> Format.pp_print_string ppf attr
 | EmptySet (ty, _) -> 
   Format.fprintf ppf "set.empty<%a>"
     pp_print_ty ty
@@ -333,13 +327,13 @@ let rec pp_print_expr: Format.formatter -> expr -> unit
     pp_print_expr expr
 | NTExpr ([nt_expr], _) -> 
   if !Flags.dump_clp then 
-    let s = nt_expr |> Utils.tr_fst |> String.uppercase_ascii in
+    let s = nt_expr |> Utils.tr_fst |> Nt.to_symbol |> String.uppercase_ascii in
     Format.pp_print_string ppf s
-  else pp_print_nt_with_underscores ppf ([nt_expr]) 
+  else pp_print_nt_with_dots ppf ([nt_expr]) 
 | NTExpr (nt_expr, _) -> 
   if !Flags.dump_clp then 
-    let s = Utils.last nt_expr |> Utils.tr_fst |> (fun x -> x ^ "s") |> String.uppercase_ascii in
-    let init = Utils.init nt_expr |> List.map Utils.tr_fst |> String.concat "_" in
+    let s = Utils.last nt_expr |> Utils.tr_fst |> Nt.to_symbol |> (fun x -> x ^ "s") |> String.uppercase_ascii in
+    let init = Utils.init nt_expr |> List.map (fun (nt, _, _) -> Nt.to_symbol nt) |> String.concat "_" in
     Format.pp_print_string ppf (init ^ "_" ^ s)
   else pp_print_nt_with_dots ppf (nt_expr) 
 | BLConst (bits, _) -> 
@@ -359,7 +353,7 @@ let pp_print_semantic_constraint: Format.formatter -> semantic_constraint -> uni
 = fun ppf sc -> match sc with 
 | DerivedField (nt, expr, _) -> 
   Format.fprintf ppf "<%a> <- %a;"
-    Format.pp_print_string nt 
+    Nt.pp nt 
     pp_print_expr expr
 | SmtConstraint (expr, _) -> 
   Format.fprintf ppf "%a;"
@@ -379,7 +373,7 @@ let pp_print_grammar_element: Format.formatter -> grammar_element ->  unit
       pp_print_nt_with_dots [nt, idx1, idx2] 
       (Lib.pp_print_list pp_print_expr ", ") ias
   )
-| StubbedNonterminal (_, stub_id) -> Format.pp_print_string ppf stub_id
+| StubbedNonterminal stub -> Nt.pp ppf (Stub stub)
 
 let pp_print_prob ppf prob = 
   match prob with
@@ -398,8 +392,8 @@ let pp_print_prod_rule_rhs: Format.formatter -> prod_rule_rhs -> unit
   (Lib.pp_print_list pp_print_grammar_element " ") ges
   (Lib.pp_print_list pp_print_semantic_constraint " ") scs
   pp_print_prob prob
-| StubbedRhs stub_id -> 
-  Format.pp_print_string ppf stub_id
+| StubbedRhs stub -> 
+  Nt.pp ppf (Stub stub)
 
 let pp_print_element: Format.formatter -> element ->  unit 
 = fun ppf el -> match el with 
@@ -412,9 +406,15 @@ let pp_print_element: Format.formatter -> element ->  unit
   Format.fprintf ppf "%a(%a) ::= %a;"
     pp_print_nt_with_dots [nt, None, None]
     (Lib.pp_print_list (fun ppf (ia, ty) ->
-      Format.fprintf ppf "%s :: %a" (unscope_inh_attr ia) pp_print_ty ty
+      Format.fprintf ppf "%s :: %a" ia pp_print_ty ty
     ) ", ") ias
     (Lib.pp_print_list pp_print_prod_rule_rhs " | ") rhss
+
+(* Generated type annotations for attributes *)
+| TypeAnnotation (SynthAttr attr, ty, [], _) -> 
+  Format.fprintf ppf "%s :: %a;" attr pp_print_ty ty
+| TypeAnnotation (InhAttr (nt, attr), ty, [], _) -> 
+  Format.fprintf ppf "%s :: %a; // inherited attribute of <%s>" attr pp_print_ty ty nt
 
 | TypeAnnotation (nt, ty, [], _) -> 
   Format.fprintf ppf "%a :: %a;"
@@ -447,18 +447,18 @@ let il_int_to_bv: int -> int -> Lexing.position -> expr
     let bits = to_bits [] length n in 
     BVConst (length, bits, pos)
 
-let grammar_element_to_string: grammar_element -> string 
+let nt_of_grammar_element: grammar_element -> Nt.t 
 = fun grammar_element -> match grammar_element with 
   | Nonterminal (nt2, _, _, _, _) -> nt2
-  | StubbedNonterminal (_, stub_id) -> stub_id
+  | StubbedNonterminal stub -> Nt.Stub stub
 
 (* Used before divide and conquer *)
-let nts_of_rhs: prod_rule_rhs -> string list 
+let nts_of_rhs: prod_rule_rhs -> Nt.t list 
 = fun rhs -> match rhs with 
 | Rhs (ges, _, _, _) -> 
   List.map (fun ge -> match ge with 
   | Nonterminal (nt, _, _, _, _) -> nt 
-  | StubbedNonterminal (nt, _) -> nt (* TODO: Not sure which tuple element we want, first or second *)
+  | StubbedNonterminal stub -> stub.stands_for
   ) ges
 | StubbedRhs _ -> [] 
 
@@ -494,16 +494,16 @@ let rec expr_contains_dangling_nt: Utils.SILSet.t -> expr -> bool
   | InhAttr _
   | EmptySet _ -> false
 
-let sc_constrains_nt: string -> semantic_constraint -> bool 
+let sc_constrains_nt: Nt.t -> semantic_constraint -> bool 
 = fun nt sc -> match sc with 
 | SmtConstraint (expr, _) -> List.mem nt (get_nts_from_expr expr)
-| DerivedField (nt2, _, _) 
-| AttrDef (nt2, _, _) -> nt = nt2
+| DerivedField (nt2, _, _) -> Nt.equal nt nt2
+| AttrDef (attr, _, _) -> Nt.equal nt (Nt.SynthAttr attr)
 
-let get_nts_from_sc: semantic_constraint -> string list 
+let get_nts_from_sc: semantic_constraint -> Nt.t list 
 = fun sc -> match sc with 
 | SmtConstraint (expr, _) -> get_nts_from_expr expr
-| AttrDef (nt2, _, _)
+| AttrDef (attr, _, _) -> [Nt.SynthAttr attr]
 | DerivedField (nt2, _, _) -> [nt2]
 
 (* To be called before desugaring NTs to match expressions and resolving ambiguities.
@@ -514,7 +514,7 @@ let get_nts_from_sc: semantic_constraint -> string list
    It may seem these should not overlap. But in the sygus approach, they must, 
    because otherwise we will try to stub out <B>, but then <B>.<C> will fail.
    *)
-let ast_constrains_nt: ast -> string -> bool 
+let ast_constrains_nt: ast -> Nt.t -> bool 
 = fun ast nt -> 
   List.exists (fun element -> match element with 
     | TypeAnnotation (nt2, _, _ :: _, _) when nt = nt2 -> true 
@@ -526,7 +526,7 @@ let ast_constrains_nt: ast -> string -> bool
   ) ast
 
 (* Use before resolving constraint ambiguities *)
-let rec prepend_nt_to_dot_exprs: string -> expr -> expr 
+let rec prepend_nt_to_dot_exprs: Nt.t -> expr -> expr 
 = fun nt expr -> 
   let r = prepend_nt_to_dot_exprs nt in
   match expr with
@@ -557,19 +557,19 @@ let scs_of_element = function
 | TypeAnnotation (_, _, scs, _) -> scs
 
 let rec nts_of_ast ast = match ast with 
-| [] -> Utils.StringSet.empty  
+| [] -> Nt.Set.empty  
 | ProdRule (nt, _, rhss, _) :: tl -> 
   let nts = nt :: (List.concat_map nts_of_rhs rhss) in 
-  let nts = Utils.StringSet.of_list nts in 
-  Utils.StringSet.union nts (nts_of_ast tl)
+  let nts = Nt.Set.of_list nts in 
+  Nt.Set.union nts (nts_of_ast tl)
 | TypeAnnotation (nt, _, _, _) :: tl -> 
-  let nts = Utils.StringSet.singleton nt in 
-  Utils.StringSet.union nts (nts_of_ast tl)
+  let nts = Nt.Set.singleton nt in 
+  Nt.Set.union nts (nts_of_ast tl)
 
 let find_element ast nt = 
   List.find (fun element -> match element with 
   | TypeAnnotation (nt', _, _, _) 
-  | ProdRule (nt', _, _, _) -> String.equal nt nt'
+  | ProdRule (nt', _, _, _) -> Nt.equal nt nt'
   ) ast 
 
 let pos_of_expr expr = match expr with 
@@ -587,7 +587,7 @@ let pos_of_expr expr = match expr with
 | PhConst (_, pos) 
 | StrConst (_, pos) 
 | SynthAttr (_, _, pos)
-| InhAttr (_, pos)
+| InhAttr (_, _, pos)
 | ActLit (_, pos) 
 | EmptySet (_, pos) -> pos 
 
@@ -602,7 +602,7 @@ let rec eq_il_type ty1 ty2 = match ty1, ty2 with
   List.length s1 = List.length s1 &&
   List.for_all2 (fun s1 s2 -> 
     List.length s1 = List.length s2 && 
-    List.for_all2 String.equal s1 s2
+    List.for_all2 Nt.equal s1 s2
   ) s1 s2
 | Set ty1, Set ty2 -> eq_il_type ty1 ty2
 | _ -> false

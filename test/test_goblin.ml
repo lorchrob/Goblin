@@ -122,7 +122,7 @@ let test_check_solver_ast () =
   let filename = "../../../test/test_cases/test_check_solver_ast" in
   let input = Utils.read_file filename in 
   let ast = Parsing.parse input in
-  let solver_ast = SolverAst.Node (("A", None, None), [SolverAst.Node (("B", None, None), [SolverAst.VarLeaf ""]); SolverAst.Node (("C", None, None), [SolverAst.VarLeaf ""])]) in
+  let solver_ast = SolverAst.Node ((Nt.User "A", None, None), [SolverAst.Node ((Nt.User "B", None, None), [SolverAst.Leaf (Placeholder "")]); SolverAst.Node ((Nt.User "C", None, None), [SolverAst.Leaf (Placeholder "")])]) in
   let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()  
@@ -132,7 +132,7 @@ let test_check_solver_ast_2 () =
   let filename = "../../../test/test_cases/test_check_solver_ast" in
   let input = Utils.read_file filename in 
   let ast = Parsing.parse input in 
-  let solver_ast = SolverAst.Node (("A", None, None), [SolverAst.Node (("D", None, None), [SolverAst.VarLeaf ""]); SolverAst.Node (("C", None, None), [SolverAst.VarLeaf ""])]) in
+  let solver_ast = SolverAst.Node ((Nt.User "A", None, None), [SolverAst.Node ((Nt.User "D", None, None), [SolverAst.Leaf (Placeholder "")]); SolverAst.Node ((Nt.User "C", None, None), [SolverAst.Leaf (Placeholder "")])]) in
   let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> fail "Expected error"
@@ -142,7 +142,7 @@ let test_check_solver_ast_3 () =
   let filename = "../../../test/test_cases/test_check_solver_ast_2" in
   let input = Utils.read_file filename in 
   let ast = Parsing.parse input in 
-  let solver_ast = SolverAst.Node (("A", None, None), [SolverAst.Node (("B", None, None), [SolverAst.IntLeaf 3]); SolverAst.Node (("C", None, None), [SolverAst.IntLeaf 2])]) in
+  let solver_ast = SolverAst.Node ((Nt.User "A", None, None), [SolverAst.Node ((Nt.User "B", None, None), [SolverAst.Leaf (Int 3)]); SolverAst.Node ((Nt.User "C", None, None), [SolverAst.Leaf (Int 2)])]) in
   let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()
@@ -152,7 +152,7 @@ let test_check_solver_ast_4 () =
   let filename = "../../../test/test_cases/test_check_solver_ast_2" in
   let input = Utils.read_file filename in 
   let ast = Parsing.parse input in 
-  let solver_ast = SolverAst.Node (("A", None, None), [SolverAst.Node (("B", None, None), [SolverAst.Node (("G", None, None), [SolverAst.IntLeaf 1])]); SolverAst.Node (("C", None, None), [SolverAst.Node (("G", None, None), [SolverAst.IntLeaf (2)])])]) in
+  let solver_ast = SolverAst.Node ((Nt.User "A", None, None), [SolverAst.Node ((Nt.User "B", None, None), [SolverAst.Node ((Nt.User "G", None, None), [SolverAst.Leaf (Int 1)])]); SolverAst.Node ((Nt.User "C", None, None), [SolverAst.Node ((Nt.User "G", None, None), [SolverAst.Leaf (Int (2))])])]) in
   let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> fail "Expected failure"
@@ -162,7 +162,7 @@ let test_check_solver_ast_5 () =
   let filename = "../../../test/test_cases/test_check_solver_ast_2" in
   let input = Utils.read_file filename in 
   let ast = Parsing.parse input in 
-  let solver_ast = SolverAst.Node (("C", None, None), [SolverAst.Node (("G", None, None), [SolverAst.IntLeaf 1])]) in
+  let solver_ast = SolverAst.Node ((Nt.User "C", None, None), [SolverAst.Node ((Nt.User "G", None, None), [SolverAst.Leaf (Int 1)])]) in
   let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> fail "Expected failure"
@@ -172,7 +172,7 @@ let test_check_solver_ast_6 () =
   let filename = "../../../test/test_cases/test_check_solver_ast_3" in
   let input = Utils.read_file filename in 
   let ast = Parsing.parse input in 
-  let solver_ast = SolverAst.Node (("A", None, None), [SolverAst.Node (("B", None, None), [SolverAst.IntLeaf (-1)]); SolverAst.Node (("C", None, None), [SolverAst.IntLeaf (-2)])]) in
+  let solver_ast = SolverAst.Node ((Nt.User "A", None, None), [SolverAst.Node ((Nt.User "B", None, None), [SolverAst.Leaf (Int (-1))]); SolverAst.Node ((Nt.User "C", None, None), [SolverAst.Leaf (Int (-2))])]) in
   let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> ()
@@ -182,7 +182,7 @@ let test_check_solver_ast_7 () =
   let filename = "../../../test/test_cases/test_check_solver_ast_3" in
   let input = Utils.read_file filename in 
   let ast = Parsing.parse input in 
-  let solver_ast = SolverAst.Node (("A", None, None), [SolverAst.Node (("B", None, None), [SolverAst.Node (("G", None, None), [SolverAst.IntLeaf (2)])]); SolverAst.Node (("C", None, None), [SolverAst.Node (("G", None, None), [SolverAst.IntLeaf (1)])])]) in
+  let solver_ast = SolverAst.Node ((Nt.User "A", None, None), [SolverAst.Node ((Nt.User "B", None, None), [SolverAst.Node ((Nt.User "G", None, None), [SolverAst.Leaf (Int (2))])]); SolverAst.Node ((Nt.User "C", None, None), [SolverAst.Node ((Nt.User "G", None, None), [SolverAst.Leaf (Int (1))])])]) in
   let output = CheckSolverAst.check_solver_ast ast solver_ast in
   match output with
   | Ok _ -> fail "Expected failure"
@@ -301,6 +301,17 @@ let inh_attr_synth_same_name () =
   match output with
   | Ok _ -> ()  
   | Error msg -> fail msg
+
+(* Nonterminal names ending in "_con" used to be confused with generated names *)
+let con_suffix () =
+  List.iter (fun engine -> 
+    List.iter (fun input -> 
+      let solver_ast, _, ast = main_pipeline ~engine:(Some engine) input in
+      match CheckSolverAst.check_solver_ast ast solver_ast with
+      | Ok _ -> ()  
+      | Error msg -> fail msg
+    ) ["../../../test/test_cases/con-suffix.gbl"; "../../../test/test_cases/con-suffix-2.gbl"]
+  ) [Flags.DpllMono; Flags.DpllDac]
 
 let dm_test_vertical_ambiguous_reference_2 () =
   let input = "../../../test/test_cases/test_vertical_ambiguous_reference_2" in
@@ -1072,6 +1083,7 @@ let () =
     "inh_attr_fail_6", [test_case "inh_attr_fail_6" `Quick inh_attr_fail_6]; 
     "inh_attr_fail_7", [test_case "inh_attr_fail_7" `Quick inh_attr_fail_7]; 
     "inh_attr_fail_8", [test_case "inh_attr_fail_8" `Quick inh_attr_fail_8]; 
+    "con_suffix", [test_case "con_suffix" `Quick con_suffix]; 
     "inh_attr_scoped", [test_case "inh_attr_scoped" `Quick inh_attr_scoped]; 
     "inh_attr_synth_same_name", [test_case "inh_attr_synth_same_name" `Quick inh_attr_synth_same_name]; 
     "index", [test_case "index" `Quick index]; 

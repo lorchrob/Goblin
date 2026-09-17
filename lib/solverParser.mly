@@ -30,7 +30,6 @@ open SolverAst
 %token SETTYPE
 %token UNION
 %token SINGLETON
-%token DOLLAR
 %token AT
 %token<string> STRCONST
 
@@ -45,32 +44,27 @@ open SolverAst
 %%
 
 s: 
-(* Throughout this parser, we abuse the solver_ast data type. We intentionally do not use the indices; 
-   we just need the constructor string to instantiate the term into a derivation tree. 
-   But, it ends up being converted from derivation tree back to a solver AST to output the final term, 
-   and in this (later) translation we get all the indices correct. *)
-| DOLLAR; children = separated_nonempty_list(DOLLAR, lisp_term); EOF { Node (("outputs", None, None), children) }
 | d = term; EOF { d } 
 | SAT; model = model; EOF { model } 
 | model = model; EOF { model } 
-| UNSAT; EOF { VarLeaf "infeasible" }
+| UNSAT; EOF { Infeasible }
 
 model: 
-| LPAREN; values = list(model_value); RPAREN; { Node (("smt_model", None, None), values) }
+| LPAREN; values = list(model_value); RPAREN; { Model values }
 
 model_value:
 | LPAREN; DEFINEFUN; id = ID; LPAREN; RPAREN; UNIT_TYPE; 
     LPAREN; AS; AT; ID; UNIT_TYPE; RPAREN;
   RPAREN; 
- { Node ((id, None, None), [UnitLeaf]) }
-| LPAREN; DEFINEFUN; id = ID; LPAREN; RPAREN; il_ty; t = lisp_term; RPAREN;
- { Node ((id, None, None), [t]) }
+ { (id, Value.Unit) }
+| LPAREN; DEFINEFUN; id = ID; LPAREN; RPAREN; il_ty; v = value; RPAREN;
+ { (id, v) }
 	
 term:
 | LPAREN; LPAREN; DEFINEFUN; TOP; LPAREN; RPAREN; top_type; t = lisp_term; RPAREN; RPAREN;
   { t }
 | INFEASIBLE;
-  { VarLeaf "infeasible" }
+  { Infeasible }
 
 top_type:
 | ID; {}
@@ -84,27 +78,32 @@ il_ty:
 | LPAREN; UNDERSCORE; BITVEC; INTEGER; RPAREN; {}
 | LPAREN; SETTYPE; il_ty; RPAREN; {}
 
+(* SyGuS-style term *)
 lisp_term: 
 | LPAREN; id = ID; ts = list(lisp_term); RPAREN; 
-  { Node ((id, None, None), ts) }
-| bits = BITS; 
-  { BVLeaf (List.length bits, bits) }
+  { Node ((Nt.User id, None, None), ts) }
 | id = ID; 
-  { VarLeaf id }
+  { Leaf (Placeholder id) }
+| v = value; 
+  { Leaf v }
+
+value:
+| bits = BITS; 
+  { Value.BitVector (List.length bits, bits) }
 | bits = bit_list; 
-  { BLLeaf bits }
+  { Value.BitList bits }
 | ss = string_set; 
-  { SetLeaf (StringSet ss) }
+  { Value.StringSet ss }
 | i = INTEGER; 
-  { IntLeaf i }
+  { Value.Int i }
 | LPAREN; HYPHEN; i = INTEGER; RPAREN; 
-  { IntLeaf (-i) }
+  { Value.Int (-i) }
 | TRUE; 
-  { BoolLeaf true }
+  { Value.Bool true }
 | FALSE; 
-  { BoolLeaf false }
+  { Value.Bool false }
 | str = STRCONST;
-  { StrLeaf str }
+  { Value.String str }
 
 string_set:
 | LPAREN; AS; SET; DOT; EMPTY; LPAREN; SETTYPE; STRINGTYPE; RPAREN; RPAREN; 

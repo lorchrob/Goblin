@@ -289,11 +289,11 @@ attribute of the `<L>` nonterminal.
 
 However, to capture the second requirement (that every list element of `<L>` is equal to `<Val>`),
 we use an inherited attribute `v`. 
-Inherited attributes are declared on the right-hand side of production rule options,
+Inherited attributes are declared on the left-hand side of production rules,
 and they are somewhat analogous to function arguments. 
 On line 2, `(v :: Int)` denotes that the production rules for `<L>` take some inherited attribute `v` of type `Int`, 
 which is allowed to be referenced in the constraints. 
-Unlike synthesized attributes (such as `len` below), inherited attributes do not need a separate top-level type annotation. 
+Unlike synthesized attributes (such as `len`), inherited attributes do not need a separate top-level type annotation. 
 Here, we constrain that list element `<E>` is equal to `v`. 
 Inherited attributes have a **call site requirement** -- 
 every time a nonterminal with inherited attributes is referenced, 
