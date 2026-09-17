@@ -468,8 +468,8 @@ and compute_deps: A.semantic_constraint Nt.StubMap.t -> A.ast -> SA.solver_ast -
     (match leaf with 
     | StubLeaf stub when Nt.StubMap.mem stub dep_map -> 
       SA.Node (_hd, [compute_dep dep_map solver_ast ast element stub]) 
-    (*!! Replaces the subterm with the whole term (see issue #27) *)
-    | _ -> solver_ast)
+    (* TODO: Should not replace the subterm with the whole term *)
+    | StubLeaf _ | Leaf _ | Node _ | Model _ | Infeasible -> solver_ast)
   | SA.Node (_, [Leaf (BitVector _ | BitList _ | Int _ | Bool _ | String _ | StringSet _)]) -> subterm
   | SA.Node _ -> compute_deps dep_map ast subterm
   | _ -> subterm

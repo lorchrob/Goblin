@@ -32,7 +32,7 @@ let stub_subproblems: ast -> ast * ast list
       element :: ast', subproblems
     | TypeAnnotation (nt, ty, scs, p) ->
       let ast', subproblems = stub_subproblems' elements in 
-      (* The subproblem's root is `nt` itself (rather than the stub) *)
+      (* The subproblem is rooted at `nt` itself *)
       ProdRule (nt, [], [StubbedRhs (Nt.fresh_stub nt)], p) :: ast', (TypeAnnotation (nt, ty, scs, p) :: elements) :: subproblems
     )
   | [] -> [], []

@@ -461,7 +461,8 @@ let model_of_solver_ast: SolverAst.solver_ast -> (model, unit) result
   | Model values -> 
     Ok (List.fold_left (fun acc (symbol, value) -> match value with 
       | Value.Unit -> acc
-      | _ -> Utils.StringMap.add symbol value acc
+      | Bool _ | Int _ | String _ | Placeholder _ | BitVector _ | BitList _ | StringSet _ -> 
+        Utils.StringMap.add symbol value acc
     ) Utils.StringMap.empty values)
   | Leaf _ | StubLeaf _ | Node _ -> Utils.crash "Unexpected case in model_of_solver_ast"
 
@@ -487,6 +488,7 @@ let get_smt_result: A.ast -> Smt.solver_instance -> bool -> (model, unit) result
     in
     Some (model_of_solver_ast result)
 
+(* Set each terminal's value from the model *)
 let rec instantiate_terminals: model -> derivation_tree -> derivation_tree 
 = fun model dt -> 
   match dt.expansion with 
@@ -498,6 +500,7 @@ let rec instantiate_terminals: model -> derivation_tree -> derivation_tree
     { dt with expansion = Children (List.map (instantiate_terminals model) children) }
   | Open | Dependent _ -> dt
   
+(* Assign random values to the terminals that the model leaves unconstrained *)
 let rec fill_unconstrained_nonterminals: derivation_tree -> derivation_tree 
 = fun dt -> 
   let value_of_ty: A.il_type -> Value.t = function
@@ -530,7 +533,7 @@ let rec solver_ast_of_derivation_tree: derivation_tree -> SA.solver_ast
   | Open -> []
   | Children children -> List.map solver_ast_of_derivation_tree children
   | Terminal (_, Some value) -> [Leaf value]
-  (*!! Unconstrained terminals that were not filled in (see issue #27) *)
+  (* TODO: Unfilled terminals are rendered as a placeholder made of the path's symbols *)
   | Terminal (_, None) -> 
     let symbols = List.map (fun (nt, _, _) -> Nt.to_symbol nt) (dt.path @ [label dt]) in
     [Leaf (Placeholder (String.concat "" symbols))]
@@ -543,7 +546,8 @@ let pp_print_model_pair ppf (k, v) =
     k 
     Value.pp_smt v 
 
-(*!! Uses different separators than `string_of_path`, so the result never matches model variables (see issue #27) *)
+(* Names of the terminal variables in `dt`. 
+   TODO: The separators differ from `string_of_path`, so these never match model variables *)
 let rec get_dt_vars dt = 
   let id_str = match label dt with 
   | (id, Some idx1, Some idx2) -> Format.asprintf "%a.%d.%d" Nt.pp_symbol id idx1 idx2
@@ -797,9 +801,10 @@ let dpll: TypeChecker.context -> A.semantic_constraint Nt.StubMap.t -> A.ast -> 
           | A.StubbedNonterminal stub2 -> (
             match child.expansion with 
             | Dependent stub1 -> Nt.equal_stub stub1 stub2
-            | _ -> false)
+            | Open | Children _ | Terminal _ -> false)
           ) children ges 
-        | _ -> false 
+        | A.StubbedRhs _, (Open | Children _ | Terminal _) 
+        | A.Rhs _, (Open | Terminal _ | Dependent _) -> false 
         ) rhss in
         if !Flags.debug then Format.fprintf Format.std_formatter "Chose rule %a\n" 
           A.pp_print_prod_rule_rhs chosen_rule;

@@ -59,9 +59,9 @@ type builtin_func =
 | SbvToInt 
 
 type expr = 
-(* Owning nonterminal (filled in by ScopeInhAttrs; None right after parsing) * attribute name *)
+(** Owning nonterminal (filled in by {!ScopeInhAttrs}; [None] right after parsing) * attribute name *)
 | InhAttr of string option * string * Lexing.position
-| SynthAttr of Nt.t * string * Lexing.position (* NT * attribute name *)
+| SynthAttr of Nt.t * string * Lexing.position (** NT * attribute name *)
 | EmptySet of il_type * Lexing.position
 | Singleton of expr * Lexing.position
 | BinOp of expr * bin_operator * expr * Lexing.position
@@ -95,11 +95,11 @@ type grammar_element =
 type prod_rule_rhs = 
 (* float denotes production rule option probability *)
 | Rhs of grammar_element list * semantic_constraint list * float option * Lexing.position
-(* Stubbed-out RHS (divide and conquer) *)
+(** Stubbed-out RHS (divide and conquer) *)
 | StubbedRhs of Nt.stub
 
 type element =
-(* NT LHS * (inherited attribute, type) list * RHSs * position *)
+(** NT LHS * (inherited attribute, type) list * RHSs * position *)
 | ProdRule of Nt.t * (string * il_type) list * prod_rule_rhs list * Lexing.position
 | TypeAnnotation of Nt.t * il_type * semantic_constraint list * Lexing.position
 

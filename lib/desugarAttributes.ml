@@ -94,7 +94,7 @@ let desugar_attributes ctx ast =
   | A.ProdRule (nt, ias, rhss, p) -> 
     let owner = match nt with 
     | Nt.User owner -> owner 
-    | _ -> Utils.crash "Unexpected generated nonterminal in desugarAttributes"
+    | SynthAttr _ | InhAttr _ | Stub _ -> Utils.crash "Unexpected generated nonterminal in desugarAttributes"
     in
     let rhss = List.map (fun rhs -> match rhs with 
     | A.StubbedRhs _ -> rhs

@@ -1,8 +1,5 @@
-(* Names of grammar symbols (nonterminals and symbolic terminals).
-
-   Besides the nonterminals written by the user, Goblin generates nonterminals of its own
-   (e.g., when desugaring attributes). Their provenance is recorded in the constructor
-   rather than encoded in the name. *)
+(* Names of grammar symbols (nonterminals and symbolic terminals), 
+   including the nonterminals Goblin generates for attributes and stubs *)
 
 type t =
 (* <nt> from the input grammar *)
@@ -57,9 +54,8 @@ let is_attribute = function
 | SynthAttr _ | InhAttr _ -> true
 | User _ | Stub _ -> false
 
-(* Name used for the corresponding SMT-LIB symbols (and other generated identifiers).
-   Distinct nonterminals get distinct names; `%` cannot appear in user identifiers.
-   Only used for printing, never parsed back. *)
+(* Name of the corresponding SMT-LIB symbol (and other generated identifiers).
+   Injective, since `%` cannot appear in user identifiers *)
 let rec pp_symbol: Format.formatter -> t -> unit
 = fun ppf nt -> match nt with
 | User s -> Format.pp_print_string ppf s

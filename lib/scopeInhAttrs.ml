@@ -1,19 +1,5 @@
-(* Scope inherited attributes to the nonterminal that declares them.
-
-   Each reference `v` to an inherited attribute within `<L>`'s production rules
-   (in semantic constraints, and in the arguments passed at call sites) is resolved
-   to `InhAttr (Some "L", "v", _)`. This way, different nonterminals may declare inherited
-   attributes with the same name but different types, and inherited attributes never clash with
-   synthesized attributes.
-
-   This pass also reports
-     * duplicate inherited attribute declarations for the same nonterminal
-     * references to inherited attributes that the enclosing nonterminal does not declare
-       (including references within type annotations, which have no inherited attributes)
-     * dot notation references `<L>.v` to an inherited attribute `v` of `<L>`
-
-   Runs immediately after parsing, since later passes (syntax and type checking) need
-   to know which nonterminal each inherited attribute belongs to. *)
+(* Resolve each inherited attribute reference to its declaring nonterminal, 
+   and report undeclared, duplicate, and dot notation (`<L>.v`) references *)
 
 module A = Ast
 
@@ -60,20 +46,23 @@ let scope_sc scope sc = match sc with
 let scope_inh_attrs ast =
   let inh_attrs_of nt = List.concat_map (fun element -> match element with
   | A.ProdRule (nt2, ias, _, _) when Nt.equal nt2 nt -> List.map fst ias
-  | _ -> []
+  | A.ProdRule _ | TypeAnnotation _ -> []
   ) ast in
   let synth_attrs_of nt = List.concat_map (fun element -> match element with
   | A.ProdRule (nt2, _, rhss, _) when Nt.equal nt2 nt ->
-    List.concat_map (fun sc -> match sc with A.AttrDef (attr, _, _) -> [attr] | _ -> [])
+    List.concat_map (fun sc -> match sc with 
+    | A.AttrDef (attr, _, _) -> [attr] 
+    | SmtConstraint _ | DerivedField _ -> [])
       (List.concat_map (function A.Rhs (_, scs, _, _) -> scs | A.StubbedRhs _ -> []) rhss)
-  | _ -> []
+  | A.ProdRule _ | TypeAnnotation _ -> []
   ) ast in
   let check_synth = check_synth_attr inh_attrs_of synth_attrs_of in
   List.map (fun element -> match element with
   | A.ProdRule (nt, ias, rhss, p) ->
     let owner = match nt with
     | Nt.User owner -> owner
-    | _ -> Utils.crash "Unexpected generated nonterminal before scoping inherited attributes"
+    | SynthAttr _ | InhAttr _ | Stub _ -> 
+      Utils.crash "Unexpected generated nonterminal before scoping inherited attributes"
     in
     let params = List.map fst ias in
     if Utils.has_duplicate String.equal params then (

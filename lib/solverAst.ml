@@ -19,7 +19,7 @@ let pp_print_solver_ast: Format.formatter -> solver_ast -> unit
     (* Don't include attributes in output *)
     let subterms = if !Flags.debug then subterms else List.filter (fun st -> match st with
     | Node ((constructor, _, _), _) -> not (Nt.is_attribute constructor)
-    | _ -> true
+    | Leaf _ | StubLeaf _ | Model _ | Infeasible -> true
     ) subterms in
     Format.fprintf ppf "(%a%a%a %a)"
     (if !Flags.debug then Nt.pp_symbol else Nt.pp) constructor

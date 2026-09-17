@@ -30,7 +30,7 @@ let pp_print_smt_int ppf i =
 let pp_print_smt_bool_seq ppf bits = match bits with
 | [] -> Format.fprintf ppf "seq.empty"
 | [b] -> Format.fprintf ppf "(seq.unit %b)" b
-| _ ->
+| _ :: _ :: _ ->
   Format.fprintf ppf "(seq.++ ";
   List.iter (fun b -> Format.fprintf ppf "(seq.unit %b) " b) bits;
   Format.fprintf ppf ")"
@@ -60,7 +60,7 @@ let pp ppf = function
 | Int i -> pp_print_smt_int ppf i
 | String str | Placeholder str -> Format.fprintf ppf "\"%s\"" str
 | StringSet set ->
-  (*!! Prints to stdout regardless of `ppf` (kept from the original solver AST printer) *)
+  (* TODO: Prints to stdout regardless of `ppf` *)
   Format.pp_print_string Format.std_formatter (smtlib_of_stringset set)
 | BitVector (_, bits) -> Format.fprintf ppf "0b%a" pp_print_bits bits
 | BitList bits -> pp_print_smt_bool_seq ppf bits

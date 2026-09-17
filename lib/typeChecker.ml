@@ -17,7 +17,7 @@ let build_context: ast -> ast * context
   | ProdRule (nt, ias, rhss, _) -> 
     let owner = match nt with 
     | Nt.User owner -> owner 
-    | _ -> Utils.crash "Unexpected generated nonterminal in build_context"
+    | SynthAttr _ | InhAttr _ | Stub _ -> Utils.crash "Unexpected generated nonterminal in build_context"
     in
     let options = List.map (fun rhs -> match rhs with
       | Rhs (ges, scs, _, _) -> 
@@ -355,8 +355,7 @@ let rec infer_type_expr: context -> mode -> expr -> il_type option
     let msg = "Type checking error: re.(union | ++) expected type String, given type " ^ ty_str in 
     Utils.error msg p
 | InhAttr (owner, attr, _) ->
-  (* Inherited attribute types are added to the context 
-     from the production rule declaring them; see build_context *)
+  (* Added to the context by build_context *)
   (match owner with 
   | Some owner -> Some (Nt.Map.find (Nt.InhAttr (owner, attr)) ctx)
   | None -> Utils.crash "Unscoped inherited attribute in type checker")

@@ -302,7 +302,7 @@ let inh_attr_synth_same_name () =
   | Ok _ -> ()  
   | Error msg -> fail msg
 
-(* Nonterminal names ending in "_con" used to be confused with generated names *)
+(* Nonterminal names ending in "_con" *)
 let con_suffix () =
   List.iter (fun engine -> 
     List.iter (fun input -> 

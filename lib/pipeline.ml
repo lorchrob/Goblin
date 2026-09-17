@@ -47,8 +47,7 @@ let main_pipeline ?(engine: Flags.engine option = None) ?(grammar: Ast.ast optio
     ast
   in
 
-  (* Resolve each inherited attribute reference to its declaring nonterminal. 
-     Must precede syntax and type checking, which need to know the owner of each inherited attribute. *)
+  (* Must precede syntax and type checking, which need each inherited attribute's owner *)
   let ast = ScopeInhAttrs.scope_inh_attrs ast in 
   Utils.debug_print Format.pp_print_string ppf "\nInherited attributes scoped:\n";
   Utils.debug_print Ast.pp_print_ast ppf ast;
