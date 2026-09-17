@@ -123,10 +123,14 @@ element:
   { 
     ProdRule (nt, [], rhss, $startpos) 
   }
-| nt = nonterminal; LPAREN; params = separated_nonempty_list(COMMA, ID); RPAREN; PRODUCTION; rhss = separated_nonempty_list(OPTION, rhs); SEMICOLON;
+(* Production rule with inherited attributes (type annotations required) *)
+| nt = nonterminal; LPAREN; params = separated_nonempty_list(COMMA, inh_attr_param); RPAREN; PRODUCTION; rhss = separated_nonempty_list(OPTION, rhs); SEMICOLON;
   { 
     ProdRule (nt, params, rhss, $startpos) 
   }
+
+inh_attr_param:
+| attr = ID; TYPEANNOT; ty = il_type; { (attr, ty) }
 
 rhs:
 | ges = nonempty_list(grammar_element); scs = option(semantic_constraints); prob = option(DECIMAL);

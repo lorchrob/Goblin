@@ -1,0 +1,5 @@
+<S> ::= <L>(3);
+<L>(v :: Int) ::= <E>;
+<E> :: Int { <E> = v; };
+
+// Type annotations have no inherited attributes

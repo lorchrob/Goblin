@@ -1,0 +1,9 @@
+<S> ::= <A>(1) <B>(true) <C>(5, false);
+<A>(v :: Int) ::= <E> { <E> = v; };
+<B>(v :: Bool) ::= <F> { <F> = v; };
+<C>(v :: Int, b :: Bool) ::= <A>(v + 1) <F> { <F> = b; };
+<E> :: Int;
+<F> :: Bool;
+
+// Inherited attributes are scoped to the nonterminal that declares them, 
+// so <A> and <B> can both declare `v` with different types

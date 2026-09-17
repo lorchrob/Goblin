@@ -1,9 +1,8 @@
 <Repeat> ::= <Val> <L>(<Val>) <Length> { <Length> = <L>.len; <Length> > 0; };
-<L>(v) ::= <E> <L>(v) { <E> = v; len := 1 + <L>.len; } | <Nil> { len := 0; };
+<L>(v :: Int) ::= <E> <L>(v) { <E> = v; len := 1 + <L>.len; } | <Nil> { len := 0; };
 
 <Val> :: Int;
 <E> :: Int;
 <Nil> :: Unit;
 <Length> :: Int;
 len :: Int;
-v :: Int; 

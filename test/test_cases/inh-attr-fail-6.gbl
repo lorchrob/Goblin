@@ -1,0 +1,5 @@
+<S> ::= <L>(3, 4);
+<L>(v :: Int, v :: Int) ::= <E> { <E> = v; };
+<E> :: Int;
+
+// Duplicate inherited attribute declaration

@@ -110,8 +110,8 @@ type prod_rule_rhs =
 | StubbedRhs of string (* Ignore *)
 
 type element = 
-(* NT LHS * inherited attributes * RHSs * position *)
-| ProdRule of string * string list * prod_rule_rhs list * Lexing.position
+(* NT LHS * (inherited attribute, type) list * RHSs * position *)
+| ProdRule of string * (string * il_type) list * prod_rule_rhs list * Lexing.position
 | TypeAnnotation of string * il_type * semantic_constraint list * Lexing.position
 
 (* This is the type of the grammar terms *)
@@ -273,12 +273,21 @@ let pp_print_builtin_func ppf func =
   | UbvToInt -> Format.fprintf ppf "ubv_to_int"
   | SbvToInt -> Format.fprintf ppf "sbv_to_int"
 
+(* Inherited attributes are scoped to the nonterminal that declares them.
+   Internally, inherited attribute `ia` of nonterminal `<nt>` is renamed to `nt%ia`
+   (`%` cannot appear in user identifiers), and its generated nonterminal is `%_nt%ia`. *)
+let scope_inh_attr nt ia = nt ^ "%" ^ ia
+
+let unscope_inh_attr ia = match String.rindex_opt ia '%' with
+| Some i -> String.sub ia (i + 1) (String.length ia - i - 1)
+| None -> ia
+
 let rec pp_print_expr: Format.formatter -> expr -> unit 
 = fun ppf expr -> match expr with
 | SynthAttr (nt, attr, _) -> 
   Format.fprintf ppf "<%s>.%s"
     nt attr
-| InhAttr (attr, _) -> Format.pp_print_string ppf attr
+| InhAttr (attr, _) -> Format.pp_print_string ppf (unscope_inh_attr attr)
 | EmptySet (ty, _) -> 
   Format.fprintf ppf "set.empty<%a>"
     pp_print_ty ty
@@ -402,7 +411,9 @@ let pp_print_element: Format.formatter -> element ->  unit
 | ProdRule (nt, ias, rhss, _) -> 
   Format.fprintf ppf "%a(%a) ::= %a;"
     pp_print_nt_with_dots [nt, None, None]
-    (Lib.pp_print_list Format.pp_print_string ", ") ias
+    (Lib.pp_print_list (fun ppf (ia, ty) ->
+      Format.fprintf ppf "%s :: %a" (unscope_inh_attr ia) pp_print_ty ty
+    ) ", ") ias
     (Lib.pp_print_list pp_print_prod_rule_rhs " | ") rhss
 
 | TypeAnnotation (nt, ty, [], _) -> 

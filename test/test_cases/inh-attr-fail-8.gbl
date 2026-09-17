@@ -1,0 +1,5 @@
+<S> ::= <L>(3) { <L>.v = 3; };
+<L>(v :: Int) ::= <E> { <E> = v; };
+<E> :: Int;
+
+// The parent cannot read a child's inherited attribute with dot notation

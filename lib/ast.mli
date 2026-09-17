@@ -98,7 +98,7 @@ type prod_rule_rhs =
 
 type element =
 (* NT LHS * inherited attributes * RHSs * position *)
-| ProdRule of string * string list * prod_rule_rhs list * Lexing.position
+| ProdRule of string * (string * il_type) list * prod_rule_rhs list * Lexing.position
 | TypeAnnotation of string * il_type * semantic_constraint list * Lexing.position
 
 type ast = element list
@@ -109,6 +109,8 @@ val pp_print_element: Format.formatter -> element ->  unit
 val pp_print_ast : Format.formatter -> ast -> unit
 val pp_print_nt_with_dots : Format.formatter -> (string * int option * int option) list -> unit
 val pp_print_nt_with_underscores : Format.formatter -> (string * int option * int option) list -> unit
+val scope_inh_attr: string -> string -> string
+val unscope_inh_attr: string -> string
 val pp_print_expr : Format.formatter -> expr -> unit
 val pp_print_ty : Format.formatter -> il_type -> unit
 val pp_print_semantic_constraint: Format.formatter -> semantic_constraint -> unit

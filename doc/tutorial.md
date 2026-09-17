@@ -245,8 +245,8 @@ More concretely, in line 4, `sum` is set to `0` because the sum of the empty lis
 and in line `3`, it is set to the value of `<I>` plus the sum of the remaining list elements. 
 Then, we introduced a new start symbol `<S>` for the purposes of 
 constraining the top-level sum of the list to be 100 (on line 1).
-To distinguish inherited attribute definitions from standard equality constraints, 
-Goblin uses the assignment syntax `inherited_attr := <expression>` (with colon equals `:=`).
+To distinguish synthesized attribute definitions from standard equality constraints, 
+Goblin uses the assignment syntax `synthesized_attr := <expression>` (with colon equals `:=`).
 
 Notice the usage of the dot operator `<L>.sum` in the constraint `sum := <I> + <L>.sum` -- 
 here, `<L>.sum` does not refer to the value of 
@@ -291,8 +291,12 @@ However, to capture the second requirement (that every list element of `<L>` is 
 we use an inherited attribute `v`. 
 Inherited attributes are declared on the right-hand side of production rule options,
 and they are somewhat analogous to function arguments. 
-On line 2, `(v :: Int)` denotes that the production rules for `<L>` take some inherited attribute `v`, 
+On line 2, `(v :: Int)` denotes that the production rules for `<L>` take some inherited attribute `v` of type `Int`, 
 which is allowed to be referenced in the constraints. 
+The type annotation is required, and `v` is local to `<L>`: 
+it can only be referenced within `<L>`'s production rules, 
+and other nonterminals may declare their own inherited attributes named `v` (possibly with different types). 
+Unlike synthesized attributes (such as `len` below), inherited attributes do not need a separate top-level type annotation. 
 Here, we constrain that list element `<E>` is equal to `v`. 
 Inherited attributes have a **call site requirement** -- 
 every time a nonterminal with inherited attributes is referenced, 

@@ -58,3 +58,6 @@ bin/eapol.txt
 
 scratch
 grammar_hex_log.txt
+
+# Claude
+*.md

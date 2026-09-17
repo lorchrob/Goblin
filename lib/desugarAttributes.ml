@@ -77,7 +77,7 @@ let gen_constraints_from_ge ast ge = match ge with
     let element = A.find_element ast nt in 
     match element with 
     | A.ProdRule (_, attr_params, _, _) -> 
-      let attr_param = List.nth attr_params i in
+      let attr_param, _ = List.nth attr_params i in
       (*!! TODO: If at a stage of the pipeline where `idx` is still None (and we haven't updated it here), 
                  it is too course-grained *)
       let c = A.CompOp (A.NTExpr ([nt, idx1, idx2; "%_" ^ attr_param, None, None], p), 
@@ -105,11 +105,13 @@ let desugar_attributes ctx ast =
       let new_ges = List.filter_map Fun.id new_ges in
       let new_ges = List.map (fun str -> A.Nonterminal (str, None, None, [], p)) new_ges in
       (* Inherited attributes *)
-      let new_ges2 = List.map (fun str -> A.Nonterminal ("%_" ^ str, None, None, [], p)) ias in
+      let new_ges2 = List.map (fun (ia, _) -> A.Nonterminal ("%_" ^ ia, None, None, [], p)) ias in
       (*let scs, _ = List.map (handle_sc ctx) (scs @ new_scs) |> List.split in *)
       A.Rhs (ges @ new_ges @ new_ges2, scs, prob, p)
     ) rhss in 
-    A.ProdRule (nt, [], rhss, p)
-  | A.TypeAnnotation _ -> element
+    (* Type annotations for the generated inherited attribute nonterminals *)
+    let new_tas = List.map (fun (ia, ty) -> A.TypeAnnotation ("%_" ^ ia, ty, [], p)) ias in
+    A.ProdRule (nt, [], rhss, p) :: new_tas
+  | A.TypeAnnotation _ -> [element]
   ) ast in 
-  ast 
+  List.concat ast 

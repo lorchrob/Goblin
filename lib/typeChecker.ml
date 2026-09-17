@@ -30,10 +30,12 @@ let build_context: ast -> ast * context
         | DerivedField _ -> acc 
         | AttrDef (attr, _, _) -> ("%_" ^ attr) :: acc
         ) [] scs |> List.rev in 
-        let options3 = List.map (fun ia -> "%_" ^ ia) ias in 
+        let options3 = List.map (fun (ia, _) -> "%_" ^ ia) ias in 
         options1 @ options2 @ options3
       | StubbedRhs _ -> []
     ) rhss in
+    (* Inherited attribute types are declared inline in the production rule *)
+    let acc = List.fold_left (fun acc (ia, ty) -> Utils.StringMap.add ("%_" ^ ia) ty acc) acc ias in
     Utils.StringMap.add nt (ADT options) acc 
   | TypeAnnotation (nt, ty, _, _) -> Utils.StringMap.add nt ty acc
   ) Utils.StringMap.empty ast in 
@@ -349,8 +351,8 @@ let rec infer_type_expr: context -> mode -> expr -> il_type option
     let msg = "Type checking error: re.(union | ++) expected type String, given type " ^ ty_str in 
     Utils.error msg p
 | InhAttr (attr, _) ->
-  (* The parser already inserts the underscore in the TypeAnnotation in the AST, 
-     so we need to add it here to find it in the context *)
+  (* Inherited attribute types are added to the context (with the "%_" prefix) 
+     from the production rule declaring them; see build_context *)
   Some (Utils.StringMap.find ("%_" ^ attr) ctx)
 | SynthAttr (_, attr, _) ->
   (* The parser already inserts the underscore in the TypeAnnotation in the AST, 

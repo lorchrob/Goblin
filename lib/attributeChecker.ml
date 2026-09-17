@@ -76,10 +76,6 @@ let check_attributes ctx ast =
   let attribute_ctx = List.fold_left (fun acc element -> match element with 
   | A.TypeAnnotation _ -> acc 
   | A.ProdRule (nt, ias, _, _) -> 
-    let tys = List.map (fun ia -> 
-      let ia = "%_" ^ ia in 
-      Utils.StringMap.find ia ctx
-    ) ias in 
-    Utils.StringMap.add nt tys acc 
+    Utils.StringMap.add nt (List.map snd ias) acc 
   ) Utils.StringMap.empty ast in
   List.map (check_element attribute_ctx ctx) ast
