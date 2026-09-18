@@ -1,0 +1,2 @@
+<S> ::= <W> { str.in_re(<W>, re.++(re.range("a", "c"), re.*(str.to_re("z")))); };
+<W> :: String;

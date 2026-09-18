@@ -31,11 +31,14 @@
 
 *)
 
-let main_pipeline ?(engine: Flags.engine option = None) ?(grammar: Ast.ast option) filename = 
+(* Everything up to (but not including) the search: parsing, checking, and the
+   desugaring steps. Returns the AST the engines consume, the typing context, and
+   the AST the checker consumes (with ambiguous dot notation resolved). *)
+let front_end ?(grammar: Ast.ast option) filename =
   Printexc.record_backtrace true;
   let ppf = Format.std_formatter in
 
-  let ast = match grammar with 
+  let ast = match grammar with
   | Some ast -> ast 
   | None -> 
     let input_string = Utils.read_file filename in 
@@ -73,6 +76,11 @@ let main_pipeline ?(engine: Flags.engine option = None) ?(grammar: Ast.ast optio
   let ast = AttributeChecker.check_attributes ctx ast in
   Utils.debug_print Format.pp_print_string ppf "\nAttribute checking complete:\n";
 
+  (* The grammar as written, with occurrence indices resolved but attributes still
+     present, so the checker validates against the user's grammar rather than
+     against Goblin's own desugaring of it (doc/todo-evaluator.md, D1) *)
+  let base_ast = ResolveAmbiguities.resolve_ambiguities ctx (PopulateIndices.populate_indices ast) in
+
   (* Desugar attributes *)
   Utils.debug_print Format.pp_print_string ppf "\nDesugaring attributes:\n";
   let ast = DesugarAttributes.desugar_attributes ctx ast in
@@ -91,6 +99,12 @@ let main_pipeline ?(engine: Flags.engine option = None) ?(grammar: Ast.ast optio
 
   (*Format.printf "ast_to_return: %a\n"
     Ast.pp_print_ast ast_to_return;*)
+
+  ast, ctx, ast_to_return, base_ast
+
+let main_pipeline ?(engine: Flags.engine option = None) ?(grammar: Ast.ast option) filename =
+  let ppf = Format.std_formatter in
+  let ast, ctx, _ast_to_return, base_ast = front_end ?grammar filename in
 
   (* Run engine(s) *)
   let solver_ast = 
@@ -140,7 +154,7 @@ let main_pipeline ?(engine: Flags.engine option = None) ?(grammar: Ast.ast optio
     | Flags.Hex -> Serialize.print_hex (Serialize.serialize_bytes Big []) solver_ast
     | Flags.HexPacked -> Serialize.print_hex Serialize.serialize_bytes_packed solver_ast
   );
-  solver_ast, output, ast_to_return
+  solver_ast, output, base_ast
 
 let rec collect_results results =
   match results with

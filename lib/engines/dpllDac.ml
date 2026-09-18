@@ -38,7 +38,7 @@ let dpll ppf ctx ast =
       
       (* Step 5: Compute dependent terms *)
       Utils.debug_print Format.pp_print_string ppf "\nComputing dependencies:\n";
-      let solver_ast = ComputeDeps.compute_deps dep_map ast solver_ast in  
+      let solver_ast = ComputeDeps.compute_deps dep_map solver_ast in  
       Utils.debug_print SolverAst.pp_print_solver_ast ppf solver_ast; 
 
       Some solver_ast

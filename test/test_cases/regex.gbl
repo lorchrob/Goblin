@@ -1,0 +1,2 @@
+<S> ::= <Word> { str.in_re(<Word>, str.to_re("ab")); };
+<Word> :: String;

@@ -137,9 +137,14 @@ let rec gen_all_exprs
     let msg = Format.asprintf "Bad function arity in expression %a" 
       A.pp_print_expr expr in 
     Utils.error msg (A.pos_of_expr expr)
+  (* An attribute of another nonterminal is ambiguous exactly when that
+     nonterminal reference is, so it is indexed the same way *)
+  | A.SynthAttr ((nt, idx1, idx2), attr, p) ->
+    let idx1, idx2 = gen_idx_options_from_head ges nt idx1 idx2 in
+    List.map2 (fun idx1 idx2 -> A.SynthAttr ((nt, Some idx1, Some idx2), attr, p)) idx1 idx2
+  (* Both name a generated child of the current nonterminal, so neither is ambiguous *)
   | InhAttr _
-  | OwnSynthAttr _
-  | SynthAttr _ -> assert false
+  | OwnSynthAttr _ -> [expr]
   | ActLit _ -> assert false
 
 let process_sc
@@ -168,7 +173,18 @@ let process_sc
     else 
       let exprs = List.filter (fun expr -> not (impossible_nt_expr expr)) exprs in
       List.map (fun expr -> A.SmtConstraint (expr, p)) exprs
-  | AttrDef _ -> assert false
+  (* An attribute definition denotes one value, so unlike a constraint it cannot be
+     expanded into several *)
+  | AttrDef (attr, expr, p) -> (
+    match gen_all_exprs ctx ast ges expr with
+    | [] ->
+      let msg = Format.asprintf "Definition of attribute %s contains some nonterminal reference that could not be evaluated. For example, if nonterminal <nt> has only one production rule, then `<nt>@1` cannot be evaluated (use <nt>@0 instead)." attr in
+      Utils.error msg p
+    | [expr] -> [A.AttrDef (attr, expr, p)]
+    | _ :: _ :: _ ->
+      let msg = Format.asprintf "Definition of attribute %s is ambiguous: it references a nonterminal with multiple occurrences in this production rule, so the definition could take more than one value. Disambiguate with <nt>[i]." attr in
+      Utils.error msg p
+  )
 
 let resolve_ambiguities: TC.context -> A.ast -> A.ast 
 = fun ctx ast -> List.map (fun element -> match element with
