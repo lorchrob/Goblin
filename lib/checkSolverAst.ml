@@ -26,10 +26,11 @@ let check_start_symbol: Ast.ast -> SolverAst.solver_ast -> (unit, string) result
   Error (Format.asprintf "Solver AST root constructor '%a' does not match the AST start symbol '%a'" Nt.pp constructor Nt.pp nt)
 | A.TypeAnnotation _ :: _, _ -> Utils.crash "Unexpected case in check_start_symbol"
 | [], _ -> Error "Grammar is empty"
-| _, Leaf _ -> Error "Term is a bare value, not rooted at the start symbol"
-| _, StubLeaf _ -> Error "Term is an uncomputed stub, not rooted at the start symbol"
-| _, Model _ -> Error "Term is an SMT model, not a grammar term"
-| _, Infeasible -> Error "Term reports infeasibility, so there is nothing to check"
+| A.ProdRule _ :: _, Leaf _ -> Error "Term is a bare value, not rooted at the start symbol"
+| A.ProdRule _ :: _, StubLeaf _ ->
+  Error "Term is an uncomputed stub, not rooted at the start symbol"
+| A.ProdRule _ :: _, Model _ -> Error "Term is an SMT model, not a grammar term"
+| A.ProdRule _ :: _, Infeasible -> Error "Term reports infeasibility, so there is nothing to check"
 
 (* A derived field constrains the value at its own position, so it checks as an
    equality between that position and the field's definition *)
@@ -38,8 +39,8 @@ let constraint_of_derived_field nt expr rhs_idx p =
 
 (* Constraints whose dot notation references categories absent from this term
    denote Top and hold trivially, so no separate applicability test is needed *)
-let check_constraints solver_ast constructor scs rhs_idx =
-  let env = { E.node = solver_ast; deps = Nt.StubMap.empty } in
+let check_constraints ?(at_annotation = false) solver_ast constructor scs rhs_idx =
+  let env = { E.node = solver_ast; deps = Nt.StubMap.empty; at_annotation } in
   List.fold_left (fun verdict sc ->
     match verdict with
     | Violated _ -> verdict
@@ -62,9 +63,8 @@ let check_constraints solver_ast constructor scs rhs_idx =
       )
   ) Valid scs
 
-(* A finished term is closed: nothing is left for a later stage to fill in.
-   Placeholders are not a defect, since the Placeholder type has them as its
-   values; a misplaced one is caught by the declared type instead. *)
+(* A finished term is closed. A placeholder is not a defect, since Placeholder is a
+   type whose values are placeholders; a misplaced one fails its declared type. *)
 let rec check_closed: SolverAst.solver_ast -> verdict
 = fun solver_ast -> match solver_ast with
 | Leaf _ -> Valid
@@ -78,16 +78,29 @@ let rec check_closed: SolverAst.solver_ast -> verdict
   | Valid | Unknown _ -> check_closed child
   ) Valid children
 
+(* A bit vector carries its width alongside its bits, and the two can disagree.
+   That is a defect in the value itself rather than a mismatch with the grammar. *)
+let check_value_width constructor value = match value with
+| Value.BitVector (width, bits) when width <> List.length bits ->
+  Violated (Format.asprintf "Value %a at '%a' declares width %d but holds %d bits"
+    Value.pp value Nt.pp constructor width (List.length bits))
+| Value.BitVector _ | Value.Bool _ | Value.Int _ | Value.String _ | Value.Placeholder _
+| Value.BitList _ | Value.StringSet _ | Value.Unit -> Valid
+
 (* The declared type of a symbolic terminal, checked against the value present.
    Nothing else in the pipeline verifies bit-vector widths. *)
 let check_value_type constructor ty children =
   match children with
-  | [SA.Leaf value] ->
-    if A.eq_il_type (Value.ty value) ty then Valid
-    else
-      Violated (Format.asprintf
-        "Value %a at '%a' has type %a, but the grammar declares %a"
-        Value.pp value Nt.pp constructor A.pp_print_ty (Value.ty value) A.pp_print_ty ty)
+  | [SA.Leaf value] -> (
+    match check_value_width constructor value with
+    | Violated _ | Unknown _ as verdict -> verdict
+    | Valid ->
+      if A.eq_il_type (Value.ty value) ty then Valid
+      else
+        Violated (Format.asprintf
+          "Value %a at '%a' has type %a, but the grammar declares %a"
+          Value.pp value Nt.pp constructor A.pp_print_ty (Value.ty value) A.pp_print_ty ty)
+  )
   | [] | _ :: _ :: _ | [SA.Node _] | [SA.StubLeaf _] | [SA.Model _] | [SA.Infeasible] ->
     Unknown (Format.asprintf "Type annotation '%a' does not hold a single value"
       Nt.pp constructor)
@@ -100,25 +113,40 @@ let grammar_children children =
   | SA.Leaf _ | SA.StubLeaf _ | SA.Model _ | SA.Infeasible -> true
   ) children
 
-(* The production rule option whose right-hand side matches this node's children *)
-let matching_rhs children rhss =
+(* Whether this right-hand side produces exactly these children *)
+let rhs_matches children rhs = match rhs with
+| A.StubbedRhs _ -> None
+| A.Rhs (ges, scs, _, _) ->
+  if List.length ges != List.length children then None
+  else
+    if List.for_all2 (fun child ge ->
+      match child, ge with
+      | _, A.StubbedNonterminal _ -> false
+      | SA.Node ((constructor, _, _), _), A.Nonterminal (nt, _, _, _, _) ->
+        Nt.equal_ci (Nt.unstub constructor) nt
+      (* A nonterminal in the rule must be a node in the term: the engine always
+         emits that level, and eliding it would skip the child's declared type *)
+      | (SA.Leaf _ | SA.StubLeaf _ | SA.Model _ | SA.Infeasible), A.Nonterminal _ -> false
+    ) children ges
+    then Some (scs, ges) else None
+
+(* Each child is stamped with the index of the production rule option it was
+   derived from, so the term itself says which option applies *)
+let rhs_index_of children =
+  List.find_map (fun child -> match child with
+  | SA.Node ((_, idx1, _), _) -> idx1
+  | SA.Leaf _ | SA.StubLeaf _ | SA.Model _ | SA.Infeasible -> None
+  ) children
+
+(* The production rule options this node could have come from. A stamped index is
+   decisive; without one, every option of the right shape is a candidate. *)
+let matching_rhss children rhss =
   let children = grammar_children children in
-  List.find_mapi (fun i rhs -> match rhs with
-  | A.StubbedRhs _ -> None
-  | A.Rhs (ges, scs, _, _) ->
-    if List.length ges != List.length children then None
-    else
-      if List.for_all2 (fun child ge ->
-        match child, ge with
-        | _, A.StubbedNonterminal _ -> false
-        | SA.Node ((constructor, _, _), _), A.Nonterminal (nt, _, _, _, _) ->
-          Nt.equal_ci (Nt.unstub constructor) nt
-        (* A nonterminal in the rule must be a node in the term: the engine always
-           emits that level, and eliding it would skip the child's declared type *)
-        | (SA.Leaf _ | SA.StubLeaf _ | SA.Model _ | SA.Infeasible), A.Nonterminal _ -> false
-      ) children ges
-      then Some (scs, ges, i) else None
-  ) rhss
+  let candidate i rhs =
+    Option.map (fun (scs, ges) -> (scs, ges, i)) (rhs_matches children rhs) in
+  match rhs_index_of children with
+  | Some i -> Option.to_list (Option.bind (List.nth_opt rhss i) (candidate i))
+  | None -> List.mapi candidate rhss |> List.filter_map Fun.id
 
 let worst_of v1 v2 = match v1, v2 with
 | Violated _, _ -> v1
@@ -126,29 +154,68 @@ let worst_of v1 v2 = match v1, v2 with
 | Unknown _, _ -> v1
 | Valid, (Valid | Unknown _) -> v2
 
-(* Each inherited attribute passed at a call site must equal the value held by the
-   callee's generated child for that parameter. This is the one part of the
-   desugaring the checker would otherwise have to take on trust. *)
+(* Dual of worst_of, for alternatives rather than conjuncts: one option accepting
+   makes the term valid, but an undecided option must not count as one that does *)
+let best_of v1 v2 = match v1, v2 with
+| Valid, _ -> v1
+| _, Valid -> v2
+| Unknown _, (Violated _ | Unknown _) -> v1
+| Violated _, Unknown _ -> v2
+| Violated _, Violated _ -> v1
+
+(* ResolveAmbiguities leaves call-site arguments alone, since a grammar element holds
+   one expression per parameter while an ambiguous reference denotes several *)
+let argument_variants ast ges arg =
+  (* Expansion needs indexed elements, which a grammar checked without the front end
+     does not have *)
+  let indexed = List.for_all (fun ge -> match ge with
+  | A.Nonterminal (_, Some _, Some _, _, _) -> true
+  | A.Nonterminal _ | A.StubbedNonterminal _ -> false
+  ) ges in
+  if indexed then ResolveAmbiguities.gen_all_exprs ast ges arg else [arg]
+
+(* A call site with more arguments than the callee declares. Reported rather than
+   raised on, since this function owes a verdict; AttributeChecker catches it first. *)
+let call_site_arity ast ges =
+  List.find_map (fun ge -> match ge with
+  | A.StubbedNonterminal _ -> None
+  | A.Nonterminal (nt, _, _, args, _) ->
+    match A.find_element ast nt with
+    | A.ProdRule (Nt.User callee, params, _, _)
+      when List.length args > List.length params ->
+      Some (Format.asprintf
+        "Nonterminal <%s> is passed %d inherited attributes, but declares %d"
+        callee (List.length args) (List.length params))
+    | A.ProdRule _ | A.TypeAnnotation _ -> None
+    | exception Not_found -> None
+  ) ges
+
+(* Each inherited attribute passed at a call site must equal the value in the callee's
+   generated child, the one part of the desugaring otherwise taken on trust *)
 let check_inherited_args ast solver_ast constructor ges =
+  match call_site_arity ast ges with
+  | Some msg -> Violated msg
+  | None ->
   let constraints = List.concat_map (fun ge -> match ge with
   | A.StubbedNonterminal _ -> []
   | A.Nonterminal (nt, idx1, idx2, args, p) ->
     match A.find_element ast nt with
     | A.TypeAnnotation _ -> []
     | A.ProdRule (Nt.User callee, params, _, _) ->
-      List.mapi (fun i arg ->
+      List.concat (List.mapi (fun i arg ->
         let param, _ = List.nth params i in
-        A.CompOp (A.NTExpr ([nt, idx1, idx2; Nt.InhAttr (callee, param), None, None], p),
-                  Eq, arg, p)
-      ) args
+        let passed =
+          A.NTExpr ([nt, idx1, idx2; Nt.InhAttr (callee, param), None, None], p) in
+        (* An unindexed reference in an argument is universally quantified just as one
+           in a constraint is, so it yields one equality per occurrence *)
+        List.map (fun arg -> A.CompOp (passed, Eq, arg, p)) (argument_variants ast ges arg)
+      ) args)
     | A.ProdRule ((Nt.SynthAttr _ | Nt.InhAttr _ | Nt.Stub _), _, _, _) -> []
     | exception Not_found -> []
   ) ges in
   check_constraints solver_ast constructor
     (List.map (fun c -> A.SmtConstraint (c, A.pos_of_expr c)) constraints) 0
 
-(* This node's own constraints: those of the type annotation or of the production
-   rule option whose right-hand side matches its children *)
 (* An inherited attribute's type is declared in its owner's parameter list rather
    than as a top-level annotation, so it has no element of its own to look up *)
 let check_inherited_param ast constructor owner attr children =
@@ -165,6 +232,14 @@ let check_inherited_param ast constructor owner attr children =
   | exception Not_found ->
     Violated (Format.asprintf "Dangling owner <%s> for inherited attribute %s" owner attr)
 
+(* Everything one production rule option requires of this node: its own constraints,
+   and the inherited attributes its call sites pass to their callees *)
+let check_rhs ast solver_ast constructor (scs, ges, rhs_idx) =
+  worst_of (check_constraints solver_ast constructor scs rhs_idx)
+    (check_inherited_args ast solver_ast constructor ges)
+
+(* This node's own constraints: those of the type annotation, or of a production
+   rule option whose right-hand side matches its children *)
 let check_node: Ast.ast -> SolverAst.solver_ast -> Nt.t -> SolverAst.solver_ast list -> verdict
 = fun ast solver_ast constructor children ->
   match constructor with
@@ -178,15 +253,21 @@ let check_node: Ast.ast -> SolverAst.solver_ast -> Nt.t -> SolverAst.solver_ast 
   | None ->
     Violated (Format.asprintf "Dangling constructor identifier %a" Nt.pp (Nt.unstub constructor))
   | Some (A.TypeAnnotation (_, ty, scs, _)) ->
+    (* A refinement's path may name the annotated node itself. Reachable only for a
+       grammar checked without the front end, which inlines annotation constraints. *)
     worst_of (check_value_type constructor ty children)
-      (check_constraints solver_ast constructor scs 0)
+      (check_constraints ~at_annotation:true solver_ast constructor scs 0)
   | Some (A.ProdRule (_, _, rhss, _)) ->
-    match matching_rhs children rhss with
-    | None ->
+    match matching_rhss children rhss with
+    | [] ->
       Violated (Format.asprintf "Could not find an associated production rule for constructor '%a'" Nt.pp constructor)
-    | Some (scs, ges, rhs_idx) ->
-      worst_of (check_constraints solver_ast constructor scs rhs_idx)
-        (check_inherited_args ast solver_ast constructor ges)
+    (* A term is an instance of the grammar if some candidate option accepts it *)
+    | candidate :: candidates ->
+      List.fold_left (fun verdict candidate -> match verdict with
+      | Valid -> verdict
+      | Violated _ | Unknown _ ->
+        best_of verdict (check_rhs ast solver_ast constructor candidate)
+      ) (check_rhs ast solver_ast constructor candidate) candidates
 
 let rec check_syntax_semantics: Ast.ast -> SolverAst.solver_ast -> verdict
 = fun ast solver_ast -> match solver_ast with

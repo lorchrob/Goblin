@@ -15,7 +15,7 @@ let rec compute_deps_res: A.semantic_constraint Nt.StubMap.t -> SA.solver_ast ->
 | Node (label, children) ->
   let* children = Res.seq (List.map (fun child -> match child with
   | SA.Node (child_label, [SA.StubLeaf stub]) when Nt.StubMap.mem stub deps ->
-    let* value = E.compute_stub { E.node = solver_ast; deps } stub in
+    let* value = E.compute_stub { E.node = solver_ast; deps; at_annotation = false } stub in
     Ok (SA.Node (child_label, [SA.Leaf value]))
   | SA.Node _ -> compute_deps_res deps child
   | SA.Leaf _ | SA.StubLeaf _ | SA.Model _ | SA.Infeasible -> Ok child

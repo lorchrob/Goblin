@@ -15,7 +15,9 @@ let ty: t -> Ast.il_type = function
 | Int _ -> Int
 | String _ -> String
 | Placeholder _ -> Placeholder
-| BitVector (width, _) -> BitVector width
+(* The width is the bits actually held, not the width field, which nothing
+   downstream reads: serialization emits the bit list *)
+| BitVector (_, bits) -> BitVector (List.length bits)
 | BitList _ -> BitList
 | StringSet _ -> Set String
 | Unit -> Unit

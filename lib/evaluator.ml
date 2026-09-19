@@ -32,6 +32,9 @@ type env = {
   node : SA.solver_ast;
   (* Derived fields still held as stubs, computed on demand when a path reaches one *)
   deps : A.semantic_constraint Nt.StubMap.t;
+  (* Whether this is a type annotation's own constraint, whose paths name the
+     annotated node; inside a rule it would alias a recursive nonterminal to itself *)
+  at_annotation : bool;
 }
 
 let (let*) = Res.(>>=)
@@ -287,10 +290,8 @@ and eval_leaves: env -> A.expr -> (v list, error) result
      checker's grammar has been built, so one cannot appear here *)
   | ActLit _ -> Error (Internal ("activation literal in a checked grammar", p))
 
-(* Every production rule option defines the same synthesized attributes, and the
-   desugaring gives each one a node, so a missing attribute node is a defect rather
-   than an absent syntactic category. The owning nonterminal may still be absent,
-   which is Top as usual. *)
+(* The desugaring gives every attribute a node, so a missing one under a present
+   owner is a defect; an absent owner is Top as usual *)
 and attribute_value env prefix child attr p =
   let* owner = resolve env prefix in
   match owner with
@@ -306,13 +307,8 @@ and attribute_value env prefix child attr p =
       | [] -> Ok [Top]
       | values -> Ok (List.map (fun value -> Val value) values)
 
-(* Regular expressions form their own syntactic category: they appear only as the
-   second argument of str.in_re and inside other regex operators, never as a term
-   value. None denotes Top, as elsewhere.
-
-   Two departures from SMT-LIB to keep in mind: matching is over bytes rather than
-   Unicode code points, and complement, intersection and difference cannot be
-   expressed by this translation (the language has none of them today). *)
+(* Regular expressions are their own syntactic category, never a term value, and
+   None denotes Top. Departs from SMT-LIB in matching bytes, not code points. *)
 and eval_regex: env -> A.expr -> (Re.t option, error) result
 = fun env expr ->
   let p = A.pos_of_expr expr in
@@ -443,7 +439,8 @@ and bit_width_of: v list -> Lexing.position -> (v, error) result
     | Top, _ | _, Top -> Ok Top
     | Val (Value.Int total), Val value -> (
       match value with
-      | Value.BitVector (width, _) -> Ok (Val (Value.Int (total + width)))
+      (* The bits actually held, so the width is right whatever the width field says *)
+      | Value.BitVector (_, bits) -> Ok (Val (Value.Int (total + List.length bits)))
       | Value.BitList bits -> Ok (Val (Value.Int (total + List.length bits)))
       | Value.Bool _ -> Ok (Val (Value.Int (total + 1)))
       | Value.String s -> Ok (Val (Value.Int (total + 8 * String.length s)))
@@ -462,16 +459,29 @@ and bit_width_of: v list -> Lexing.position -> (v, error) result
 and resolve: env -> (Nt.t * int option * int option) list -> (SA.solver_ast option, error) result
 = fun env path -> match path with
 | [] -> Ok (Some env.node)
-| ((id, _, _) as step) :: rest ->
+| ((id, option_idx, occurrence) as step) :: rest ->
+  (* The permission covers a path's first step only, so taking one spends it *)
+  let at_annotation = env.at_annotation in
+  let env = { env with at_annotation = false } in
   match child_for_step env.node step with
-  (* A type annotation's constraints reference the annotated category itself, so a
-     step naming the current node resolves to it. Children take precedence, or a
-     recursive rule's reference to its own name would resolve to the wrong node. *)
+  (* An annotation's own constraints name the annotated node, and it is one occurrence
+     of one option, so a first step naming it resolves only at index 0 of either kind *)
+  | None when not (Nt.is_attribute id) ->
+    let names_self = match env.node with
+    | Node ((label, _, _), _) -> Nt.equal_ci (Nt.unstub id) (Nt.unstub label)
+    | Leaf _ | StubLeaf _ | Model _ | Infeasible -> false
+    in
+    let in_range i = match i with None | Some 0 -> true | Some _ -> false in
+    if at_annotation && in_range option_idx && in_range occurrence && names_self
+    then resolve env rest else Ok None
+  (* The desugaring gives every attribute a node, so a missing one under a present
+     owner is a defect rather than an absent syntactic category *)
   | None -> (
     match env.node with
-    | Node ((label, _, _), _) when Nt.equal_ci (Nt.unstub id) (Nt.unstub label) ->
-      resolve env rest
-    | Node _ | Leaf _ | StubLeaf _ | Model _ | Infeasible -> Ok None
+    | Node _ ->
+      Error (Internal (Format.asprintf "attribute %a has no node under %a" Nt.pp id
+        SA.pp_print_solver_ast env.node, Lexing.dummy_pos))
+    | Leaf _ | StubLeaf _ | Model _ | Infeasible -> Ok None
   )
   | Some child ->
     match child with
