@@ -1,0 +1,6 @@
+<S> ::= <P> <P> <L>
+  { seq.len(<P>[0].<BL>) = 3; seq.len(<P>[1].<BL>) = 5; <L> = <P>[1].len; };
+<P> ::= <BL> { len := seq.len(<BL>); };
+<L> :: Int;
+<BL> :: List(Bool);
+len :: Int;

@@ -21,7 +21,7 @@ To get started with Goblin, build using the instructions below and read through 
 
 * To download the required OPAM packages, run
   ```
-  opam install menhirLib cmdliner ocamlgraph bitstring yojson lwt batteries ppx_bitstring alcotest lwt_ppx menhir
+  opam install menhirLib cmdliner ocamlgraph bitstring yojson lwt batteries ppx_bitstring alcotest lwt_ppx menhir re
   ```
 
 ### Building Goblin

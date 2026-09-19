@@ -37,7 +37,7 @@ let rec scope_expr check_synth scope expr =
     | None ->
       let msg = Format.asprintf "Unknown identifier %s (attributes cannot be referenced in type annotations)" attr in
       Utils.error msg p)
-  | SynthAttr (nt, attr, p) -> check_synth nt attr p; expr
+  | SynthAttr ((nt, _, _), attr, p) -> check_synth nt attr p; expr
   | EmptySet _ | BVConst _ | BLConst _ | BConst _ | IntConst _
   | PhConst _ | StrConst _ | NTExpr _ | OwnSynthAttr _ -> expr
   | Singleton (e, p) -> Singleton (r e, p)

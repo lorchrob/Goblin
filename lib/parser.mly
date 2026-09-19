@@ -350,7 +350,7 @@ expr:
     NTExpr (e, $startpos) 
   }
 | nt = indexed_nonterminal; DOT; attr = ID; { 
-    SynthAttr ((fun (a, _, _) -> a) nt, attr, $startpos) 
+    SynthAttr (nt, attr, $startpos) 
   }
 | LPAREN; e = expr; RPAREN; { e }
 

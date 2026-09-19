@@ -73,7 +73,8 @@ type builtin_func =
 type expr = 
 (* Owning nonterminal (filled in by ScopeInhAttrs; None right after parsing) * attribute name *)
 | InhAttr of string option * string * Lexing.position 
-| SynthAttr of Nt.t * string * Lexing.position (* NT * attribute name *)
+(* Indexed nonterminal reference (as in NTExpr) * attribute name *)
+| SynthAttr of (Nt.t * int option * int option) * string * Lexing.position
 (* Synthesized attribute of the enclosing nonterminal, referenced without dot notation
    (produced by ScopeInhAttrs) *)
 | OwnSynthAttr of string * Lexing.position
@@ -129,7 +130,7 @@ let rec get_nts_from_expr: expr -> Nt.t list
   let r = get_nts_from_expr in
   match expr with 
   | NTExpr (nts, _) -> List.map (fun (a, _, _) -> a) nts 
-  | SynthAttr (nt, _, _) -> [nt] 
+  | SynthAttr ((nt, _, _), _, _) -> [nt] 
   | BinOp (expr1, _, expr2, _) -> 
     r expr1 @ r expr2
   | BVCast (_, expr, _) 
@@ -284,8 +285,8 @@ let pp_print_builtin_func ppf func =
 let rec pp_print_expr: Format.formatter -> expr -> unit 
 = fun ppf expr -> match expr with
 | SynthAttr (nt, attr, _) -> 
-  Format.fprintf ppf "<%a>.%s"
-    Nt.pp nt attr
+  Format.fprintf ppf "%a.%s"
+    pp_print_nt_helper_dots nt attr
 | InhAttr (_, attr, _) 
 | OwnSynthAttr (attr, _) -> Format.pp_print_string ppf attr
 | EmptySet (ty, _) -> 
@@ -440,18 +441,15 @@ let pp_print_ast: Format.formatter -> ast ->  unit
 
 let il_int_to_bv: int -> int -> Lexing.position -> expr 
 = fun length n pos ->
-  if n >= (1 lsl length) then
-    (* NOTE: If we overflow, return max value *)
-    BVConst (length, Utils.replicate true length, pos)
-  else
-    let rec to_bits acc len n =
-      if len = 0 then acc
-      else
-        let bit = (n land 1) = 1 in
-        to_bits (bit :: acc) (len - 1) (n lsr 1)
-    in
-    let bits = to_bits [] length n in 
-    BVConst (length, bits, pos)
+  (* Keeps the low `length` bits, matching SMT-LIB int_to_bv, which is n modulo
+     2^length for both signs *)
+  let rec to_bits acc len n =
+    if len = 0 then acc
+    else
+      let bit = (n land 1) = 1 in
+      to_bits (bit :: acc) (len - 1) (n lsr 1)
+  in
+  BVConst (length, to_bits [] length n, pos)
 
 let nt_of_grammar_element: grammar_element -> Nt.t 
 = fun grammar_element -> match grammar_element with 
@@ -480,7 +478,7 @@ let rec expr_contains_dangling_nt: Utils.SILSet.t -> expr -> bool
       pp_print_nt_with_underscores nt_expr (Utils.SILSet.mem nt_expr ctx); *)
     res
   | SynthAttr (nt, _, p) -> 
-    r (NTExpr ([nt, None, None], p))
+    r (NTExpr ([nt], p))
   | BinOp (expr1, _, expr2, _) -> 
     r expr1 || r expr2
   | ActLit (expr, _)

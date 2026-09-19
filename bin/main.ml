@@ -14,7 +14,7 @@ let () =
     | None -> Utils.error_no_pos "You must specify an input file with --file <file_path>"
     in
 
-    if !Flags.dump_clp then 
+    if !Flags.dump_clp then
       let ppf = Format.std_formatter in
       let input_string = Utils.read_file filename in 
       let ast = Parsing.parse input_string in   

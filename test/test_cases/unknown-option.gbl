@@ -1,0 +1,5 @@
+// Deliberately undecidable: on most seeds the engine picks 0 div 0, which SMT-LIB
+// leaves uninterpreted, so the checker reports the generated term as undecided.
+<S> ::= <A> <B> { <A> div <B> = 1; } | <A> <B> { <A> > 100; };
+<A> :: Int;
+<B> :: Int;

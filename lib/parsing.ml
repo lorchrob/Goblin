@@ -41,6 +41,6 @@ let parse_solver: string -> Ast.ast -> (SolverAst.solver_ast, string) result
     | e ->
         Error (Printexc.to_string e)
   in
-  match solver_ast with 
+  match solver_ast with
   | Error e -> print_endline e; solver_ast
   | Ok _ -> solver_ast
