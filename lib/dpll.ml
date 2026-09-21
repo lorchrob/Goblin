@@ -203,13 +203,17 @@ let rec universalize_expr: bool -> (Nt.t * int option * int option) list -> Ast.
   | OwnSynthAttr _
   | SynthAttr _ -> assert false
 
-let string_of_path path = 
-  let path = List.map (fun (nt, idx1, idx2) -> match idx1, idx2 with 
+(* The encoding of a derivation tree node as an SMT variable name. Every name the
+   solver sees is built from this, so that names formed from a path and names formed
+   by walking the tree agree. *)
+let string_of_label: Nt.t * int option * int option -> string
+= fun (nt, idx1, idx2) -> match idx1, idx2 with 
   | None, None -> Nt.to_symbol nt
   | Some idx1, Some idx2 -> Format.asprintf "%a!%d!%d" Nt.pp_symbol nt idx1 idx2
-  | _ -> assert false
-  ) path in 
-  String.concat "_" path
+  | Some _, None | None, Some _ -> assert false
+
+let string_of_path path = 
+  String.concat "_" (List.map string_of_label path)
 
 (* Unexpanded children of the node at `path`, for production rule option `ges` *)
 let children_of_ges path ges = List.map (fun ge -> match ge with 
@@ -531,14 +535,9 @@ let pp_print_model_pair ppf (k, v) =
     k 
     Value.pp_smt v 
 
-(* Names of the terminal variables in `dt`. 
-   TODO: The separators differ from `string_of_path`, so these never match model variables *)
+(* Names of the terminal variables in `dt` *)
 let rec get_dt_vars dt = 
-  let id_str = match label dt with 
-  | (id, Some idx1, Some idx2) -> Format.asprintf "%a.%d.%d" Nt.pp_symbol id idx1 idx2
-  | (id, None, None) -> Nt.to_symbol id 
-  | _ -> assert false
-  in
+  let id_str = string_of_label (label dt) in
   let r = match dt.expansion with 
   | Open | Dependent _ -> Utils.StringSet.empty
   | Terminal _ -> Utils.StringSet.singleton ""
