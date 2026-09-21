@@ -79,8 +79,8 @@ let rec bvult bits1 bits2 = match bits1, bits2 with
 
 let equal_width bits1 bits2 = List.length bits1 = List.length bits2
 
-(* SMT-LIB div/mod are Euclidean: the remainder is never negative, so the quotient
-   rounds away from OCaml's truncation whenever the two disagree in sign *)
+(* SMT-LIB div/mod are Euclidean: the remainder is never negative, so wherever
+   OCaml's truncation yields a negative one, both results need adjusting *)
 let euclidean_div m n =
   let q = m / n in
   if m mod n >= 0 then q else if n > 0 then q - 1 else q + 1

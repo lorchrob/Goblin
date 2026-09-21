@@ -421,14 +421,7 @@ let str_const_to_ph_const ast =
 
 
 let language_emptiness_check ast start_symbol = 
-  let start_element = List.hd ast in 
   let ast = TopologicalSort.dead_rule_removal_2 ast start_symbol in 
-  (* Dead rule removal may change order -- put start symbol back *)
-  let ast = start_element :: List.filter (fun element -> match element with 
-  | Ast.ProdRule (nt, _, _, _) 
-  | Ast.TypeAnnotation (nt, _, _, _) -> nt <> start_symbol 
-  ) ast 
-  in
   let add_productive_nts ast productive_nts = 
     List.fold_left (fun acc element -> match element with 
     | TypeAnnotation (nt, _, _, _) -> Nt.Set.add nt acc 
@@ -497,10 +490,9 @@ let check_no_redefinitions rhs = match rhs with
 let check_syntax: prod_rule_map -> Nt.Set.t -> ast -> ast 
 = fun prm nt_set ast -> 
   (*let ast = sort_ast ast in*) (* Maybe need this in non-dpll engines? *)
-  let start_symbol = match ast with 
-  | Ast.ProdRule (nt, _, _, _) :: _ 
-  | Ast.TypeAnnotation (nt, _, _, _) :: _ -> nt
-  | [] -> Utils.crash "empty grammar"
+  let start_symbol = match Ast.start_symbol ast with
+  | Some nt -> nt
+  | None -> Utils.error_no_pos Ast.no_start_symbol_message
   in 
   let ast = str_const_to_ph_const ast in
   let ast = Utils.recurse_until_fixpoint ast (=) remove_circular_deps in

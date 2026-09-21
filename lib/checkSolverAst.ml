@@ -19,12 +19,8 @@ type verdict =
 
 let check_start_symbol: Ast.ast -> SolverAst.solver_ast -> (unit, string) result
 = fun ast solver_ast ->
-  let start_nt = match ast with
-  | A.ProdRule (nt, _, _, _) :: _ | A.TypeAnnotation (nt, _, _, _) :: _ -> Some nt
-  | [] -> None
-  in
-  match start_nt, solver_ast with
-  | None, _ -> Error "Grammar is empty"
+  match A.start_symbol ast, solver_ast with
+  | None, _ -> Error A.no_start_symbol_message
   | Some nt, SA.Node ((constructor, _, _), _) ->
     if Nt.equal_ci nt (Nt.unstub constructor)
       then Ok ()
@@ -276,9 +272,8 @@ let check_node: Ast.ast -> SolverAst.solver_ast -> Nt.t -> SolverAst.solver_ast 
 let rec check_syntax_semantics: Ast.ast -> SolverAst.solver_ast -> verdict
 = fun ast solver_ast -> match solver_ast with
 | Node ((constructor, _, _), children) ->
-  (* In dpll divide and conquer module, we get an extra nesting of stub and
-     concrete NTs for some reason. Only that stub wrapper is skipped: a genuine
-     unit production repeating its parent's name still has to be checked. *)
+  (* Divide and conquer nests a stub inside its concrete NT. Only that stub wrapper
+     is skipped; a genuine same-name unit production is still checked. *)
   let skip_condition = match children with
   | [Node ((Nt.Stub _ as constructor2, _, _), _)] ->
     Nt.equal_ci constructor (Nt.unstub_once constructor2)
