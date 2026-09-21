@@ -18,19 +18,23 @@ type verdict =
 | Unknown of string
 
 let check_start_symbol: Ast.ast -> SolverAst.solver_ast -> (unit, string) result
-= fun ast solver_ast -> match ast, solver_ast with
-| A.ProdRule (nt, _, _, _) :: _, SA.Node ((constructor, _, _), _) ->
-  if Nt.equal_ci nt (Nt.unstub constructor)
-    then Ok ()
-  else
-  Error (Format.asprintf "Solver AST root constructor '%a' does not match the AST start symbol '%a'" Nt.pp constructor Nt.pp nt)
-| A.TypeAnnotation _ :: _, _ -> Utils.crash "Unexpected case in check_start_symbol"
-| [], _ -> Error "Grammar is empty"
-| A.ProdRule _ :: _, Leaf _ -> Error "Term is a bare value, not rooted at the start symbol"
-| A.ProdRule _ :: _, StubLeaf _ ->
-  Error "Term is an uncomputed stub, not rooted at the start symbol"
-| A.ProdRule _ :: _, Model _ -> Error "Term is an SMT model, not a grammar term"
-| A.ProdRule _ :: _, Infeasible -> Error "Term reports infeasibility, so there is nothing to check"
+= fun ast solver_ast ->
+  let start_nt = match ast with
+  | A.ProdRule (nt, _, _, _) :: _ | A.TypeAnnotation (nt, _, _, _) :: _ -> Some nt
+  | [] -> None
+  in
+  match start_nt, solver_ast with
+  | None, _ -> Error "Grammar is empty"
+  | Some nt, SA.Node ((constructor, _, _), _) ->
+    if Nt.equal_ci nt (Nt.unstub constructor)
+      then Ok ()
+    else
+    Error (Format.asprintf "Solver AST root constructor '%a' does not match the AST start symbol '%a'" Nt.pp constructor Nt.pp nt)
+  | Some _, Leaf _ -> Error "Term is a bare value, not rooted at the start symbol"
+  | Some _, StubLeaf _ ->
+    Error "Term is an uncomputed stub, not rooted at the start symbol"
+  | Some _, Model _ -> Error "Term is an SMT model, not a grammar term"
+  | Some _, Infeasible -> Error "Term reports infeasibility, so there is nothing to check"
 
 (* A derived field constrains the value at its own position, so it checks as an
    equality between that position and the field's definition *)
@@ -273,9 +277,12 @@ let rec check_syntax_semantics: Ast.ast -> SolverAst.solver_ast -> verdict
 = fun ast solver_ast -> match solver_ast with
 | Node ((constructor, _, _), children) ->
   (* In dpll divide and conquer module, we get an extra nesting of stub and
-     concrete NTs for some reason. *)
+     concrete NTs for some reason. Only that stub wrapper is skipped: a genuine
+     unit production repeating its parent's name still has to be checked. *)
   let skip_condition = match children with
-  | [Node ((constructor2, _, _), _)] -> Nt.equal_ci constructor (Nt.unstub_once constructor2)
+  | [Node ((Nt.Stub _ as constructor2, _, _), _)] ->
+    Nt.equal_ci constructor (Nt.unstub_once constructor2)
+  | [Node (((Nt.User _ | Nt.SynthAttr _ | Nt.InhAttr _), _, _), _)]
   | [] | _ :: _ :: _ | [Leaf _] | [StubLeaf _] | [Model _] | [Infeasible] -> false
   in
   if skip_condition then check_syntax_semantics ast (List.hd children)

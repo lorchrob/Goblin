@@ -24,7 +24,7 @@ let serialize: Format.formatter -> SA.solver_ast -> unit
   | Leaf Unit -> ()
   | Leaf (Bool b) -> Format.pp_print_bool ppf b
   | Leaf (StringSet s) -> 
-    Format.fprintf Format.std_formatter "{%a}" 
+    Format.fprintf ppf "{%a}" 
       (Lib.pp_print_list Format.pp_print_string ", ") (Utils.StringSet.to_list s)
   | StubLeaf stub -> Format.fprintf ppf "%s" (String.lowercase_ascii (Nt.to_symbol (Stub stub)))
   | Infeasible -> Format.fprintf ppf "infeasible"

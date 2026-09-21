@@ -1565,6 +1565,90 @@ let indexed_attribute_reference () =
   | Some i -> failf "<L> is %d, so <P>[1].len resolved to the wrong occurrence" i
   | None -> fail "No <L> node in the generated term"
 
+(* re.++ is spelled the same in SMT-LIB and in Goblin's surface syntax, so the
+   grammar has to reach the solver, not just the checker *)
+let regex_concat_generated = generated_term_round_trips "regex2.gbl"
+
+(* serialize must write to the formatter it is given, or a set vanishes from the
+   result and lands on stdout instead *)
+let serialize_set_goes_to_formatter () =
+  let term = SolverAst.Node ((Nt.User "S", None, None),
+    [SolverAst.Leaf (Value.StringSet (Utils.StringSet.of_list ["a"; "b"]))]) in
+  let output = Format.asprintf "%a" Serialize.serialize term in
+  if not (String.contains output '{') then
+    failf "The set was not written to the supplied formatter: %S" output
+
+(* SMT-LIB div/mod are Euclidean, so a negative dividend rounds away from OCaml's
+   truncation; the checker must accept the quotient the solver actually returns *)
+let divmod_source = "<S> ::= <A> <B> <C> { <A> = 0 - 7; <B> = 2; <C> = <A> div <B>; }; \
+                     <A> :: Int; <B> :: Int; <C> :: Int;"
+
+let divmod_term c =
+  SolverAst.Node ((Nt.User "S", None, None),
+    [leaf_node "A" (int_leaf (-7)); leaf_node "B" (int_leaf 2); leaf_node "C" (int_leaf c)])
+
+let euclidean_div_accepted () =
+  match check_parsed_source divmod_source (divmod_term (-4)) with
+  | Ok () -> ()
+  | Error msg -> failf "-7 div 2 = -4 under SMT-LIB, but the term was rejected: %s" msg
+
+let truncating_div_rejected () =
+  match check_parsed_source divmod_source (divmod_term (-3)) with
+  | Ok () -> fail "-7 div 2 = -3 is OCaml truncation, not SMT-LIB, but was accepted"
+  | Error _ -> ()
+
+let euclidean_mod_source = "<S> ::= <A> <B> <C> { <A> = 0 - 7; <B> = 2; <C> = <A> mod <B>; }; \
+                            <A> :: Int; <B> :: Int; <C> :: Int;"
+
+let euclidean_mod_accepted () =
+  match check_parsed_source euclidean_mod_source (divmod_term 1) with
+  | Ok () -> ()
+  | Error msg -> failf "-7 mod 2 = 1 under SMT-LIB, but the term was rejected: %s" msg
+
+let truncating_mod_rejected () =
+  match check_parsed_source euclidean_mod_source (divmod_term (-1)) with
+  | Ok () -> fail "-7 mod 2 = -1 is OCaml truncation, not SMT-LIB, but was accepted"
+  | Error _ -> ()
+
+(* The start symbol is the first declaration, so a leading type annotation is the
+   root the engine generates against, not an unexpected case *)
+let annotation_start_symbol_source = "<G> :: Int; <S> ::= <G>;"
+
+let annotation_start_symbol_checked () =
+  let term = SolverAst.Node ((Nt.User "G", Some 0, Some 0), [int_leaf 29]) in
+  match check_parsed_source annotation_start_symbol_source term with
+  | Ok () -> ()
+  | Error msg -> failf "A term rooted at the start annotation was rejected: %s" msg
+  | exception Failure msg -> failf "check_solver_ast raised Failure %S instead of returning" msg
+
+let annotation_start_symbol_mismatch_rejected () =
+  let term = SolverAst.Node ((Nt.User "S", Some 0, Some 0),
+    [SolverAst.Node ((Nt.User "G", Some 0, Some 0), [int_leaf 29])]) in
+  match check_parsed_source annotation_start_symbol_source term with
+  | Ok () -> fail "A term not rooted at the start symbol was accepted"
+  | Error _ -> ()
+  | exception Failure msg -> failf "check_solver_ast raised Failure %S instead of returning" msg
+
+(* A unit production repeating its parent's name is a real node, not the stub
+   wrapper the skip is for, so its own constraints still have to be checked *)
+let unit_production_source = "<S> ::= <A>; <A> ::= <A> { <A>.<N> < 0; } | <N>; <N> :: Int;"
+
+let unit_production_term n =
+  SolverAst.Node ((Nt.User "S", Some 0, Some 0),
+    [SolverAst.Node ((Nt.User "A", Some 0, Some 0),
+      [SolverAst.Node ((Nt.User "A", Some 0, Some 0),
+        [SolverAst.Node ((Nt.User "N", Some 1, Some 0), [int_leaf n])])])])
+
+let unit_production_constraint_checked () =
+  match check_parsed_source unit_production_source (unit_production_term 5) with
+  | Ok () -> fail "The outer <A>'s constraint <A>.<N> < 0 was falsified but the term was accepted"
+  | Error _ -> ()
+
+let unit_production_satisfied_accepted () =
+  match check_parsed_source unit_production_source (unit_production_term (-5)) with
+  | Ok () -> ()
+  | Error msg -> failf "A term satisfying <A>.<N> < 0 was rejected: %s" msg
+
 let () =
   run "My_module" [
 
@@ -1646,6 +1730,16 @@ let () =
     "inherited_arg_attr_is_universal", [test_case "inherited_arg_attr_is_universal" `Quick (inherited_arg_is_universal "inh-attr-index-attr.gbl" "P")];
     "indexed_attribute_reference", [test_case "indexed_attribute_reference" `Quick indexed_attribute_reference];
     "print_occurrence_indices", [test_case "print_occurrence_indices" `Quick print_occurrence_indices];
+    "regex_concat_generated", [test_case "regex_concat_generated" `Quick regex_concat_generated];
+    "serialize_set_goes_to_formatter", [test_case "serialize_set_goes_to_formatter" `Quick serialize_set_goes_to_formatter];
+    "euclidean_div_accepted", [test_case "euclidean_div_accepted" `Quick euclidean_div_accepted];
+    "truncating_div_rejected", [test_case "truncating_div_rejected" `Quick truncating_div_rejected];
+    "euclidean_mod_accepted", [test_case "euclidean_mod_accepted" `Quick euclidean_mod_accepted];
+    "truncating_mod_rejected", [test_case "truncating_mod_rejected" `Quick truncating_mod_rejected];
+    "annotation_start_symbol_checked", [test_case "annotation_start_symbol_checked" `Quick annotation_start_symbol_checked];
+    "annotation_start_symbol_mismatch_rejected", [test_case "annotation_start_symbol_mismatch_rejected" `Quick annotation_start_symbol_mismatch_rejected];
+    "unit_production_constraint_checked", [test_case "unit_production_constraint_checked" `Quick unit_production_constraint_checked];
+    "unit_production_satisfied_accepted", [test_case "unit_production_satisfied_accepted" `Quick unit_production_satisfied_accepted];
     "check_dt6_infeasible", [test_case "check_dt6_infeasible" `Quick check_dt6_infeasible];
     "check_dt6_bare_value", [test_case "check_dt6_bare_value" `Quick check_dt6_bare_value];
 

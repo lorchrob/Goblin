@@ -276,7 +276,7 @@ let pp_print_builtin_func ppf func =
   | StrInRe -> Format.fprintf ppf "str.in_re"
   | StrToRe -> Format.fprintf ppf "str.to_re"
   | ReStar -> Format.fprintf ppf "re.*"
-  | ReConcat -> Format.fprintf ppf "re.concat"
+  | ReConcat -> Format.fprintf ppf "re.++"
   | Length -> Format.fprintf ppf "length"
   | SeqLength -> Format.fprintf ppf "seq.len"
   | UbvToInt -> Format.fprintf ppf "ubv_to_int"
