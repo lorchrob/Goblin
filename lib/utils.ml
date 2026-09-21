@@ -201,11 +201,6 @@ let sequence_option (xs : 'a option list) : 'a list option =
 let str_eq_ci s1 s2 =
   String.lowercase_ascii s1 = String.lowercase_ascii s2
 
-let all_equal (xs : 'a list) (eq : 'a -> 'a -> bool) : bool =
-  match xs with
-  | [] | [_] -> true
-  | x :: rest -> List.for_all (fun y -> eq x y) rest
-
 (* Naive but whatever *)
 let has_duplicate eq lst =
   let rec aux = function

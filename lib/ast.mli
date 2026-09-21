@@ -61,7 +61,8 @@ type builtin_func =
 type expr = 
 (** Owning nonterminal (filled in by {!ScopeInhAttrs}; [None] right after parsing) * attribute name *)
 | InhAttr of string option * string * Lexing.position
-| SynthAttr of Nt.t * string * Lexing.position (** NT * attribute name *)
+| SynthAttr of (Nt.t * int option * int option) * string * Lexing.position
+  (** Indexed nonterminal reference (as in {!NTExpr}) * attribute name *)
 (** Synthesized attribute of the enclosing nonterminal, referenced without dot notation
     (produced by {!ScopeInhAttrs}) *)
 | OwnSynthAttr of string * Lexing.position

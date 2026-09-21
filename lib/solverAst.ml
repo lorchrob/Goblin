@@ -23,8 +23,8 @@ let pp_print_solver_ast: Format.formatter -> solver_ast -> unit
     ) subterms in
     Format.fprintf ppf "(%a%a%a %a)"
     (if !Flags.debug then Nt.pp_symbol else Nt.pp) constructor
-    (fun _ppf idx1 -> match idx1 with None -> () | Some idx1 -> Format.printf "@@{%d}" idx1) idx1
-    (fun _ppf idx2 -> match idx2 with None -> () | Some idx2 -> Format.printf "[%d]" idx2) idx2
+    (fun ppf idx1 -> match idx1 with None -> () | Some idx1 -> Format.fprintf ppf "@@{%d}" idx1) idx1
+    (fun ppf idx2 -> match idx2 with None -> () | Some idx2 -> Format.fprintf ppf "[%d]" idx2) idx2
     (Lib.pp_print_list pp_print_solver_ast' " ") subterms
   | Leaf value -> Value.pp ppf value
   | StubLeaf stub -> Format.fprintf ppf "\"%s\"" (String.lowercase_ascii (Nt.to_symbol (Stub stub)))

@@ -1,0 +1,2 @@
+<S> ::= <Flags> ;
+<Flags> :: BitVec(8);

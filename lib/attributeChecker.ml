@@ -60,15 +60,19 @@ let check_element attribute_ctx ctx element = match element with
     let msg = Format.asprintf "Nonterminal %a has some synthesized attribute with duplicate definitions (within a given production rule option)" Nt.pp nt in 
     Utils.error msg p
   );  
-  let str_list_eq l1 l2 = 
-    List.length l1 = List.length l2 && 
-    List.for_all2 String.equal l1 l2 
-  in
-  (* Check each rhs has exactly the same set of synthesized attributes *)
-  if Utils.all_equal synth_attrss str_list_eq then 
-    element 
-  else 
-    let msg = Format.asprintf "Nonterminal %a has some synthesized attribute that is not defined in every production rule" Nt.pp nt in 
+  (* Every production rule option must define the same synthesized attributes.
+     Compared as sets, since every consumer resolves an attribute by name. *)
+  let attr_sets = List.map Utils.StringSet.of_list synth_attrss in
+  match attr_sets with
+  | [] -> element
+  | first :: rest when List.for_all (Utils.StringSet.equal first) rest -> element
+  | first :: rest ->
+    let union = List.fold_left Utils.StringSet.union first rest in
+    let common = List.fold_left Utils.StringSet.inter first rest in
+    let inconsistent = Utils.StringSet.diff union common in
+    let msg = Format.asprintf
+      "Nonterminal %a defines synthesized attribute(s) %s in some production rule options but not others; every option must define the same attributes"
+      Nt.pp nt (String.concat ", " (Utils.StringSet.elements inconsistent)) in
     Utils.error msg p
 
 let check_attributes ctx ast = 

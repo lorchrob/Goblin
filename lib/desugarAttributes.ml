@@ -30,9 +30,8 @@ let rec attr_to_nt_expr
   let r = attr_to_nt_expr in
   match expr with
   | A.SynthAttr (nt, attr, p) ->
-    let nt1 = nt, None, None in 
     let nt2 = Nt.SynthAttr attr, None, None in 
-    A.NTExpr ([nt1; nt2], p)
+    A.NTExpr ([nt; nt2], p)
   | InhAttr (Some owner, attr, p) -> 
     A.NTExpr ([Nt.InhAttr (owner, attr), None, None], p) 
   | InhAttr (None, _, _) -> Utils.crash "Unscoped inherited attribute in desugarAttributes" 

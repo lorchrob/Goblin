@@ -1,0 +1,3 @@
+<S> ::= <BV> <N> { <N> = ubv_to_int(<BV>); };
+<BV> :: BitVec(64);
+<N> :: Int;

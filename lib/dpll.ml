@@ -864,7 +864,7 @@ let dpll: TypeChecker.context -> A.semantic_constraint Nt.StubMap.t -> A.ast -> 
     (* Compute dependencies and output *)
     Format.pp_print_flush Format.std_formatter ();
     let () = List.iter (fun r -> 
-      let r = ComputeDeps.compute_deps dep_map ast r in
+      let r = ComputeDeps.compute_deps dep_map r in
       Format.fprintf Format.std_formatter "$\n%a" 
         SA.pp_print_solver_ast r;
     ) rs in

@@ -32,11 +32,18 @@ let gen_idx_options_from_head ges nt idx1 idx2 =
   |> 
   List.split
 
+(* The two index kinds are written together as <nt>@{i}[j], so a message about one
+   that describes the other sends the reader to the wrong part of their grammar *)
+let index_hint =
+  "An option index <nt>@{i} must name one of <nt>'s production rule options, and an \
+   occurrence index <nt>[j] must name one of the occurrences of <nt> in this \
+   production rule option."
+
 (* Every dot notation reference, if potentially ambiguous, should include an index (in bounds) 
    to disambiguate *)
 let rec gen_all_exprs 
-= fun ctx ast ges expr -> 
-  let r = gen_all_exprs ctx ast ges in
+= fun ast ges expr -> 
+  let r = gen_all_exprs ast ges in
     (*Format.printf "input ges: %a\n"
       (Lib.pp_print_list A.pp_print_grammar_element ", ") ges;*)
   match expr with 
@@ -68,7 +75,7 @@ let rec gen_all_exprs
     in
     (* Collect all possible tails *)
     let ntss = 
-      List.map (fun new_ges -> gen_all_exprs ctx ast new_ges (NTExpr ((nt2, idx3, idx4) :: nts, p))) new_gess 
+      List.map (fun new_ges -> gen_all_exprs ast new_ges (NTExpr ((nt2, idx3, idx4) :: nts, p))) new_gess 
       |> List.flatten 
     in 
     let ntss = List.map (function
@@ -137,17 +144,24 @@ let rec gen_all_exprs
     let msg = Format.asprintf "Bad function arity in expression %a" 
       A.pp_print_expr expr in 
     Utils.error msg (A.pos_of_expr expr)
+  (* An attribute of another nonterminal is ambiguous exactly when that
+     nonterminal reference is, so it is indexed the same way *)
+  | A.SynthAttr ((nt, idx1, idx2), attr, p) ->
+    let idx1, idx2 = gen_idx_options_from_head ges nt idx1 idx2 in
+    List.map2 (fun idx1 idx2 -> A.SynthAttr ((nt, Some idx1, Some idx2), attr, p)) idx1 idx2
+  (* Both name a generated child of the current nonterminal, so neither is ambiguous *)
   | InhAttr _
-  | OwnSynthAttr _
-  | SynthAttr _ -> assert false
+  | OwnSynthAttr _ -> [expr]
   | ActLit _ -> assert false
 
 let process_sc
-= fun ctx ast ges sc -> match sc with 
+= fun ast ges sc -> match sc with 
   | A.DerivedField (nt, expr, p) -> 
-    let exprs = gen_all_exprs ctx ast ges expr in 
+    let exprs = gen_all_exprs ast ges expr in 
     if List.length exprs = 0 then 
-      let msg = Format.asprintf "Semantic constraint contains some nonterminal reference that could not be evaluated. For example, if nonterminal <nt> has only one production rule, then `<nt>@1` cannot be evaluated (use <nt>@0 instead)." in 
+      let msg = Format.asprintf
+        "Semantic constraint contains some nonterminal reference that could not be evaluated. %s"
+        index_hint in 
       Utils.error msg p
     else 
       (* We purposefully don't disambiguate derived fields. It makes life easier in dependency computation--
@@ -161,21 +175,36 @@ let process_sc
       nt nt in 
       Utils.error msg p*)
   | SmtConstraint (expr, p) ->
-    let exprs = gen_all_exprs ctx ast ges expr in 
+    let exprs = gen_all_exprs ast ges expr in 
     if List.length exprs = 0 then 
-      let msg = Format.asprintf "Semantic constraint contains some nonterminal reference that could not be evaluated. For example, if nonterminal <nt> has only one production rule, then `<nt>@1` cannot be evaluated (use <nt>@0 instead)." in 
+      let msg = Format.asprintf
+        "Semantic constraint contains some nonterminal reference that could not be evaluated. %s"
+        index_hint in 
       Utils.error msg p
     else 
       let exprs = List.filter (fun expr -> not (impossible_nt_expr expr)) exprs in
       List.map (fun expr -> A.SmtConstraint (expr, p)) exprs
-  | AttrDef _ -> assert false
+  (* An attribute definition denotes one value, so unlike a constraint it cannot be
+     expanded into several *)
+  | AttrDef (attr, expr, p) -> (
+    match gen_all_exprs ast ges expr with
+    | [] ->
+      let msg = Format.asprintf
+        "Definition of attribute %s contains some nonterminal reference that could not be evaluated. %s"
+        attr index_hint in
+      Utils.error msg p
+    | [expr] -> [A.AttrDef (attr, expr, p)]
+    | _ :: _ :: _ ->
+      let msg = Format.asprintf "Definition of attribute %s is ambiguous: it references a nonterminal with multiple occurrences in this production rule, so the definition could take more than one value. Disambiguate with <nt>[i]." attr in
+      Utils.error msg p
+  )
 
 let resolve_ambiguities: TC.context -> A.ast -> A.ast 
-= fun ctx ast -> List.map (fun element -> match element with
+= fun _ctx ast -> List.map (fun element -> match element with
 | A.ProdRule (nt, ias, rhss, p) ->
   let rhss = List.map (fun rhs -> match rhs with 
   | A.Rhs (ges, scs, prob, _) -> 
-    let scs = List.map (process_sc ctx ast ges) scs in
+    let scs = List.map (process_sc ast ges) scs in
     A.Rhs (ges, List.flatten scs, prob, p) 
   | StubbedRhs _ -> rhs 
   ) rhss in 

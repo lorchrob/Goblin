@@ -1,0 +1,3 @@
+<S> ::= <Names> <Chosen> { set.member(<Chosen>, <Names>); };
+<Names> :: Set(String) { set.member("a", <Names>); };
+<Chosen> :: String;

@@ -82,7 +82,7 @@ let rec check_dangling_identifiers: Nt.Set.t -> Lexing.position -> expr -> expr
     let _ = check_d_ids_nt_expr nt_expr' in 
     NTExpr (nt_expr, p)
   | SynthAttr (nt, attr, p) -> 
-    let _ = check_d_ids_nt_expr [nt] in 
+    let _ = check_d_ids_nt_expr [Utils.tr_fst nt] in 
     let _ = check_d_ids_attribute attr in 
     SynthAttr (nt, attr, p)
   | OwnSynthAttr (attr, p) -> 
@@ -130,11 +130,11 @@ let rec check_prod_rule_nt_exprs: prod_rule_map -> Nt.Set.t -> expr -> expr
     else
       let nt_expr = check_nt_expr_refs prm nt_expr p in 
       NTExpr (nt_expr, p) 
-  | SynthAttr (nt, attr, p) -> 
+  | SynthAttr ((nt, idx1, idx2), attr, p) -> 
     if (not (Nt.Set.mem nt nts)) 
     then 
       Utils.error (Format.asprintf "Nonterminal %a not found in current production rule RHS or type annotation" Nt.pp nt) p
-    else SynthAttr (nt, attr, p)
+    else SynthAttr ((nt, idx1, idx2), attr, p)
   | EmptySet (ty, p) -> EmptySet (ty, p)
   | Singleton (expr, p) -> Singleton (call expr, p)
   | BinOp (expr1, op, expr2, p) -> BinOp (call expr1, op, call expr2, p) 
