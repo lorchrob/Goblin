@@ -130,6 +130,11 @@ val get_nts_from_expr2: expr -> (Nt.t * int option * int option) list list
 val scs_of_element: element -> semantic_constraint list
 val nts_of_ast: ast -> Nt.Set.t 
 val find_element: ast -> Nt.t -> element
+(** The start symbol: the left-hand side of the first production rule, or [None]
+    if the grammar has none. Type annotations before it are not candidate roots. *)
+val start_symbol: ast -> Nt.t option
+(** The diagnosis every caller of {!Ast.start_symbol} reports when it yields [None] *)
+val no_start_symbol_message: string
 val pos_of_expr: expr -> Lexing.position
 val pp_print_builtin_func: Format.formatter -> builtin_func -> unit
 val eq_il_type: il_type -> il_type -> bool

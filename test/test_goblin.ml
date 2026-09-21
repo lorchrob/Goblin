@@ -1565,6 +1565,132 @@ let indexed_attribute_reference () =
   | Some i -> failf "<L> is %d, so <P>[1].len resolved to the wrong occurrence" i
   | None -> fail "No <L> node in the generated term"
 
+(* re.++ is spelled the same in SMT-LIB and in Goblin's surface syntax, so the
+   grammar has to reach the solver, not just the checker *)
+let regex_concat_generated = generated_term_round_trips "regex2.gbl"
+
+(* serialize must write to the formatter it is given, or a set vanishes from the
+   result and lands on stdout instead *)
+let serialize_set_goes_to_formatter () =
+  let term = SolverAst.Node ((Nt.User "S", None, None),
+    [SolverAst.Leaf (Value.StringSet (Utils.StringSet.of_list ["a"; "b"]))]) in
+  let output = Format.asprintf "%a" Serialize.serialize term in
+  (* The whole serialization, so a set written to std_formatter as well as to ppf
+     leaves this formatter short *)
+  check string "serialized set" "{a, b}\n" output
+
+(* SMT-LIB div/mod are Euclidean, so a negative dividend rounds away from OCaml's
+   truncation; the checker must accept the quotient the solver actually returns *)
+let divmod_source = "<S> ::= <A> <B> <C> { <A> = 0 - 7; <B> = 2; <C> = <A> div <B>; }; \
+                     <A> :: Int; <B> :: Int; <C> :: Int;"
+
+let divmod_term c =
+  SolverAst.Node ((Nt.User "S", None, None),
+    [leaf_node "A" (int_leaf (-7)); leaf_node "B" (int_leaf 2); leaf_node "C" (int_leaf c)])
+
+let euclidean_div_accepted () =
+  match check_parsed_source divmod_source (divmod_term (-4)) with
+  | Ok () -> ()
+  | Error msg -> failf "-7 div 2 = -4 under SMT-LIB, but the term was rejected: %s" msg
+
+let truncating_div_rejected () =
+  match check_parsed_source divmod_source (divmod_term (-3)) with
+  | Ok () -> fail "-7 div 2 = -3 is OCaml truncation, not SMT-LIB, but was accepted"
+  | Error _ -> ()
+
+let euclidean_mod_source = "<S> ::= <A> <B> <C> { <A> = 0 - 7; <B> = 2; <C> = <A> mod <B>; }; \
+                            <A> :: Int; <B> :: Int; <C> :: Int;"
+
+let euclidean_mod_accepted () =
+  match check_parsed_source euclidean_mod_source (divmod_term 1) with
+  | Ok () -> ()
+  | Error msg -> failf "-7 mod 2 = 1 under SMT-LIB, but the term was rejected: %s" msg
+
+let truncating_mod_rejected () =
+  match check_parsed_source euclidean_mod_source (divmod_term (-1)) with
+  | Ok () -> fail "-7 mod 2 = -1 is OCaml truncation, not SMT-LIB, but was accepted"
+  | Error _ -> ()
+
+(* The start symbol is the first production rule, so type annotations preceding it
+   are declarations rather than candidate roots *)
+let leading_annotation_source = "<G> :: Int; <S> ::= <G>;"
+
+let start_symbol_skips_leading_annotation () =
+  let term = SolverAst.Node ((Nt.User "S", Some 0, Some 0),
+    [SolverAst.Node ((Nt.User "G", Some 0, Some 0), [int_leaf 29])]) in
+  match check_parsed_source leading_annotation_source term with
+  | Ok () -> ()
+  | Error msg -> failf "A term rooted at the first production rule was rejected: %s" msg
+  | exception Failure msg -> failf "check_solver_ast raised Failure %S instead of returning" msg
+
+let annotation_rooted_term_rejected () =
+  let term = SolverAst.Node ((Nt.User "G", Some 0, Some 0), [int_leaf 29]) in
+  match check_parsed_source leading_annotation_source term with
+  | Ok () -> fail "A term rooted at a leading annotation, not the start symbol, was accepted"
+  | Error _ -> ()
+  | exception Failure msg -> failf "check_solver_ast raised Failure %S instead of returning" msg
+
+(* Without a production rule there is no start symbol, so the grammar is refused
+   up front rather than generated from *)
+let annotation_only_grammar_rejected () =
+  match front_end ~grammar:(Parsing.parse "<G> :: Int;") "annotation-only" with
+  | _ -> fail "A grammar with no production rule was accepted"
+  | exception Failure msg ->
+    if not (contains_substring msg "no production rule to use as the start symbol") then
+      failf "Expected a missing start symbol error, but got %S" msg;
+    if not (contains_substring msg "<S> ::= <G>;") then
+      failf "The error should suggest wrapping the value in a production rule: %S" msg
+
+let annotation_only_grammar_has_no_root () =
+  let term = SolverAst.Node ((Nt.User "G", Some 0, Some 0), [int_leaf 29]) in
+  match check_parsed_source "<G> :: Int;" term with
+  | Ok () -> fail "A term was accepted against a grammar with no start symbol"
+  | Error msg ->
+    if not (contains_substring msg "no production rule to use as the start symbol") then
+      failf "Expected a missing start symbol error, but got %S" msg
+
+(* A refinement is stripped off its annotation and inlined into the rules that
+   reference it, so a start symbol preceded by one must still enforce it *)
+let leading_refinement_enforced () =
+  let previous = !Flags.seed in
+  Fun.protect ~finally:(fun () -> Flags.seed := previous) @@ fun () ->
+  List.iter (fun seed ->
+    Flags.seed := Some seed;
+    let solver_ast, _, ast =
+      main_pipeline "../../../test/test_cases/leading-refinement.gbl" in
+    (match solver_ast with
+    | SolverAst.Node ((Nt.User "S", _, _),
+        [SolverAst.Node ((Nt.User "G", _, _), [SolverAst.Leaf (Value.Int i)])]) ->
+      if i <= 100 then failf "seed %d: <G> = %d violates the refinement <G> > 100" seed i
+    | SolverAst.Node _ | SolverAst.Leaf _ | SolverAst.StubLeaf _
+    | SolverAst.Model _ | SolverAst.Infeasible ->
+      failf "seed %d: expected a term rooted at <S>, got %a" seed
+        SolverAst.pp_print_solver_ast solver_ast);
+    match CheckSolverAst.check_solver_ast ast solver_ast with
+    | Ok () -> ()
+    | Error msg -> failf "seed %d: %s" seed msg
+  ) (List.init 5 (fun i -> i + 1))
+
+(* A unit production repeating its parent's name is a real node, not the stub
+   wrapper the skip is for, so its own constraints still have to be checked *)
+let unit_production_source = "<S> ::= <A>; <A> ::= <A> { <A>.<N> < 0; } | <N>; <N> :: Int;"
+
+let unit_production_term n =
+  SolverAst.Node ((Nt.User "S", Some 0, Some 0),
+    [SolverAst.Node ((Nt.User "A", Some 0, Some 0),
+      [SolverAst.Node ((Nt.User "A", Some 0, Some 0),
+        [SolverAst.Node ((Nt.User "N", Some 1, Some 0), [int_leaf n])])])])
+
+let unit_production_constraint_checked () =
+  match check_parsed_source unit_production_source (unit_production_term 5) with
+  | Ok () -> fail "The outer <A>'s constraint <A>.<N> < 0 was falsified but the term was accepted"
+  | Error _ -> ()
+
+let unit_production_satisfied_accepted () =
+  match check_parsed_source unit_production_source (unit_production_term (-5)) with
+  | Ok () -> ()
+  | Error msg -> failf "A term satisfying <A>.<N> < 0 was rejected: %s" msg
+
 let () =
   run "My_module" [
 
@@ -1646,6 +1772,19 @@ let () =
     "inherited_arg_attr_is_universal", [test_case "inherited_arg_attr_is_universal" `Quick (inherited_arg_is_universal "inh-attr-index-attr.gbl" "P")];
     "indexed_attribute_reference", [test_case "indexed_attribute_reference" `Quick indexed_attribute_reference];
     "print_occurrence_indices", [test_case "print_occurrence_indices" `Quick print_occurrence_indices];
+    "regex_concat_generated", [test_case "regex_concat_generated" `Quick regex_concat_generated];
+    "serialize_set_goes_to_formatter", [test_case "serialize_set_goes_to_formatter" `Quick serialize_set_goes_to_formatter];
+    "euclidean_div_accepted", [test_case "euclidean_div_accepted" `Quick euclidean_div_accepted];
+    "truncating_div_rejected", [test_case "truncating_div_rejected" `Quick truncating_div_rejected];
+    "euclidean_mod_accepted", [test_case "euclidean_mod_accepted" `Quick euclidean_mod_accepted];
+    "truncating_mod_rejected", [test_case "truncating_mod_rejected" `Quick truncating_mod_rejected];
+    "start_symbol_skips_leading_annotation", [test_case "start_symbol_skips_leading_annotation" `Quick start_symbol_skips_leading_annotation];
+    "annotation_rooted_term_rejected", [test_case "annotation_rooted_term_rejected" `Quick annotation_rooted_term_rejected];
+    "annotation_only_grammar_rejected", [test_case "annotation_only_grammar_rejected" `Quick annotation_only_grammar_rejected];
+    "annotation_only_grammar_has_no_root", [test_case "annotation_only_grammar_has_no_root" `Quick annotation_only_grammar_has_no_root];
+    "leading_refinement_enforced", [test_case "leading_refinement_enforced" `Quick leading_refinement_enforced];
+    "unit_production_constraint_checked", [test_case "unit_production_constraint_checked" `Quick unit_production_constraint_checked];
+    "unit_production_satisfied_accepted", [test_case "unit_production_satisfied_accepted" `Quick unit_production_satisfied_accepted];
     "check_dt6_infeasible", [test_case "check_dt6_infeasible" `Quick check_dt6_infeasible];
     "check_dt6_bare_value", [test_case "check_dt6_bare_value" `Quick check_dt6_bare_value];
 

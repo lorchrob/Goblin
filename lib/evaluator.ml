@@ -79,6 +79,16 @@ let rec bvult bits1 bits2 = match bits1, bits2 with
 
 let equal_width bits1 bits2 = List.length bits1 = List.length bits2
 
+(* SMT-LIB div/mod are Euclidean: the remainder is never negative, so wherever
+   OCaml's truncation yields a negative one, both results need adjusting *)
+let euclidean_div m n =
+  let q = m / n in
+  if m mod n >= 0 then q else if n > 0 then q - 1 else q + 1
+
+let euclidean_mod m n =
+  let r = m mod n in
+  if r >= 0 then r else r + abs n
+
 let string_contains haystack needle =
   let n = String.length needle and h = String.length haystack in
   let rec at i = i + n <= h && (String.sub haystack i n = needle || at (i + 1)) in
@@ -374,8 +384,8 @@ and eval_binop: A.bin_operator -> v -> v -> Lexing.position -> (v, error) result
        have chosen any value and the evaluator cannot reproduce it *)
     | Div, Value.Int _, Value.Int 0 -> Error (Unspecified ("division by zero", p))
     | Mod, Value.Int _, Value.Int 0 -> Error (Unspecified ("modulo by zero", p))
-    | Div, Value.Int i1, Value.Int i2 -> int (i1 / i2)
-    | Mod, Value.Int i1, Value.Int i2 -> int (i1 mod i2)
+    | Div, Value.Int i1, Value.Int i2 -> int (euclidean_div i1 i2)
+    | Mod, Value.Int i1, Value.Int i2 -> int (euclidean_mod i1 i2)
     | BVAnd, Value.BitVector (w, b1), Value.BitVector (_, b2) when equal_width b1 b2 ->
       Ok (Val (Value.BitVector (w, List.map2 (&&) b1 b2)))
     | BVOr, Value.BitVector (w, b1), Value.BitVector (_, b2) when equal_width b1 b2 ->

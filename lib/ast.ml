@@ -276,7 +276,7 @@ let pp_print_builtin_func ppf func =
   | StrInRe -> Format.fprintf ppf "str.in_re"
   | StrToRe -> Format.fprintf ppf "str.to_re"
   | ReStar -> Format.fprintf ppf "re.*"
-  | ReConcat -> Format.fprintf ppf "re.concat"
+  | ReConcat -> Format.fprintf ppf "re.++"
   | Length -> Format.fprintf ppf "length"
   | SeqLength -> Format.fprintf ppf "seq.len"
   | UbvToInt -> Format.fprintf ppf "ubv_to_int"
@@ -577,6 +577,19 @@ let find_element ast nt =
   | TypeAnnotation (nt', _, _, _) 
   | ProdRule (nt', _, _, _) -> Nt.equal nt nt'
   ) ast 
+
+(* The start symbol is the left-hand side of the first production rule. Type
+   annotations preceding it are declarations, not candidate roots. *)
+let start_symbol ast =
+  List.find_map (fun element -> match element with
+  | ProdRule (nt, _, _, _) -> Some nt
+  | TypeAnnotation _ -> None
+  ) ast
+
+(* Shared by every caller of start_symbol, so the diagnosis cannot drift *)
+let no_start_symbol_message =
+  "Grammar contains no production rule to use as the start symbol; \
+   wrap the value in one, e.g. '<S> ::= <G>;'"
 
 let pos_of_expr expr = match expr with 
 | NTExpr (_, pos) 

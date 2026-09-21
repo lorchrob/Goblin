@@ -613,9 +613,9 @@ let dpll: TypeChecker.context -> A.semantic_constraint Nt.StubMap.t -> A.ast -> 
     Random.init seed
   in
 
-  let start_symbol, start_path = match List.hd ast with 
-  | A.TypeAnnotation (nt, _, _, _) -> nt, [nt, Some 0, Some 0]
-  | ProdRule (nt, _, _, _) -> nt, [nt, Some 0, Some 0]
+  let start_symbol, start_path = match A.start_symbol ast with
+  | Some nt -> nt, [nt, Some 0, Some 0]
+  | None -> Utils.crash A.no_start_symbol_message
   in 
 
   (* Solver object *)
