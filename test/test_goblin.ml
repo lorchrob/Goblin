@@ -1691,8 +1691,104 @@ let unit_production_satisfied_accepted () =
   | Ok () -> ()
   | Error msg -> failf "A term satisfying <A>.<N> < 0 was rejected: %s" msg
 
+let expect_ok input =
+  let solver_ast, _, ast = main_pipeline input in
+  match CheckSolverAst.check_solver_ast ast solver_ast with
+  | Ok _ -> ()
+  | Error msg -> fail msg
+
+(* Characters the grammar lexer admits but the model-response lexer does not.
+   Rejected where they are written, in every kind of name that reaches a symbol. *)
+let name_dot () =
+  expect_error "../../../test/test_cases/name-dot.gbl"
+    "nonterminal name 'a.b' may not contain '.'"
+
+let name_plus () =
+  expect_error "../../../test/test_cases/name-plus.gbl"
+    "nonterminal name 'a+b' may not contain '+'"
+
+let name_star () =
+  expect_error "../../../test/test_cases/name-star.gbl"
+    "nonterminal name 'a*b' may not contain '*'"
+
+let attr_name_inh_plus () =
+  expect_error "../../../test/test_cases/attr-name-inh-plus.gbl"
+    "attribute name 'v+w' may not contain '+'"
+
+let attr_name_synth_dot () =
+  expect_error "../../../test/test_cases/attr-name-synth-dot.gbl"
+    "attribute name 'a.b' may not contain '.'"
+
+let name_legal_chars () =
+  expect_ok "../../../test/test_cases/name-legal-chars.gbl"
+
+(* A reply the model parser cannot read is reported rather than asserted on.
+   `expect_error` matches Failure only, so an assertion failure fails the test. *)
+let solver_reply_unreadable () =
+  expect_error "../../../test/test_cases/solver-reply-unreadable.gbl"
+    "could not read the solver's model response"
+
+let solver_reply_rejected () =
+  expect_error "../../../test/test_cases/solver-reply-rejected.gbl"
+    "the solver rejected a command"
+
+(* A derived field abstracts one occurrence, so it must not remove the
+   nonterminal's type from the context the rest of the grammar shares *)
+let derived_field_unreachable_rule () =
+  expect_ok "../../../test/test_cases/derived-field-unreachable-rule.gbl"
+
+let derived_field_cross_rule () =
+  expect_ok "../../../test/test_cases/derived-field-cross-rule.gbl"
+
+let negative_int () =
+  let solver_ast, _, _ = main_pipeline "../../../test/test_cases/negative-int.gbl" in
+  let rendered = Utils.capture_output SA.pp_print_solver_ast solver_ast in
+  if contains_substring rendered "(- " then
+    failf "Negative integer rendered in SMT-LIB syntax: %S" rendered;
+  if not (contains_substring rendered "-92") then
+    failf "Expected -92 in rendered term, got %S" rendered
+
+(* SMT-LIB escapes in a model reply must be decoded, or a leaf's value is the
+   source text of the literal and its length contradicts the asserted str.len *)
+let string_quote_len () =
+  let _, output, _ = main_pipeline "../../../test/test_cases/string-quote-len.gbl" in
+  check string "one double-quote character" "\"\n" output
+
+let string_nonprintable_len () =
+  let _, output, _ = main_pipeline "../../../test/test_cases/string-nonprintable-len.gbl" in
+  check string "one NUL character" "\000\n" output
+
+(* Blocking clauses filter the model by these names, so any divergence between
+   the two encodings silently blocks nothing and every solution repeats *)
+let blocking_clause_var_names () =
+  let root = [Nt.User "S", Some 0, Some 0] in
+  let a = root @ [Nt.User "A", Some 0, Some 0] in
+  let b = root @ [Nt.User "_count", Some 1, Some 0] in
+  let leaf p = { Dpll.path = p; expansion = Dpll.Terminal (Ast.Int, None) } in
+  let dt = { Dpll.path = root; expansion = Dpll.Children [leaf a; leaf b] } in
+  let lower = List.map String.lowercase_ascii in
+  let expected = List.map Dpll.string_of_path [a; b] |> lower |> List.sort compare in
+  let actual =
+    Dpll.get_dt_vars dt |> Utils.StringSet.elements |> lower |> List.sort compare
+  in
+  check (list string) "blocking clause names match the path encoding" expected actual
+
 let () =
   run "My_module" [
+    "name_dot", [test_case "name_dot" `Quick name_dot];
+    "name_plus", [test_case "name_plus" `Quick name_plus];
+    "name_star", [test_case "name_star" `Quick name_star];
+    "attr_name_inh_plus", [test_case "attr_name_inh_plus" `Quick attr_name_inh_plus];
+    "attr_name_synth_dot", [test_case "attr_name_synth_dot" `Quick attr_name_synth_dot];
+    "name_legal_chars", [test_case "name_legal_chars" `Quick name_legal_chars];
+    "solver_reply_unreadable", [test_case "solver_reply_unreadable" `Quick solver_reply_unreadable];
+    "solver_reply_rejected", [test_case "solver_reply_rejected" `Quick solver_reply_rejected];
+    "derived_field_unreachable_rule", [test_case "derived_field_unreachable_rule" `Quick derived_field_unreachable_rule];
+    "derived_field_cross_rule", [test_case "derived_field_cross_rule" `Quick derived_field_cross_rule];
+    "negative_int", [test_case "negative_int" `Quick negative_int];
+    "string_quote_len", [test_case "string_quote_len" `Quick string_quote_len];
+    "string_nonprintable_len", [test_case "string_nonprintable_len" `Quick string_nonprintable_len];
+    "blocking_clause_var_names", [test_case "blocking_clause_var_names" `Quick blocking_clause_var_names];
 
 
     "check_dt6_valid", [test_case "check_dt6_valid" `Quick check_dt6_valid];

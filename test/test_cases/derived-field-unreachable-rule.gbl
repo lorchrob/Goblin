@@ -1,0 +1,5 @@
+//!! A derived field on <A> in an unreachable rule must not remove <A>'s type
+//!! from the context used by the rule that constrains it
+<S> ::= <A> { <A> = 1; };
+<R> ::= <A> { <A> <- 0; };
+<A> :: Int;

@@ -487,8 +487,59 @@ let check_no_redefinitions rhs = match rhs with
     else 
       rhs 
 
+(* The grammar lexer admits these in an identifier but the model-response lexer
+   does not, so a name carrying one reaches cvc5 inside an SMT symbol and cannot
+   be read back. Rejected where it is written, rather than at the failed read. *)
+let reserved_name_chars = ['.'; '+'; '*']
+
+let check_name: string -> string -> Lexing.position -> unit
+= fun kind name p ->
+  match List.find_opt (String.contains name) reserved_name_chars with
+  | None -> ()
+  | Some c ->
+    Utils.error (Format.asprintf "%s '%s' may not contain '%c'" kind name c) p
+
+let check_nt_name: Nt.t -> Lexing.position -> unit
+= fun nt p -> match nt with
+  | Nt.User s -> check_name "nonterminal name" s p
+  | SynthAttr attr -> check_name "attribute name" attr p
+  | InhAttr (nt, attr) ->
+    check_name "nonterminal name" nt p;
+    check_name "attribute name" attr p
+  | Stub _ -> ()
+
+let check_sc_name: semantic_constraint -> unit
+= fun sc -> match sc with
+  | DerivedField (nt, _, p) -> check_nt_name nt p
+  | AttrDef (attr, _, p) -> check_name "attribute name" attr p
+  | SmtConstraint _ -> ()
+
+(* Every name the user writes reaches an SMT symbol, so uses are checked
+   alongside declarations *)
+let check_names: ast -> ast
+= fun ast ->
+  List.iter (fun element -> match element with
+  | ProdRule (nt, inhs, rhss, p) ->
+    check_nt_name nt p;
+    List.iter (fun (attr, _) -> check_name "attribute name" attr p) inhs;
+    List.iter (fun rhs -> match rhs with
+    | StubbedRhs _ -> ()
+    | Rhs (ges, scs, _, _) ->
+      List.iter (fun ge -> match ge with
+      | Nonterminal (nt, _, _, _, p) -> check_nt_name nt p
+      | StubbedNonterminal _ -> ()
+      ) ges;
+      List.iter check_sc_name scs
+    ) rhss
+  | TypeAnnotation (nt, _, scs, p) ->
+    check_nt_name nt p;
+    List.iter check_sc_name scs
+  ) ast;
+  ast
+
 let check_syntax: prod_rule_map -> Nt.Set.t -> ast -> ast 
 = fun prm nt_set ast -> 
+  let ast = check_names ast in
   (*let ast = sort_ast ast in*) (* Maybe need this in non-dpll engines? *)
   let start_symbol = match Ast.start_symbol ast with
   | Some nt -> nt

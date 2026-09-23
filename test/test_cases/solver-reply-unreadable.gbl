@@ -1,0 +1,3 @@
+//!! Set(Int) is unsupported; the solver's reply must be reported, not asserted on
+<S> ::= <N> { set.member(1, <N>); };
+<N> :: Set(Int);

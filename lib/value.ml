@@ -40,9 +40,9 @@ let pp_print_smt_bool_seq ppf bits = match bits with
 let rec smtlib_of_stringset set =
   match Utils.StringSet.elements set with
   | [] -> "(as set.empty (Set String))"
-  | [x] -> Printf.sprintf "(set.singleton \"%s\")" x
+  | [x] -> Printf.sprintf "(set.singleton \"%s\")" (Utils.escape_smt_string x)
   | x :: xs ->
-    Printf.sprintf "(set.union (set.singleton \"%s\") %s)" x
+    Printf.sprintf "(set.union (set.singleton \"%s\") %s)" (Utils.escape_smt_string x)
       (smtlib_of_stringset (Utils.StringSet.of_list xs))
 
 (* SMT-LIB syntax *)
@@ -50,7 +50,7 @@ let pp_smt ppf = function
 | Bool b -> Format.pp_print_bool ppf b
 | Int i -> pp_print_smt_int ppf i
 | Placeholder str -> Format.pp_print_string ppf str
-| String str -> Format.fprintf ppf "\"%s\"" str
+| String str -> Format.fprintf ppf "\"%s\"" (Utils.escape_smt_string str)
 | StringSet set -> Format.pp_print_string ppf (smtlib_of_stringset set)
 | BitVector (_, bits) -> Format.fprintf ppf "#b%a" pp_print_bits bits
 | BitList bits -> pp_print_smt_bool_seq ppf bits
@@ -59,8 +59,8 @@ let pp_smt ppf = function
 (* Goblin's S-expression output syntax *)
 let pp ppf = function
 | Bool b -> Format.pp_print_bool ppf b
-| Int i -> pp_print_smt_int ppf i
-| String str | Placeholder str -> Format.fprintf ppf "\"%s\"" str
+| Int i -> Format.pp_print_int ppf i
+| String str | Placeholder str -> Format.fprintf ppf "\"%s\"" (Utils.escape_smt_string str)
 | StringSet set -> Format.pp_print_string ppf (smtlib_of_stringset set)
 | BitVector (_, bits) -> Format.fprintf ppf "0b%a" pp_print_bits bits
 | BitList bits -> pp_print_smt_bool_seq ppf bits

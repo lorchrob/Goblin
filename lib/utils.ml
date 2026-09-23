@@ -114,6 +114,73 @@ let crash message =
     raise (Failure ((Format.asprintf 
       "Internal error: %s" message)))
 
+(* SMT-LIB string literals denote a double quote as "" and a code point as
+   \u{h+} or \uhhhh. Goblin strings are byte strings whose length must agree with
+   str.len, so one code point is one byte and anything wider has no encoding. *)
+let unescape_smt_string: string -> string
+= fun s ->
+  let n = String.length s in
+  let buf = Buffer.create n in
+  let hex_val c = match c with
+  | '0'..'9' -> Some (Char.code c - Char.code '0')
+  | 'a'..'f' -> Some (Char.code c - Char.code 'a' + 10)
+  | 'A'..'F' -> Some (Char.code c - Char.code 'A' + 10)
+  | _ -> None
+  in
+  let emit_code_point cp =
+    if cp > 0xFF then
+      failwith (Format.asprintf
+        "code point U+%X has no single-byte encoding" cp);
+    Buffer.add_char buf (Char.chr cp)
+  in
+  (* Returns the index just past the escape, or None if it is not well formed,
+     in which case SMT-LIB reads the characters literally *)
+  let read_escape i =
+    if i + 2 >= n || s.[i] <> '\\' || s.[i + 1] <> 'u' then None
+    else if s.[i + 2] = '{' then
+      let rec scan j acc =
+        if j >= n then None
+        else if s.[j] = '}' then (if j = i + 3 then None else Some (acc, j + 1))
+        else match hex_val s.[j] with
+        | Some v -> scan (j + 1) (acc * 16 + v)
+        | None -> None
+      in
+      scan (i + 3) 0
+    else
+      let rec scan k acc =
+        if k = 4 then Some (acc, i + 2 + 4)
+        else if i + 2 + k >= n then None
+        else match hex_val s.[i + 2 + k] with
+        | Some v -> scan (k + 1) (acc * 16 + v)
+        | None -> None
+      in
+      scan 0 0
+  in
+  let rec go i =
+    if i >= n then ()
+    else if s.[i] = '"' && i + 1 < n && s.[i + 1] = '"' then
+      (Buffer.add_char buf '"'; go (i + 2))
+    else match read_escape i with
+    | Some (cp, next) -> emit_code_point cp; go next
+    | None -> Buffer.add_char buf s.[i]; go (i + 1)
+  in
+  go 0;
+  Buffer.contents buf
+
+(* Inverse of `unescape_smt_string`. Backslash is escaped so that a literal
+   \u{..} in the data is not read back as a code point. *)
+let escape_smt_string: string -> string
+= fun s ->
+  let buf = Buffer.create (String.length s) in
+  String.iter (fun c ->
+    let code = Char.code c in
+    if c = '"' then Buffer.add_string buf "\"\""
+    else if c = '\\' || code < 0x20 || code > 0x7E then
+      Buffer.add_string buf (Format.asprintf "\\u{%x}" code)
+    else Buffer.add_char buf c
+  ) s;
+  Buffer.contents buf
+
 let error message (pos : Lexing.position) =
   let line = pos.Lexing.pos_lnum in
   let col  = pos.Lexing.pos_cnum - pos.Lexing.pos_bol in

@@ -1,0 +1,7 @@
+//!! <A> is forced to the double-quote character. SMT-LIB writes it "", which must
+//!! be decoded back to one character to satisfy str.len(<A>) = 1
+<S> ::= <A> { str.len(<A>) = 1;
+              str.in_re(<A>, re.range("!", "#"));
+              not str.in_re(<A>, str.to_re("!"));
+              not str.in_re(<A>, str.to_re("#")); };
+<A> :: String;

@@ -23,24 +23,17 @@ let format_position (pos : Lexing.position) : string =
     pos.Lexing.pos_lnum 
     (pos.Lexing.pos_cnum - pos.Lexing.pos_bol)
 
+(* Positions here index the solver's reply, not the user's grammar, so neither the
+   grammar's filename nor its coordinates belong in these messages. The caller
+   reports the failure; returning it silently keeps it from being printed twice. *)
 let parse_solver: string -> Ast.ast -> (SolverAst.solver_ast, string) result
 = fun s _ast ->
   let lexbuf = Lexing.from_string s in
-  let error_message () =
-    let pos = lexbuf.lex_curr_p in
-    Printf.sprintf "Syntax error at %s, %s" 
-    (!Flags.filename |> Option.get)
-    (format_position pos)
-  in
-  let solver_ast =
-    try
-      Ok (SolverParser.s SolverLexer.read lexbuf)
-    with
-    | SolverParser.Error ->  
-        Error (error_message ())
-    | e ->
-        Error (Printexc.to_string e)
-  in
-  match solver_ast with
-  | Error e -> print_endline e; solver_ast
-  | Ok _ -> solver_ast
+  try
+    Ok (SolverParser.s SolverLexer.read lexbuf)
+  with
+  | SolverParser.Error ->
+      Error (Printf.sprintf "syntax error at %s of the reply"
+        (format_position lexbuf.lex_curr_p))
+  | Failure msg -> Error msg
+  | e -> Error (Printexc.to_string e)

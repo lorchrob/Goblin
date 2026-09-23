@@ -1,0 +1,3 @@
+//!! Should be rejected: '*' survives into the SMT symbol but not back out of a model
+<S> ::= <a*b> { <a*b> = 1; };
+<a*b> :: Int;

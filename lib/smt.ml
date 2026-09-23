@@ -19,10 +19,13 @@ let read_get_model_response solver =
   let rec loop acc =
     try
       let line = input_line solver.in_channel in
-      if String.starts_with ~prefix:"(error" line then raise (Failure "cvc5 error");
-      let acc = acc ^ "\n" ^ line in
-      if String.trim line = ")" then acc
-      else loop acc
+      (* A rejected command comes back in place of the model; hand it to the
+         caller so the solver's own message is the one reported *)
+      if String.starts_with ~prefix:"(error" line then line
+      else
+        let acc = acc ^ "\n" ^ line in
+        if String.trim line = ")" then acc
+        else loop acc
     with End_of_file -> acc
   in
   let result = loop "" in

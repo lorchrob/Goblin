@@ -61,12 +61,16 @@ rule read =
   | "." { Utils.debug_print Format.pp_print_string Format.std_formatter ". (DOT)"; DOT } 
   | "++" { Utils.debug_print Format.pp_print_string Format.std_formatter "++"; PLUSPLUS }
   | "#b" { Utils.debug_print Format.pp_print_string Format.std_formatter "BITS"; read_bits lexbuf }
-  |  '"' ([^ '"'] | "\"\"" )* '"' as s   { Utils.debug_print Format.pp_print_string Format.std_formatter (String.sub s 1 (String.length s - 2)); STRCONST (String.sub s 1 (String.length s - 2)) }
+  |  '"' ([^ '"'] | "\"\"" )* '"' as s   { let body = Utils.unescape_smt_string (String.sub s 1 (String.length s - 2)) in Utils.debug_print Format.pp_print_string Format.std_formatter body; STRCONST body }
   | "@" { Utils.debug_print Format.pp_print_string Format.std_formatter "@"; AT }
-  | int as p { INTEGER (int_of_string p) }
+  | int as p {
+      (* Models may hold integers wider than a native int *)
+      match int_of_string_opt p with
+      | Some i -> INTEGER i
+      | None -> failwith (Printf.sprintf "integer %s exceeds the native integer range" p) }
   | eof { EOF }
-  | _ as c { Utils.crash (Printf.sprintf "Unexpected character: %c" c) }
+  | _ as c { failwith (Printf.sprintf "unexpected character %C" c) }
 
 and read_bits = parse
   | bit+ as b { BITS (List.of_seq (String.to_seq b |> Seq.map (fun c -> c = '1'))) }
-  | _ { Utils.crash "Invalid bit sequence" }
+  | _ { failwith "invalid bit sequence" }

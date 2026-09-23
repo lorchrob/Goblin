@@ -9,7 +9,7 @@ let dpll ppf ctx ast =
 
     (* Step 2: Abstract away dependent terms in the grammar *)
     Utils.debug_print Format.pp_print_string ppf "\nDependent term abstraction:\n";
-    let dep_map, ast, ctx = AbstractDeps.abstract_dependencies ctx ast in 
+    let dep_map, ast = AbstractDeps.abstract_dependencies ast in 
     Utils.debug_print Ast.pp_print_ast ppf ast;
 
     (* Step 3: Divide and conquer *)

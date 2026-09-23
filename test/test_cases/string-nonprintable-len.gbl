@@ -1,0 +1,4 @@
+//!! <A> is forced outside the printable range, so the solver replies with a
+//!! \u{..} escape that must be decoded to one character
+<S> ::= <A> { str.len(<A>) = 1; not str.in_re(<A>, re.range(" ", "~")); };
+<A> :: String;

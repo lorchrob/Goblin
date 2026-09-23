@@ -1,0 +1,3 @@
+//!! Negative integers print in Goblin's syntax, not SMT-LIB's (- 92)
+<S> ::= <A> { <A> = 0 - 92; };
+<A> :: Int;

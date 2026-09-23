@@ -1,0 +1,4 @@
+//!! '-' and '_' are legal in both lexers and must keep working
+<S> ::= <a-b> <a_b> { <a-b> = 1; <a_b> = 2; };
+<a-b> :: Int;
+<a_b> :: Int;

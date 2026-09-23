@@ -1,0 +1,4 @@
+//!! Inherited attribute names reach the SMT symbol too, so they are checked as well
+<S> ::= <L>(1);
+<L>(v+w :: Int) ::= <E> { <E> = v+w; };
+<E> :: Int;

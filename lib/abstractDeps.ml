@@ -25,9 +25,9 @@ let rec calculate_casts: expr -> expr
 | OwnSynthAttr _
 | SynthAttr _ -> assert false
 
-let stub_grammar_element: TypeChecker.context -> semantic_constraint list -> grammar_element -> semantic_constraint option * grammar_element * TypeChecker.context
-= fun ctx scs ge -> match ge with 
-| StubbedNonterminal _ -> None, ge, ctx 
+let stub_grammar_element: semantic_constraint list -> grammar_element -> semantic_constraint option * grammar_element
+= fun scs ge -> match ge with 
+| StubbedNonterminal _ -> None, ge 
 | Nonterminal (nt, _, _, _, _) -> (
   match List.find_opt (fun sc -> match sc with
   | SmtConstraint _ -> false 
@@ -36,13 +36,12 @@ let stub_grammar_element: TypeChecker.context -> semantic_constraint list -> gra
   ) scs with 
   | Some dep -> 
     let stub = Nt.fresh_stub nt in
-    let ctx = Nt.Map.remove nt ctx in
-    Some dep, StubbedNonterminal stub, ctx  
-  | None -> None, ge, ctx
+    Some dep, StubbedNonterminal stub
+  | None -> None, ge
   )
 
 let stub_ty_annot
-= fun ctx nt ty scs p -> 
+= fun nt ty scs p -> 
   match List.find_opt (fun sc -> match sc with
   | SmtConstraint _ -> false 
   | DerivedField (nt2, _, _) -> Nt.equal nt nt2
@@ -50,13 +49,12 @@ let stub_ty_annot
   ) scs with 
   | Some dep -> 
     let stub = Nt.fresh_stub nt in
-    let ctx = Nt.Map.remove nt ctx in
-    Nt.StubMap.singleton stub dep, ProdRule (nt, [], [Rhs ([StubbedNonterminal stub], [], None, p)], p), ctx
-  | None -> Nt.StubMap.empty, TypeAnnotation (nt, ty, scs, p), ctx
+    Nt.StubMap.singleton stub dep, ProdRule (nt, [], [Rhs ([StubbedNonterminal stub], [], None, p)], p)
+  | None -> Nt.StubMap.empty, TypeAnnotation (nt, ty, scs, p)
 
 
-let simp_rhss: TypeChecker.context -> prod_rule_rhs -> semantic_constraint Nt.StubMap.t * prod_rule_rhs * TypeChecker.context 
-= fun ctx rhss -> match rhss with 
+let simp_rhss: prod_rule_rhs -> semantic_constraint Nt.StubMap.t * prod_rule_rhs 
+= fun rhss -> match rhss with 
 | Rhs (ges, scs, prob, p) ->
   let scs = List.map (fun sc -> match sc with 
   | DerivedField (nt, expr, p) -> DerivedField (nt, calculate_casts expr, p)
@@ -65,43 +63,42 @@ let simp_rhss: TypeChecker.context -> prod_rule_rhs -> semantic_constraint Nt.St
   ) scs in 
   (* Abstract away dependent terms. Whenever we abstract away a term, we store 
      a mapping from the abstracted stub ID to the original dependency *)
-  let dep_map, ges, ctx = List.fold_left (fun (acc_dep_map, acc_ges, acc_ctx) ge -> 
-    match stub_grammar_element acc_ctx scs ge with 
-    | Some dep, StubbedNonterminal stub, ctx -> 
+  let dep_map, ges = List.fold_left (fun (acc_dep_map, acc_ges) ge -> 
+    match stub_grammar_element scs ge with 
+    | Some dep, StubbedNonterminal stub -> 
       Nt.StubMap.add stub dep acc_dep_map, 
-      acc_ges @ [StubbedNonterminal stub], 
-      ctx
-    | None, ge, ctx -> acc_dep_map, acc_ges @ [ge], ctx
-    | Some _, _, _ -> assert false 
-  ) (Nt.StubMap.empty, [], ctx) ges in 
-  dep_map, Rhs (ges, scs, prob, p), ctx
-| StubbedRhs _ as rhs -> Nt.StubMap.empty, rhs, ctx 
+      acc_ges @ [StubbedNonterminal stub]
+    | None, ge -> acc_dep_map, acc_ges @ [ge]
+    | Some _, _ -> assert false 
+  ) (Nt.StubMap.empty, []) ges in 
+  dep_map, Rhs (ges, scs, prob, p)
+| StubbedRhs _ as rhs -> Nt.StubMap.empty, rhs 
 
 
 (*     let dep_map = List.fold_left (Nt.StubMap.merge Lib.union_keys) acc_dep_map dep_maps in *)
 
-let simp_ast: TypeChecker.context -> ast -> (semantic_constraint Nt.StubMap.t * ast * TypeChecker.context) 
-= fun ctx ast -> 
-  let dep_map, ast, ctx = List.fold_left (fun (acc_dep_map, acc_elements, acc_ctx) element -> match element with 
+let simp_ast: ast -> (semantic_constraint Nt.StubMap.t * ast) 
+= fun ast -> 
+  let dep_map, ast = List.fold_left (fun (acc_dep_map, acc_elements) element -> match element with 
   | ProdRule (nt, ias, rhss, p) -> 
-    let dep_map, rhss, ctx = List.fold_left (fun (acc_dep_map, acc_rhss, acc_ctx) rhs -> 
-      let dep_map, rhs, ctx = (simp_rhss acc_ctx rhs) in 
+    let dep_map, rhss = List.fold_left (fun (acc_dep_map, acc_rhss) rhs -> 
+      let dep_map, rhs = simp_rhss rhs in 
       let dep_map = Nt.StubMap.merge Lib.union_keys dep_map acc_dep_map in
-      dep_map, rhs :: acc_rhss, ctx
-    ) (acc_dep_map, [], acc_ctx)  rhss in
+      dep_map, rhs :: acc_rhss
+    ) (acc_dep_map, []) rhss in
     let dep_map = Nt.StubMap.merge Lib.union_keys dep_map Nt.StubMap.empty in
-    dep_map, ProdRule (nt, ias, List.rev rhss, p) :: acc_elements, ctx 
+    dep_map, ProdRule (nt, ias, List.rev rhss, p) :: acc_elements 
   | TypeAnnotation (nt, ty, scs, p) -> 
     let scs = List.map (fun sc -> match sc with 
     | DerivedField (nt, expr, p) -> DerivedField (nt, calculate_casts expr, p)
     | SmtConstraint (expr, p) -> SmtConstraint (calculate_casts expr, p)
     | AttrDef _ -> assert false
     ) scs in 
-    let dep_map, element, ctx = stub_ty_annot acc_ctx nt ty scs p in
+    let dep_map, element = stub_ty_annot nt ty scs p in
     let dep_map = Nt.StubMap.merge Lib.union_keys dep_map acc_dep_map in
-    dep_map, element :: acc_elements, ctx
-  ) (Nt.StubMap.empty, [], ctx) ast  in 
-  dep_map, List.rev ast, ctx
+    dep_map, element :: acc_elements
+  ) (Nt.StubMap.empty, []) ast  in 
+  dep_map, List.rev ast
 
-let abstract_dependencies: TypeChecker.context -> ast -> (semantic_constraint Nt.StubMap.t * ast * TypeChecker.context)  
-= fun ctx ast -> simp_ast ctx ast
+let abstract_dependencies: ast -> (semantic_constraint Nt.StubMap.t * ast)  
+= fun ast -> simp_ast ast
