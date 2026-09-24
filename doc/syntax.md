@@ -54,6 +54,8 @@ to SMT-LIB.
 **SMT-LIB types:**
 `Bool`, `Int`, `String`, `BitVec(n)` for any positive integer `n`
 
+A nonterminal annotated `String` draws its characters from the code points `U+0000` through `U+00FF`, since Goblin strings are byte strings whose `str.len` must agree with the number of bytes serialized.
+
 **Non-standard types (supported by cvc5):**
 `List(Bool)`, `Set(String)`
 

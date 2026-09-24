@@ -23,9 +23,8 @@ let format_position (pos : Lexing.position) : string =
     pos.Lexing.pos_lnum 
     (pos.Lexing.pos_cnum - pos.Lexing.pos_bol)
 
-(* Positions here index the solver's reply, not the user's grammar, so neither the
-   grammar's filename nor its coordinates belong in these messages. The caller
-   reports the failure; returning it silently keeps it from being printed twice. *)
+(* Positions index the solver's reply, not the user's grammar, so the reply's own
+   coordinates are reported. The caller decides how to report the failure. *)
 let parse_solver: string -> Ast.ast -> (SolverAst.solver_ast, string) result
 = fun s _ast ->
   let lexbuf = Lexing.from_string s in

@@ -488,8 +488,7 @@ let check_no_redefinitions rhs = match rhs with
       rhs 
 
 (* The grammar lexer admits these in an identifier but the model-response lexer
-   does not, so a name carrying one reaches cvc5 inside an SMT symbol and cannot
-   be read back. Rejected where it is written, rather than at the failed read. *)
+   does not, so a name carrying one cannot be read back out of an SMT symbol *)
 let reserved_name_chars = ['.'; '+'; '*']
 
 let check_name: string -> string -> Lexing.position -> unit
@@ -514,8 +513,8 @@ let check_sc_name: semantic_constraint -> unit
   | AttrDef (attr, _, p) -> check_name "attribute name" attr p
   | SmtConstraint _ -> ()
 
-(* Every name the user writes reaches an SMT symbol, so uses are checked
-   alongside declarations *)
+(* Names are checked wherever they are written, declarations and uses alike,
+   whether or not the rule carrying them is reachable *)
 let check_names: ast -> ast
 = fun ast ->
   List.iter (fun element -> match element with

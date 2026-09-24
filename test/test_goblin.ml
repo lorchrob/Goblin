@@ -1758,6 +1758,22 @@ let string_nonprintable_len () =
   let _, output, _ = main_pipeline "../../../test/test_cases/string-nonprintable-len.gbl" in
   check string "one NUL character" "\000\n" output
 
+(* Enumerating one-byte strings is the only pressure that drives the solver past
+   the alphabet, so the bound is only observable under multiple solutions *)
+let string_alphabet_bound () =
+  let saved = !Flags.multiple_solutions, !Flags.num_solutions, !Flags.sols_per_iter in
+  Flags.multiple_solutions := true;
+  Flags.num_solutions := 400;
+  Flags.sols_per_iter := 400;
+  Fun.protect
+    ~finally:(fun () ->
+      let multiple, num, per_iter = saved in
+      Flags.multiple_solutions := multiple;
+      Flags.num_solutions := num;
+      Flags.sols_per_iter := per_iter)
+    (fun () ->
+      ignore (main_pipeline "../../../test/test_cases/string-alphabet-bound.gbl"))
+
 (* Blocking clauses filter the model by these names, so any divergence between
    the two encodings silently blocks nothing and every solution repeats *)
 let blocking_clause_var_names () =
@@ -1788,6 +1804,7 @@ let () =
     "negative_int", [test_case "negative_int" `Quick negative_int];
     "string_quote_len", [test_case "string_quote_len" `Quick string_quote_len];
     "string_nonprintable_len", [test_case "string_nonprintable_len" `Quick string_nonprintable_len];
+    "string_alphabet_bound", [test_case "string_alphabet_bound" `Quick string_alphabet_bound];
     "blocking_clause_var_names", [test_case "blocking_clause_var_names" `Quick blocking_clause_var_names];
 
 

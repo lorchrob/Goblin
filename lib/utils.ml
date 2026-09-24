@@ -114,9 +114,8 @@ let crash message =
     raise (Failure ((Format.asprintf 
       "Internal error: %s" message)))
 
-(* SMT-LIB string literals denote a double quote as "" and a code point as
-   \u{h+} or \uhhhh. Goblin strings are byte strings whose length must agree with
-   str.len, so one code point is one byte and anything wider has no encoding. *)
+(* SMT-LIB writes a double quote as "" and a code point as \u{h+} or \uhhhh.
+   Goblin strings are byte strings, so one code point must be one byte *)
 let unescape_smt_string: string -> string
 = fun s ->
   let n = String.length s in
@@ -138,14 +137,16 @@ let unescape_smt_string: string -> string
   let read_escape i =
     if i + 2 >= n || s.[i] <> '\\' || s.[i + 1] <> 'u' then None
     else if s.[i + 2] = '{' then
-      let rec scan j acc =
-        if j >= n then None
-        else if s.[j] = '}' then (if j = i + 3 then None else Some (acc, j + 1))
+      (* SMT-LIB writes at most five hex digits, which also keeps the
+         accumulator well clear of overflow *)
+      let rec scan j acc digits =
+        if j >= n || digits > 5 then None
+        else if s.[j] = '}' then (if digits = 0 then None else Some (acc, j + 1))
         else match hex_val s.[j] with
-        | Some v -> scan (j + 1) (acc * 16 + v)
+        | Some v -> scan (j + 1) (acc * 16 + v) (digits + 1)
         | None -> None
       in
-      scan (i + 3) 0
+      scan (i + 3) 0 0
     else
       let rec scan k acc =
         if k = 4 then Some (acc, i + 2 + 4)
@@ -167,8 +168,8 @@ let unescape_smt_string: string -> string
   go 0;
   Buffer.contents buf
 
-(* Inverse of `unescape_smt_string`. Backslash is escaped so that a literal
-   \u{..} in the data is not read back as a code point. *)
+(* Inverse of `unescape_smt_string`; the backslash escape keeps a literal
+   \u{..} in the data from being read back as a code point *)
 let escape_smt_string: string -> string
 = fun s ->
   let buf = Buffer.create (String.length s) in
@@ -199,6 +200,13 @@ let error_no_pos message =
     raise (Failure (Format.asprintf "Error (%s): %s" filename message))
   | None -> 
     raise (Failure (Format.asprintf "Error: %s" message))
+
+(* A message raised through `crash`, `error` or `error_no_pos` already names the
+   grammar; any other failure still has to be attributed before it is reported *)
+let is_framed_message: string -> bool
+= fun message ->
+  String.starts_with ~prefix:"Internal error" message
+  || String.starts_with ~prefix:"Error" message
 
 let find_command_in_path cmd =
   match Sys.getenv_opt "PATH" with

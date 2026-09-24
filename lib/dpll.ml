@@ -154,6 +154,17 @@ let random_int_in_range: int -> int -> int
 = fun min max ->
   min + Random.int (max - min + 1) 
 
+(* Goblin strings are byte strings, so a code point above U+00FF has no encoding.
+   Bounding the alphabet at declaration keeps the solver from proposing one. *)
+let bound_string_alphabet: Smt.solver_instance -> string -> A.il_type -> unit
+= fun solver var ty -> match ty with
+  | A.String | Placeholder ->
+    Smt.issue_solver_command
+      (Format.asprintf
+        "(assert (str.in_re %s (re.* (re.range \"\\u{0}\" \"\\u{ff}\"))))\n" var)
+      solver
+  | Unit | Int | Bool | BitVector _ | BitList | ADT _ | Set _ -> ()
+
 let declare_smt_variables 
 = fun variable_stack declared_variables ctx solver blocking_clause_vars assertion_level -> 
   Utils.StringMap.iter (fun var ty -> 
@@ -171,7 +182,8 @@ let declare_smt_variables
         blocking_clause_vars := Utils.StringSet.add var !blocking_clause_vars; 
       let top = Stack.top variable_stack in 
       top := Utils.StringSet.add var !top;
-      Smt.issue_solver_command declaration_string solver
+      Smt.issue_solver_command declaration_string solver;
+      bound_string_alphabet solver var ty
   ) ctx 
 
 (* State expression nonterminals in terms of absolute paths from 
@@ -455,9 +467,8 @@ let model_of_solver_ast: SolverAst.solver_ast -> (model, unit) result
     ) Utils.StringMap.empty values)
   | Leaf _ | StubLeaf _ | Node _ -> Utils.crash "Unexpected case in model_of_solver_ast"
 
-(* The solver rejects a malformed command with (error ...), and its model language
-   is wider than what SolverParser accepts, so a reply we cannot read is an
-   outcome to report rather than an impossible state. *)
+(* A reply Goblin cannot read -- an (error ...), or a model outside what
+   SolverParser accepts -- is an outcome to report, not an impossible state *)
 let unreadable_solver_reply: string -> string -> string -> 'a
 = fun what reply detail ->
   let reply = String.trim reply in
@@ -911,8 +922,6 @@ let dpll: TypeChecker.context -> A.semantic_constraint Nt.StubMap.t -> A.ast -> 
     Smt.cleanup_solver solver;
     Format.pp_print_flush Format.std_formatter ();
     Infeasible
-  | Failure _ as e ->
-    (* The message is already framed where it was raised; re-wrapping it here
-       would prefix it a second time *)
+  | Failure message as e ->
     Smt.cleanup_solver solver;
-    raise e
+    if Utils.is_framed_message message then raise e else Utils.crash message
