@@ -56,6 +56,8 @@ to SMT-LIB.
 
 A nonterminal annotated `String` draws its characters from the code points `U+0000` through `U+00FF`, since Goblin strings are byte strings whose `str.len` must agree with the number of bytes serialized.
 
+In Goblin's output terms, string leaves are written with SMT-LIB escaping: a double quote as `""`, and a backslash or any byte outside printable ASCII (`0x20`–`0x7E`) as `\u{h...}`. 
+
 **Non-standard types (supported by cvc5):**
 `List(Bool)`, `Set(String)`
 
