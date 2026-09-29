@@ -1,0 +1,4 @@
+//!! Enumerating every one-byte string must exhaust the alphabet rather than
+//!! reach a code point that has no single-byte encoding
+<S> ::= <A> { str.len(<A>) = 1; };
+<A> :: String;

@@ -1,0 +1,3 @@
+//!! The solver rejects width 0; its own message must be surfaced
+<S> ::= <N> { <N> = <N>; };
+<N> :: BitVec(0);

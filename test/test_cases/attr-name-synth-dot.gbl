@@ -1,0 +1,5 @@
+//!! Synthesized attribute names reach the SMT symbol too
+<S> ::= <L> { <L>.a.b > 0; };
+<L> ::= <E> { a.b := 1; };
+<E> :: Int;
+a.b :: Int;

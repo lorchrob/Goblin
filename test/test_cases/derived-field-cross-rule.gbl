@@ -1,0 +1,4 @@
+//!! <T> is a derived field in one rule and an ordinary constrained leaf in another
+<S> ::= <R> <T> { <T> <- 1; };
+<R> ::= <T> { <T> = 3; } | <T>;
+<T> :: Int;

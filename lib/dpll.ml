@@ -154,6 +154,17 @@ let random_int_in_range: int -> int -> int
 = fun min max ->
   min + Random.int (max - min + 1) 
 
+(* Goblin strings are byte strings, so a code point above U+00FF has no encoding.
+   Bounding the alphabet at declaration keeps the solver from proposing one. *)
+let bound_string_alphabet: Smt.solver_instance -> string -> A.il_type -> unit
+= fun solver var ty -> match ty with
+  | A.String | Placeholder ->
+    Smt.issue_solver_command
+      (Format.asprintf
+        "(assert (str.in_re %s (re.* (re.range \"\\u{0}\" \"\\u{ff}\"))))\n" var)
+      solver
+  | Unit | Int | Bool | BitVector _ | BitList | ADT _ | Set _ -> ()
+
 let declare_smt_variables 
 = fun variable_stack declared_variables ctx solver blocking_clause_vars assertion_level -> 
   Utils.StringMap.iter (fun var ty -> 
@@ -171,7 +182,8 @@ let declare_smt_variables
         blocking_clause_vars := Utils.StringSet.add var !blocking_clause_vars; 
       let top = Stack.top variable_stack in 
       top := Utils.StringSet.add var !top;
-      Smt.issue_solver_command declaration_string solver
+      Smt.issue_solver_command declaration_string solver;
+      bound_string_alphabet solver var ty
   ) ctx 
 
 (* State expression nonterminals in terms of absolute paths from 
@@ -455,8 +467,27 @@ let model_of_solver_ast: SolverAst.solver_ast -> (model, unit) result
     ) Utils.StringMap.empty values)
   | Leaf _ | StubLeaf _ | Node _ -> Utils.crash "Unexpected case in model_of_solver_ast"
 
+(* A reply Goblin cannot read -- an (error ...), or a model outside what
+   SolverParser accepts -- is an outcome to report, not an impossible state *)
+let unreadable_solver_reply: string -> string -> string -> 'a
+= fun what reply detail ->
+  let reply = String.trim reply in
+  let excerpt =
+    if String.length reply <= 300 then reply
+    else String.sub reply 0 300 ^ " ..."
+  in
+  if String.starts_with ~prefix:"(error" reply then
+    Utils.error_no_pos (Format.asprintf "the solver rejected a command:@\n  %s" excerpt)
+  else
+    Utils.error_no_pos (Format.asprintf
+      "could not read the solver's %s (%s):@\n  %s" what detail excerpt)
+
 let get_smt_result: A.ast -> Smt.solver_instance -> bool -> (model, unit) result option
 = fun ast solver get_model -> 
+  let parse_reply what response = match Parsing.parse_solver response ast with
+  | Ok result -> result
+  | Error detail -> unreadable_solver_reply what response detail
+  in
   Smt.issue_solver_command "(check-sat)\n" solver;
   let response = Smt.read_check_sat_response solver in
   if !Flags.debug then Format.fprintf Format.std_formatter "Solver response: %s\n" response;
@@ -464,18 +495,10 @@ let get_smt_result: A.ast -> Smt.solver_instance -> bool -> (model, unit) result
     Smt.issue_solver_command "(get-model)\n" solver;
     let response = Smt.read_get_model_response solver in
     if !Flags.debug then Format.fprintf Format.std_formatter "Solver response: %s\n" response;
-    let result = match Parsing.parse_solver response ast with 
-    | Ok result -> result 
-    | Error msg -> Format.fprintf Format.std_formatter "Error parsing: %s\n" msg; assert false 
-    in
-    Some (model_of_solver_ast result)
+    Some (model_of_solver_ast (parse_reply "model response" response))
   ) else if response = "sat" then None  
   else
-    let result = match Parsing.parse_solver response ast with 
-    | Ok result -> result 
-    | Error msg -> Format.fprintf Format.std_formatter "Error parsing: %s\n" msg; assert false 
-    in
-    Some (model_of_solver_ast result)
+    Some (model_of_solver_ast (parse_reply "check-sat response" response))
 
 (* Set each terminal's value from the model *)
 let rec instantiate_terminals: model -> derivation_tree -> derivation_tree 
@@ -899,6 +922,6 @@ let dpll: TypeChecker.context -> A.semantic_constraint Nt.StubMap.t -> A.ast -> 
     Smt.cleanup_solver solver;
     Format.pp_print_flush Format.std_formatter ();
     Infeasible
-  | Failure e -> 
+  | Failure message as e ->
     Smt.cleanup_solver solver;
-    Utils.crash e
+    if Utils.is_framed_message message then raise e else Utils.crash message
